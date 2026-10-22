@@ -112,7 +112,7 @@ function UnlockCTA({ onPostPress, centered }) {
   );
 }
 
-export function LockedFeedOverlay({ posts, petName, onPostPress }) {
+export function LockedFeedOverlay({ posts, petName, onPostPress, onOpenProfile }) {
   const list = Array.isArray(posts) ? posts : [];
 
   if (list.length === 0) {
@@ -132,6 +132,7 @@ export function LockedFeedOverlay({ posts, petName, onPostPress }) {
           locked
           lockedCtaIndex={index}
           onLockedPress={onPostPress}
+          onOpenProfile={() => onOpenProfile?.(post)}
         />
       ))}
     </View>

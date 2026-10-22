@@ -3,9 +3,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Route-level contract for the social pet-profile read. Any authed user may read
 // any pet's profile. Session + DB mocked at the module boundary.
 //
-// Query order (T3 added the moderation guard at index 1):
+// Query order (T3 added the moderation guard at index 1; the daily-moments gate
+// adds the viewer lookup — and, for ANOTHER owner's pet, the posted-today check):
 //   0 pet lookup · 1 guard (banned/blocked) · 2 owner · 3 stats ·
-//   [4 follow check — only with viewerPetId] · 4|5 posts.
+//   [4 follow check — only with viewerPetId] · viewer lookup ·
+//   [posted-today check — skipped when the viewer owns the pet] · posts
+//   (posts is skipped entirely when the moments are locked).
 
 import { GET } from './route';
 import { auth } from '@/auth';
@@ -32,6 +35,10 @@ const PET_ROW = {
 };
 // T3 moderation guard: owner not banned, caller not blocked → profile visible.
 const GUARD_OK = { banned: false, blocked: false };
+// Daily-moments gate fixtures. SESSION is auth id 42 → user_profiles.id 7, which owns
+// PET_ROW (owner_user_id 7), so the default fixtures are the viewer's OWN pet (never gated).
+const VIEWER_OWNS_PET = { id: 7, local_today: '2026-06-10' };
+const OTHER_VIEWER = { id: 99, local_today: '2026-06-10' };
 const OWNER_ROW = {
   id: 7,
   full_name: 'Pat Owner',
@@ -74,12 +81,13 @@ beforeEach(() => {
 describe('GET /api/pets/[id]/profile', () => {
   it('returns pet + owner + stats + posts; isFollowing false without viewerPetId', async () => {
     auth.mockResolvedValue(SESSION);
-    // 0 pet, 1 guard, 2 owner, 3 stats, 4 posts (no viewerPetId -> follow check skipped)
+    // 0 pet, 1 guard, 2 owner, 3 stats, 4 viewer, 5 posts (no viewerPetId -> follow check skipped)
     sql
       .mockResolvedValueOnce([PET_ROW])
       .mockResolvedValueOnce([GUARD_OK])
       .mockResolvedValueOnce([OWNER_ROW])
       .mockResolvedValueOnce([STAT_ROW])
+      .mockResolvedValueOnce([VIEWER_OWNS_PET])
       .mockResolvedValueOnce(POST_ROWS);
 
     const res = await GET(req(), { params: { id: '2' } });
@@ -112,13 +120,14 @@ describe('GET /api/pets/[id]/profile', () => {
 
   it('isFollowing flips true when viewerPetId follows the pet', async () => {
     auth.mockResolvedValue(SESSION);
-    // 0 pet, 1 guard, 2 owner, 3 stats, 4 follow check (non-empty), 5 posts
+    // 0 pet, 1 guard, 2 owner, 3 stats, 4 follow check (non-empty), 5 viewer, 6 posts
     sql
       .mockResolvedValueOnce([PET_ROW])
       .mockResolvedValueOnce([GUARD_OK])
       .mockResolvedValueOnce([OWNER_ROW])
       .mockResolvedValueOnce([STAT_ROW])
       .mockResolvedValueOnce([{ '?column?': 1 }])
+      .mockResolvedValueOnce([VIEWER_OWNS_PET])
       .mockResolvedValueOnce(POST_ROWS);
 
     const res = await GET(req('?viewerPetId=1'), { params: { id: '2' } });
@@ -136,6 +145,7 @@ describe('GET /api/pets/[id]/profile', () => {
       .mockResolvedValueOnce([
         { total_posts: 0, total_paws: 0, total_barks: 0, followers: 0, following: 0 },
       ])
+      .mockResolvedValueOnce([VIEWER_OWNS_PET])
       .mockResolvedValueOnce([]);
 
     const res = await GET(req(), { params: { id: '2' } });
@@ -175,12 +185,13 @@ describe('GET /api/pets/[id]/profile', () => {
 
   it('each stat counts the right rows, scoped to the target pet', async () => {
     auth.mockResolvedValue(SESSION);
-    // 0 pet, 1 guard, 2 owner, 3 stats, 4 posts (no viewerPetId)
+    // 0 pet, 1 guard, 2 owner, 3 stats, 4 viewer, 5 posts (no viewerPetId)
     sql
       .mockResolvedValueOnce([PET_ROW])
       .mockResolvedValueOnce([GUARD_OK])
       .mockResolvedValueOnce([OWNER_ROW])
       .mockResolvedValueOnce([STAT_ROW])
+      .mockResolvedValueOnce([VIEWER_OWNS_PET])
       .mockResolvedValueOnce(POST_ROWS);
 
     await GET(req(), { params: { id: '2' } });
@@ -206,6 +217,7 @@ describe('GET /api/pets/[id]/profile', () => {
       .mockResolvedValueOnce([GUARD_OK])
       .mockResolvedValueOnce([OWNER_ROW])
       .mockResolvedValueOnce([STAT_ROW])
+      .mockResolvedValueOnce([VIEWER_OWNS_PET])
       .mockResolvedValueOnce(POST_ROWS);
 
     const res = await GET(req(), { params: { id: 'rex' } });
@@ -216,8 +228,8 @@ describe('GET /api/pets/[id]/profile', () => {
     expect(queryValues(0)).toEqual(['rex']);
     // Downstream stats + moments bind the RESOLVED numeric id (2), never 'rex'.
     expect(queryValues(3)).toEqual([2, 2, 2, 2, 2]);
-    expect(queryValues(4)).toContain(2);
-    expect(queryValues(4)).not.toContain('rex');
+    expect(queryValues(5)).toContain(2);
+    expect(queryValues(5)).not.toContain('rex');
   });
 
   it('tolerates a leading @ on a handle', async () => {
@@ -227,6 +239,7 @@ describe('GET /api/pets/[id]/profile', () => {
       .mockResolvedValueOnce([GUARD_OK])
       .mockResolvedValueOnce([OWNER_ROW])
       .mockResolvedValueOnce([STAT_ROW])
+      .mockResolvedValueOnce([VIEWER_OWNS_PET])
       .mockResolvedValueOnce(POST_ROWS);
 
     await GET(req(), { params: { id: '@rex' } });
@@ -243,6 +256,7 @@ describe('GET /api/pets/[id]/profile', () => {
       .mockResolvedValueOnce([GUARD_OK])
       .mockResolvedValueOnce([OWNER_ROW])
       .mockResolvedValueOnce([STAT_ROW])
+      .mockResolvedValueOnce([VIEWER_OWNS_PET])
       .mockResolvedValueOnce(POST_ROWS);
 
     await GET(req(), { params: { id: '2' } });
@@ -251,7 +265,7 @@ describe('GET /api/pets/[id]/profile', () => {
     expect(everyBoundValue).not.toContain(99);
     // Stats + moments are scoped strictly to pet 2.
     expect(queryValues(3)).toEqual([2, 2, 2, 2, 2]);
-    expect(queryValues(4)).toContain(2);
+    expect(queryValues(5)).toContain(2);
   });
 
   it('paginates daily moments with explicit limit/offset', async () => {
@@ -261,15 +275,16 @@ describe('GET /api/pets/[id]/profile', () => {
       .mockResolvedValueOnce([GUARD_OK])
       .mockResolvedValueOnce([OWNER_ROW])
       .mockResolvedValueOnce([STAT_ROW])
+      .mockResolvedValueOnce([VIEWER_OWNS_PET])
       .mockResolvedValueOnce(POST_ROWS);
 
     await GET(req('?limit=2&offset=4'), { params: { id: '2' } });
 
-    const postsSql = queryText(4).toLowerCase();
+    const postsSql = queryText(5).toLowerCase();
     expect(postsSql).toContain('limit');
     expect(postsSql).toContain('offset');
     // resolved pet id + limit + offset are bound.
-    expect(queryValues(4)).toEqual([2, 2, 4]);
+    expect(queryValues(5)).toEqual([2, 2, 4]);
   });
 
   it('defaults the moments page to a grid-sized window (limit 24, offset 0)', async () => {
@@ -279,10 +294,112 @@ describe('GET /api/pets/[id]/profile', () => {
       .mockResolvedValueOnce([GUARD_OK])
       .mockResolvedValueOnce([OWNER_ROW])
       .mockResolvedValueOnce([STAT_ROW])
+      .mockResolvedValueOnce([VIEWER_OWNS_PET])
       .mockResolvedValueOnce(POST_ROWS);
 
     await GET(req(), { params: { id: '2' } });
 
-    expect(queryValues(4)).toEqual([2, 24, 0]);
+    expect(queryValues(5)).toEqual([2, 24, 0]);
+  });
+
+  // ── Daily-moments gate (server-enforced; a client-only hide can be bypassed) ──
+  describe('daily-moments gate', () => {
+    const seedHead = () =>
+      sql
+        .mockResolvedValueOnce([PET_ROW]) // owner_user_id 7
+        .mockResolvedValueOnce([GUARD_OK])
+        .mockResolvedValueOnce([OWNER_ROW])
+        .mockResolvedValueOnce([STAT_ROW]);
+
+    it("another owner's pet + viewer has NOT posted today: no moments in the response", async () => {
+      auth.mockResolvedValue(SESSION);
+      seedHead()
+        .mockResolvedValueOnce([OTHER_VIEWER]) // 4 viewer (user_profiles.id 99 ≠ owner 7)
+        .mockResolvedValueOnce([]); // 5 posted-today check → nothing
+
+      const res = await GET(req(), { params: { id: '2' } });
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.momentsLocked).toBe(true);
+      expect(body.posts).toEqual([]);
+      // Header + stats + public info still come back…
+      expect(body.pet.name).toBe('Rex');
+      expect(body.owner.full_name).toBe('Pat Owner');
+      expect(body.stats).toEqual({ totalPosts: 2, totalPaws: 5, totalBarks: 1, followers: 3, following: 4 });
+      // …but the posts query is never even issued (no moment rows are read at all).
+      expect(sql).toHaveBeenCalledTimes(6);
+      const allSql = sql.mock.calls.map((_, i) => queryText(i).toLowerCase());
+      expect(allSql.some((q) => q.includes('order by p.created_at'))).toBe(false);
+    });
+
+    it('the posted-today check is owner-scoped on user_profiles.id, never the auth id', async () => {
+      auth.mockResolvedValue(SESSION); // auth id 42
+      seedHead()
+        .mockResolvedValueOnce([OTHER_VIEWER])
+        .mockResolvedValueOnce([]);
+
+      await GET(req(), { params: { id: '2' } });
+
+      // viewer lookup binds the AUTH id (42) to find the profile…
+      expect(queryText(4).toLowerCase()).toContain('auth_user_id');
+      expect(queryValues(4)).toEqual([42]);
+      // …and the posted-today query binds the resolved user_profiles.id (99) + owner-local day.
+      expect(queryText(5).toLowerCase()).toContain('owner_user_id');
+      expect(queryValues(5)).toEqual([99, '2026-06-10']);
+    });
+
+    it("another owner's pet + viewer HAS posted today: moments are returned", async () => {
+      auth.mockResolvedValue(SESSION);
+      seedHead()
+        .mockResolvedValueOnce([OTHER_VIEWER])
+        .mockResolvedValueOnce([{ '?column?': 1 }]) // posted today
+        .mockResolvedValueOnce(POST_ROWS);
+
+      const res = await GET(req(), { params: { id: '2' } });
+
+      const body = await res.json();
+      expect(body.momentsLocked).toBe(false);
+      expect(body.posts).toEqual(POST_ROWS);
+    });
+
+    it("the viewer's OWN pet is never gated (no posted-today check at all)", async () => {
+      auth.mockResolvedValue(SESSION);
+      seedHead()
+        .mockResolvedValueOnce([VIEWER_OWNS_PET])
+        .mockResolvedValueOnce(POST_ROWS);
+
+      const res = await GET(req(), { params: { id: '2' } });
+
+      const body = await res.json();
+      expect(body.momentsLocked).toBe(false);
+      expect(body.posts).toEqual(POST_ROWS);
+      expect(sql).toHaveBeenCalledTimes(6); // pet, guard, owner, stats, viewer, posts
+    });
+
+    it('a viewer with no user_profiles row yet has not posted: locked', async () => {
+      auth.mockResolvedValue(SESSION);
+      seedHead().mockResolvedValueOnce([]); // viewer lookup → no profile
+
+      const res = await GET(req(), { params: { id: '2' } });
+
+      const body = await res.json();
+      expect(body.momentsLocked).toBe(true);
+      expect(body.posts).toEqual([]);
+    });
+
+    it('does not widen the numeric surface: a locked response carries no new counts', async () => {
+      auth.mockResolvedValue(SESSION);
+      seedHead().mockResolvedValueOnce([OTHER_VIEWER]).mockResolvedValueOnce([]);
+
+      const body = await (await GET(req(), { params: { id: '2' } })).json();
+
+      expect(Object.keys(body).sort()).toEqual(
+        ['isFollowing', 'momentsLocked', 'owner', 'pet', 'posts', 'stats'],
+      );
+      expect(Object.keys(body.stats).sort()).toEqual(
+        ['followers', 'following', 'totalBarks', 'totalPaws', 'totalPosts'],
+      );
+    });
   });
 });

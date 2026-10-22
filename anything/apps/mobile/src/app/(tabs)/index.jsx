@@ -325,6 +325,7 @@ export default function FeedScreen() {
                 posts={posts}
                 petName={petName}
                 onPostPress={() => setComposerVisible(true)}
+                onOpenProfile={openProfile}
               />
             ) : (
               <UnlockedFeed

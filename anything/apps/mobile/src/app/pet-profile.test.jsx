@@ -69,10 +69,34 @@ jest.mock("@/hooks/usePetSocialProfile", () => ({
 jest.mock("@/hooks/useDMs", () => ({
   useStartDM: () => ({ mutateAsync: jest.fn(), isPending: false }),
 }));
+// The daily-post unlock comes from the SAME hook the Feed uses (useFeedData): its
+// owner-level `feedUnlocked` + `handlePost`. Stubbed so the test drives both.
+let mockFeedUnlocked = false;
+const mockHandlePost = jest.fn();
+jest.mock("@/hooks/useFeedData", () => ({
+  useFeedData: () => ({
+    feedUnlocked: mockFeedUnlocked,
+    handlePost: mockHandlePost,
+    petName: "Mango",
+  }),
+}));
+jest.mock("@/components/Feed/PostComposerModal", () => {
+  const { View, Pressable } = require("react-native");
+  return {
+    PostComposerModal: ({ visible, onPost }) =>
+      visible ? (
+        <View testID="composer-open">
+          <Pressable testID="composer-submit" onPress={() => onPost({ uri: "file://x.jpg" })} />
+        </View>
+      ) : null,
+  };
+});
 
 import PetProfileScreen from "./pet-profile";
 
 beforeEach(() => {
+  mockFeedUnlocked = false;
+  mockHandlePost.mockReset();
   mockPush.mockReset();
   mockNavigate.mockReset();
   mockParams = { petId: "7", dogName: "Buddy", ownerName: "Alice" };
@@ -246,5 +270,98 @@ describe("fetch failure", () => {
     expect(getByTestId("pet-profile-error")).toBeTruthy();
     fireEvent.press(getByText("Try again"));
     expect(mockProfileRefetch).toHaveBeenCalled();
+  });
+});
+
+// ── Daily-moments gate ──
+// Another owner's Daily moments stay hidden until the viewer posts their own today.
+// The API withholds them (momentsLocked, posts: []); the screen renders the lock and a
+// CTA to post. The viewer's own pets are never gated.
+describe("daily moments gate", () => {
+  const MOMENT = {
+    id: 10,
+    image_url: "http://img/10.png",
+    caption: "hi",
+    post_date: "2026-06-10",
+    paw_count: 5,
+  };
+
+  test("viewer has NOT posted today: header + stats + info stay, moments grid is replaced by the lock", () => {
+    mockViewer = { id: 4 };
+    mockProfile = { ...mockProfile, posts: [], momentsLocked: true };
+    const { getByText, getByTestId, queryByText, queryByTestId } = render(<PetProfileScreen />);
+
+    // Header, stats and public info still show.
+    expect(getByText("Rex")).toBeTruthy();
+    expect(getByText("@rexthedog")).toBeTruthy();
+    expect(getByText("Daily posts")).toBeTruthy();
+    expect(getByText("Followers")).toBeTruthy();
+    expect(getByText("About Rex")).toBeTruthy();
+    // The grid is replaced by a friendly locked state with a post CTA…
+    expect(getByTestId("pet-profile-moments-locked")).toBeTruthy();
+    expect(getByText("Post your moment to see Rex's")).toBeTruthy();
+    expect(getByText("Post today's moment")).toBeTruthy();
+    // …and it is NOT the misleading "this pet has no posts" empty state.
+    expect(queryByText("No daily posts yet")).toBeNull();
+    expect(queryByTestId("pet-profile-moment-tile")).toBeNull();
+  });
+
+  test("the lock CTA opens the composer, and posting goes through the Feed's handlePost", () => {
+    mockViewer = { id: 4 };
+    mockProfile = { ...mockProfile, posts: [], momentsLocked: true };
+    const { getByTestId, queryByTestId } = render(<PetProfileScreen />);
+
+    expect(queryByTestId("composer-open")).toBeNull();
+    fireEvent.press(getByTestId("pet-profile-moments-locked-cta"));
+    expect(getByTestId("composer-open")).toBeTruthy();
+
+    fireEvent.press(getByTestId("composer-submit"));
+    expect(mockHandlePost).toHaveBeenCalledWith({ uri: "file://x.jpg" });
+  });
+
+  test("viewer HAS posted: the moments grid renders (no lock)", () => {
+    mockViewer = { id: 4 };
+    mockFeedUnlocked = true;
+    mockProfile = { ...mockProfile, posts: [MOMENT], momentsLocked: false };
+    const { queryByTestId, queryByText, getAllByTestId } = render(<PetProfileScreen />);
+    expect(queryByTestId("pet-profile-moments-locked")).toBeNull();
+    expect(queryByText("Post today's moment")).toBeNull();
+    expect(getAllByTestId("pet-profile-moment-tile")).toHaveLength(1);
+  });
+
+  test("just posted but the cached profile still says locked: no lock flash, no false empty state, refetches", () => {
+    mockViewer = { id: 4 };
+    mockFeedUnlocked = true; // the Feed's unlock flipped (post-create invalidation)
+    mockProfile = { ...mockProfile, posts: [], momentsLocked: true }; // stale cache
+    const { queryByTestId, queryByText } = render(<PetProfileScreen />);
+
+    expect(queryByTestId("pet-profile-moments-locked")).toBeNull();
+    expect(queryByText("No daily posts yet")).toBeNull();
+    expect(mockProfileRefetch).toHaveBeenCalled();
+  });
+
+  test("own pet's profile is never gated, even if the viewer has not posted", () => {
+    mockViewer = { id: 7 }; // viewer owns the profile pet (7)
+    mockFeedUnlocked = false;
+    mockProfile = { ...mockProfile, posts: [MOMENT] }; // the server never locks own pets
+    const { queryByTestId, getAllByTestId } = render(<PetProfileScreen />);
+    expect(queryByTestId("pet-profile-moments-locked")).toBeNull();
+    expect(getAllByTestId("pet-profile-moment-tile")).toHaveLength(1);
+  });
+
+  test("own pet is never gated even if a stale payload said locked", () => {
+    mockViewer = { id: 7 };
+    mockProfile = { ...mockProfile, posts: [], momentsLocked: true };
+    const { queryByTestId, getByText } = render(<PetProfileScreen />);
+    expect(queryByTestId("pet-profile-moments-locked")).toBeNull();
+    expect(getByText("No daily posts yet")).toBeTruthy(); // truly empty → real empty state
+  });
+
+  test("a truly empty profile (viewer posted, pet has no posts) still shows the real empty state", () => {
+    mockViewer = { id: 4 };
+    mockFeedUnlocked = true;
+    mockProfile = { ...mockProfile, posts: [], momentsLocked: false };
+    const { getByText } = render(<PetProfileScreen />);
+    expect(getByText("No daily posts yet")).toBeTruthy();
   });
 });
