@@ -9,11 +9,12 @@ let mockDM;
 let mockBiz;
 let mockSearch;
 const mockPush = jest.fn();
+const mockBack = jest.fn();
 const mockStartDM = jest.fn();
 
 jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ back: jest.fn(), push: mockPush }),
+  useRouter: () => ({ back: mockBack, push: mockPush }),
 }));
 jest.mock("expo-image", () => {
   const { View } = require("react-native");
@@ -64,6 +65,14 @@ const biz = {
   last_message_at: "2026-06-18T11:00:00.000Z",
   unread_count: 0,
 };
+
+test("the header has a visible BACK button (card, not a modal)", () => {
+  mockBack.mockClear();
+  const { getByTestId, getByLabelText } = render(<MessagesScreen />);
+  expect(getByLabelText("Back")).toBeTruthy();
+  fireEvent.press(getByTestId("messages-back"));
+  expect(mockBack).toHaveBeenCalledTimes(1);
+});
 
 test("empty state when there are no conversations (no mock fallback)", () => {
   const { getByText } = render(<MessagesScreen />);

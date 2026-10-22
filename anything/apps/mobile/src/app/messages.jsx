@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { X, Search, User, Store } from "lucide-react-native";
+import { X, ArrowLeft, Search, User, Store } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
@@ -168,8 +168,8 @@ export default function MessagesScreen() {
             marginBottom: SPACING.md,
           }}
         >
-          <PressableScale accessibilityLabel={t("common.close")} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => router.back()} accessibilityRole="button">
-            <X size={22} color={COLORS.mutedBrown} />
+          <PressableScale testID="messages-back" accessibilityLabel={t("common.back")} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => router.back()} accessibilityRole="button">
+            <ArrowLeft size={22} color={COLORS.mutedBrown} />
           </PressableScale>
           <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
             {t("messages.title")}
