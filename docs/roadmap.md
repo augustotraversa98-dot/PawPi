@@ -22,6 +22,7 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 - ✅ **Locked feed redacts other owners' media server-side:** `GET /api/posts` and `GET /api/discover` return other owners' `image_url` / `video_url` / `video_thumbnail_url` / `caption` as `null` + `locked: true` until the viewer has posted today (shared `utils/dailyMomentsGate.js`); own posts and the unlocked case are untouched. JS/server only, no migration.
 - ✅ **Weekly summary share card:** pick one of the week's real daily moments as the card image (best → most recent → profile photo → a prompt to post a moment; never the paw), "Share {{name}}'s week" label fixed, positive-only stat line (no "0 walks · 0/7"), EN+ES; `GET /api/pets/[id]/weekly-digest` gains `week_moments`. Guard test: no single-arg `t()` call may target a string with `{{vars}}`. No migration.
+- ✅ **Navigation layers:** Notifications and Messages are cards on the one back stack, not root modals (back arrow in the header); `navigation-layers.test.js` now fails if any modal/sheet screen navigates onward. JS-only.
 
 ---
 
