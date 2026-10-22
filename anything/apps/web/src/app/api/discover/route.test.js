@@ -32,7 +32,11 @@ describe("GET /api/discover", () => {
     auth.mockResolvedValue(SESSION);
     const PROFILES = [{ id: 1, name: "Rex", followers: 5, paws: 10 }];
     const MOMENTS = [{ id: 3, pet_id: 1, image_url: "x", caption: "hi" }];
-    sql.mockResolvedValueOnce(PROFILES).mockResolvedValueOnce(MOMENTS);
+    sql
+      .mockResolvedValueOnce(PROFILES)
+      .mockResolvedValueOnce(MOMENTS)
+      .mockResolvedValueOnce([{ id: 42, local_today: "2026-08-12" }]) // daily gate — profile
+      .mockResolvedValueOnce([{ "?column?": 1 }]); // daily gate — posted today
 
     const res = await GET(req("?limit=12"));
 
@@ -50,5 +54,24 @@ describe("GET /api/discover", () => {
     expect(text).not.toContain("health_");
     expect(text).not.toContain("care_access");
     expect(text).not.toContain("weight");
+  });
+
+  it("redacts other owners' moments until the viewer has posted today; own moments stay", async () => {
+    auth.mockResolvedValue(SESSION);
+    const MOMENTS = [
+      { id: 3, pet_id: 1, user_id: 7, image_url: "https://cdn/other.jpg", caption: "secret", pet_name: "Rex" },
+      { id: 4, pet_id: 2, user_id: 42, image_url: "https://cdn/mine.jpg", caption: "mine", pet_name: "Mango" },
+    ];
+    sql
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce(MOMENTS)
+      .mockResolvedValueOnce([{ id: 42, local_today: "2026-08-12" }])
+      .mockResolvedValueOnce([]); // nothing posted today
+
+    const { moments } = await (await GET(req())).json();
+    expect(moments[0]).toMatchObject({ id: 3, pet_name: "Rex", locked: true, image_url: null, caption: null });
+    expect(JSON.stringify(moments[0])).not.toContain("other.jpg");
+    expect(moments[1]).toMatchObject({ id: 4, image_url: "https://cdn/mine.jpg", caption: "mine" });
+    expect(moments[1].locked).toBeUndefined();
   });
 });

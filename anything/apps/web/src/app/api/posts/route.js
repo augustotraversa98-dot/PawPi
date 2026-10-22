@@ -9,6 +9,10 @@ import { moderationResponse } from "@/app/api/utils/moderateText";
 import { isVideoEligible } from "@/app/api/utils/videoEligibility";
 import { ownerTodayFrom } from "@/app/api/utils/ownerLocalDay";
 import { recordBusinessEvent } from "@/lib/telemetry/business";
+import {
+  getViewerDailyStatus,
+  applyDailyMomentsLock,
+} from "@/app/api/utils/dailyMomentsGate";
 
 // Following-first, then Suggested. `following` and `suggested` are each already
 // ordered newest-first by SQL and are disjoint by construction (Suggested
@@ -322,41 +326,40 @@ async function GET(request) {
       groupLimit,
     );
 
-    const posts = mergeFeed(mergedFollowing, suggested, { limit, offset });
+    const page = mergeFeed(mergedFollowing, suggested, { limit, offset });
+
+    // Daily-post lock, enforced here and not only on-device: until the viewer has posted today,
+    // other owners' media never leaves the server (utils/dailyMomentsGate.js — the same query
+    // that powers /owner-posted-today, so the Feed's lock and the data returned always agree).
+    // Fails closed: an anonymous viewer, or one with no profile yet, counts as "not posted".
+    const status = session?.user?.id
+      ? await getViewerDailyStatus(session.user.id)
+      : null;
+    const posts = applyDailyMomentsLock(page, status);
 
     // Check if current user has pawed each PET post. Business posts carry their own
     // paw_count/paw state from fetchFollowedProviderPosts and are EXCLUDED here — their id
     // space is separate from pet posts, so mixing them into a post_paws lookup would be wrong.
-    if (session?.user?.id) {
+    if (status) {
+      const userId = status.userId;
+      const postIds = posts
+        .filter((p) => p.item_type !== "provider_post")
+        .map((p) => p.id);
 
-      const userProfile = await sql`
-        SELECT id FROM user_profiles
-        WHERE auth_user_id = ${session.user.id}
-        LIMIT 1
-      `;
+      if (postIds.length > 0) {
+        const userPaws = await sql`
+          SELECT post_id
+          FROM post_paws
+          WHERE user_id = ${userId}
+            AND post_id = ANY(${postIds})
+        `;
 
-      if (userProfile.length > 0) {
-        const userId = userProfile[0].id;
+        const pawedPostIds = new Set(userPaws.map((p) => p.post_id));
 
-        const postIds = posts
-          .filter((p) => p.item_type !== "provider_post")
-          .map((p) => p.id);
-
-        if (postIds.length > 0) {
-          const userPaws = await sql`
-            SELECT post_id
-            FROM post_paws
-            WHERE user_id = ${userId}
-              AND post_id = ANY(${postIds})
-          `;
-
-          const pawedPostIds = new Set(userPaws.map((p) => p.post_id));
-
-          posts.forEach((post) => {
-            if (post.item_type === "provider_post") return;
-            post.user_has_pawed = pawedPostIds.has(post.id);
-          });
-        }
+        posts.forEach((post) => {
+          if (post.item_type === "provider_post") return;
+          post.user_has_pawed = pawedPostIds.has(post.id);
+        });
       }
     }
 

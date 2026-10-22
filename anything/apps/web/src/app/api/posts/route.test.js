@@ -186,7 +186,7 @@ describe('GET /api/posts — Following + Suggested', () => {
 // the Following stream. Only runs for a signed-in user; the whole business fetch is best-effort so
 // a failure never disturbs the pet feed. sql is mocked; each `await sql\`…\`` consumes one
 // mockResolvedValueOnce in order: following, suggested, [provider select, paw counts, comment
-// counts], profile lookup, pet-paw lookup.
+// counts], daily-gate profile lookup, daily-gate posted-today lookup, pet-paw lookup.
 describe('GET /api/posts — followed-business posts merged into the feed', () => {
   const bizRow = {
     id: 5,
@@ -210,8 +210,9 @@ describe('GET /api/posts — followed-business posts merged into the feed', () =
       .mockResolvedValueOnce([bizRow]) //       3: followed-provider posts (media-aware)
       .mockResolvedValueOnce([{ post_id: 5, n: 2 }]) // 4: paw counts
       .mockResolvedValueOnce([{ post_id: 5, n: 1 }]) // 5: comment counts
-      .mockResolvedValueOnce([{ id: 9 }]) //  6: profile lookup (paw enrichment)
-      .mockResolvedValueOnce([]); //          7: pet-paw lookup
+      .mockResolvedValueOnce([{ id: 9, local_today: '2026-08-12' }]) //  6: daily gate — profile
+      .mockResolvedValueOnce([{ '?column?': 1 }]) //                      7: daily gate — posted today
+      .mockResolvedValueOnce([]); //                                      8: pet-paw lookup
 
     const res = await GET(feedReq('?viewerPetId=1'));
     expect(res.status).toBe(200);
@@ -257,7 +258,8 @@ describe('GET /api/posts — followed-business posts merged into the feed', () =
       .mockResolvedValueOnce([post(1, 10)]) // following
       .mockResolvedValueOnce([post(3, 20)]) // suggested
       .mockRejectedValueOnce(Object.assign(new Error('boom'), { code: 'XX000' })) // provider select blows up
-      .mockResolvedValueOnce([{ id: 9 }]) // profile lookup
+      .mockResolvedValueOnce([{ id: 9, local_today: '2026-08-12' }]) // daily gate — profile
+      .mockResolvedValueOnce([{ '?column?': 1 }]) // daily gate — posted today
       .mockResolvedValueOnce([]); // pet-paw lookup
 
     const res = await GET(feedReq('?viewerPetId=1'));
@@ -265,6 +267,118 @@ describe('GET /api/posts — followed-business posts merged into the feed', () =
     const { posts } = await res.json();
     expect(posts.map((p) => p.id)).toEqual([1, 3]); // pet feed intact
     expect(posts.every((p) => p.item_type !== 'provider_post')).toBe(true);
+  });
+});
+
+// Daily-post lock, server side: until the viewer has posted today, other owners' media must not
+// be on the wire. Order of sql calls with a session and no business posts: following, suggested,
+// provider select (empty), daily-gate profile, [daily-gate posted-today], pet-paw lookup.
+describe('GET /api/posts — locked feed redacts other owners\' media', () => {
+  const full = (id, pet_id, user_id) => ({
+    id,
+    pet_id,
+    user_id,
+    image_url: `https://cdn/${id}.jpg`,
+    video_url: `https://cdn/${id}.mp4`,
+    video_thumbnail_url: `https://cdn/${id}-thumb.jpg`,
+    caption: `caption ${id}`,
+    media_type: 'image',
+    pet_name: `pet${pet_id}`,
+  });
+  const PROFILE = [{ id: 9, local_today: '2026-08-12' }];
+
+  it('viewer has NOT posted today: others are redacted + locked, own posts are intact', async () => {
+    auth.mockResolvedValue({ user: { id: 'auth-9' } });
+    sql
+      .mockResolvedValueOnce([full(1, 1, 9)]) //  following (the viewer's own post)
+      .mockResolvedValueOnce([full(2, 20, 7)]) // suggested (someone else's)
+      .mockResolvedValueOnce([]) //                provider select
+      .mockResolvedValueOnce(PROFILE) //           daily gate — profile
+      .mockResolvedValueOnce([]) //                daily gate — nothing posted today
+      .mockResolvedValueOnce([]); //               pet-paw lookup
+
+    const res = await GET(feedReq('?viewerPetId=1'));
+    expect(res.status).toBe(200);
+    const { posts } = await res.json();
+
+    const own = posts.find((p) => p.id === 1);
+    expect(own.image_url).toBe('https://cdn/1.jpg');
+    expect(own.caption).toBe('caption 1');
+    expect(own.locked).toBeUndefined();
+
+    const other = posts.find((p) => p.id === 2);
+    expect(other).toMatchObject({
+      id: 2,
+      pet_name: 'pet20', // identity stays so the card can still say WHO posted
+      locked: true,
+      image_url: null,
+      video_url: null,
+      video_thumbnail_url: null,
+      caption: null,
+    });
+    expect(JSON.stringify(other)).not.toContain('cdn/2');
+  });
+
+  it('viewer HAS posted today: everything is returned untouched', async () => {
+    auth.mockResolvedValue({ user: { id: 'auth-9' } });
+    sql
+      .mockResolvedValueOnce([full(1, 1, 9)])
+      .mockResolvedValueOnce([full(2, 20, 7)])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce(PROFILE)
+      .mockResolvedValueOnce([{ '?column?': 1 }]) // posted today
+      .mockResolvedValueOnce([]);
+
+    const { posts } = await (await GET(feedReq('?viewerPetId=1'))).json();
+    const other = posts.find((p) => p.id === 2);
+    expect(other.image_url).toBe('https://cdn/2.jpg');
+    expect(other.caption).toBe('caption 2');
+    expect(other.locked).toBeUndefined();
+  });
+
+  it('an anonymous viewer gets every post redacted', async () => {
+    auth.mockResolvedValue(undefined);
+    sql
+      .mockResolvedValueOnce([full(1, 1, 9)])
+      .mockResolvedValueOnce([full(2, 20, 7)]);
+
+    const { posts } = await (await GET(feedReq('?viewerPetId=1'))).json();
+    expect(posts.every((p) => p.locked === true && p.image_url === null)).toBe(true);
+  });
+
+  it('a signed-in viewer with no profile row counts as not posted (fail closed)', async () => {
+    auth.mockResolvedValue({ user: { id: 'auth-9' } });
+    sql
+      .mockResolvedValueOnce([full(2, 20, 7)])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]) // provider select
+      .mockResolvedValueOnce([]); // daily gate — no profile
+
+    const { posts } = await (await GET(feedReq('?viewerPetId=1'))).json();
+    expect(posts[0]).toMatchObject({ id: 2, locked: true, image_url: null });
+  });
+
+  it('business posts are public marketing content and are not redacted', async () => {
+    auth.mockResolvedValue({ user: { id: 'auth-9' } });
+    sql
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 5, provider_id: 100, body: 'Hi', image_urls: ['https://cdn/biz.jpg'],
+          media_type: 'image', video_url: null, video_thumbnail_url: null,
+          created_at: '2026-08-12T12:00:00Z', provider_name: 'P', provider_slug: 'p', provider_logo_url: null,
+        },
+      ])
+      .mockResolvedValueOnce([]) // paw counts
+      .mockResolvedValueOnce([]) // comment counts
+      .mockResolvedValueOnce(PROFILE)
+      .mockResolvedValueOnce([]);
+
+    const { posts } = await (await GET(feedReq('?viewerPetId=1'))).json();
+    expect(posts[0].item_type).toBe('provider_post');
+    expect(posts[0].image_urls).toEqual(['https://cdn/biz.jpg']);
+    expect(posts[0].locked).toBeUndefined();
   });
 });
 
