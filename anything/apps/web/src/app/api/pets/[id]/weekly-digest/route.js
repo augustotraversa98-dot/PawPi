@@ -120,6 +120,25 @@ async function GET(request, { params }) {
         }
       : null;
 
+    // Every daily moment of the week that has a photo (a video moment contributes its poster
+    // frame) — what the share-card picker offers. Scoped to this pet + the digest window.
+    const weekMomentRows = await sql`
+      SELECT p.id, COALESCE(p.image_url, p.video_thumbnail_url) AS photo_url,
+             p.caption, p.post_date, p.created_at
+      FROM posts p
+      WHERE p.pet_id = ${petId} AND p.is_daily_update = true
+        AND p.post_date >= ${weekStart}::date AND p.post_date < ${weekEnd}::date
+        AND COALESCE(p.image_url, p.video_thumbnail_url) IS NOT NULL
+      ORDER BY p.post_date DESC, p.id DESC
+      LIMIT 14
+    `;
+    const weekMoments = weekMomentRows.map((r) => ({
+      post_id: r.id,
+      photo_url: r.photo_url,
+      caption: r.caption,
+      post_date: toDayStr(r.post_date),
+    }));
+
     // Ring days closed this week (E0) — degrade cleanly pre-migration.
     let ringDays = 0;
     try {
@@ -200,6 +219,7 @@ async function GET(request, { params }) {
       moments,
       streak,
       best_moment: bestMoment,
+      week_moments: weekMoments,
       friends,
       milestone,
     });

@@ -4,7 +4,7 @@
 // or empty week degrades to a gentle, forward line — never a shame frame, never a fabricated number.
 // One-tap "Share Rex's week" opens the E4 share card with the real stats.
 
-import React from "react";
+import React, { useState } from "react";
 import { COLORS } from "@/constants/theme";
 import { View, Text, ScrollView, TouchableOpacity, Switch, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
@@ -15,6 +15,12 @@ import { ArrowLeft, Footprints, Sparkles, Heart, Flame, Cake } from "lucide-reac
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useWeeklyDigest, useWeeklyDigestPrefs, useUpdateWeeklyDigestPrefs } from "@/hooks/useWeeklyDigest";
 import { MemoryShareButton } from "@/components/Feed/MemoryShareButton";
+import {
+  momentPhoto,
+  weekMomentList,
+  resolveShareImage,
+  buildWeeklyShareCard,
+} from "@/utils/weeklyShareCard";
 
 const C = {
   cream: COLORS.cream,
@@ -56,14 +62,22 @@ export default function WeeklyDigestScreen() {
         ? t("weeklyDigest.headlineQuiet", { name: petName })
         : t("weeklyDigest.headlineRich", { name: petName });
 
-  const shareCard = {
-    emoji: "🐾",
-    headline: t("weeklyDigest.shareHeadline", { name: petName }),
-    subtitle: t("weeklyDigest.shareSubtitle", {
-      walks: data?.walks || 0,
-      ringDays: data?.ring_days_closed || 0,
-    }),
-  };
+  // Share card image: the moment the owner picked, else the week's best, else the most recent,
+  // else the pet's profile photo, else nothing (the prompt below asks for a daily moment).
+  const [selectedMomentId, setSelectedMomentId] = useState(null);
+  const weekMoments = weekMomentList(data?.week_moments);
+  const shareImage = resolveShareImage({
+    moments: data?.week_moments,
+    bestMoment: data?.best_moment,
+    selectedId: selectedMomentId,
+    avatarUrl: data?.pet?.avatar_url || currentPet?.avatar_url,
+  });
+  const shareCard = buildWeeklyShareCard({
+    data,
+    name: petName,
+    image: shareImage,
+    t,
+  });
 
   return (
     <View style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}>
@@ -152,9 +166,71 @@ export default function WeeklyDigestScreen() {
             ) : null}
 
             {/* Share */}
-            <View style={{ alignItems: "center", marginTop: 20 }}>
-              <MemoryShareButton petName={petName} label={t("weeklyDigest.share")} card={shareCard} />
-            </View>
+            {shareCard ? (
+              <View style={{ alignItems: "center", marginTop: 20 }}>
+                <Image
+                  testID="share-preview"
+                  source={{ uri: shareCard.photoUri }}
+                  style={styles.sharePreview}
+                  contentFit="cover"
+                />
+                {weekMoments.length > 1 ? (
+                  <View testID="share-picker" style={{ alignSelf: "stretch" }}>
+                    <Text style={styles.sectionLabel}>{t("weeklyDigest.sharePickTitle")}</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      {weekMoments.map((m) => {
+                        const selected = shareImage.momentId === m.post_id;
+                        return (
+                          <TouchableOpacity
+                            key={m.post_id}
+                            testID={`share-pick-${m.post_id}`}
+                            accessibilityRole="button"
+                            accessibilityLabel={t("weeklyDigest.sharePickA11y")}
+                            accessibilityState={{ selected }}
+                            onPress={() => setSelectedMomentId(m.post_id)}
+                            style={[styles.pickThumb, selected && styles.pickThumbSelected]}
+                          >
+                            <Image
+                              source={{ uri: momentPhoto(m) }}
+                              style={{ width: "100%", height: "100%" }}
+                              contentFit="cover"
+                            />
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                ) : null}
+                <View style={{ marginTop: 16 }}>
+                  <MemoryShareButton
+                    petName={petName}
+                    label={t("weeklyDigest.share", { name: petName })}
+                    card={shareCard}
+                  />
+                </View>
+              </View>
+            ) : (
+              <View testID="share-prompt" style={styles.sharePrompt}>
+                <Text style={styles.sharePromptTitle}>
+                  {t("weeklyDigest.sharePromptTitle", { name: petName })}
+                </Text>
+                <Text style={styles.sharePromptBody}>
+                  {t("weeklyDigest.sharePromptBody", { name: petName })}
+                </Text>
+                <TouchableOpacity
+                  testID="share-prompt-cta"
+                  accessibilityRole="button"
+                  onPress={() =>
+                    router.push({ pathname: "/(tabs)", params: { compose: String(Date.now()) } })
+                  }
+                  style={styles.sharePromptButton}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: "800", color: "#FFF" }}>
+                    {t("weeklyDigest.sharePromptCta")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Weekly digest delivery preferences */}
             <Text style={styles.sectionLabel}>{t("weeklyDigest.prefsTitle")}</Text>
@@ -239,6 +315,35 @@ const styles = {
     marginTop: 16,
     borderWidth: 1.5,
     borderColor: C.peach,
+  },
+  sharePreview: { width: 160, height: 200, borderRadius: 16, backgroundColor: C.peach },
+  pickThumb: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    overflow: "hidden",
+    marginRight: 10,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  pickThumbSelected: { borderColor: C.coral },
+  sharePrompt: {
+    alignItems: "center",
+    marginTop: 20,
+    padding: 18,
+    borderRadius: 16,
+    backgroundColor: C.card,
+    borderWidth: 1.5,
+    borderColor: C.peach,
+  },
+  sharePromptTitle: { fontSize: 15, fontWeight: "800", color: C.warmBrown, textAlign: "center" },
+  sharePromptBody: { fontSize: 13, color: C.mutedBrown, textAlign: "center", marginTop: 6 },
+  sharePromptButton: {
+    marginTop: 14,
+    backgroundColor: C.coral,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   prefRow: {
     flexDirection: "row",

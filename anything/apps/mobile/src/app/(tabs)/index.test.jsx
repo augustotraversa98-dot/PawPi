@@ -8,10 +8,12 @@ import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
 
 let mockFeed;
+let mockParams = {};
 const mockPush = jest.fn();
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, back: jest.fn() }),
+  useLocalSearchParams: () => mockParams,
 }));
 jest.mock("react-i18next", () =>
   require("@/i18n/testMock").makeReactI18nextMock(),
@@ -93,7 +95,10 @@ test("locked feed still scrolls (FOMO tease, not a frozen wall)", () => {
   expect(getByTestId("feed-scroll").props.scrollEnabled).toBe(true);
 });
 
-beforeEach(() => mockPush.mockClear());
+beforeEach(() => {
+  mockPush.mockClear();
+  mockParams = {};
+});
 
 test("locked feed: tapping a pet name/avatar opens THAT pet's profile, not the composer", () => {
   mockFeed = feedData({
@@ -117,6 +122,13 @@ test("locked feed: the explicit post CTA opens the composer, not a profile", () 
   fireEvent.press(getByTestId("locked-post-cta"));
   expect(getByTestId("composer-open")).toBeTruthy();
   expect(mockPush).not.toHaveBeenCalled();
+});
+
+test("arriving with a compose param (weekly-digest 'post a daily moment') opens the composer", () => {
+  mockParams = { compose: "1760000000000" };
+  mockFeed = feedData({ feedUnlocked: false, posts: [{ id: 9, pet_id: 42 }] });
+  const { getByTestId } = render(<FeedScreen />);
+  expect(getByTestId("composer-open")).toBeTruthy();
 });
 
 test("unlocked feed scrolls", () => {
