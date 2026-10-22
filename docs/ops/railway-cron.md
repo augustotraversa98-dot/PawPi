@@ -35,7 +35,12 @@ Only needed if one is lost or you add a job. Repeat for the row in question:
 6. **Settings → Networking:** do **not** generate a domain. No healthcheck.
 7. **Variables** (names only — set the values in Railway, never in the repo/chat):
    - `CRON_SECRET` — use a **reference to the backend's variable** (`${{PawPi.CRON_SECRET}}`) so there is one source of truth
-     and rotating it on the backend rotates it everywhere. (A plain copy also works; then it must be kept in sync.)
+     to edit. **A reference does NOT rotate the secret everywhere by itself:** each cron service resolves it when a
+     deployment is built, so after you change `CRON_SECRET` on the backend every cron service keeps sending the OLD value
+     (and gets `401`) until it is **redeployed**. After rotating, redeploy all five services and update the GitHub Actions
+     `CRON_SECRET` too; see `docs/ops/secret-rotation-runbook.md` §6. (A plain copy also works; then it must be kept in sync
+     by hand.) We hit exactly this on 2026-10-21: `cron-weekly-digest` and `cron-push-receipts` returned `401` after the
+     rotation until they were redeployed.
    - `CRON_BASE_URL` — the backend origin. Use the backend's **public** URL (the same host the GitHub workflow called).
      Optional: `CRON_TIMEOUT_MS` (default `120000`), `CRON_RETRIES` (default `2`).
 8. Deploy. A cron service builds once, then runs on schedule (it shows "Completed" between runs; that is normal).
@@ -107,7 +112,8 @@ cron-trigger: job=weekly-digest attempt=1/3 status=200 duration=840ms OK
 | `cron-subscriptions` | 1 run | 06:00 UTC |
 | `cron-calendar-sync` | 1 run | 06:15 UTC |
 
-Red flags: a deployment marked **Failed** (the log line says `FAILED`, with `status=401` = wrong/missing `CRON_SECRET`,
+Red flags: a deployment marked **Failed** (the log line says `FAILED`, with `status=401` = wrong/missing `CRON_SECRET`
+(after a rotation: the cron service was not redeployed, see the runbook above),
 `status=503` = `CRON_SECRET` unset on the backend, `error="timeout"` / `"connection error"` = backend down or wrong
 `CRON_BASE_URL`); a gap > ~5 min past the expected minute; fewer rows than the table. The hourly jobs should show **no
 4.5 h gaps** — that was the whole bug. A 2xx only proves the endpoint answered; per-pet / per-subscription failures are in

@@ -73,8 +73,6 @@ export default defineConfig(({ isSsrBuild }) => ({
   resolve: {
     alias: {
       lodash: 'lodash-es',
-      'npm:stripe': 'stripe',
-      stripe: path.resolve(__dirname, './src/__create/stripe'),
       '@auth/create/react': '@hono/auth-js/react',
       '@auth/create': path.resolve(__dirname, './src/__create/@auth/create'),
       '@': path.resolve(__dirname, 'src'),

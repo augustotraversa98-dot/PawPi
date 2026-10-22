@@ -96,6 +96,14 @@ Expo projectId `e1ab38b2-5f41-4d15-bc18-64c8b0717a3d`.
 - [ ] 🌐 **Export compliance:** No (exempt encryption; `ITSAppUsesNonExemptEncryption:false` is set).
 - [ ] 🌐 **Add for Review → Submit.**
 
+## Secrets — rotation and expiry (check before launch and on a schedule)
+
+- [ ] 🖥️ Know how to rotate every secret, and what breaks when you do: **[docs/ops/secret-rotation-runbook.md](ops/secret-rotation-runbook.md)**
+      (Railway stages changes until Deploy; redeploy the five `cron-*` services after `CRON_SECRET`; `AUTH_SECRET` logs
+      everyone out; `PAYMENTS_TOKEN_KEY` is not rotatable without provider reconnects).
+- [ ] 🖥️ Calendar reminder for **2027-01-13**: the `pawpi-autofix` GitHub PAT (`GITHUB_DISPATCH_TOKEN` + `AUTOFIX_PAT`)
+      expires **2027-01-20**.
+
 ## Phase 7 — After submission
 
 - [ ] 🌐 Watch for ASC review messages; answer with the reviewer notes if asked.
