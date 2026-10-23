@@ -16,7 +16,8 @@ jest.mock("expo-router", () => ({
   useRouter: () => ({ replace: mockReplace }),
 }));
 jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
-jest.mock("@react-native-async-storage/async-storage", () => ({ setItem: jest.fn() }));
+// Like the real module, setItem returns a promise (the EntryPoint no longer awaits it, it fire-and-forgets).
+jest.mock("@react-native-async-storage/async-storage", () => ({ setItem: jest.fn(() => Promise.resolve()) }));
 jest.mock("@/utils/auth/useAuth", () => ({ useAuth: () => mockAuth }));
 jest.mock("../../__create/boot-trace", () => ({ markBootStep: jest.fn(), markBootComplete: jest.fn() }));
 jest.mock("@/utils/notificationDeepLink", () => ({ markNavigationReady: jest.fn() }));

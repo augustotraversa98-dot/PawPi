@@ -53,7 +53,6 @@ function ProfileTabIcon({ focused }) {
   );
 }
 import useRoutinesStore from "@/store/routinesStore";
-import { startReminderNotificationSync } from "@/utils/reminderNotificationSync";
 import { getScheduledNotifications } from "@/utils/notifications";
 import { generateRemindersFromRoutine } from "@/utils/reminderGenerator";
 import useRemindersStore from "@/store/remindersStore";
@@ -222,10 +221,8 @@ export default function TabLayout() {
         console.warn("[notifications] reminder scheduling failed:", err?.message);
       });
 
-    // Start notification sync
-    const cleanup = startReminderNotificationSync();
-
-    return cleanup;
+    // The reminder-notification sync is started once, by the root layout (src/app/_layout.jsx). It used to be started a
+    // second time here, which doubled its 60 s interval (perf audit 2026-10-23, F1.4).
   }, []);
 
   // Platform split: iOS gets the native Liquid Glass tab bar; Android keeps the
