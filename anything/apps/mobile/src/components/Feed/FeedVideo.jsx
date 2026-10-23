@@ -7,7 +7,9 @@ import { COLORS } from "@/constants/colors";
 
 // Below this gap (ms) a second tap counts as a double-tap (mirrors PawablePhoto,
 // ticket 2.64).
-const DOUBLE_TAP_DELAY = 260;
+// Perf audit 2026-10-23: was 260 ms, which is also how long EVERY single tap waited before reacting. 180 ms is still
+// comfortably above a deliberate double-tap gap on a phone.
+const DOUBLE_TAP_DELAY = 180;
 
 // A video post that plays inline (daily video moments, step 4). It shows the
 // poster frame (video_thumbnail_url) with a play-button overlay; a single tap
