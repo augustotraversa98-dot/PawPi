@@ -18,9 +18,16 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-10-23 — Discover is a sneak peek again — NOT device-tested
+
+- ✅ **Discover tiles are unredacted for locked viewers:** `GET /api/discover` returns other owners' tile thumbnail (`image_url` / `video_thumbnail_url`) and `caption` as before, tagged `locked: true` until the viewer has posted today (`applyDailyMomentsLock(..., { redact: false })`); `video_url` is never selected. `GET /api/posts` redaction and the welcome-back friends' photos are unchanged. Pet profile + `posts/history` stay server-gated, so a tile can't open more than its thumbnail.
+- ✅ **Locked tap → prompt:** tapping a locked Discover tile shows "Post your daily moment to see this" (EN + ES voseo) with a primary button into the Feed composer (the `compose` param the weekly digest uses) and a dismiss; unlocked taps open the pet profile as before. Creating or deleting a post invalidates `["discover"]` so tiles update without leaving the screen. JS/server only, no migration.
+
+---
+
 ## 🤖 UNATTENDED RUN 2026-10-22 — daily-post lock follow-up, weekly share card, navigation layers — merged to `main`, NOT device-tested
 
-- ✅ **Locked feed redacts other owners' media server-side:** `GET /api/posts` and `GET /api/discover` return other owners' `image_url` / `video_url` / `video_thumbnail_url` / `caption` as `null` + `locked: true` until the viewer has posted today (shared `utils/dailyMomentsGate.js`); own posts and the unlocked case are untouched. JS/server only, no migration.
+- ✅ **Locked feed redacts other owners' media server-side:** `GET /api/posts` (Discover was later made a sneak peek, see the 2026-10-23 entry below) returns other owners' `image_url` / `video_url` / `video_thumbnail_url` / `caption` as `null` + `locked: true` until the viewer has posted today (shared `utils/dailyMomentsGate.js`); own posts and the unlocked case are untouched. JS/server only, no migration.
 - ✅ **Weekly summary share card:** pick one of the week's real daily moments as the card image (best → most recent → profile photo → a prompt to post a moment; never the paw), "Share {{name}}'s week" label fixed, positive-only stat line (no "0 walks · 0/7"), EN+ES; `GET /api/pets/[id]/weekly-digest` gains `week_moments`. Guard test: no single-arg `t()` call may target a string with `{{vars}}`. No migration.
 - ✅ **Navigation layers:** Notifications and Messages are cards on the one back stack, not root modals (back arrow in the header); `navigation-layers.test.js` now fails if any modal/sheet screen navigates onward. JS-only.
 

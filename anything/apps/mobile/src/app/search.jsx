@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,6 +20,7 @@ import {
   User,
   Sparkles,
   Lock,
+  Camera,
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -46,6 +48,18 @@ export default function SearchScreen() {
     router.push({ pathname: "/pet-profile", params: { petId: String(petId) } });
   const openProvider = (slug) =>
     router.push({ pathname: "/service/provider", params: { slug } });
+
+  // Discover tiles are a sneak peek: the thumbnail is always visible, but until the viewer has
+  // posted their own daily moment (the server tags the tile `locked`) a tap prompts instead of
+  // opening. The destination screens are server-gated too, so this is UX, not the lock itself.
+  const [lockedPromptOpen, setLockedPromptOpen] = useState(false);
+  const openMoment = (moment) =>
+    moment.locked ? setLockedPromptOpen(true) : openPet(moment.pet_id);
+  const postToUnlock = () => {
+    setLockedPromptOpen(false);
+    // Same `compose` param the weekly-digest prompt uses: the Feed opens its composer.
+    router.push({ pathname: "/(tabs)", params: { compose: String(Date.now()) } });
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
@@ -143,9 +157,92 @@ export default function SearchScreen() {
             data={discover.data}
             isLoading={discover.isLoading}
             onOpenPet={openPet}
+            onOpenMoment={openMoment}
           />
         )}
       </ScrollView>
+
+      <Modal
+        visible={lockedPromptOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLockedPromptOpen(false)}
+      >
+        <View
+          testID="discover-locked-prompt"
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(59,36,27,0.45)",
+            justifyContent: "center",
+            padding: 28,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: COLORS.card,
+              borderRadius: 24,
+              padding: 24,
+              alignItems: "center",
+              borderWidth: 1.5,
+              borderColor: COLORS.peach,
+            }}
+          >
+            <PawMark size={36} color={COLORS.coral} />
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "800",
+                color: COLORS.warmBrown,
+                textAlign: "center",
+                marginTop: 10,
+                marginBottom: 6,
+              }}
+            >
+              {t("search.lockedPromptTitle")}
+            </Text>
+            <Text
+              style={{
+                fontSize: 13,
+                color: COLORS.mutedBrown,
+                textAlign: "center",
+                lineHeight: 19,
+                marginBottom: 20,
+              }}
+            >
+              {t("search.lockedPromptBody")}
+            </Text>
+            <TouchableOpacity
+              testID="discover-locked-prompt-cta"
+              accessibilityRole="button"
+              onPress={postToUnlock}
+              style={{
+                backgroundColor: COLORS.coral,
+                borderRadius: 16,
+                paddingVertical: 14,
+                paddingHorizontal: 24,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <Camera size={18} color="#FFF" />
+              <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 15 }}>
+                {t("search.lockedPromptCta")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              testID="discover-locked-prompt-dismiss"
+              accessibilityRole="button"
+              onPress={() => setLockedPromptOpen(false)}
+              style={{ paddingVertical: 12, marginTop: 6 }}
+            >
+              <Text style={{ color: COLORS.mutedBrown, fontWeight: "700", fontSize: 14 }}>
+                {t("search.lockedPromptDismiss")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -295,7 +392,7 @@ function SearchResults({ t, data, isLoading, onOpenPet, onOpenProvider }) {
   );
 }
 
-function Discover({ t, data, isLoading, onOpenPet }) {
+function Discover({ t, data, isLoading, onOpenPet, onOpenMoment }) {
   if (isLoading) return <Loading />;
   const profiles = data?.profiles ?? [];
   const moments = data?.moments ?? [];
@@ -358,7 +455,7 @@ function Discover({ t, data, isLoading, onOpenPet }) {
               <TouchableOpacity
                 key={`moment-${m.id}`}
                 testID="discover-moment"
-                onPress={() => onOpenPet(m.pet_id)}
+                onPress={() => onOpenMoment(m)}
                 style={{
                   width: 200,
                   backgroundColor: COLORS.card,
@@ -368,18 +465,18 @@ function Discover({ t, data, isLoading, onOpenPet }) {
                   borderColor: COLORS.peach,
                 }}
               >
-                {m.image_url ? (
+                {m.image_url || m.video_thumbnail_url ? (
                   <Image
-                    source={{ uri: m.image_url }}
+                    source={{ uri: m.image_url || m.video_thumbnail_url }}
                     style={{ width: "100%", height: 140 }}
                     contentFit="cover"
                     transition={100}
                   />
                 ) : (
-                  // Locked by the daily-post gate (the server withholds other owners'
-                  // media until the viewer has posted today): a plain placeholder tile.
+                  // No thumbnail to show (e.g. a video without a poster frame): a plain
+                  // placeholder tile, never a broken image.
                   <View
-                    testID="discover-moment-locked"
+                    testID="discover-moment-placeholder"
                     style={{
                       width: "100%",
                       height: 140,
@@ -388,7 +485,11 @@ function Discover({ t, data, isLoading, onOpenPet }) {
                       alignItems: "center",
                     }}
                   >
-                    <Lock size={24} color={COLORS.terracotta} />
+                    {m.locked ? (
+                      <Lock size={24} color={COLORS.terracotta} />
+                    ) : (
+                      <PawPrint size={24} color={COLORS.terracotta} />
+                    )}
                   </View>
                 )}
                 <View style={{ padding: 12 }}>

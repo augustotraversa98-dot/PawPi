@@ -94,3 +94,15 @@ it("renders the result section headers and no-results state in Spanish", async (
   expect(empty.getByText("Sin resultados")).toBeTruthy();
   expect(empty.getByText("Probá con otra búsqueda")).toBeTruthy();
 });
+
+test("locked tile prompt is localized (voseo)", () => {
+  mockDiscover = {
+    data: { profiles: [], moments: [{ id: 5, pet_id: 2, image_url: "x", locked: true, pet_name: "Bella" }] },
+    isLoading: false,
+  };
+  const { getByTestId, getByText } = render(<SearchScreen />);
+  fireEvent.press(getByTestId("discover-moment"));
+  expect(getByText("Posteá tu momento diario para ver esto")).toBeTruthy();
+  expect(getByText("Postear el momento de hoy")).toBeTruthy();
+  expect(getByText("Ahora no")).toBeTruthy();
+});

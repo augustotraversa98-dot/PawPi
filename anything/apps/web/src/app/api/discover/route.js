@@ -12,8 +12,12 @@ import {
 //   • profiles — pets ranked by a REAL signal: followers (pet_follows) then paws
 //                received (post_paws), newest as the tiebreak. Public profile fields +
 //                the stats the card shows. No owner_user_id, no medical data.
-//   • moments  — recent real posts (the same shape /api/posts surfaces), newest first. Other
-//                owners' media is redacted (`locked: true`) until the viewer posts today.
+//   • moments  — recent real posts, newest first, as small "sneak peek" tiles: the thumbnail
+//                (image_url / video_thumbnail_url) + caption + pet. Unlike /api/posts these are NOT
+//                redacted for a viewer who hasn't posted today — they come back tagged
+//                `locked: true` so the client prompts instead of opening on tap. The playable
+//                video_url is never selected; the gated screens behind a tile (pet profile,
+//                posts/history) stay server-enforced by utils/dailyMomentsGate.js.
 //
 // Empty when there's nothing — no fabricated counts, no mock fallback. Session required.
 // Pagination via ?limit/&offset (applies to both lists' caps).
@@ -66,6 +70,7 @@ async function GET(request) {
         p.pet_id,
         p.user_id,
         p.image_url,
+        p.video_thumbnail_url,
         p.caption,
         p.created_at,
         pet.name AS pet_name,
@@ -87,13 +92,14 @@ async function GET(request) {
       LIMIT ${limit} OFFSET ${offset}
     `;
 
-    // Daily-post lock (utils/dailyMomentsGate.js): until the viewer has posted today, other
-    // owners' photos/captions are withheld and the moment is tagged `locked: true`. The viewer's
-    // own moments, and everything once they have posted, come back untouched.
+    // Daily-post lock state (utils/dailyMomentsGate.js): Discover is a sneak-peek surface, so
+    // other owners' tiles are tagged `locked: true` until the viewer has posted today but NOT
+    // redacted (`redact: false`). The viewer's own moments, and everything once they have
+    // posted, carry no flag.
     const status = await getViewerDailyStatus(session.user.id);
     return Response.json({
       profiles,
-      moments: applyDailyMomentsLock(moments, status),
+      moments: applyDailyMomentsLock(moments, status, { redact: false }),
     });
   } catch (error) {
     console.error("[GET /api/discover] Error:", error.message);
