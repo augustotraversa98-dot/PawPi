@@ -75,7 +75,10 @@ export function useTodayDailyUpdate(petId) {
       return data.post || null;
     },
     enabled: !!petId,
-    staleTime: 0, // Always fetch fresh data to catch newly created posts
+    // Perf audit 2026-10-23: was 0, which refetched on EVERY mount, pet-profile open and return from background
+    // (5-6 requests after a 3 s app switch). Mutations invalidate this key explicitly, and a stale entry still
+    // refetches on mount/focus once the window passes, so freshness is bounded, not lost.
+    staleTime: 30 * 1000, // useCreatePost/useDeletePost invalidate ["today-daily-update"]
     refetchOnMount: true,
     refetchOnWindowFocus: true,
   });
