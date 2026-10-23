@@ -35,7 +35,30 @@ function createSql(connectionString) {
     password: decodeURIComponent(u.password),
     prepare: false,
     ssl: process.env.DATABASE_SSL === 'disable' ? false : 'require',
+    // PERF (docs/perf-audit-2026-10-23.md, finding 5): porsager's default recycles each connection after a
+    // random 30-60 minutes, and every NEW connection costs TCP + TLS + auth + a type-fetch query (~3-5
+    // cross-region round trips, ~0.8 s) that lands on whichever user request needed it: 4,700 DISCARD ALL
+    // in 87 days of pg_stat_statements. Keep connections for 5-7 h (randomised so a pool never expires at
+    // once). keep_alive already defaults to 60 s; pool size (`max`) is deliberately left at the default.
+    max_lifetime: 60 * 60 * (5 + Math.random() * 2),
   });
+}
+
+// Open a few connections at boot so the first user requests after a deploy do not pay the cold-connection
+// cost. Deliberately small: during a deploy the old and the new instance overlap and both draw on the same
+// pooler, so warming the full pool could starve the instance that is still serving traffic.
+export const BOOT_WARM_CONNECTIONS = 3;
+
+export async function warmPool(client, count = BOOT_WARM_CONNECTIONS) {
+  const started = Date.now();
+  const results = await Promise.allSettled(
+    Array.from({ length: count }, () => client`select 1`)
+  );
+  return {
+    opened: results.filter((r) => r.status === 'fulfilled').length,
+    failed: results.filter((r) => r.status === 'rejected').length,
+    ms: Date.now() - started,
+  };
 }
 
 // The global pooled client (or the nullish stub when DATABASE_URL is unset, e.g.
@@ -45,6 +68,19 @@ function createSql(connectionString) {
 export const pool = process.env.DATABASE_URL
   ? createSql(process.env.DATABASE_URL)
   : NullishQueryFunction;
+
+// Production only (never in tests, local dev, cron scripts that opt out, or the embedded integration
+// harness); fire-and-forget so it can never delay or fail boot. DB_POOL_WARM=off disables it.
+if (
+  process.env.DATABASE_URL &&
+  process.env.NODE_ENV === 'production' &&
+  !process.env.VITEST &&
+  process.env.DB_POOL_WARM !== 'off'
+) {
+  warmPool(pool)
+    .then((r) => console.log(`[db] pool warm: ${r.opened} ok, ${r.failed} failed in ${r.ms} ms`))
+    .catch(() => {});
+}
 
 // RLS R1 — per-request DB identity (docs/rls-hardening.md, provider-design §5).
 //

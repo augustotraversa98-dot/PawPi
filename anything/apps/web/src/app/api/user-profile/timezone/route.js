@@ -1,6 +1,6 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
-import { withRequestContext } from "@/app/api/utils/requestContext";
+import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
 import { isNotifV2Enabled } from "@/app/api/utils/notifV2";
 import { isValidTimeZone } from "@/app/api/utils/timezone";
 
@@ -12,11 +12,33 @@ import { isValidTimeZone } from "@/app/api/utils/timezone";
 //
 // FLAG: with NOTIF_V2_ENABLED off this is a no-op that issues NO query (writing the column would shift
 // every owner's day boundary, i.e. change production behaviour). With it on:
-//   • the zone must look like an IANA name, be known to the JS runtime AND exist in pg_timezone_names (a zone
-//     Postgres rejects would make every `AT TIME ZONE tz` consumer raise) — otherwise 400, nothing stored;
+//   • the zone must look like an IANA name, be known to the JS runtime AND be accepted by Postgres (a zone
+//     Postgres rejects would make every `AT TIME ZONE tz` consumer raise) — otherwise 400, nothing stored.
+//     PERF: Postgres is asked via `timezone(zone, now())`, not `SELECT ... FROM pg_timezone_names`, which scans the
+//     zoneinfo directory on every call (912 ms mean, 1.2 s max on production); accepted zones are remembered
+//     in process, so a zone costs the check at most once per server start;
 //   • no profile row -> 404 (the client simply re-syncs on its next app entry);
 //   • consumers keep resolving COALESCE(timezone, 'America/Buenos_Aires'), so a user who never syncs is
 //     unchanged.
+
+// Zones Postgres has already accepted in this process (a handful of distinct values in practice).
+const pgAcceptedZones = new Set();
+
+// True when Postgres accepts `tz` in AT TIME ZONE. `timezone()` raises 22023 for an unknown zone; the
+// savepoint keeps that expected error from aborting the request transaction. Any other error propagates.
+async function postgresAcceptsZone(tz) {
+  if (pgAcceptedZones.has(tz)) return true;
+  try {
+    await withSavepoint(async () => {
+      await sql`SELECT timezone(${tz}, now())`;
+    });
+  } catch (error) {
+    if (error?.code === "22023") return false;
+    throw error;
+  }
+  pgAcceptedZones.add(tz);
+  return true;
+}
 
 async function PUT(request) {
   const session = await auth();
@@ -34,8 +56,7 @@ async function PUT(request) {
   }
 
   try {
-    const known = await sql`SELECT name FROM pg_timezone_names WHERE name = ${timezone} LIMIT 1`;
-    if (known.length === 0) {
+    if (!(await postgresAcceptsZone(timezone))) {
       return Response.json({ error: "Unknown timezone" }, { status: 400 });
     }
     const rows = await sql`
