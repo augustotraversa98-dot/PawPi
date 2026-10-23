@@ -20,6 +20,7 @@ import { useFeedSuggestions } from "@/hooks/useFeedSuggestions";
 import { usePostingStreak, useUpdatePostCaption, useTogglePaw } from "@/hooks/useFeedPosts";
 import { stashProviderPost } from "@/utils/providerPostHandoff";
 import useBottomClearance from "@/hooks/useBottomClearance";
+import FeedSkeleton from "@/components/Feed/FeedSkeleton";
 
 export default function FeedScreen() {
   const bottomClearance = useBottomClearance();
@@ -42,6 +43,7 @@ export default function FeedScreen() {
     refetchPosts,
     refetchTodayDailyUpdate,
     loadingPosts,
+    lockResolving,
     postsError,
     uploading,
   } = useFeedData();
@@ -326,7 +328,11 @@ export default function FeedScreen() {
                 today. The DailyPromptCard above stays per-active-pet. While
                 locked this renders the blurred, scrollable background; the
                 floating lock card is pinned over it (below). */}
-            {!feedUnlocked ? (
+            {lockResolving ? (
+              // Lock state still unknown: neutral skeleton (no post data), never the locked CTA cards or the
+              // full feed. Replaced in place as soon as the lock query answers.
+              <FeedSkeleton />
+            ) : !feedUnlocked ? (
               <LockedFeedOverlay
                 posts={posts}
                 petName={petName}

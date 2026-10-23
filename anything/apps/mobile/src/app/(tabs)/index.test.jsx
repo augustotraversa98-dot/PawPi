@@ -152,3 +152,24 @@ test("an error while cached posts exist still shows the feed (transient refetch)
   const { getByTestId } = render(<FeedScreen />);
   expect(getByTestId("feed-scroll")).toBeTruthy();
 });
+
+// Perf audit 2026-10-23 (finding 3): the Feed no longer sits on a full-screen spinner until the lock queries
+// answer. Posts are on screen; while the lock state is unknown a neutral skeleton stands in for the cards.
+test("lock state unknown: skeleton cards, not the locked CTA cards and not the loading spinner", () => {
+  mockFeed = feedData({
+    feedUnlocked: false,
+    lockResolving: true,
+    loadingPosts: false,
+    posts: [{ id: 9, pet_id: 42, pet_handle: "phoebe", pet_name: "Phoebe" }],
+  });
+  const { getByTestId, queryByTestId } = render(<FeedScreen />);
+  expect(getByTestId("feed-skeleton")).toBeTruthy();
+  expect(getByTestId("feed-scroll")).toBeTruthy();
+  expect(queryByTestId("locked-name")).toBeNull();
+});
+
+test("lock resolved: no skeleton", () => {
+  mockFeed = feedData({ feedUnlocked: false, lockResolving: false });
+  const { queryByTestId } = render(<FeedScreen />);
+  expect(queryByTestId("feed-skeleton")).toBeNull();
+});

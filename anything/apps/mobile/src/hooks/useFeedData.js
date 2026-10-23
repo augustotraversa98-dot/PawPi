@@ -229,9 +229,10 @@ export function useFeedData() {
         await createPostMutation.mutateAsync(postData);
         console.log("[useFeedData] ✅ Post created successfully");
 
-        // Step 6: Refetch both posts and today's daily update
-        await Promise.all([refetchPosts(), refetchTodayDailyUpdate()]);
-        console.log("[useFeedData] ✅ All data refetched successfully!");
+        // Step 6 (perf audit 2026-10-23): no explicit refetch here. useCreatePost's onSuccess already inserts the
+        // post into the feed cache and invalidates ["posts"] / ["today-daily-update"], which refetches the active
+        // queries; awaiting refetchPosts()/refetchTodayDailyUpdate() as well cancelled and replayed the same two
+        // requests and kept the composer waiting on them.
       } catch (error) {
         console.error("[useFeedData] ERROR in handlePost:", error.message);
 
@@ -251,8 +252,6 @@ export function useFeedData() {
       effectiveTodayDailyUpdate,
       upload,
       createPostMutation,
-      refetchPosts,
-      refetchTodayDailyUpdate,
     ],
   );
 
@@ -302,8 +301,14 @@ export function useFeedData() {
     // A real fetch failure (distinct from an empty feed) so the screen can show an
     // error + Retry instead of silently rendering as "nothing here".
     postsError,
-    loadingPosts:
-      loadingPosts || loadingPet || loadingDailyUpdate || loadingOwnerPosted,
+    // The full-screen Feed spinner now waits for the posts (and the pet that scopes them) ONLY. It used to AND
+    // in the daily-update and owner-posted-today queries too, so the Feed stayed blank for as long as the
+    // slowest of three ~1-2 s requests (perf audit 2026-10-23, finding 3). Their answer only decides blurred
+    // vs full, which `lockResolving` covers with a skeleton.
+    loadingPosts: loadingPosts || loadingPet,
+    // True while the lock state is still unknown and nothing already unlocks the feed. Never true once
+    // `feedUnlocked`, and a resolved "locked" answer is false here, so the locked Feed shows as before.
+    lockResolving: !feedUnlocked && (loadingDailyUpdate || loadingOwnerPosted),
     uploading,
     hasPet, // Add hasPet flag
   };
