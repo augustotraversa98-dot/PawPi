@@ -1,6 +1,7 @@
 import { normalizeWeightUnit } from "@/app/api/utils/weightUnitAlias";
 import sql from "@/app/api/utils/sql";
 import { usernameBaseFor } from "@/app/api/utils/ownerDisplay";
+import { resolveUserId } from "@/app/api/utils/currentUser";
 import { auth } from "@/auth";
 import {
   withRequestContext,
@@ -64,17 +65,14 @@ async function GET(request) {
     }
     const authUserId = session.user.id;
 
-    const userProfile = await sql`
-      SELECT id, auth_user_id, full_name, username, role, onboarding_completed
-      FROM user_profiles
-      WHERE auth_user_id = ${authUserId}
-      LIMIT 1
-    `;
-    if (userProfile.length === 0) {
+    // PERF (perf audit 2026-10-23): withRequestContext already resolved this caller's profile id at the
+    // top of the request transaction; resolveUserId reuses it instead of paying a second cross-region
+    // round trip for the same lookup. Only the id was ever used from the old full-row SELECT.
+    const userId = await resolveUserId(authUserId);
+    if (userId === null) {
       return Response.json({ pets: [] });
     }
 
-    const userId = userProfile[0].id;
     const pets = await sql`
       SELECT * FROM pets
       WHERE owner_user_id = ${userId}

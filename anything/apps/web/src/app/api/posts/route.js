@@ -69,102 +69,56 @@ export function mergeFollowingByRecency(petPosts, providerPosts, cap) {
 // providers' visible (non-deleted, non-hidden) posts. current_app_user_id() is the
 // request-scoped viewer, so a non-follower selects nothing (the follows subquery is empty).
 //
-// DEGRADE-CLEAN, and crucially SAVEPOINT-WRAPPED: this route runs inside withRequestContext's
-// per-request transaction, where ANY query error aborts the whole tx and the wrapper turns a
-// would-be-handled error into a 500 (see requestContext.withSavepoint). So every fallible read
-// runs in its own savepoint:
-//   • video columns absent (pre-0087) → undefined_column (42703) → retry WITHOUT them, as image;
-//   • provider_follows/provider_posts absent → undefined_table (42P01) → [];
-//   • provider_post_paws/comments absent → counts degrade to 0.
-// The feed's pet content is never disturbed and the endpoint never 500s on any of these.
+// PERF (docs/perf-audit-2026-10-23.md, finding 2): every statement is a ~170 ms cross-region round
+// trip, and each withSavepoint added one more. This used to wrap three reads in savepoints so a
+// PRE-migration database would degrade (0083 provider_follows, 0087 media columns, provider_post_paws,
+// provider_post_comments). Verified read-only on production 2026-10-23: all of those tables and columns
+// exist, and CI applies every migration, so the guards (and the image-only fallback read) are gone.
+// The two count reads are independent of each other, so they run pipelined in ONE round trip.
+// The caller still wraps this in try/catch for JS-level failures. A SQL error here aborts the request
+// transaction exactly as it does in every other route (it is no longer isolated by a savepoint).
 async function fetchFollowedProviderPosts(cap) {
-  // Two full queries (NOT a shared template with an interpolated column fragment): the media-aware
-  // read and, for pre-0087 degrade, the image-only read that synthesizes the media columns.
-  const selectWithMedia = () =>
-    withSavepoint(
-      () => sql`
-        SELECT
-          pp.id, pp.provider_id, pp.body, pp.image_urls,
-          pp.media_type, pp.video_url, pp.video_thumbnail_url,
-          pp.created_at,
-          pr.name AS provider_name, pr.slug AS provider_slug, pr.logo_url AS provider_logo_url
-        FROM provider_posts pp
-        JOIN providers pr ON pr.id = pp.provider_id
-        WHERE pp.provider_id IN (
-                SELECT provider_id FROM provider_follows
-                WHERE follower_user_id = current_app_user_id()
-              )
-          AND pp.deleted_at IS NULL
-          AND pp.hidden_at IS NULL
-          AND pr.status = 'published'
-        ORDER BY pp.created_at DESC, pp.id DESC
-        LIMIT ${cap}
-      `,
-    );
-
-  const selectImageOnly = () =>
-    withSavepoint(
-      () => sql`
-        SELECT
-          pp.id, pp.provider_id, pp.body, pp.image_urls,
-          'image'::text AS media_type, NULL::text AS video_url, NULL::text AS video_thumbnail_url,
-          pp.created_at,
-          pr.name AS provider_name, pr.slug AS provider_slug, pr.logo_url AS provider_logo_url
-        FROM provider_posts pp
-        JOIN providers pr ON pr.id = pp.provider_id
-        WHERE pp.provider_id IN (
-                SELECT provider_id FROM provider_follows
-                WHERE follower_user_id = current_app_user_id()
-              )
-          AND pp.deleted_at IS NULL
-          AND pp.hidden_at IS NULL
-          AND pr.status = 'published'
-        ORDER BY pp.created_at DESC, pp.id DESC
-        LIMIT ${cap}
-      `,
-    );
-
-  let rows;
-  try {
-    rows = await selectWithMedia();
-  } catch (e) {
-    if (e?.code === "42703") {
-      // Pre-0087: no media columns yet → image-only read (video option is hidden in compose too).
-      rows = await selectImageOnly();
-    } else if (e?.code === "42P01") {
-      // provider_follows or provider_posts absent → no business posts in the feed.
-      return [];
-    } else {
-      throw e;
-    }
-  }
+  const rows = await sql`
+    SELECT
+      pp.id, pp.provider_id, pp.body, pp.image_urls,
+      pp.media_type, pp.video_url, pp.video_thumbnail_url,
+      pp.created_at,
+      pr.name AS provider_name, pr.slug AS provider_slug, pr.logo_url AS provider_logo_url
+    FROM provider_posts pp
+    JOIN providers pr ON pr.id = pp.provider_id
+    WHERE pp.provider_id IN (
+            SELECT provider_id FROM provider_follows
+            WHERE follower_user_id = current_app_user_id()
+          )
+      AND pp.deleted_at IS NULL
+      AND pp.hidden_at IS NULL
+      AND pr.status = 'published'
+    ORDER BY pp.created_at DESC, pp.id DESC
+    LIMIT ${cap}
+  `;
 
   if (!Array.isArray(rows) || rows.length === 0) return [];
   const ids = rows.map((r) => r.id);
 
-  // Paw + comment counts, each best-effort (the tables are hand-applied separately; a missing
-  // table degrades that count to 0 without touching the rest of the feed).
-  const pawMap = {};
-  await withSavepoint(async () => {
-    const counts = await sql`
+  // Paw + comment counts, issued together so they share one round trip.
+  const [pawCounts, commentCounts] = await Promise.all([
+    sql`
       SELECT post_id, COUNT(*)::int AS n
       FROM provider_post_paws
       WHERE post_id = ANY(${ids})
       GROUP BY post_id
-    `;
-    for (const c of counts) pawMap[c.post_id] = c.n;
-  }).catch(() => {});
-
-  const commentMap = {};
-  await withSavepoint(async () => {
-    const counts = await sql`
+    `,
+    sql`
       SELECT post_id, COUNT(*)::int AS n
       FROM provider_post_comments
       WHERE post_id = ANY(${ids}) AND deleted_at IS NULL AND hidden_at IS NULL
       GROUP BY post_id
-    `;
-    for (const c of counts) commentMap[c.post_id] = c.n;
-  }).catch(() => {});
+    `,
+  ]);
+  const pawMap = {};
+  for (const c of pawCounts) pawMap[c.post_id] = c.n;
+  const commentMap = {};
+  for (const c of commentCounts) commentMap[c.post_id] = c.n;
 
   return rows.map((r) => ({
     id: r.id,
@@ -213,8 +167,10 @@ async function GET(request) {
     //    viewer's own active pet (newest first), so your own posts always appear
     //    in your feed in chronological order (ticket 2.36). Empty when there's
     //    no active pet — Suggested carries the feed.
-    const following = viewerPetId
-      ? await sql`
+    // PERF: following / suggested / business reads are independent, so they are created here and awaited
+    // TOGETHER below (pipelined on the request transaction: one round trip instead of three).
+    const followingQuery = viewerPetId
+      ? sql`
           SELECT
             p.*,
             NULLIF(BTRIM(up.full_name), '') AS username,
@@ -257,7 +213,7 @@ async function GET(request) {
     // 2) Suggested: public pets globally, excluding pets the viewer already
     //    follows and the viewer's own pet (newest first). When there's no active
     //    pet the guards are no-ops and this returns the full global feed.
-    const suggested = await sql`
+    const suggestedQuery = sql`
       SELECT
         p.*,
         NULLIF(BTRIM(up.full_name), '') AS username,
@@ -303,23 +259,25 @@ async function GET(request) {
 
     // 3) Business "daily moments": posts from PROVIDERS the current user FOLLOWS
     //    (provider_follows) surface in the feed, interleaved by recency with the pet
-    //    Following+own posts. Only followed providers — a non-follower sees none. This is
-    //    best-effort and savepoint-isolated (fetchFollowedProviderPosts): a missing
-    //    table/column degrades to fewer/no business posts, never a 500, and never disturbs
-    //    the pet feed. Gated on a session so anonymous reads skip the query entirely.
+    //    Following+own posts. Only followed providers — a non-follower sees none. A JS-level
+    //    failure drops the business posts, not the pet feed. Gated on a session so anonymous
+    //    reads skip the query entirely.
     const session = await auth();
-    let providerFollowing = [];
-    if (session?.user?.id) {
-      try {
-        providerFollowing = await fetchFollowedProviderPosts(groupLimit);
-      } catch (e) {
-        console.error(
-          "[GET /api/posts] followed-business posts skipped:",
-          e?.message,
-        );
-        providerFollowing = [];
-      }
-    }
+    const providerQuery = session?.user?.id
+      ? fetchFollowedProviderPosts(groupLimit).catch((e) => {
+          console.error(
+            "[GET /api/posts] followed-business posts skipped:",
+            e?.message,
+          );
+          return [];
+        })
+      : [];
+
+    const [following, suggested, providerFollowing] = await Promise.all([
+      followingQuery,
+      suggestedQuery,
+      providerQuery,
+    ]);
     const mergedFollowing = mergeFollowingByRecency(
       following,
       providerFollowing,

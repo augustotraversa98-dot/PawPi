@@ -14,6 +14,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GET } from './route';
 import { auth } from '@/auth';
 import sql from '@/app/api/utils/sql';
+import { runWithIdentityScope, rememberRequestIdentity } from '@/app/api/utils/requestIdentity';
 
 vi.mock('@/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/app/api/utils/sql', () => ({ default: vi.fn() }));
@@ -54,6 +55,31 @@ describe('GET /api/pets — authenticated path', () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ pets: [PET_ROW] });
+  });
+
+  it('no profile yet -> 200 with no pets (and no pets query)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([]);
+
+    const res = await GET(new Request('http://localhost/api/pets'));
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ pets: [] });
+    expect(sql).toHaveBeenCalledTimes(1);
+  });
+
+  it('reuses the identity withRequestContext already resolved: only pets + weights hit the DB (perf audit)', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PET_ROW]).mockResolvedValueOnce([]);
+
+    const res = await runWithIdentityScope(async () => {
+      rememberRequestIdentity(42, 7); // what applyIdentity does after its single lookup+stamp statement
+      return GET(new Request('http://localhost/api/pets'));
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ pets: [PET_ROW] });
+    expect(sql).toHaveBeenCalledTimes(2);
   });
 
   it('anonymous -> 401, NOT 500, and never touches the DB', async () => {
