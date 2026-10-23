@@ -4,6 +4,7 @@ import { queryClient } from '@/utils/queryClient';
 import { authKey, secureStoreOptions } from './secureStore';
 import { cleanUpAfterIdentityChange, isIdentityChange } from './sessionCleanup';
 import { persistAuth } from './persistAuth';
+import { setCachedAuth } from './tokenCache';
 
 // Re-exported for the existing importers (useAuth, tests). The definitions live
 // in ./secureStore so the global fetch wrapper can share them without pulling
@@ -31,6 +32,8 @@ export const useAuthStore = create((set, get) => ({
         // a logout must always complete
       }
     }
+    // Keep the fetch wrapper's in-memory copy in lockstep with the Keychain (null = known signed out).
+    setCachedAuth(auth ?? null);
     if (auth) {
       // Write -> read back -> retry once -> report (persistAuth). It never rejects, so a Keychain
       // failure cannot reach the unhandled-rejection / TurboModule rethrow path that crashes iOS

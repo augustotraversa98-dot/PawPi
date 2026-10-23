@@ -3,6 +3,7 @@
 // never bleeds into the next session.
 import { useAuthStore } from "./store";
 import { queryClient } from "@/utils/queryClient";
+import { getCachedAuth, resetCachedAuthForTests } from "./tokenCache";
 
 jest.mock("expo-secure-store", () => ({
   setItemAsync: jest.fn(() => Promise.resolve()),
@@ -87,5 +88,31 @@ describe("useAuthStore.setAuth", () => {
       expect(() => useAuthStore.getState().setAuth(null)).not.toThrow();
       expect(useAuthStore.getState().auth).toBeNull();
     });
+  });
+});
+
+// Perf audit 2026-10-23 (F1.6): the fetch wrapper serves the token from memory, so setAuth must keep that copy in
+// lockstep with the Keychain: login / account switch replace it, logout marks "known signed out" (null).
+describe("useAuthStore.setAuth keeps the in-memory session copy in sync", () => {
+  beforeEach(() => {
+    resetCachedAuthForTests();
+    useAuthStore.setState({ auth: null });
+  });
+
+  it("login stores the new session", () => {
+    useAuthStore.getState().setAuth({ jwt: "t1", user: { id: 1 } });
+    expect(getCachedAuth()).toEqual({ jwt: "t1", user: { id: 1 } });
+  });
+
+  it("an account switch replaces it (A's token can never be sent as B)", () => {
+    useAuthStore.getState().setAuth({ jwt: "tA", user: { id: 1 } });
+    useAuthStore.getState().setAuth({ jwt: "tB", user: { id: 2 } });
+    expect(getCachedAuth()).toEqual({ jwt: "tB", user: { id: 2 } });
+  });
+
+  it("logout marks the session as known-signed-out (null), not unknown", () => {
+    useAuthStore.getState().setAuth({ jwt: "t1", user: { id: 1 } });
+    useAuthStore.getState().setAuth(null);
+    expect(getCachedAuth()).toBeNull();
   });
 });

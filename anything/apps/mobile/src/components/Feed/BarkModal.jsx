@@ -46,7 +46,7 @@ export const BarkModal = memo(function BarkModal({
   const deleteBarkMutation = useDeleteBark(post?.id);
 
   // My own profile id — so a comment I authored shows Delete (and never a Block-me).
-  const { data: myProfileId } = useMyProfileId();
+  const { data: myProfileId } = useMyProfileId({ enabled: !!visible });
 
   // Confirm + delete one of MY OWN comments (A3 — Apple-1.2 delete-your-own-content).
   const handleDeleteBark = useCallback(

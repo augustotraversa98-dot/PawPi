@@ -6,50 +6,89 @@
 //   • Reduce Motion        → cross-fades instead of movement
 // Both default to FALSE (full effect) and update live if the user toggles them.
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { AccessibilityInfo } from "react-native";
 
-// Subscribe to one AccessibilityInfo boolean setting. `getter` is the query fn
-// name and `event` the change-event name; both are guarded because Reduce
-// Transparency is iOS-only (the getter/event are absent on Android).
-function useA11yFlag(getterName, eventName) {
-  const [enabled, setEnabled] = useState(false);
+// ONE shared store per OS setting (perf audit 2026-10-23, F6.1). These hooks used to give every component instance its
+// own AccessibilityInfo.is…Enabled() native call plus its own change listener plus its own setState: PressableScale
+// alone has 735 usages and a 20-card feed mounts ~4-5 per card, i.e. ~100 async native calls and ~100 state
+// updates on the first frame. Now the first subscriber starts the single read + the single listener, every other
+// component reads the current value synchronously (so later mounts never flash the wrong value), and the last
+// unsubscribe tears it down.
+//
+// `getter` is the query fn name and `event` the change-event name; both are guarded because Reduce Transparency is
+// iOS-only (the getter/event are absent on Android).
+function createA11yFlagStore(getterName, eventName) {
+  let value = false;
+  let sub = null;
+  let started = false;
+  let generation = 0;
+  const listeners = new Set();
 
-  useEffect(() => {
-    let mounted = true;
+  function emit(next) {
+    if (next === value) return;
+    value = next;
+    listeners.forEach((listener) => listener());
+  }
+
+  function start() {
+    started = true;
+    const current = ++generation;
     const getter = AccessibilityInfo?.[getterName];
-
     if (typeof getter === "function") {
-      // Promise.resolve() tolerates a getter that returns a plain value (or
-      // nothing) on platforms with a thinner shim, not just a Promise.
+      // Promise.resolve() tolerates a getter that returns a plain value (or nothing) on platforms with a
+      // thinner shim, not just a Promise.
       Promise.resolve(getter())
-        .then((value) => {
-          if (mounted) setEnabled(!!value);
+        .then((v) => {
+          // Ignore an answer that arrives after the store was stopped (or restarted).
+          if (started && current === generation) emit(!!v);
         })
         .catch(() => {});
     }
-
-    const sub = AccessibilityInfo?.addEventListener?.(eventName, (value) => {
-      if (mounted) setEnabled(!!value);
+    sub = AccessibilityInfo?.addEventListener?.(eventName, (v) => {
+      if (started) emit(!!v);
     });
+  }
 
-    return () => {
-      mounted = false;
-      // RN ≥0.65 returns a subscription with .remove(); guard for older shims.
-      if (sub && typeof sub.remove === "function") sub.remove();
-    };
-  }, [getterName, eventName]);
+  function stop() {
+    started = false;
+    // RN >=0.65 returns a subscription with .remove(); guard for older shims.
+    if (sub && typeof sub.remove === "function") sub.remove();
+    sub = null;
+    value = false;
+  }
 
-  return enabled;
+  return {
+    subscribe(listener) {
+      listeners.add(listener);
+      if (!started) start();
+      return () => {
+        listeners.delete(listener);
+        if (listeners.size === 0) stop();
+      };
+    },
+    getSnapshot: () => value,
+  };
 }
+
+const reduceMotionStore = createA11yFlagStore("isReduceMotionEnabled", "reduceMotionChanged");
+const reduceTransparencyStore = createA11yFlagStore(
+  "isReduceTransparencyEnabled",
+  "reduceTransparencyChanged",
+);
+const serverSnapshot = () => false;
 
 // True when the user has asked to minimize motion.
 export function useReducedMotion() {
-  return useA11yFlag("isReduceMotionEnabled", "reduceMotionChanged");
+  return useSyncExternalStore(reduceMotionStore.subscribe, reduceMotionStore.getSnapshot, serverSnapshot);
 }
 
 // True when the user has asked to reduce transparency (iOS). Always false on
 // platforms without the setting, so glass effects stay on by default.
 export function useReduceTransparency() {
-  return useA11yFlag("isReduceTransparencyEnabled", "reduceTransparencyChanged");
+  return useSyncExternalStore(
+    reduceTransparencyStore.subscribe,
+    reduceTransparencyStore.getSnapshot,
+    serverSnapshot,
+  );
 }

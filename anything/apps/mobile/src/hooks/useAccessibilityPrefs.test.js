@@ -62,3 +62,48 @@ describe("useReduceTransparency", () => {
     }
   });
 });
+
+// Perf audit 2026-10-23 (F6.1): many components, ONE native read and ONE listener.
+describe("shared store (no per-instance native call)", () => {
+  it("50 mounted hooks cost one native read and one listener; they all update together", async () => {
+    let handler;
+    const read = jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(false);
+    const remove = jest.fn();
+    const listen = jest.spyOn(AccessibilityInfo, "addEventListener").mockImplementation((_e, cb) => {
+      handler = cb;
+      return { remove };
+    });
+
+    // RN's jest setup already provides these as mock fns, so spyOn returns the SAME fn: drop earlier tests' calls.
+    read.mockClear();
+    listen.mockClear();
+
+    const hooks = Array.from({ length: 50 }, () => renderHook(() => useReducedMotion()));
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(1));
+    expect(listen).toHaveBeenCalledTimes(1);
+
+    act(() => handler(true));
+    expect(hooks.every((h) => h.result.current === true)).toBe(true);
+
+    // A component mounted later reads the live value immediately, with no flash of `false` and no new native call.
+    const late = renderHook(() => useReducedMotion());
+    expect(late.result.current).toBe(true);
+    expect(read).toHaveBeenCalledTimes(1);
+
+    hooks.forEach((h) => h.unmount());
+    late.unmount();
+    expect(remove).toHaveBeenCalledTimes(1); // last unsubscribe tears the listener down
+  });
+
+  it("a read that resolves after the last unmount is ignored", async () => {
+    let resolve;
+    jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockReturnValue(new Promise((r) => (resolve = r)));
+    jest.spyOn(AccessibilityInfo, "addEventListener").mockReturnValue({ remove: jest.fn() });
+    const first = renderHook(() => useReducedMotion());
+    first.unmount();
+    resolve(true);
+    await Promise.resolve();
+    const second = renderHook(() => useReducedMotion());
+    expect(second.result.current).toBe(false);
+  });
+});

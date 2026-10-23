@@ -124,12 +124,11 @@ test("tapping a DM opens /chat; a business opens /provider-chat", () => {
   });
 });
 
-test("searching an owner and tapping starts a DM and opens /chat", async () => {
+test("searching an owner and tapping opens /chat immediately (the chat screen starts the DM)", async () => {
   mockSearch = {
     data: { owners: [{ id: 42, full_name: "Sam Park", avatar_url: null }] },
     isFetching: false,
   };
-  mockStartDM.mockResolvedValue({ thread: { id: 99 } });
 
   const { getByPlaceholderText, getByTestId } = render(<MessagesScreen />);
   fireEvent.changeText(
@@ -138,16 +137,14 @@ test("searching an owner and tapping starts a DM and opens /chat", async () => {
   );
   fireEvent.press(getByTestId("owner-result"));
 
-  expect(mockStartDM).toHaveBeenCalledWith({ otherUserId: 42 });
-  await waitFor(() =>
-    expect(mockPush).toHaveBeenCalledWith({
-      pathname: "/chat",
-      params: {
-        threadId: "99",
-        otherUserId: "42",
-        otherName: "Sam Park",
-        otherAvatar: "",
-      },
-    }),
-  );
+  // Perf audit 2026-10-23: no network call before navigating; /chat resolves the thread itself.
+  expect(mockStartDM).not.toHaveBeenCalled();
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: "/chat",
+    params: {
+      otherUserId: "42",
+      otherName: "Sam Park",
+      otherAvatar: "",
+    },
+  });
 });

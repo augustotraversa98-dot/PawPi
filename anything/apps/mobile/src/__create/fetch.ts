@@ -1,6 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { fetch as expoFetch } from 'expo/fetch';
 import { authKey, secureStoreOptions } from '@/utils/auth/secureStore';
+import { getCachedAuth, setCachedAuth } from '@/utils/auth/tokenCache';
 import { expireSession, __resetSessionExpiryForTests as resetExpiry } from '@/utils/auth/sessionExpiry';
 import { hasSessionExpiredHeader, isSessionDead, trackAuthDiag } from '@/utils/auth/sessionHealth';
 import { isLaunchGateOpen } from '@/utils/auth/sessionLaunchGate';
@@ -157,13 +158,20 @@ const fetchToWeb = async function fetchWithHeaders(...args: Params) {
   // Must pass the same options the auth store writes with — a bare read hits a
   // different Keychain service and silently returns null, stripping the
   // Authorization header off every first-party request. See ./auth/secureStore.
-  const auth = await SecureStore.getItemAsync(authKey, secureStoreOptions)
-    .then((auth) => {
-      return auth ? JSON.parse(auth) : null;
-    })
-    .catch(() => {
-      return null;
-    });
+  // The parsed session is cached in memory (./auth/tokenCache, kept in sync by the auth store), so the Keychain
+  // is read at most until the first successful read instead of before every request.
+  let auth = getCachedAuth();
+  if (auth === undefined) {
+    auth = await SecureStore.getItemAsync(authKey, secureStoreOptions)
+      .then((stored) => {
+        return stored ? JSON.parse(stored) : null;
+      })
+      .catch(() => {
+        return null;
+      });
+    // Cache only a real session; an empty/failed read stays "unknown" so it is retried.
+    if (auth) setCachedAuth(auth);
+  }
 
   if (auth) {
     finalHeaders.set('authorization', `Bearer ${auth.jwt}`);

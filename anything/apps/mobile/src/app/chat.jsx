@@ -17,7 +17,8 @@ import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
 import { PressableScale, GlassSurface } from "@/components/ui";
 import * as ImagePicker from "expo-image-picker";
-import { useDMMessages, useSendDM, useMarkDMRead } from "@/hooks/useDMs";
+import { useDMMessages, useSendDM, useMarkDMRead, useStartDM } from "@/hooks/useDMs";
+import { useTranslation } from "react-i18next";
 import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 import useUpload from "@/utils/useUpload";
 
@@ -30,12 +31,41 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams();
-  const threadId = Array.isArray(params.threadId)
+  const { t } = useTranslation();
+  const threadParam = Array.isArray(params.threadId)
     ? params.threadId[0]
     : params.threadId;
   const otherUserId = Array.isArray(params.otherUserId)
     ? params.otherUserId[0]
     : params.otherUserId;
+
+  // Perf audit 2026-10-23 (F8.2): the "Message" buttons used to await POST /api/dm-threads (1-2 s) BEFORE pushing this
+  // screen, so the tap showed nothing. They now push straight away with only `otherUserId`; this screen gets-or-creates
+  // the 1:1 thread itself and shows the spinner meanwhile. A caller that already knows the thread still passes
+  // `threadId` and skips the request.
+  const startDM = useStartDM();
+  const [resolvedThreadId, setResolvedThreadId] = useState(null);
+  const [resolveFailed, setResolveFailed] = useState(false);
+  useEffect(() => {
+    if (threadParam || !otherUserId) return undefined;
+    let cancelled = false;
+    startDM
+      .mutateAsync({ otherUserId })
+      .then((res) => {
+        if (cancelled) return;
+        if (res?.thread?.id != null) setResolvedThreadId(String(res.thread.id));
+        else setResolveFailed(true);
+      })
+      .catch(() => {
+        if (!cancelled) setResolveFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threadParam, otherUserId]);
+  const threadId = threadParam || resolvedThreadId;
+  const resolvingThread = !threadId && !resolveFailed;
   const otherName = params.otherName || "Pet parent";
   const otherAvatar = params.otherAvatar;
 
@@ -62,7 +92,7 @@ export default function ChatScreen() {
 
   const handleSend = () => {
     const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!trimmed || !threadId) return;
     send.mutate({ body: trimmed }, { onSuccess: () => setText("") });
   };
 
@@ -93,7 +123,11 @@ export default function ChatScreen() {
           gap: SPACING.md,
         }}
       >
-        <PressableScale onPress={() => router.back()} accessibilityRole="button">
+        <PressableScale
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel={t("common.back")}
+        >
           <ChevronLeft size={24} color={COLORS.coral} />
         </PressableScale>
         {otherAvatar ? (
@@ -146,9 +180,15 @@ export default function ChatScreen() {
           contentContainerStyle={{ paddingVertical: 16, paddingHorizontal: 16 }}
           keyboardShouldPersistTaps="handled"
         >
-          {isLoading ? (
+          {isLoading || resolvingThread ? (
             <View style={{ alignItems: "center", paddingVertical: 40 }}>
               <ActivityIndicator color={COLORS.coral} />
+            </View>
+          ) : resolveFailed ? (
+            <View style={{ alignItems: "center", paddingVertical: 40 }}>
+              <Text style={[TYPE.subhead, { fontWeight: "500", color: COLORS.mutedBrown, textAlign: "center" }]}>
+                {t("common.somethingWrong")}
+              </Text>
             </View>
           ) : messages.length === 0 ? (
             <View style={{ alignItems: "center", paddingVertical: 40 }}>

@@ -21,6 +21,7 @@ import * as SecureStore from 'expo-secure-store';
 import { fetch as expoFetch } from 'expo/fetch';
 import fetchToWeb from './fetch';
 import { authKey, secureStoreOptions } from '@/utils/auth/secureStore';
+import { resetCachedAuthForTests, setCachedAuth } from '@/utils/auth/tokenCache';
 import { closeLaunchGate, __resetLaunchGateForTests } from '@/utils/auth/sessionLaunchGate';
 import { __resetSessionHealthForTests, RECHECK_ALIVE_COOLDOWN_MS } from '@/utils/auth/sessionHealth';
 
@@ -28,6 +29,7 @@ const BASE_URL = 'https://pawpi-production.up.railway.app';
 
 beforeEach(() => {
   jest.clearAllMocks();
+  resetCachedAuthForTests();
   process.env.EXPO_PUBLIC_BASE_URL = BASE_URL;
   SecureStore.getItemAsync.mockResolvedValue(
     JSON.stringify({ jwt: 'test-jwt', user: { id: 'u1' } }),
@@ -401,5 +403,49 @@ describe('expired-session handling', () => {
 
     expect(mockSetAuth).not.toHaveBeenCalled();
     expect(recheckCalls()).toHaveLength(0);
+  });
+});
+
+// Perf audit 2026-10-23 (F1.6): the Keychain used to be read + parsed before EVERY request.
+describe('in-memory session cache', () => {
+  test('reads the Keychain once, then serves the token from memory', async () => {
+    await fetchToWeb('/api/pets');
+    await fetchToWeb('/api/posts');
+    await fetchToWeb('/api/notifications');
+
+    expect(SecureStore.getItemAsync).toHaveBeenCalledTimes(1);
+    for (const [, init] of expoFetch.mock.calls) {
+      expect(init.headers.get('authorization')).toBe('Bearer test-jwt');
+    }
+  });
+
+  test('a signed-in session set through the auth store wins over the Keychain, with no read', async () => {
+    setCachedAuth({ jwt: 'fresh-jwt', user: { id: 'u2' } });
+    await fetchToWeb('/api/pets');
+
+    expect(SecureStore.getItemAsync).not.toHaveBeenCalled();
+    expect(expoFetch.mock.calls[0][1].headers.get('authorization')).toBe('Bearer fresh-jwt');
+  });
+
+  test('after logout (cache = null) no stale token is sent and the Keychain is not consulted', async () => {
+    await fetchToWeb('/api/pets'); // primes the cache with test-jwt
+    setCachedAuth(null); // what setAuth(null) does
+    SecureStore.getItemAsync.mockClear();
+    expoFetch.mockClear();
+
+    await fetchToWeb('/api/pets');
+
+    expect(SecureStore.getItemAsync).not.toHaveBeenCalled();
+    expect(expoFetch.mock.calls[0][1].headers.get('authorization')).toBeNull();
+  });
+
+  test('an empty or failed Keychain read is not cached: it is retried on the next request', async () => {
+    SecureStore.getItemAsync.mockRejectedValueOnce(new Error('keychain locked'));
+    await fetchToWeb('/api/pets');
+    expect(expoFetch.mock.calls[0][1].headers.get('authorization')).toBeNull();
+
+    await fetchToWeb('/api/pets'); // default mock now resolves to the stored session
+    expect(SecureStore.getItemAsync).toHaveBeenCalledTimes(2);
+    expect(expoFetch.mock.calls[1][1].headers.get('authorization')).toBe('Bearer test-jwt');
   });
 });

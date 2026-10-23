@@ -25,7 +25,12 @@ export function useOwnerPostedToday(enabled = true) {
       return !!data.hasPostedToday;
     },
     enabled,
-    staleTime: 0, // Always fresh so a new post unlocks the feed immediately
+    // Perf audit 2026-10-23: was 0, which refetched on EVERY mount, pet-profile open and return from background
+    // (5-6 requests after a 3 s app switch). Mutations invalidate this key explicitly, and a stale entry still
+    // refetches on mount/focus once the window passes, so freshness is bounded, not lost.
+    // A new post still unlocks the feed immediately: useCreatePost invalidates this key. A post made on another
+    // device is picked up on the next mount/focus after the window.
+    staleTime: 30 * 1000,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
   });

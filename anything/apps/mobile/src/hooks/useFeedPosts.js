@@ -56,7 +56,10 @@ export function useFeedPosts(limit = 20, offset = 0) {
       // Suggested) — do NOT re-sort client-side.
       return data.posts;
     },
-    staleTime: 0, // Always fetch fresh data to catch newly created posts
+    // Perf audit 2026-10-23: was 0, which refetched on EVERY mount, pet-profile open and return from background
+    // (5-6 requests after a 3 s app switch). Mutations invalidate this key explicitly, and a stale entry still
+    // refetches on mount/focus once the window passes, so freshness is bounded, not lost.
+    staleTime: 15 * 1000, // create/delete/caption mutations invalidate ["posts"] explicitly
     refetchOnMount: true,
     refetchOnWindowFocus: true,
   });
@@ -253,7 +256,11 @@ export function useTogglePaw(postId) {
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["posts"] });
+      // Perf audit 2026-10-23: this used to invalidate the whole ["posts"] prefix, so EVERY paw tap refetched the
+      // 20-post feed + the streak + the barks (and could flicker the count back if the refetch landed before the
+      // write was visible). The optimistic update above already shows the result and onError rolls it back, so
+      // only MARK the feed stale: the next mount/focus after its window reads the server's truth.
+      queryClient.invalidateQueries({ queryKey: ["posts", "feed"], refetchType: "none" });
     },
   });
 }

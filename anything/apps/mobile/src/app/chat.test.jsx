@@ -2,20 +2,17 @@
 // so this isolates message rendering (alignment by sender), send, and mark-read on open.
 
 import React from "react";
-import { render, fireEvent } from "@testing-library/react-native";
+import { render, fireEvent, act } from "@testing-library/react-native";
 
 let mockMessages;
+let mockParams = { threadId: "5", otherUserId: "9", otherName: "Jane Doe", otherAvatar: "" };
 const mockSend = jest.fn();
 const mockMarkRead = jest.fn();
+const mockStartDM = jest.fn();
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ back: jest.fn(), push: jest.fn() }),
-  useLocalSearchParams: () => ({
-    threadId: "5",
-    otherUserId: "9",
-    otherName: "Jane Doe",
-    otherAvatar: "",
-  }),
+  useLocalSearchParams: () => mockParams,
 }));
 jest.mock("expo-image", () => {
   const { View } = require("react-native");
@@ -39,11 +36,14 @@ jest.mock("@/hooks/useDMs", () => ({
   useDMMessages: () => mockMessages,
   useSendDM: () => ({ mutate: mockSend, isPending: false }),
   useMarkDMRead: () => ({ mutate: mockMarkRead }),
+  useStartDM: () => ({ mutateAsync: mockStartDM }),
 }));
 
 import ChatScreen from "./chat";
 
 beforeEach(() => {
+  mockParams = { threadId: "5", otherUserId: "9", otherName: "Jane Doe", otherAvatar: "" };
+  mockStartDM.mockReset();
   mockSend.mockReset();
   mockMarkRead.mockReset();
   mockMessages = {
@@ -79,4 +79,31 @@ test("empty conversation shows a prompt to start", () => {
   mockMessages = { data: [], isLoading: false };
   const { getByText } = render(<ChatScreen />);
   expect(getByText("Say hello to start the conversation.")).toBeTruthy();
+});
+
+// Perf audit 2026-10-23 (F8.2): the "Message" buttons push /chat WITHOUT a threadId; the chat screen gets-or-creates it.
+test("opened without a threadId: starts the 1:1 thread itself, spinner meanwhile, then marks it read", async () => {
+  mockParams = { otherUserId: "9", otherName: "Jane Doe", otherAvatar: "" };
+  let resolveStart;
+  mockStartDM.mockReturnValue(new Promise((r) => (resolveStart = r)));
+  const { queryByText } = render(<ChatScreen />);
+
+  expect(mockStartDM).toHaveBeenCalledWith({ otherUserId: "9" });
+  expect(queryByText("Say hello to start the conversation.")).toBeNull();
+  expect(mockMarkRead).not.toHaveBeenCalled(); // no thread yet
+
+  await act(async () => resolveStart({ thread: { id: 77 } }));
+  expect(mockMarkRead).toHaveBeenCalledWith("77");
+});
+
+test("opened without a threadId and the thread cannot be started: a message, not an endless spinner", async () => {
+  mockParams = { otherUserId: "9", otherName: "Jane Doe", otherAvatar: "" };
+  mockStartDM.mockRejectedValue(new Error("nope"));
+  const { findByText } = render(<ChatScreen />);
+  expect(await findByText("common.somethingWrong")).toBeTruthy();
+});
+
+test("opened WITH a threadId: no thread request", () => {
+  render(<ChatScreen />);
+  expect(mockStartDM).not.toHaveBeenCalled();
 });

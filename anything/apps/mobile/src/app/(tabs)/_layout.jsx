@@ -53,12 +53,12 @@ function ProfileTabIcon({ focused }) {
   );
 }
 import useRoutinesStore from "@/store/routinesStore";
-import { startReminderNotificationSync } from "@/utils/reminderNotificationSync";
 import { getScheduledNotifications } from "@/utils/notifications";
 import { generateRemindersFromRoutine } from "@/utils/reminderGenerator";
 import useRemindersStore from "@/store/remindersStore";
 import { syncLocaleToServer } from "@/i18n/localePreference";
 import { syncTimezoneToServer } from "@/i18n/timezoneSync";
+import { useAuthStore } from "@/utils/auth/store";
 
 // popToTopOnBlur (ticket 2.19) only applies to the Android JS bar. On iOS the
 // native tab bar uses Apple's standard behavior (re-tap an active tab to pop its
@@ -186,11 +186,13 @@ function AndroidGlassTabs() {
 export default function TabLayout() {
   // FF1: once the authenticated pet shell mounts (i.e. on login/app entry), mirror the
   // app's resolved locale to the server so digest/win-back emails match. Best-effort.
+  const authUserId = useAuthStore((s) => s.auth?.user?.id);
   useEffect(() => {
-    syncLocaleToServer();
+    // Skips the PUT when this account already synced this language (see syncLocaleToServer).
+    syncLocaleToServer({ userKey: authUserId });
     // Notifications v2: tell the server the device time zone (no-op server-side until its flag is on).
     syncTimezoneToServer();
-  }, []);
+  }, [authUserId]);
   useEffect(() => {
     // Initialize reminders from routines on app start
     const routinesStore = useRoutinesStore.getState();
@@ -219,10 +221,8 @@ export default function TabLayout() {
         console.warn("[notifications] reminder scheduling failed:", err?.message);
       });
 
-    // Start notification sync
-    const cleanup = startReminderNotificationSync();
-
-    return cleanup;
+    // The reminder-notification sync is started once, by the root layout (src/app/_layout.jsx). It used to be started a
+    // second time here, which doubled its 60 s interval (perf audit 2026-10-23, F1.4).
   }, []);
 
   // Platform split: iOS gets the native Liquid Glass tab bar; Android keeps the
