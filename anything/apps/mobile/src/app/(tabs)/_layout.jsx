@@ -59,6 +59,7 @@ import { generateRemindersFromRoutine } from "@/utils/reminderGenerator";
 import useRemindersStore from "@/store/remindersStore";
 import { syncLocaleToServer } from "@/i18n/localePreference";
 import { syncTimezoneToServer } from "@/i18n/timezoneSync";
+import { useAuthStore } from "@/utils/auth/store";
 
 // popToTopOnBlur (ticket 2.19) only applies to the Android JS bar. On iOS the
 // native tab bar uses Apple's standard behavior (re-tap an active tab to pop its
@@ -186,11 +187,13 @@ function AndroidGlassTabs() {
 export default function TabLayout() {
   // FF1: once the authenticated pet shell mounts (i.e. on login/app entry), mirror the
   // app's resolved locale to the server so digest/win-back emails match. Best-effort.
+  const authUserId = useAuthStore((s) => s.auth?.user?.id);
   useEffect(() => {
-    syncLocaleToServer();
+    // Skips the PUT when this account already synced this language (see syncLocaleToServer).
+    syncLocaleToServer({ userKey: authUserId });
     // Notifications v2: tell the server the device time zone (no-op server-side until its flag is on).
     syncTimezoneToServer();
-  }, []);
+  }, [authUserId]);
   useEffect(() => {
     // Initialize reminders from routines on app start
     const routinesStore = useRoutinesStore.getState();

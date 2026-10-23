@@ -51,15 +51,32 @@ export async function setLocalePreference(value) {
 // user's profile, so server-side emails match the app. Best-effort: an unauthenticated
 // call (401) or an offline error is swallowed; the emails simply keep the es-AR fallback
 // until the next successful sync. The patched global fetch attaches the auth JWT.
-export async function syncLocaleToServer() {
+const LOCALE_SYNCED_KEY = "pawpi.localeSynced.v1";
+
+// `userKey` (the signed-in auth user id) lets the app-entry caller skip the PUT when this account already told the
+// server this language (perf audit 2026-10-23: it used to fire on every launch). The marker is `<user>|<lang>`,
+// written only after the server ACKNOWLEDGED the write, so a failed/unauthenticated call is retried next launch,
+// and a different account on the same device always syncs. Without `userKey` (a language change in Settings) it
+// always writes, exactly as before.
+export async function syncLocaleToServer({ userKey } = {}) {
   try {
     const lng = i18n.language === "es" ? "es" : "en";
-    await fetch("/api/user-profile/locale", {
+    const marker = userKey != null ? `${userKey}|${lng}` : null;
+    if (marker) {
+      const last = await AsyncStorage.getItem(LOCALE_SYNCED_KEY).catch(() => null);
+      if (last === marker) return false; // already told the server
+    }
+    const res = await fetch("/api/user-profile/locale", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ locale: lng }),
     });
+    if (marker && res?.ok) {
+      await AsyncStorage.setItem(LOCALE_SYNCED_KEY, marker).catch(() => {});
+    }
+    return !!res?.ok;
   } catch {
     // best-effort; ignore network/auth errors
+    return false;
   }
 }
