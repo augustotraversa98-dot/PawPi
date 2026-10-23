@@ -1054,7 +1054,11 @@
     "popularMoments": "MOMENTOS POPULARES",
     "noResultsHint": "Probá con otra búsqueda",
     "nothingHereHint": "Los perfiles y momentos populares van a aparecer a medida que crezca la comunidad",
-    "byOwner": "de {{name}}"
+    "byOwner": "de {{name}}",
+    "lockedPromptTitle": "Posteá tu momento diario para ver esto",
+    "lockedPromptBody": "Compartí el tuyo de hoy y se desbloquea este, junto con todos los demás.",
+    "lockedPromptCta": "Postear el momento de hoy",
+    "lockedPromptDismiss": "Ahora no"
   },
   "messages": {
     "title": "Mensajes",

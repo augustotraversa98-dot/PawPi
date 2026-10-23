@@ -130,7 +130,7 @@ describe('another owner\'s pet — viewer HAS posted today', () => {
 // The Feed itself (and Discover) are gated server-side too: a locked viewer must not be able to
 // read other owners' photos off GET /api/posts or GET /api/discover. State carried over from the
 // block above: the viewer's only post is from YESTERDAY, so they have NOT posted today.
-describe('the feed + discover — media is redacted server-side while locked', () => {
+describe('the feed is redacted server-side while locked; discover is a sneak peek', () => {
   it('feed: the other owner\'s post is returned redacted + locked, the viewer\'s own is intact', async () => {
     as(VIEWER);
     const res = await get(`/posts?viewerPetId=${VIEWER.petId}`);
@@ -151,13 +151,42 @@ describe('the feed + discover — media is redacted server-side while locked', (
     expect(mine.locked).toBeUndefined();
   });
 
-  it('discover: moments are redacted the same way', async () => {
-    as(VIEWER);
-    const body = await (await get('/discover')).json();
-    const theirs = body.moments.find((m: any) => m.user_id === AUTHOR.profileId);
-    expect(theirs.locked).toBe(true);
-    expect(theirs.image_url).toBeNull();
-    expect(JSON.stringify(body)).not.toContain('author.jpg');
+  it('discover: a locked viewer gets the tile thumbnail (tagged locked) but never video_url — and the screens behind a tile stay gated', async () => {
+    // A video moment by the author: poster frame is the tile; the playable file must never ship.
+    const [video] = await raw`
+      insert into posts (user_id, pet_id, image_url, caption, is_daily_update, post_date,
+                         media_type, video_url, video_thumbnail_url)
+      values (${AUTHOR.profileId}, ${AUTHOR.petId}, null, 'clip', false, (now() at time zone 'UTC')::date,
+              'video', 'https://cdn.example/author-clip.mp4', 'https://cdn.example/author-poster.jpg')
+      returning id`;
+    try {
+      as(VIEWER);
+      const body = await (await get('/discover')).json();
+
+      const photo = body.moments.find((m: any) => m.user_id === AUTHOR.profileId && m.image_url);
+      expect(photo.locked).toBe(true);
+      expect(photo.image_url).toBe('https://cdn.example/author.jpg');
+      expect(photo.pet_name).toBe('Rex');
+
+      const clip = body.moments.find((m: any) => m.id === video.id);
+      expect(clip.locked).toBe(true);
+      expect(clip.video_thumbnail_url).toBe('https://cdn.example/author-poster.jpg');
+      expect(JSON.stringify(body)).not.toContain('author-clip.mp4');
+
+      // The viewer's own tile is untagged.
+      const mine = body.moments.find((m: any) => m.user_id === VIEWER.profileId);
+      expect(mine.locked).toBeUndefined();
+
+      // Everything a tile can open is still server-gated for this same locked viewer.
+      const profile = await (await get(`/pets/${AUTHOR.petId}/profile`)).json();
+      expect(profile.momentsLocked).toBe(true);
+      expect(profile.posts).toEqual([]);
+      const history = await (await get(`/posts/history?petId=${AUTHOR.petId}`)).json();
+      expect(history).toEqual({ posts: [], locked: true });
+      expect(JSON.stringify(profile) + JSON.stringify(history)).not.toContain('author.jpg');
+    } finally {
+      await raw`delete from posts where id = ${video.id}`;
+    }
   });
 
   it('the author (who posted today) sees their own feed unredacted', async () => {

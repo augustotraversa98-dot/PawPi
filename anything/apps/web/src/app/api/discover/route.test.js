@@ -56,10 +56,11 @@ describe("GET /api/discover", () => {
     expect(text).not.toContain("weight");
   });
 
-  it("redacts other owners' moments until the viewer has posted today; own moments stay", async () => {
+  it("sneak peek: locked viewers get other owners' tile media (tagged locked), never video_url; own moments carry no flag", async () => {
     auth.mockResolvedValue(SESSION);
     const MOMENTS = [
-      { id: 3, pet_id: 1, user_id: 7, image_url: "https://cdn/other.jpg", caption: "secret", pet_name: "Rex" },
+      { id: 3, pet_id: 1, user_id: 7, image_url: "https://cdn/other.jpg", video_thumbnail_url: null, caption: "hi", pet_name: "Rex" },
+      { id: 5, pet_id: 3, user_id: 8, image_url: null, video_thumbnail_url: "https://cdn/poster.jpg", caption: null, pet_name: "Luna" },
       { id: 4, pet_id: 2, user_id: 42, image_url: "https://cdn/mine.jpg", caption: "mine", pet_name: "Mango" },
     ];
     sql
@@ -69,9 +70,26 @@ describe("GET /api/discover", () => {
       .mockResolvedValueOnce([]); // nothing posted today
 
     const { moments } = await (await GET(req())).json();
-    expect(moments[0]).toMatchObject({ id: 3, pet_name: "Rex", locked: true, image_url: null, caption: null });
-    expect(JSON.stringify(moments[0])).not.toContain("other.jpg");
-    expect(moments[1]).toMatchObject({ id: 4, image_url: "https://cdn/mine.jpg", caption: "mine" });
-    expect(moments[1].locked).toBeUndefined();
+    // Not redacted — the tile shows the real thumbnail — but tagged so a tap prompts instead of opens.
+    expect(moments[0]).toMatchObject({ id: 3, locked: true, image_url: "https://cdn/other.jpg", caption: "hi" });
+    expect(moments[1]).toMatchObject({ id: 5, locked: true, video_thumbnail_url: "https://cdn/poster.jpg" });
+    expect(moments[2]).toMatchObject({ id: 4, image_url: "https://cdn/mine.jpg", caption: "mine" });
+    expect(moments[2].locked).toBeUndefined();
+    // The playable video file is never selected for a tile.
+    expect(allText()).toContain("video_thumbnail_url");
+    expect(allText()).not.toContain("video_url");
+  });
+
+  it("once the viewer has posted today no moment is tagged locked", async () => {
+    auth.mockResolvedValue(SESSION);
+    const MOMENTS = [{ id: 3, pet_id: 1, user_id: 7, image_url: "https://cdn/other.jpg", caption: "hi" }];
+    sql
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce(MOMENTS)
+      .mockResolvedValueOnce([{ id: 42, local_today: "2026-08-12" }])
+      .mockResolvedValueOnce([{ "?column?": 1 }]); // posted today
+
+    const { moments } = await (await GET(req())).json();
+    expect(moments).toEqual(MOMENTS);
   });
 });

@@ -61,22 +61,84 @@ test("first render shows real Discover profiles + moments (no mock)", () => {
   expect(getByTestId("discover-moment")).toBeTruthy();
 });
 
-test("a moment the server locked (no image_url) renders a placeholder tile, not a broken image", () => {
+test("a locked tile still shows its real thumbnail (sneak peek), video falls back to its poster frame", () => {
   mockDiscover = {
     data: {
       profiles: [],
       moments: [
-        { id: 5, pet_id: 2, image_url: null, caption: null, locked: true, pet_name: "Bella" },
+        { id: 5, pet_id: 2, image_url: "https://cdn/p.jpg", caption: "Beach", locked: true, pet_name: "Bella" },
+        { id: 6, pet_id: 3, image_url: null, video_thumbnail_url: "https://cdn/poster.jpg", locked: true, pet_name: "Luna" },
       ],
     },
     isLoading: false,
   };
-  const { getByText, getByTestId, queryByTestId } = render(<SearchScreen />);
-  expect(getByText("Bella")).toBeTruthy();
-  expect(getByTestId("discover-moment-locked")).toBeTruthy();
+  const { getAllByTestId, queryByTestId, getByText } = render(<SearchScreen />);
+  expect(getByText("Beach")).toBeTruthy();
+  expect(queryByTestId("discover-moment-placeholder")).toBeNull();
+  const uris = getAllByTestId("discover-moment").map(
+    (tile) => tile.findAll((n) => n.props?.source?.uri).map((n) => n.props.source.uri)[0],
+  );
+  expect(uris).toEqual(["https://cdn/p.jpg", "https://cdn/poster.jpg"]);
+});
+
+test("a tile with no thumbnail at all renders a placeholder, not a broken image", () => {
+  mockDiscover = {
+    data: { profiles: [], moments: [{ id: 5, pet_id: 2, image_url: null, caption: null, pet_name: "Bella" }] },
+    isLoading: false,
+  };
+  const { getByTestId } = render(<SearchScreen />);
+  expect(getByTestId("discover-moment-placeholder")).toBeTruthy();
+});
+
+test("locked viewer: tapping a tile prompts instead of opening; dismiss closes it", () => {
+  mockDiscover = {
+    data: {
+      profiles: [],
+      moments: [{ id: 5, pet_id: 2, image_url: "x", locked: true, pet_name: "Bella" }],
+    },
+    isLoading: false,
+  };
+  const { getByTestId, getByText, queryByText } = render(<SearchScreen />);
+  expect(queryByText("Post your daily moment to see this")).toBeNull();
+
   fireEvent.press(getByTestId("discover-moment"));
-  expect(mockPush).toHaveBeenCalled();
-  expect(queryByTestId("discover-moment-locked")).toBeTruthy();
+  expect(mockPush).not.toHaveBeenCalled();
+  expect(getByText("Post your daily moment to see this")).toBeTruthy();
+
+  fireEvent.press(getByTestId("discover-locked-prompt-dismiss"));
+  expect(mockPush).not.toHaveBeenCalled();
+  expect(queryByText("Post your daily moment to see this")).toBeNull();
+});
+
+test("locked viewer: the prompt's primary button opens the Feed composer via the compose param", () => {
+  mockDiscover = {
+    data: {
+      profiles: [],
+      moments: [{ id: 5, pet_id: 2, image_url: "x", locked: true, pet_name: "Bella" }],
+    },
+    isLoading: false,
+  };
+  const { getByTestId, queryByText } = render(<SearchScreen />);
+  fireEvent.press(getByTestId("discover-moment"));
+  fireEvent.press(getByTestId("discover-locked-prompt-cta"));
+
+  expect(mockPush).toHaveBeenCalledTimes(1);
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: "/(tabs)",
+    params: { compose: expect.stringMatching(/^\d+$/) },
+  });
+  expect(queryByText("Post your daily moment to see this")).toBeNull();
+});
+
+test("unlocked viewer (no `locked` flag, e.g. own tile or already posted): tap opens the pet profile, no prompt", () => {
+  mockDiscover = {
+    data: { profiles: [], moments: [{ id: 5, pet_id: 2, image_url: "x", pet_name: "Bella" }] },
+    isLoading: false,
+  };
+  const { getByTestId, queryByText } = render(<SearchScreen />);
+  fireEvent.press(getByTestId("discover-moment"));
+  expect(mockPush).toHaveBeenCalledWith({ pathname: "/pet-profile", params: { petId: "2" } });
+  expect(queryByText("Post your daily moment to see this")).toBeNull();
 });
 
 test("tapping a discover profile opens the real pet profile by id", () => {

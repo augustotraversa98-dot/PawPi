@@ -1054,7 +1054,11 @@
     "popularMoments": "POPULAR PET MOMENTS",
     "noResultsHint": "Try a different search term",
     "nothingHereHint": "Popular pets and moments will appear as the community grows",
-    "byOwner": "by {{name}}"
+    "byOwner": "by {{name}}",
+    "lockedPromptTitle": "Post your daily moment to see this",
+    "lockedPromptBody": "Share today's moment of your own and this one unlocks, along with the rest.",
+    "lockedPromptCta": "Post today's moment",
+    "lockedPromptDismiss": "Not now"
   },
   "messages": {
     "title": "Messages",

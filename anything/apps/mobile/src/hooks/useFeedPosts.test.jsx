@@ -184,6 +184,33 @@ describe("useCreatePost / useDeletePost — petProfile cache refresh", () => {
 
     expect(spy).toHaveBeenCalledWith({ queryKey: ["petProfile"] });
   });
+
+  // Discover tags other owners' tiles `locked` until the viewer has posted today, so posting
+  // (or deleting today's post) must refetch it.
+  test("creating a post invalidates the discover query", async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      json: async () => ({ post: { id: 99, pet_id: 4 } }),
+    }));
+    const client = makeClient();
+    const spy = jest.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => useCreatePost(), { wrapper: makeWrapper(client) });
+    await act(async () => {
+      await result.current.mutateAsync({ pet_id: 4, image_url: "x" });
+    });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["discover"] });
+  });
+
+  test("deleting a post invalidates the discover query", async () => {
+    global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ success: true }) }));
+    const client = makeClient();
+    const spy = jest.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => useDeletePost(), { wrapper: makeWrapper(client) });
+    await act(async () => {
+      await result.current.mutateAsync(99);
+    });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["discover"] });
+  });
 });
 
 // Feed polish #2 — paw fill + count are ONE source of truth (the shared feed
