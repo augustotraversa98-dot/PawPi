@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { View, Text } from "react-native";
 import { Camera } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
@@ -113,6 +113,27 @@ function UnlockCTA({ onPostPress, centered }) {
   );
 }
 
+// Memoized row so PostCard's own memo holds: the per-card closures used to be created inline in the list's map,
+// so ANY re-render of the Feed screen re-rendered every locked card. The callbacks the screen passes down are
+// stable; the row rebuilds the per-post closure internally and only re-renders when its own post changes.
+const LockedPostRow = memo(function LockedPostRow({
+  post,
+  lockedCtaIndex,
+  onPostPress,
+  onOpenProfile,
+}) {
+  return (
+    <PostCard
+      post={post}
+      liked={false}
+      locked
+      lockedCtaIndex={lockedCtaIndex}
+      onLockedPress={onPostPress}
+      onOpenProfile={() => onOpenProfile?.(post)}
+    />
+  );
+});
+
 export function LockedFeedOverlay({
   posts,
   petName,
@@ -147,14 +168,12 @@ export function LockedFeedOverlay({
         }
         const lockedCtaIndex = petIndex++;
         return (
-          <PostCard
+          <LockedPostRow
             key={post.id}
             post={post}
-            liked={false}
-            locked
             lockedCtaIndex={lockedCtaIndex}
-            onLockedPress={onPostPress}
-            onOpenProfile={() => onOpenProfile?.(post)}
+            onPostPress={onPostPress}
+            onOpenProfile={onOpenProfile}
           />
         );
       })}

@@ -42,6 +42,30 @@ import { DayCard } from "./DayCard";
 import { interleaveSuggestions } from "@/utils/feed/interleaveSuggestions";
 import { groupFeedDayCards } from "@/utils/feed/groupFeedDayCards";
 
+// Module-level (it used to be declared inside UnlockedFeed's render, so every render created a NEW component
+// type and React unmounted + remounted the divider each time).
+const SuggestedDivider = memo(function SuggestedDivider() {
+  const { t } = useTranslation();
+  return (
+    <View
+      testID="suggested-divider"
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: SPACING.xl,
+        paddingTop: 6,
+        paddingBottom: SPACING.md,
+        gap: 6,
+      }}
+    >
+      <PawPrint size={14} color={COLORS.terracotta} />
+      <Text style={[TYPE.overline, { color: COLORS.mutedBrown }]}>
+        {t("feed.suggestedForYou")}
+      </Text>
+    </View>
+  );
+});
+
 export function UnlockedFeed({
   posts,
   likedPosts,
@@ -86,25 +110,6 @@ export function UnlockedFeed({
         hasFollowing && firstSuggested ? firstSuggested.id : null,
     };
   }, [items]);
-
-  const SuggestedDivider = () => (
-    <View
-      testID="suggested-divider"
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: SPACING.xl,
-        paddingTop: 6,
-        paddingBottom: SPACING.md,
-        gap: 6,
-      }}
-    >
-      <PawPrint size={14} color={COLORS.terracotta} />
-      <Text style={[TYPE.overline, { color: COLORS.mutedBrown }]}>
-        {t("feed.suggestedForYou")}
-      </Text>
-    </View>
-  );
 
   return (
     <>
