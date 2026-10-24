@@ -1,4 +1,9 @@
-import { downscaleImageAsset, MAX_UPLOAD_EDGE, UPLOAD_JPEG_QUALITY } from "./downscaleImageAsset";
+import {
+  downscaleImageAsset,
+  MAX_UPLOAD_EDGE,
+  UPLOAD_JPEG_QUALITY,
+  DOCUMENT_UPLOAD_OPTIONS,
+} from "./downscaleImageAsset";
 
 const SaveFormat = { JPEG: "jpeg", PNG: "png" };
 const run = (asset, manipulate) => downscaleImageAsset(asset, { manipulate, saveFormat: SaveFormat });
@@ -52,4 +57,24 @@ test("any failure falls back to the original asset - an upload is never lost to 
   const asset = { uri: "file:///a.jpg", width: 4000, height: 3000, mimeType: "image/jpeg", type: "image" };
   expect(await run(asset, jest.fn().mockRejectedValue(new Error("oom")))).toBe(asset);
   expect(await run(asset, jest.fn().mockResolvedValue({}))).toBe(asset);
+});
+
+test("a scanned document keeps a larger long edge + higher quality than a feed photo", async () => {
+  const asset = { uri: "file:///scan.jpg", width: 4032, height: 3024, mimeType: "image/jpeg", type: "image" };
+  await downscaleImageAsset(asset, { ...DOCUMENT_UPLOAD_OPTIONS, manipulate: resized, saveFormat: SaveFormat });
+
+  expect(DOCUMENT_UPLOAD_OPTIONS.maxEdge).toBeGreaterThan(MAX_UPLOAD_EDGE);
+  expect(DOCUMENT_UPLOAD_OPTIONS.quality).toBeGreaterThan(UPLOAD_JPEG_QUALITY);
+  expect(resized).toHaveBeenCalledWith(
+    "file:///scan.jpg",
+    [{ resize: { width: DOCUMENT_UPLOAD_OPTIONS.maxEdge } }],
+    { compress: DOCUMENT_UPLOAD_OPTIONS.quality, format: "jpeg" },
+  );
+});
+
+test("a document image between the photo and document limits is left alone", async () => {
+  const asset = { uri: "file:///scan.jpg", width: 2000, height: 1500, mimeType: "image/jpeg", type: "image" };
+  const out = await downscaleImageAsset(asset, { ...DOCUMENT_UPLOAD_OPTIONS, manipulate: resized, saveFormat: SaveFormat });
+  expect(out).toBe(asset);
+  expect(resized).not.toHaveBeenCalled();
 });

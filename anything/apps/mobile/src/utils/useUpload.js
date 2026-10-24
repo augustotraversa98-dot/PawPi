@@ -14,6 +14,12 @@ function arrayBufferToBase64(buffer) {
   return btoa(binary);
 }
 
+// Uploads get their own, longer deadline. The 15 s first-party deadline in __create/fetch.ts is cleared only when
+// the response HEADERS arrive, and for a multipart POST the server answers after it has read the whole body - so a
+// multi-MB file on a mobile connection was aborted mid-upload (the object had often already been stored, leaving an
+// orphan and no row). A caller-supplied signal is respected as-is by that wrapper; normal calls keep the 15 s deadline.
+export const UPLOAD_TIMEOUT_MS = 120_000;
+
 function useUpload() {
   const [loading, setLoading] = React.useState(false);
   const upload = React.useCallback(async (input) => {
@@ -32,12 +38,22 @@ function useUpload() {
       // default (no visibility) is the unchanged public path.
       const isPrivate = input?.visibility === "private";
       const petId = input?.petId;
-      const postForm = (formData) => {
+      const postForm = async (formData) => {
         if (isPrivate) {
           formData.append("visibility", "private");
           if (petId != null) formData.append("petId", String(petId));
         }
-        return fetch("/api/upload", { method: "POST", body: formData });
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+        try {
+          return await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timer);
+        }
       };
 
       if ("reactNativeAsset" in input && input.reactNativeAsset) {
@@ -64,7 +80,7 @@ function useUpload() {
           // Storage (service_role key stays server-side) and returns the public URL.
           // Native only: shrink a full-resolution camera photo first (perf audit 2026-10-23, F4.2). Returns the
           // asset unchanged for anything it should not touch, and on any failure.
-          if (Platform.OS !== "web") asset = await downscaleImageAsset(asset);
+          if (Platform.OS !== "web") asset = await downscaleImageAsset(asset, input.downscale);
           const fileName = asset.name ?? asset.uri.split("/").pop() ?? "upload";
           const formData = new FormData();
           if (Platform.OS === "web") {

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   Modal,
   View,
@@ -26,6 +26,10 @@ import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
 import { useUpload } from "@/utils/useUpload";
+import {
+  DOCUMENT_UPLOAD_OPTIONS,
+  resolveImageSize,
+} from "@/utils/downscaleImageAsset";
 import { resolvePrivateMediaUrl } from "@/utils/privateMedia";
 import DateField from "@/components/DateField";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
@@ -67,6 +71,12 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
   const [fileUri, setFileUri] = useState(null);
   const [fileName, setFileName] = useState(null);
   const [fileMimeType, setFileMimeType] = useState(null);
+  // Pixel size of a picked image (from the picker, or resolved for the document picker). Without it the
+  // upload helper can't tell the photo is oversized and would send the camera original untouched.
+  const [fileSize, setFileSize] = useState({});
+  // The stored key from a successful upload of the CURRENT file. If the document row then fails to save, a retry
+  // reuses it instead of uploading (and orphaning) another copy.
+  const uploadedRef = useRef(null);
   const [saving, setSaving] = useState(false);
   // "form" | "reading" | "review" | "dormant" | "empty" | "readError"
   const [phase, setPhase] = useState("form");
@@ -83,6 +93,8 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
     setFileUri(null);
     setFileName(null);
     setFileMimeType(null);
+    setFileSize({});
+    uploadedRef.current = null;
     setPhase("form");
     setProposal(null);
     setSaving(false);
@@ -94,11 +106,13 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
   };
 
   // Every picker funnels the chosen paperwork through here so uri/name/mimeType stay in lockstep.
-  const applyPicked = (uri, pickedName, mimeType) => {
+  const applyPicked = (uri, pickedName, mimeType, size = {}) => {
     if (!uri) return;
+    uploadedRef.current = null;
     setFileUri(uri);
     setFileName(pickedName || null);
     setFileMimeType(mimeType || null);
+    setFileSize({ width: size.width, height: size.height });
   };
 
   // Choose an existing photo from the library.
@@ -117,7 +131,7 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
     });
     if (!result.canceled && result.assets?.[0]?.uri) {
       const a = result.assets[0];
-      applyPicked(a.uri, a.fileName || null, a.mimeType || "image/jpeg");
+      applyPicked(a.uri, a.fileName || null, a.mimeType || "image/jpeg", a);
     }
   };
 
@@ -134,7 +148,7 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
     const result = await ImagePicker.launchCameraAsync({ quality: 0.9 });
     if (!result.canceled && result.assets?.[0]?.uri) {
       const a = result.assets[0];
-      applyPicked(a.uri, a.fileName || null, a.mimeType || "image/jpeg");
+      applyPicked(a.uri, a.fileName || null, a.mimeType || "image/jpeg", a);
     }
   };
 
@@ -149,7 +163,12 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
       const inferred = a.name?.toLowerCase().endsWith(".pdf")
         ? "application/pdf"
         : "application/octet-stream";
-      applyPicked(a.uri, a.name || null, a.mimeType || inferred);
+      const pickedMime = a.mimeType || inferred;
+      // The document picker doesn't report an image's pixel size; resolve it so a big photo is still downscaled.
+      const size = pickedMime.startsWith("image/")
+        ? await resolveImageSize(a.uri)
+        : {};
+      applyPicked(a.uri, a.name || null, pickedMime, size);
     }
   };
 
@@ -235,15 +254,30 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
       // (AUDIT A-04) A vet document is medical → PRIVATE bucket scoped to this
       // pet. The server returns a KEY (not a public URL); it is persisted in
       // file_url and opened later through the auth-gated streamer.
-      const uploadResult = await upload({
-        reactNativeAsset: { uri: fileUri, name: filename, mimeType },
-        visibility: "private",
-        petId,
-      });
-      const storedFile = uploadResult.key ?? uploadResult.url;
-      if (uploadResult.error || !storedFile) {
-        throw new Error(uploadResult.error || "Upload failed");
+      // Photos are shrunk before upload (documents keep a larger long edge than feed photos so small print stays
+      // readable); PDFs go up as picked. A retry after a failed row save reuses the already-stored file.
+      let uploaded = uploadedRef.current;
+      if (!uploaded) {
+        const uploadResult = await upload({
+          reactNativeAsset: {
+            uri: fileUri,
+            name: filename,
+            mimeType,
+            width: fileSize.width,
+            height: fileSize.height,
+          },
+          downscale: DOCUMENT_UPLOAD_OPTIONS,
+          visibility: "private",
+          petId,
+        });
+        const key = uploadResult.key ?? uploadResult.url;
+        if (uploadResult.error || !key) {
+          throw new Error(uploadResult.error || "Upload failed");
+        }
+        uploaded = { storedFile: key, mimeType: uploadResult.mimeType };
+        uploadedRef.current = uploaded;
       }
+      const storedFile = uploaded.storedFile;
 
       const response = await fetch("/api/vet-record/documents", {
         method: "POST",
@@ -279,7 +313,12 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
         setPhase("readError");
         return;
       }
-      await runExtraction({ url: extractUrl, filename, mimeType });
+      // Read it as what was actually stored (a downscaled photo is JPEG even if the pick was HEIC).
+      await runExtraction({
+        url: extractUrl,
+        filename,
+        mimeType: uploaded.mimeType || mimeType,
+      });
     } catch (error) {
       setSaving(false);
       Alert.alert(

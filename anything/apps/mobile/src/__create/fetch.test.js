@@ -145,6 +145,17 @@ describe('first-party request deadline', () => {
     expect(init.signal).toBe(controller.signal);
   });
 
+  test('a caller-supplied signal gets no 15 s cut-off on top (uploads bring their own, longer deadline)', async () => {
+    jest.useFakeTimers();
+    const controller = new AbortController();
+
+    await fetchToWeb('/api/upload', { method: 'POST', signal: controller.signal });
+    await jest.advanceTimersByTimeAsync(FIRST_PARTY_TIMEOUT_MS * 2);
+
+    expect(jest.getTimerCount()).toBe(0);
+    expect(controller.signal.aborted).toBe(false);
+  });
+
   test('rejects after the deadline when the request never settles', async () => {
     jest.useFakeTimers();
     expoFetch.mockImplementationOnce(

@@ -42,6 +42,11 @@ jest.mock("expo-image-picker", () => ({
 jest.mock("expo-document-picker", () => ({
   getDocumentAsync: (...args) => mockPickFile(...args),
 }));
+const mockResolveSize = jest.fn();
+jest.mock("@/utils/downscaleImageAsset", () => ({
+  DOCUMENT_UPLOAD_OPTIONS: { maxEdge: 2200, quality: 0.8 },
+  resolveImageSize: (...args) => mockResolveSize(...args),
+}));
 jest.mock("@/utils/useUpload", () => ({
   useUpload: () => [mockUpload, { loading: false }],
 }));
@@ -63,6 +68,7 @@ jest.mock("./ReviewProposalModal", () => {
 });
 
 import { AddDocumentModal } from "./AddDocumentModal";
+import { DOCUMENT_UPLOAD_OPTIONS } from "@/utils/downscaleImageAsset";
 
 // Route the two fetches by URL; the extract response is set per-test.
 let extractResponse;
@@ -101,6 +107,8 @@ beforeEach(() => {
   mockLaunch.mockReset();
   mockCamera.mockReset();
   mockPickFile.mockReset();
+  mockResolveSize.mockReset();
+  mockResolveSize.mockResolvedValue({});
   extractResponse = Promise.resolve({ status: 503, ok: false });
   wireFetch();
 });
@@ -220,4 +228,72 @@ test("taking a photo with the camera fills the paperwork", async () => {
   await waitFor(() => expect(onSaved).toHaveBeenCalled());
   expect(mockCamera).toHaveBeenCalled();
   expect(mockUpload.mock.calls[0][0].reactNativeAsset.uri).toBe("file:///snap.jpg");
+});
+
+test("a big library photo is handed to the upload with its pixel size + the document downscale", async () => {
+  const { onSaved } = await fillAndSave({
+    pickResult: {
+      canceled: false,
+      assets: [{ uri: "file:///big.jpg", mimeType: "image/jpeg", width: 4032, height: 3024 }],
+    },
+  });
+  await waitFor(() => expect(onSaved).toHaveBeenCalled());
+
+  const call = mockUpload.mock.calls[0][0];
+  expect(call.reactNativeAsset).toMatchObject({ uri: "file:///big.jpg", width: 4032, height: 3024 });
+  expect(call.downscale).toEqual(DOCUMENT_UPLOAD_OPTIONS);
+  expect(call).toMatchObject({ visibility: "private", petId: 3 });
+});
+
+test("an image picked as a file (no size from the picker) has its size resolved so it is still downscaled", async () => {
+  mockResolveSize.mockResolvedValue({ width: 4032, height: 3024 });
+  const { onSaved } = await fillAndSave({
+    source: "doc-choose-file",
+    mock: mockPickFile,
+    pickResult: {
+      canceled: false,
+      assets: [{ uri: "file:///scan.jpg", name: "scan.jpg", mimeType: "image/jpeg" }],
+    },
+  });
+  await waitFor(() => expect(onSaved).toHaveBeenCalled());
+
+  expect(mockResolveSize).toHaveBeenCalledWith("file:///scan.jpg");
+  expect(mockUpload.mock.calls[0][0].reactNativeAsset).toMatchObject({ width: 4032, height: 3024 });
+});
+
+test("a PDF is never size-resolved", async () => {
+  const { onSaved } = await fillAndSave({
+    source: "doc-choose-file",
+    mock: mockPickFile,
+    pickResult: {
+      canceled: false,
+      assets: [{ uri: "file:///r.pdf", name: "r.pdf", mimeType: "application/pdf" }],
+    },
+  });
+  await waitFor(() => expect(onSaved).toHaveBeenCalled());
+  expect(mockResolveSize).not.toHaveBeenCalled();
+});
+
+test("if saving the document row fails, a retry reuses the stored file instead of uploading a second copy", async () => {
+  const Alert = require("react-native").Alert;
+  jest.spyOn(Alert, "alert").mockImplementation(() => {});
+  let docCalls = 0;
+  global.fetch = jest.fn((url) => {
+    if (url === "/api/vet-record/documents") {
+      docCalls += 1;
+      return docCalls === 1
+        ? Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) })
+        : Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    }
+    return extractResponse;
+  });
+  const { onSaved, getByText } = await fillAndSave();
+  await waitFor(() => expect(Alert.alert).toHaveBeenCalled()); // first attempt fails visibly
+  expect(mockUpload).toHaveBeenCalledTimes(1);
+  expect(onSaved).not.toHaveBeenCalled();
+
+  fireEvent.press(getByText("Save document"));
+  await waitFor(() => expect(onSaved).toHaveBeenCalled());
+  expect(mockUpload).toHaveBeenCalledTimes(1); // no second upload
+  expect(docCalls).toBe(2);
 });
