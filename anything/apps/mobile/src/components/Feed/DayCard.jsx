@@ -13,6 +13,7 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, Dimensions, Pressable } from "react-native";
 import { Image } from "expo-image";
+import { FEED_IMAGE_PROPS } from "@/utils/feedImageProps";
 import { useTranslation } from "react-i18next";
 import { PawPrint, MessageCircle } from "lucide-react-native";
 import { COLORS, TAG_COLORS } from "@/constants/theme";
@@ -60,7 +61,7 @@ export function DayCard({ dayCard, likedByPostId, streak = 0, onOpenDetail }) {
       {/* Header: pet identity (name + @handle + 🔥 streak) with a "Daily moment" tag + timestamp,
           mirroring PostCard. The "N caregivers today" sub only shows for real multi-author days. */}
       <View style={styles.header}>
-        <Image source={{ uri: dayCard?.pet?.avatar_url }} style={styles.petAvatar} contentFit="cover" />
+        <Image {...FEED_IMAGE_PROPS} source={{ uri: dayCard?.pet?.avatar_url }} style={styles.petAvatar} contentFit="cover" />
         <View style={{ flex: 1 }}>
           <View style={styles.nameRow}>
             <Text style={styles.petName}>{dayCard?.pet?.name}</Text>
@@ -107,7 +108,7 @@ export function DayCard({ dayCard, likedByPostId, streak = 0, onOpenDetail }) {
         {slides.map((s) => (
           <View key={s.post_id} style={{ width }} testID={`day-card-slide-${s.post_id}`}>
             {s.image_url ? (
-              <Image source={{ uri: s.image_url }} style={{ width, height: mediaHeight }} contentFit="cover" />
+              <Image {...FEED_IMAGE_PROPS} source={{ uri: s.image_url }} style={{ width, height: mediaHeight }} contentFit="cover" />
             ) : (
               <View style={{ width, height: mediaHeight, backgroundColor: C.peach }} />
             )}

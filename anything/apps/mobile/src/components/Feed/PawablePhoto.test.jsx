@@ -78,3 +78,11 @@ test("disabled photo ignores taps entirely", () => {
   fireEvent.press(photo);
   expect(onDoubleTap).not.toHaveBeenCalled();
 });
+
+test("the photo uses the shared memory-disk cache + cross-fade", () => {
+  const { getByTestId } = render(<PawablePhoto testID="pp" photoUri="https://x/p.png" />);
+  // The Pressable wraps the Image (mocked to a View carrying its props).
+  const image = getByTestId("pp").children[0];
+  expect(image.props).toMatchObject({ cachePolicy: "memory-disk", transition: 150 });
+});
+

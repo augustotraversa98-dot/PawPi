@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Pressable, View } from "react-native";
 import { Image } from "expo-image";
+import { FEED_IMAGE_PROPS } from "@/utils/feedImageProps";
 import { PawPrint } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import { feedImageHeight } from "@/utils/feedImageAspect";
@@ -99,6 +100,7 @@ export function PawablePhoto({
   return (
     <Pressable testID={testID} onPress={handlePress}>
       <Image
+        {...FEED_IMAGE_PROPS}
         source={{ uri: photoUri }}
         style={responsiveStyle}
         contentFit={contentFit}
