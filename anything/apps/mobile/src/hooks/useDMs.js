@@ -1,37 +1,42 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useFocusedQuery } from "@/hooks/useFocusedPolling";
 
 // Owner↔owner direct messages (ticket 2.27). Real, participant-scoped; mirrors the
 // provider-chat hooks but against /api/dm-threads. SEPARATE from the provider chat.
 
-// My DM threads (newest first). Polls every 15s while the inbox is open.
+// My DM threads (newest first). Polls every 30s while the inbox is open and focused.
 export function useDMThreads() {
-  return useQuery({
-    queryKey: ["dm-threads"],
-    refetchInterval: 15000,
-    queryFn: async () => {
-      const res = await fetch("/api/dm-threads");
-      if (!res.ok) throw new Error("Failed to fetch conversations");
-      const data = await res.json();
-      return data.threads ?? [];
+  return useFocusedQuery(
+    {
+      queryKey: ["dm-threads"],
+      queryFn: async () => {
+        const res = await fetch("/api/dm-threads");
+        if (!res.ok) throw new Error("Failed to fetch conversations");
+        const data = await res.json();
+        return data.threads ?? [];
+      },
     },
-  });
+    30000,
+  );
 }
 
-// One thread's messages (newest first). Polls every 8s while open.
+// One thread's messages (newest first). Polls every 8s while open and focused.
 export function useDMMessages(threadId) {
-  return useQuery({
-    queryKey: ["dm-messages", threadId],
-    enabled: threadId != null,
-    refetchInterval: 8000,
-    queryFn: async () => {
-      const res = await fetch(
-        `/api/dm-threads/${encodeURIComponent(threadId)}/messages?limit=50`,
-      );
-      if (!res.ok) throw new Error("Failed to fetch messages");
-      const data = await res.json();
-      return data.messages ?? [];
+  return useFocusedQuery(
+    {
+      queryKey: ["dm-messages", threadId],
+      enabled: threadId != null,
+      queryFn: async () => {
+        const res = await fetch(
+          `/api/dm-threads/${encodeURIComponent(threadId)}/messages?limit=50`,
+        );
+        if (!res.ok) throw new Error("Failed to fetch messages");
+        const data = await res.json();
+        return data.messages ?? [];
+      },
     },
-  });
+    8000,
+  );
 }
 
 // Start (or reuse) a DM thread with another owner. mutateAsync({ otherUserId }) →
