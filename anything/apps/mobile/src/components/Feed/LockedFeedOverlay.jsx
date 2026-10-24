@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { COLORS, SPACING, RADIUS } from "@/constants/theme";
 import { PawMark, PressableScale } from "@/components/ui";
 import { PostCard } from "./PostCard";
+import { BusinessPostCard } from "./BusinessPostCard";
 
 // LockedFeedOverlay — the "post to unlock" FOMO feed (feed polish #4).
 //
@@ -112,29 +113,51 @@ function UnlockCTA({ onPostPress, centered }) {
   );
 }
 
-export function LockedFeedOverlay({ posts, petName, onPostPress, onOpenProfile }) {
+export function LockedFeedOverlay({
+  posts,
+  petName,
+  onPostPress,
+  onOpenProfile,
+  onOpenBusinessPost,
+}) {
   const list = Array.isArray(posts) ? posts : [];
 
   if (list.length === 0) {
     return <EmptyLockedState petName={petName} onPostPress={onPostPress} />;
   }
 
-  // Render the WHOLE feed, locked — the enclosing ScrollView scrolls it (feed
-  // polish #4). Each card gets its position so its FOMO CTA rotates through the
+  // Render the WHOLE feed — the enclosing ScrollView scrolls it (feed polish #4).
+  // Only PET moments are locked: a followed business's post is public marketing
+  // content (the server leaves it unredacted), so it renders normally with the
+  // business name + logo — never the "See 's day / posted today" lock. Each locked
+  // pet card gets its pet-only position so its FOMO CTA rotates through the
   // name-aware variants instead of repeating one line down the list.
+  let petIndex = 0;
   return (
     <View>
-      {list.map((post, index) => (
-        <PostCard
-          key={post.id}
-          post={post}
-          liked={false}
-          locked
-          lockedCtaIndex={index}
-          onLockedPress={onPostPress}
-          onOpenProfile={() => onOpenProfile?.(post)}
-        />
-      ))}
+      {list.map((post) => {
+        if (post.item_type === "provider_post") {
+          return (
+            <BusinessPostCard
+              key={`business-${post.id}`}
+              post={post}
+              onPress={() => onOpenBusinessPost?.(post)}
+            />
+          );
+        }
+        const lockedCtaIndex = petIndex++;
+        return (
+          <PostCard
+            key={post.id}
+            post={post}
+            liked={false}
+            locked
+            lockedCtaIndex={lockedCtaIndex}
+            onLockedPress={onPostPress}
+            onOpenProfile={() => onOpenProfile?.(post)}
+          />
+        );
+      })}
     </View>
   );
 }

@@ -108,6 +108,71 @@ describe("LockedFeedOverlay — scrollable blurred FOMO feed", () => {
     expect(onPostPress).not.toHaveBeenCalled();
   });
 
+  describe("business posts are public — never locked", () => {
+    const bizPost = {
+      id: 1,
+      provider_id: 3,
+      item_type: "provider_post",
+      body: "Weekend grooming specials",
+      image_urls: ["https://example.com/b.jpg"],
+      media_type: "image",
+      created_at: "2026-10-20T10:00:00Z",
+      provider: {
+        id: 3,
+        name: "Happy Paws Grooming",
+        slug: "happy-paws",
+        logo_url: "https://example.com/logo.png",
+      },
+      paw_count: 2,
+      comment_count: 1,
+    };
+
+    it("renders a business post unlocked with its name + caption, while a pet post stays locked", () => {
+      const { getByText, getAllByText, getAllByTestId, queryByText } = render(
+        <LockedFeedOverlay
+          posts={[bizPost, post(2)]}
+          petName="Rex"
+          onPostPress={() => {}}
+        />,
+      );
+      // Business: name and caption are visible, no locked headline for it.
+      expect(getAllByText("Happy Paws Grooming").length).toBeGreaterThan(0);
+      expect(getByText(/Weekend grooming specials/)).toBeTruthy();
+      expect(getAllByTestId("business-post-card")).toHaveLength(1);
+      // Pet post: still locked (one CTA / one obscured caption — not two).
+      expect(getAllByTestId("feed-post-locked-cta")).toHaveLength(1);
+      expect(getAllByTestId("feed-post-caption-locked")).toHaveLength(1);
+      expect(queryByText("moment")).toBeNull();
+    });
+
+    it("tapping a business post opens it via onOpenBusinessPost, not the composer", () => {
+      const onPostPress = jest.fn();
+      const onOpenBusinessPost = jest.fn();
+      const { getByTestId } = render(
+        <LockedFeedOverlay
+          posts={[bizPost]}
+          petName="Rex"
+          onPostPress={onPostPress}
+          onOpenBusinessPost={onOpenBusinessPost}
+        />,
+      );
+      fireEvent.press(getByTestId("business-post-card"));
+      expect(onOpenBusinessPost).toHaveBeenCalledWith(bizPost);
+      expect(onPostPress).not.toHaveBeenCalled();
+    });
+
+    it("business posts don't consume a rotating CTA slot (first locked pet card still gets CTA #0)", () => {
+      const { getByText } = render(
+        <LockedFeedOverlay
+          posts={[bizPost, post(2)]}
+          petName="Rex"
+          onPostPress={() => {}}
+        />,
+      );
+      expect(getByText(/what Pet2/)).toBeTruthy();
+    });
+  });
+
   it("shows the 'be the first' empty state + CTA with no posts (no crash, no scrim)", () => {
     const onPostPress = jest.fn();
     const { queryAllByTestId, getByText } = render(
