@@ -8,7 +8,7 @@ jest.mock("expo-image-manipulator", () => ({
   SaveFormat: { JPEG: "jpeg", PNG: "png" },
 }));
 
-import useUpload from "./useUpload";
+import useUpload, { UPLOAD_TIMEOUT_MS } from "./useUpload";
 
 let sentParts;
 beforeEach(() => {
@@ -56,4 +56,67 @@ test("if resizing fails the original photo is still uploaded", async () => {
 
   expect(res.url).toBe("https://cdn/x.jpg");
   expect(sentParts[0][1]).toMatchObject({ uri: "file:///cam/big.jpg" });
+});
+
+test("the document downscale option is applied (2200 px long edge) for a big paperwork photo", async () => {
+  mockManipulate.mockResolvedValue({ uri: "file:///tmp/doc.jpg", width: 2200, height: 1650 });
+  const { result } = renderHook(() => useUpload());
+  await act(async () => {
+    await result.current[0]({
+      reactNativeAsset: { uri: "file:///cam/doc.jpg", name: "doc.jpg", width: 4032, height: 3024, mimeType: "image/jpeg" },
+      downscale: { maxEdge: 2200, quality: 0.8 },
+      visibility: "private",
+      petId: 3,
+    });
+  });
+  expect(mockManipulate).toHaveBeenCalledWith(
+    "file:///cam/doc.jpg",
+    [{ resize: { width: 2200 } }],
+    { compress: 0.8, format: "jpeg" },
+  );
+});
+
+describe("upload deadline", () => {
+  afterEach(() => jest.useRealTimers());
+
+  test("an upload is NOT aborted at the 15 s first-party deadline, but is at its own longer one", async () => {
+    jest.useFakeTimers();
+    let signal;
+    global.fetch = jest.fn((_url, init) => {
+      signal = init.signal;
+      return new Promise((_resolve, reject) => {
+        init.signal.addEventListener("abort", () => reject(new Error("Aborted")));
+      });
+    });
+    const { result } = renderHook(() => useUpload());
+    let res;
+    const pending = act(async () => {
+      res = await result.current[0]({
+        reactNativeAsset: { uri: "file:///big.pdf", name: "big.pdf", mimeType: "application/pdf" },
+      });
+    });
+
+    await jest.advanceTimersByTimeAsync(20_000);
+    expect(signal).toBeInstanceOf(AbortSignal);
+    expect(signal.aborted).toBe(false); // would have been true under the 15 s default
+
+    await jest.advanceTimersByTimeAsync(UPLOAD_TIMEOUT_MS);
+    await pending;
+    expect(signal.aborted).toBe(true);
+    expect(res).toEqual({ error: "Aborted" });
+  });
+
+  test("the deadline timer is cleared once the upload answers", async () => {
+    jest.useFakeTimers();
+    const { result } = renderHook(() => useUpload());
+    const before = jest.getTimerCount();
+    await act(async () => {
+      await result.current[0]({
+        reactNativeAsset: { uri: "file:///s.pdf", name: "s.pdf", mimeType: "application/pdf" },
+      });
+    });
+    // Whatever else the test renderer schedules, no 120 s deadline timer may outlive the request.
+    await jest.advanceTimersByTimeAsync(UPLOAD_TIMEOUT_MS - 1);
+    expect(jest.getTimerCount()).toBeLessThanOrEqual(before);
+  });
 });
