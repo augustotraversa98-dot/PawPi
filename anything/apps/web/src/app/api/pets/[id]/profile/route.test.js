@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // adds the viewer lookup — and, for ANOTHER owner's pet, the posted-today check):
 //   0 pet lookup · 1 guard (banned/blocked) · 2 owner · 3 stats ·
 //   [4 follow check — only with viewerPetId] · viewer lookup ·
-//   [posted-today check — skipped when the viewer owns the pet] · posts
+//   (the viewer lookup also answers posted-today in the SAME statement) · posts
 //   (posts is skipped entirely when the moments are locked).
 
 import { GET } from './route';
@@ -314,8 +314,7 @@ describe('GET /api/pets/[id]/profile', () => {
     it("another owner's pet + viewer has NOT posted today: no moments in the response", async () => {
       auth.mockResolvedValue(SESSION);
       seedHead()
-        .mockResolvedValueOnce([OTHER_VIEWER]) // 4 viewer (user_profiles.id 99 ≠ owner 7)
-        .mockResolvedValueOnce([]); // 5 posted-today check → nothing
+        .mockResolvedValueOnce([{ ...OTHER_VIEWER, posted_today: false }]); // 4 viewer + posted-today (user_profiles.id 99 ≠ owner 7)
 
       const res = await GET(req(), { params: { id: '2' } });
 
@@ -328,7 +327,7 @@ describe('GET /api/pets/[id]/profile', () => {
       expect(body.owner.full_name).toBe('Pat Owner');
       expect(body.stats).toEqual({ totalPosts: 2, totalPaws: 5, totalBarks: 1, followers: 3, following: 4 });
       // …but the posts query is never even issued (no moment rows are read at all).
-      expect(sql).toHaveBeenCalledTimes(6);
+      expect(sql).toHaveBeenCalledTimes(5);
       const allSql = sql.mock.calls.map((_, i) => queryText(i).toLowerCase());
       expect(allSql.some((q) => q.includes('order by p.created_at'))).toBe(false);
     });
@@ -336,24 +335,21 @@ describe('GET /api/pets/[id]/profile', () => {
     it('the posted-today check is owner-scoped on user_profiles.id, never the auth id', async () => {
       auth.mockResolvedValue(SESSION); // auth id 42
       seedHead()
-        .mockResolvedValueOnce([OTHER_VIEWER])
-        .mockResolvedValueOnce([]);
+        .mockResolvedValueOnce([{ ...OTHER_VIEWER, posted_today: false }]);
 
       await GET(req(), { params: { id: '2' } });
 
-      // viewer lookup binds the AUTH id (42) to find the profile…
+      // ONE statement binds only the AUTH id (42) to find the profile…
       expect(queryText(4).toLowerCase()).toContain('auth_user_id');
       expect(queryValues(4)).toEqual([42]);
-      // …and the posted-today query binds the resolved user_profiles.id (99) + owner-local day.
-      expect(queryText(5).toLowerCase()).toContain('owner_user_id');
-      expect(queryValues(5)).toEqual([99, '2026-06-10']);
+      // …and the posted-today check inside it is owner-scoped on the resolved user_profiles.id (up.id), never the auth id.
+      expect(queryText(4).toLowerCase()).toContain('pet.owner_user_id = up.id');
     });
 
     it("another owner's pet + viewer HAS posted today: moments are returned", async () => {
       auth.mockResolvedValue(SESSION);
       seedHead()
-        .mockResolvedValueOnce([OTHER_VIEWER])
-        .mockResolvedValueOnce([{ '?column?': 1 }]) // posted today
+        .mockResolvedValueOnce([{ ...OTHER_VIEWER, posted_today: true }]) // posted today
         .mockResolvedValueOnce(POST_ROWS);
 
       const res = await GET(req(), { params: { id: '2' } });
@@ -363,7 +359,7 @@ describe('GET /api/pets/[id]/profile', () => {
       expect(body.posts).toEqual(POST_ROWS);
     });
 
-    it("the viewer's OWN pet is never gated (no posted-today check at all)", async () => {
+    it("the viewer's OWN pet is never gated (the posted-today result is ignored)", async () => {
       auth.mockResolvedValue(SESSION);
       seedHead()
         .mockResolvedValueOnce([VIEWER_OWNS_PET])

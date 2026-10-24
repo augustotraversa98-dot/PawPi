@@ -1,8 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   runWithIdentityScope,
   rememberRequestIdentity,
   recallRequestIdentity,
+  getCachedProfileId,
+  cacheProfileId,
+  forgetCachedProfileId,
+  clearCachedProfileIds,
 } from "./requestIdentity";
 
 // The per-request identity memo is a latency optimisation whose safety argument is "it can only ever
@@ -63,3 +67,42 @@ describe("requestIdentity memo", () => {
     expect(recallRequestIdentity("42")).toBeNull();
   });
 });
+
+describe("process-wide auth id -> profile id cache", () => {
+  beforeEach(() => clearCachedProfileIds());
+  afterEach(() => {
+    delete process.env.IDENTITY_CACHE_TTL_MS;
+  });
+
+  it("returns what was cached for the same auth id (string/number agnostic) and nothing for others", () => {
+    cacheProfileId("42", 7);
+    expect(getCachedProfileId(42)).toBe(7);
+    expect(getCachedProfileId("43")).toBeNull();
+    expect(getCachedProfileId(null)).toBeNull();
+  });
+
+  it("expires after the TTL", () => {
+    const t0 = 1_000_000;
+    cacheProfileId("42", 7, t0);
+    expect(getCachedProfileId("42", t0 + 5 * 60 * 1000 - 1)).toBe(7);
+    expect(getCachedProfileId("42", t0 + 5 * 60 * 1000)).toBeNull();
+  });
+
+  it("forget drops one caller; null/undefined ids are never cached", () => {
+    cacheProfileId("42", 7);
+    cacheProfileId("43", 8);
+    forgetCachedProfileId("42");
+    expect(getCachedProfileId("42")).toBeNull();
+    expect(getCachedProfileId("43")).toBe(8);
+    cacheProfileId("44", null);
+    cacheProfileId(null, 9);
+    expect(getCachedProfileId("44")).toBeNull();
+  });
+
+  it("IDENTITY_CACHE_TTL_MS=0 turns it off", () => {
+    process.env.IDENTITY_CACHE_TTL_MS = "0";
+    cacheProfileId("42", 7);
+    expect(getCachedProfileId("42")).toBeNull();
+  });
+});
+

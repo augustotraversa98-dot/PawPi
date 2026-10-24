@@ -185,8 +185,9 @@ describe('GET /api/posts — Following + Suggested', () => {
 // Business "daily moments" in the feed: posts from providers the viewer FOLLOWS are merged into
 // the Following stream. Only runs for a signed-in user; the whole business fetch is best-effort so
 // a failure never disturbs the pet feed. sql is mocked; each `await sql\`…\`` consumes one
-// mockResolvedValueOnce in order: following, suggested, [provider select, paw counts, comment
-// counts], daily-gate profile lookup, daily-gate posted-today lookup, pet-paw lookup.
+// mockResolvedValueOnce in order: following, suggested, [provider select - paw/comment counts are
+// subselects in the same statement], daily-gate (viewer profile + posted-today in ONE statement).
+// The viewer's paw flags (user_has_pawed) ride along on the feed rows - no separate lookup.
 describe('GET /api/posts — followed-business posts merged into the feed', () => {
   const bizRow = {
     id: 5,
@@ -200,6 +201,8 @@ describe('GET /api/posts — followed-business posts merged into the feed', () =
     provider_name: 'Happy Paws',
     provider_slug: 'happy-paws',
     provider_logo_url: 'https://cdn/logo.png',
+    paw_count: 2,
+    comment_count: 1,
   };
 
   it("a follower sees the followed business's VIDEO post as a distinct feed item", async () => {
@@ -207,12 +210,8 @@ describe('GET /api/posts — followed-business posts merged into the feed', () =
     sql
       .mockResolvedValueOnce([post(1, 10)]) // 1: pet following+own
       .mockResolvedValueOnce([post(3, 20)]) // 2: suggested
-      .mockResolvedValueOnce([bizRow]) //       3: followed-provider posts (media-aware)
-      .mockResolvedValueOnce([{ post_id: 5, n: 2 }]) // 4: paw counts
-      .mockResolvedValueOnce([{ post_id: 5, n: 1 }]) // 5: comment counts
-      .mockResolvedValueOnce([{ id: 9, local_today: '2026-08-12' }]) //  6: daily gate — profile
-      .mockResolvedValueOnce([{ '?column?': 1 }]) //                      7: daily gate — posted today
-      .mockResolvedValueOnce([]); //                                      8: pet-paw lookup
+      .mockResolvedValueOnce([bizRow]) //       3: followed-provider posts (media-aware, counts included)
+      .mockResolvedValueOnce([{ id: 9, local_today: '2026-08-12', posted_today: true }]); // 4: daily gate
 
     const res = await GET(feedReq('?viewerPetId=1'));
     expect(res.status).toBe(200);
@@ -258,9 +257,7 @@ describe('GET /api/posts — followed-business posts merged into the feed', () =
       .mockResolvedValueOnce([post(1, 10)]) // following
       .mockResolvedValueOnce([post(3, 20)]) // suggested
       .mockRejectedValueOnce(Object.assign(new Error('boom'), { code: 'XX000' })) // provider select blows up
-      .mockResolvedValueOnce([{ id: 9, local_today: '2026-08-12' }]) // daily gate — profile
-      .mockResolvedValueOnce([{ '?column?': 1 }]) // daily gate — posted today
-      .mockResolvedValueOnce([]); // pet-paw lookup
+      .mockResolvedValueOnce([{ id: 9, local_today: '2026-08-12', posted_today: true }]); // daily gate
 
     const res = await GET(feedReq('?viewerPetId=1'));
     expect(res.status).toBe(200);
@@ -272,7 +269,7 @@ describe('GET /api/posts — followed-business posts merged into the feed', () =
 
 // Daily-post lock, server side: until the viewer has posted today, other owners' media must not
 // be on the wire. Order of sql calls with a session and no business posts: following, suggested,
-// provider select (empty), daily-gate profile, [daily-gate posted-today], pet-paw lookup.
+// provider select (empty), daily-gate (profile + posted-today in one statement).
 describe('GET /api/posts — locked feed redacts other owners\' media', () => {
   const full = (id, pet_id, user_id) => ({
     id,
@@ -285,7 +282,8 @@ describe('GET /api/posts — locked feed redacts other owners\' media', () => {
     media_type: 'image',
     pet_name: `pet${pet_id}`,
   });
-  const PROFILE = [{ id: 9, local_today: '2026-08-12' }];
+  const PROFILE = [{ id: 9, local_today: '2026-08-12', posted_today: false }];
+  const PROFILE_POSTED = [{ id: 9, local_today: '2026-08-12', posted_today: true }];
 
   it('viewer has NOT posted today: others are redacted + locked, own posts are intact', async () => {
     auth.mockResolvedValue({ user: { id: 'auth-9' } });
@@ -293,9 +291,7 @@ describe('GET /api/posts — locked feed redacts other owners\' media', () => {
       .mockResolvedValueOnce([full(1, 1, 9)]) //  following (the viewer's own post)
       .mockResolvedValueOnce([full(2, 20, 7)]) // suggested (someone else's)
       .mockResolvedValueOnce([]) //                provider select
-      .mockResolvedValueOnce(PROFILE) //           daily gate — profile
-      .mockResolvedValueOnce([]) //                daily gate — nothing posted today
-      .mockResolvedValueOnce([]); //               pet-paw lookup
+      .mockResolvedValueOnce(PROFILE); //          daily gate — nothing posted today
 
     const res = await GET(feedReq('?viewerPetId=1'));
     expect(res.status).toBe(200);
@@ -325,9 +321,7 @@ describe('GET /api/posts — locked feed redacts other owners\' media', () => {
       .mockResolvedValueOnce([full(1, 1, 9)])
       .mockResolvedValueOnce([full(2, 20, 7)])
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce(PROFILE)
-      .mockResolvedValueOnce([{ '?column?': 1 }]) // posted today
-      .mockResolvedValueOnce([]);
+      .mockResolvedValueOnce(PROFILE_POSTED); // posted today
 
     const { posts } = await (await GET(feedReq('?viewerPetId=1'))).json();
     const other = posts.find((p) => p.id === 2);
@@ -349,13 +343,15 @@ describe('GET /api/posts — locked feed redacts other owners\' media', () => {
   it('a signed-in viewer with no profile row counts as not posted (fail closed)', async () => {
     auth.mockResolvedValue({ user: { id: 'auth-9' } });
     sql
-      .mockResolvedValueOnce([full(2, 20, 7)])
+      .mockResolvedValueOnce([{ ...full(2, 20, 7), user_has_pawed: true }])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]) // provider select
       .mockResolvedValueOnce([]); // daily gate — no profile
 
     const { posts } = await (await GET(feedReq('?viewerPetId=1'))).json();
     expect(posts[0]).toMatchObject({ id: 2, locked: true, image_url: null });
+    // No resolved viewer profile => the paw flag is omitted entirely (as before the lookup was folded in).
+    expect('user_has_pawed' in posts[0]).toBe(false);
   });
 
   it('business posts are public marketing content and are not redacted', async () => {
@@ -368,12 +364,10 @@ describe('GET /api/posts — locked feed redacts other owners\' media', () => {
           id: 5, provider_id: 100, body: 'Hi', image_urls: ['https://cdn/biz.jpg'],
           media_type: 'image', video_url: null, video_thumbnail_url: null,
           created_at: '2026-08-12T12:00:00Z', provider_name: 'P', provider_slug: 'p', provider_logo_url: null,
+          paw_count: 0, comment_count: 0,
         },
       ])
-      .mockResolvedValueOnce([]) // paw counts
-      .mockResolvedValueOnce([]) // comment counts
-      .mockResolvedValueOnce(PROFILE)
-      .mockResolvedValueOnce([]);
+      .mockResolvedValueOnce(PROFILE);
 
     const { posts } = await (await GET(feedReq('?viewerPetId=1'))).json();
     expect(posts[0].item_type).toBe('provider_post');

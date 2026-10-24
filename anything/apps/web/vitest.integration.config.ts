@@ -24,6 +24,9 @@ export default defineConfig({
     poolOptions: { forks: { singleFork: true } },
     // First run may extract the Postgres binary; give boot + migrations room.
     testTimeout: 30_000,
+    // The process-wide auth->profile id cache (utils/requestIdentity) is off here: these tests reseed the same
+    // auth ids with different profile ids between cases. Its own suite turns it on explicitly.
+    env: { IDENTITY_CACHE_TTL_MS: '0' },
     hookTimeout: 120_000,
   },
   resolve: {

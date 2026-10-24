@@ -73,12 +73,10 @@ async function GET(request) {
       return Response.json({ pets: [] });
     }
 
-    const pets = await sql`
-      SELECT * FROM pets
-      WHERE owner_user_id = ${userId}
-      ORDER BY created_at DESC
-    `;
-
+    // PERF (perf audit 5.2): pets and their latest weigh-ins are independent once the owner id is known (the
+    // weights are filtered on the same owner_user_id, then looked up only for the owner's own pets below), so
+    // both are queued together and awaited TOGETHER: one round trip instead of two.
+    //
     // "Current weight" is a history, not a single field (Dog Profile
     // weight-source ticket): prefer each pet's latest health_weight_logs row,
     // falling back to pets.weight only when it has zero weigh-ins logged yet.
@@ -87,16 +85,19 @@ async function GET(request) {
     //
     // Batched in one query (same fix as api/shop/orders/route.js) instead of
     // one getCurrentWeight round-trip per pet.
-    const petIds = pets.map((p) => p.id);
-    const latestWeights =
-      petIds.length > 0
-        ? await sql`
-            SELECT DISTINCT ON (pet_id) pet_id, weight, weight_unit
-            FROM health_weight_logs
-            WHERE pet_id = ANY(${petIds}) AND owner_user_id = ${userId}
-            ORDER BY pet_id, logged_at DESC
-          `
-        : [];
+    const [pets, latestWeights] = await Promise.all([
+      sql`
+        SELECT * FROM pets
+        WHERE owner_user_id = ${userId}
+        ORDER BY created_at DESC
+      `,
+      sql`
+        SELECT DISTINCT ON (pet_id) pet_id, weight, weight_unit
+        FROM health_weight_logs
+        WHERE owner_user_id = ${userId}
+        ORDER BY pet_id, logged_at DESC
+      `,
+    ]);
     const latestWeightByPetId = new Map(latestWeights.map((w) => [w.pet_id, w]));
 
     const petsWithCurrentWeight = pets.map((pet) => {

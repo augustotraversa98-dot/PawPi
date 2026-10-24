@@ -46,3 +46,68 @@ export function recallRequestIdentity(authUserId) {
   if (!scope || authUserId == null || scope.userId == null) return null;
   return scope.authUserId === String(authUserId) ? scope.userId : null;
 }
+
+// ---------------------------------------------------------------------------------------------------------
+// Process-wide cache of auth_user_id -> user_profiles.id (perf audit 2026-10-23, finding 1 / section 5.2).
+//
+// The per-request memo above saves the handler a second lookup, but withRequestContext still paid one
+// awaited cross-region round trip per request to resolve the caller before the handler's first statement.
+// The mapping is effectively immutable (user_profiles.auth_user_id is UNIQUE, ids are never reassigned), so
+// after the first request the answer can be remembered and the identity stamp (`set_config`) sent PIPELINED
+// with the handler's first statement instead of awaited alone: one round trip fewer on every request.
+//
+// Safety properties:
+//   - POSITIVE results only, and only what applyIdentity READ from user_profiles for that exact auth id.
+//     "No profile yet" is never cached, so lazy profile creation behaves exactly as before.
+//   - Bounded staleness: a short TTL (default 5 min, IDENTITY_CACHE_TTL_MS; 0 disables the cache) and an
+//     explicit forget on account deletion. The cache only ever supplies the id to STAMP; every owner-scoped
+//     policy still keys on the stamped value, and a wrong/stale id could only point at a profile that no
+//     longer exists (matching nothing), never at another user's, because ids are not reused.
+//   - Keyed by the auth id the verified session carries; a different caller never reads another's entry.
+//   - Size-capped; the oldest entry is evicted first.
+
+const DEFAULT_IDENTITY_TTL_MS = 5 * 60 * 1000;
+const MAX_CACHED_IDENTITIES = 5000;
+const profileIdCache = new Map(); // String(authUserId) -> { userId, expiresAt }
+
+function identityTtlMs() {
+  const raw = process.env.IDENTITY_CACHE_TTL_MS;
+  if (raw === undefined || raw === '') return DEFAULT_IDENTITY_TTL_MS;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : DEFAULT_IDENTITY_TTL_MS;
+}
+
+/** The cached user_profiles.id for `authUserId`, or null (unknown, expired, or the cache is disabled). */
+export function getCachedProfileId(authUserId, now = Date.now()) {
+  if (authUserId == null) return null;
+  const key = String(authUserId);
+  const hit = profileIdCache.get(key);
+  if (!hit) return null;
+  if (hit.expiresAt <= now) {
+    profileIdCache.delete(key);
+    return null;
+  }
+  return hit.userId;
+}
+
+/** Remember a profile id that was just READ from user_profiles for `authUserId`. */
+export function cacheProfileId(authUserId, userId, now = Date.now()) {
+  const ttl = identityTtlMs();
+  if (ttl === 0 || authUserId == null || userId == null) return;
+  const key = String(authUserId);
+  profileIdCache.delete(key); // re-insert so Map order == age order
+  profileIdCache.set(key, { userId, expiresAt: now + ttl });
+  while (profileIdCache.size > MAX_CACHED_IDENTITIES) {
+    profileIdCache.delete(profileIdCache.keys().next().value);
+  }
+}
+
+/** Drop one caller's entry (account deletion). */
+export function forgetCachedProfileId(authUserId) {
+  if (authUserId != null) profileIdCache.delete(String(authUserId));
+}
+
+/** Drop everything (tests). */
+export function clearCachedProfileIds() {
+  profileIdCache.clear();
+}

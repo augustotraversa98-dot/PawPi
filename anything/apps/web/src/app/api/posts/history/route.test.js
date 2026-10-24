@@ -27,7 +27,7 @@ it("400 without a valid petId", async () => {
   expect((await GET(new Request("http://localhost/api/posts/history"))).status).toBe(400);
 });
 
-// Query order: 0 pet owner · 1 viewer profile · [2 posted-today — skipped when the viewer owns the pet] · posts.
+// Query order: 0 pet owner · 1 viewer profile + posted-today (ONE statement) · posts.
 const VIEWER_OWNS = { id: 7, local_today: "2026-06-10" };
 const PET_OWNER_7 = { owner_user_id: 7 };
 
@@ -57,12 +57,11 @@ describe("daily-moments gate (another owner's pet)", () => {
     auth.mockResolvedValue(SESSION);
     sql
       .mockResolvedValueOnce([PET_OWNER_7])
-      .mockResolvedValueOnce([OTHER_VIEWER])
-      .mockResolvedValueOnce([]); // posted-today → nothing
+      .mockResolvedValueOnce([{ ...OTHER_VIEWER, posted_today: false }]); // posted-today → nothing
     const res = await GET(new Request("http://localhost/api/posts/history?petId=5"));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ posts: [], locked: true });
-    expect(sql).toHaveBeenCalledTimes(3);
+    expect(sql).toHaveBeenCalledTimes(2);
     const text = sql.mock.calls.map((c) => (c?.[0] ?? []).join(" ")).join(" | ");
     expect(text).not.toContain("ORDER BY post_date");
   });
@@ -71,8 +70,7 @@ describe("daily-moments gate (another owner's pet)", () => {
     auth.mockResolvedValue(SESSION);
     sql
       .mockResolvedValueOnce([PET_OWNER_7])
-      .mockResolvedValueOnce([OTHER_VIEWER])
-      .mockResolvedValueOnce([{ "?column?": 1 }])
+      .mockResolvedValueOnce([{ ...OTHER_VIEWER, posted_today: true }])
       .mockResolvedValueOnce([{ id: 1, image_url: "a.png", caption: null, post_date: "2025-06-18" }]);
     const body = await (await GET(new Request("http://localhost/api/posts/history?petId=5"))).json();
     expect(body.locked).toBeUndefined();

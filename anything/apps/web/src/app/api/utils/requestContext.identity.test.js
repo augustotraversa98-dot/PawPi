@@ -38,10 +38,12 @@ vi.mock("@/app/api/utils/sql", async () => {
 
 import { withRequestContext } from "./requestContext";
 import { resolveUserId, resolveOrCreateUserId } from "./currentUser";
+import { clearCachedProfileIds } from "./requestIdentity";
 
 const request = new Request("http://localhost/api/anything");
 
 beforeEach(() => {
+  clearCachedProfileIds(); // the process-wide id cache must not leak between cases
   state.session = { user: { id: "42", email: "a@example.com", name: "A" } };
   state.profileRows = [{ id: 7 }];
   state.statements.length = 0;
@@ -111,3 +113,57 @@ describe("withRequestContext identity round trips", () => {
     expect(state.statements).toHaveLength(1);
   });
 });
+
+// Process-wide id cache (perf audit 5.2): after the first request the profile lookup is skipped and the
+// identity stamp is sent pipelined with the handler's first statement. These pin the statement shapes; the
+// real-Postgres proof (stamp lands BEFORE the handler's first statement, RLS follows it, no cross-user
+// bleed) is test/integration/request-identity-cache.integration.test.ts.
+describe("process-wide identity cache", () => {
+  it("first request looks the profile up; the next request for the same caller only stamps (no lookup)", async () => {
+    await withRequestContext(async () => Response.json({}))(request);
+    expect(state.statements).toHaveLength(1);
+    expect(state.statements[0]).toMatch(/from user_profiles/i);
+
+    state.statements.length = 0;
+    state.profileRows = []; // would deny if it were consulted again
+    let seen;
+    await withRequestContext(async () => {
+      seen = await resolveUserId("42");
+      return Response.json({});
+    })(request);
+    expect(seen).toBe(7); // served from the cache + per-request memo
+    expect(state.statements).toHaveLength(1);
+    expect(state.statements[0]).toMatch(/^select set_config\('app\.current_user_id', \?, true\)$/);
+    expect(state.statements[0]).not.toMatch(/user_profiles/i);
+  });
+
+  it("never stamps one caller's cached id for another caller", async () => {
+    await withRequestContext(async () => Response.json({}))(request); // caches 42 -> 7
+    state.statements.length = 0;
+    state.session = { user: { id: "43", email: "b@example.com" } };
+    state.profileRows = [{ id: 8 }];
+    await withRequestContext(async () => Response.json({}))(request);
+    expect(state.statements[0]).toMatch(/from user_profiles/i); // 43 was a real lookup
+  });
+
+  it("a caller with no profile is never cached (still looked up every request)", async () => {
+    state.profileRows = [];
+    await withRequestContext(async () => Response.json({}))(request);
+    await withRequestContext(async () => Response.json({}))(request);
+    expect(state.statements).toHaveLength(2);
+    expect(state.statements.every((q) => /from user_profiles/i.test(q))).toBe(true);
+  });
+
+  it("IDENTITY_CACHE_TTL_MS=0 disables the cache", async () => {
+    process.env.IDENTITY_CACHE_TTL_MS = "0";
+    try {
+      await withRequestContext(async () => Response.json({}))(request);
+      await withRequestContext(async () => Response.json({}))(request);
+      expect(state.statements).toHaveLength(2);
+      expect(state.statements.every((q) => /from user_profiles/i.test(q))).toBe(true);
+    } finally {
+      delete process.env.IDENTITY_CACHE_TTL_MS;
+    }
+  });
+});
+
