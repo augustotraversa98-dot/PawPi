@@ -103,6 +103,7 @@ jest.mock("@/utils/businessNotificationPrefs", () => ({
 import * as Notifications from "expo-notifications";
 import { fetch as expoFetch } from "expo/fetch";
 import { useAuthStore } from "@/utils/auth/store";
+import { resetCachedAuthForTests } from "@/utils/auth/tokenCache";
 import { __resetRegisterPushTokenForTests } from "@/utils/registerPushToken";
 import { __resetSessionExpiryForTests } from "../../__create/fetch";
 import { closeLaunchGate, __resetLaunchGateForTests } from "@/utils/auth/sessionLaunchGate";
@@ -122,6 +123,7 @@ const USER_B = { jwt: JWT_B, user: { id: 2, email: "b@x.com" } };
 let pushTokenCalls;
 beforeEach(() => {
   jest.clearAllMocks();
+  resetCachedAuthForTests(); // the fetch wrapper's in-memory session copy must not leak between tests
   __resetRegisterPushTokenForTests();
   __resetSessionExpiryForTests();
   __resetSessionHealthForTests();

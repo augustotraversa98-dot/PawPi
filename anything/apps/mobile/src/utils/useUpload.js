@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Platform } from "react-native";
+import { downscaleImageAsset } from "@/utils/downscaleImageAsset";
 
 // Native FormData can only stream file parts from a uri, so raw bytes are
 // wrapped as a base64 data: uri on native (web uses a real Blob instead).
@@ -61,6 +62,9 @@ function useUpload() {
 
           // Upload the file bytes to our backend, which stores them in Supabase
           // Storage (service_role key stays server-side) and returns the public URL.
+          // Native only: shrink a full-resolution camera photo first (perf audit 2026-10-23, F4.2). Returns the
+          // asset unchanged for anything it should not touch, and on any failure.
+          if (Platform.OS !== "web") asset = await downscaleImageAsset(asset);
           const fileName = asset.name ?? asset.uri.split("/").pop() ?? "upload";
           const formData = new FormData();
           if (Platform.OS === "web") {

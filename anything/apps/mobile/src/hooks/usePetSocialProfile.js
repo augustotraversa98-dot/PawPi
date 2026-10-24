@@ -23,7 +23,10 @@ export function usePetSocialProfile(petId, viewerPetId) {
       return response.json();
     },
     enabled: !!petId,
-    staleTime: 0, // always reflect new follows/posts
+    // Perf audit 2026-10-23: was 0, which refetched on EVERY mount, pet-profile open and return from background
+    // (5-6 requests after a 3 s app switch). Mutations invalidate this key explicitly, and a stale entry still
+    // refetches on mount/focus once the window passes, so freshness is bounded, not lost.
+    staleTime: 30 * 1000, // follow mutations and useCreatePost invalidate ["petProfile", ...]
     refetchOnMount: true,
     refetchOnWindowFocus: true,
   });

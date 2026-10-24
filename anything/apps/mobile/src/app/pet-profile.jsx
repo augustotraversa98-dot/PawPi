@@ -26,7 +26,6 @@ import {
   usePetSocialProfile,
   useToggleFollow,
 } from "@/hooks/usePetSocialProfile";
-import { useStartDM } from "@/hooks/useDMs";
 import { getDisplayAgeParts } from "@/utils/petAge";
 import {
   COLORS,
@@ -117,25 +116,20 @@ export default function PetProfileScreen({ embedded = false }) {
   // Message the OWNER (ticket 2.27) — same gate; needs the owner's user id. Starts
   // (or reuses) a 1:1 DM thread, then opens the conversation.
   const { t } = useTranslation();
-  const startDM = useStartDM();
   const canMessage = canFollow && !!owner?.id;
-  const handleMessage = useCallback(async () => {
+  const handleMessage = useCallback(() => {
     if (!owner?.id) return;
-    try {
-      const { thread } = await startDM.mutateAsync({ otherUserId: owner.id });
-      router.push({
-        pathname: "/chat",
-        params: {
-          threadId: String(thread.id),
-          otherUserId: String(owner.id),
-          otherName: ownerDisplayName(owner.full_name, t),
-          otherAvatar: owner.avatar_url || "",
-        },
-      });
-    } catch (e) {
-      // Non-fatal: the button just no-ops on failure.
-    }
-  }, [owner, startDM, router, t]);
+    // Push immediately: /chat gets-or-creates the 1:1 thread itself and shows a spinner (perf audit 2026-10-23, F8.2),
+    // instead of this tap doing nothing visible for the length of a round trip.
+    router.push({
+      pathname: "/chat",
+      params: {
+        otherUserId: String(owner.id),
+        otherName: ownerDisplayName(owner.full_name, t),
+        otherAvatar: owner.avatar_url || "",
+      },
+    });
+  }, [owner, router, t]);
 
   // ── Post detail / bark modals (mirror the feed) ──
   const [detailPost, setDetailPost] = useState(null);
@@ -528,7 +522,6 @@ export default function PetProfileScreen({ embedded = false }) {
               {canMessage && (
                 <PressableScale
                   onPress={handleMessage}
-                  disabled={startDM.isPending}
                   testID="message-owner"
                   accessibilityRole="button"
                   style={{
@@ -541,7 +534,6 @@ export default function PetProfileScreen({ embedded = false }) {
                     flexDirection: "row",
                     alignItems: "center",
                     gap: SPACING.sm,
-                    opacity: startDM.isPending ? 0.6 : 1,
                   }}
                 >
                   <MessageCircle size={18} color={COLORS.terracotta} />

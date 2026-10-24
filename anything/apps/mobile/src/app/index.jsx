@@ -166,7 +166,8 @@ export default function EntryPoint() {
       setAuth(null);
     }
     if (result.action === "home") {
-      await AsyncStorage.setItem("has_completed_onboarding", "true");
+      // Fire-and-forget: the redirect below must not wait on a disk write (perf audit 2026-10-23, F1.3).
+      AsyncStorage.setItem("has_completed_onboarding", "true").catch(() => {});
     }
     if (result.action === "error") {
       // Network / non-auth failure: never onboarding (avoids duplicate pets

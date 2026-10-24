@@ -297,3 +297,50 @@ describe("useTogglePaw — shared-cache paw sync", () => {
     expect(post.paw_count).toBe(0); // clamped, not -1
   });
 });
+
+// Perf audit 2026-10-23: a paw tap used to invalidate the whole ["posts"] prefix, refetching the 20-post feed (plus
+// streak and barks) after EVERY tap. The optimistic update already shows the result; the feed is only marked stale.
+describe("useTogglePaw — no refetch storm after a paw", () => {
+  test("a successful paw updates the cache optimistically and does NOT refetch the feed", async () => {
+    mockUseCurrentPet.mockReturnValue({ data: { id: 1 }, isLoading: false });
+    global.fetch = jest.fn(async (url, init) => {
+      if (String(url).includes("/paw")) return { ok: true, json: async () => ({ success: true }) };
+      return { ok: true, json: async () => ({ posts: [{ id: 5, paw_count: 2, user_has_pawed: false }] }) };
+    });
+
+    const client = makeClient();
+    const wrapper = makeWrapper(client);
+    const feed = renderHook(() => useFeedPosts(), { wrapper });
+    await waitFor(() => expect(feed.result.current.data).toBeTruthy());
+    const feedFetches = () => global.fetch.mock.calls.filter(([u]) => String(u).startsWith("/api/posts?")).length;
+    expect(feedFetches()).toBe(1);
+
+    const paw = renderHook(() => useTogglePaw(5), { wrapper });
+    await act(async () => {
+      await paw.result.current.mutateAsync({ isPawed: false });
+    });
+    await act(async () => {});
+
+    const cached = client.getQueryData(["posts", "feed", 20, 0, 1]);
+    expect(cached[0]).toMatchObject({ paw_count: 3, user_has_pawed: true });
+    expect(feedFetches()).toBe(1); // still ONE feed request: no refetch after the paw
+    expect(client.getQueryState(["posts", "feed", 20, 0, 1]).isInvalidated).toBe(true); // but marked stale
+  });
+
+  test("a failed paw rolls the optimistic update back", async () => {
+    mockUseCurrentPet.mockReturnValue({ data: { id: 1 }, isLoading: false });
+    global.fetch = jest.fn(async (url) => {
+      if (String(url).includes("/paw")) return { ok: false, json: async () => ({}) };
+      return { ok: true, json: async () => ({ posts: [{ id: 5, paw_count: 2, user_has_pawed: false }] }) };
+    });
+    const client = makeClient();
+    const wrapper = makeWrapper(client);
+    const feed = renderHook(() => useFeedPosts(), { wrapper });
+    await waitFor(() => expect(feed.result.current.data).toBeTruthy());
+    const paw = renderHook(() => useTogglePaw(5), { wrapper });
+    await act(async () => {
+      await paw.result.current.mutateAsync({ isPawed: false }).catch(() => {});
+    });
+    expect(client.getQueryData(["posts", "feed", 20, 0, 1])[0]).toMatchObject({ paw_count: 2, user_has_pawed: false });
+  });
+});

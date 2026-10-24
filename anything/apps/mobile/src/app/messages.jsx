@@ -15,7 +15,7 @@ import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
 import { Card, PressableScale, GlassSurface } from "@/components/ui";
-import { useDMThreads, useStartDM } from "@/hooks/useDMs";
+import { useDMThreads } from "@/hooks/useDMs";
 import { useMyThreads } from "@/hooks/useProviders";
 import { useSearch, useDebouncedValue } from "@/hooks/useSearch";
 
@@ -98,7 +98,6 @@ export default function MessagesScreen() {
 
   const { data: dmThreads, isLoading: loadingDM } = useDMThreads();
   const { data: bizThreads, isLoading: loadingBiz } = useMyThreads();
-  const startDM = useStartDM();
 
   // Owner search to start a new DM (reuses the 2.25 search; owners only here).
   const debouncedQuery = useDebouncedValue(searchQuery, 300);
@@ -126,27 +125,18 @@ export default function MessagesScreen() {
 
   const isLoading = loadingDM || loadingBiz;
 
-  const startChatWithOwner = async (owner) => {
-    try {
-      const res = await startDM.mutateAsync({ otherUserId: owner.id });
-      const thread = res?.thread;
-      if (!thread) return;
-      setSearchQuery("");
-      router.push({
-        pathname: "/chat",
-        params: {
-          threadId: String(thread.id),
-          otherUserId: String(owner.id),
-          otherName: owner.full_name || t("messagesScreen.petParent"),
-          otherAvatar: owner.avatar_url || "",
-        },
-      });
-    } catch (e) {
-      // (AUDIT A-29) Don't fail silently — the tap did nothing visible before, so
-      // the user couldn't tell the chat failed to open. Surface a retryable error.
-      console.error("[messages] startChatWithOwner failed:", e?.message);
-      Alert.alert(t("common.error"), t("common.somethingWrong"));
-    }
+  // Push immediately; /chat gets-or-creates the 1:1 thread itself and shows a spinner / error (perf audit 2026-10-23,
+  // F8.2). It used to await POST /api/dm-threads first, so the tap showed nothing for a round trip.
+  const startChatWithOwner = (owner) => {
+    setSearchQuery("");
+    router.push({
+      pathname: "/chat",
+      params: {
+        otherUserId: String(owner.id),
+        otherName: owner.full_name || t("messagesScreen.petParent"),
+        otherAvatar: owner.avatar_url || "",
+      },
+    });
   };
 
   return (
