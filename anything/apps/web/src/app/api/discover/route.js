@@ -37,8 +37,12 @@ async function GET(request) {
     );
     const offset = Math.max(parseInt(searchParams.get("offset") || "0", 10) || 0, 0);
 
+    // PERF (perf audit 5.2): the three reads are independent, so they are queued together and awaited
+    // TOGETHER below (pipelined on the request transaction: one round trip instead of three). Response
+    // shape and ordering are unchanged.
+    //
     // Popular profiles — ranked by followers, then paws received, then recency.
-    const profiles = await sql`
+    const profilesQuery = sql`
       SELECT
         p.id,
         p.name,
@@ -64,7 +68,7 @@ async function GET(request) {
     `;
 
     // Popular pet moments — recent posts with their pet + engagement context.
-    const moments = await sql`
+    const momentsQuery = sql`
       SELECT
         p.id,
         p.pet_id,
@@ -96,7 +100,13 @@ async function GET(request) {
     // other owners' tiles are tagged `locked: true` until the viewer has posted today but NOT
     // redacted (`redact: false`). The viewer's own moments, and everything once they have
     // posted, carry no flag.
-    const status = await getViewerDailyStatus(session.user.id);
+    const statusQuery = getViewerDailyStatus(session.user.id);
+
+    const [profiles, moments, status] = await Promise.all([
+      profilesQuery,
+      momentsQuery,
+      statusQuery,
+    ]);
     return Response.json({
       profiles,
       moments: applyDailyMomentsLock(moments, status, { redact: false }),

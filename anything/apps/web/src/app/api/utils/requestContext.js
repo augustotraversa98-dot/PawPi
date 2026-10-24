@@ -19,7 +19,12 @@
 
 import sql, { getActiveTx, runWithTx } from './sql';
 import { isValidAuthUserId } from './authUserId';
-import { runWithIdentityScope, rememberRequestIdentity } from './requestIdentity';
+import {
+  runWithIdentityScope,
+  rememberRequestIdentity,
+  getCachedProfileId,
+  cacheProfileId,
+} from './requestIdentity';
 
 /**
  * Run `fn` inside a SAVEPOINT on the active request transaction, so a query error
@@ -85,6 +90,19 @@ async function applyIdentity() {
     if (!isValidAuthUserId(authUserId)) return;
     const tx = getActiveTx();
     if (!tx) return;
+    // PERF (perf audit 5.2): when this caller's profile id is already known, do NOT wait for the stamp. Queue
+    // `set_config` on the request transaction and return: statements on one connection execute in the order
+    // they are queued, so the stamp still runs BEFORE the handler's first statement and rides in the same
+    // network flight as it (porsager pipelines queued statements), saving one full cross-region round trip.
+    // `.catch` is what starts the (lazy) query and keeps a failure from becoming an unhandled rejection; a
+    // failed stamp aborts the transaction, so the handler's own statements fail loudly rather than run
+    // un-stamped. The id comes from this process's cache of an earlier user_profiles read (requestIdentity).
+    const cachedId = getCachedProfileId(authUserId);
+    if (cachedId !== null) {
+      tx`select set_config('app.current_user_id', ${String(cachedId)}, true)`.catch(() => {});
+      rememberRequestIdentity(authUserId, cachedId);
+      return;
+    }
     // ONE round trip: look the profile up and stamp the GUC in the same statement. This used to be a
     // SELECT followed by a separate set_config(), i.e. two sequential cross-region round trips on
     // every request. set_config sits in the select list, so it runs only for the (at most one) row
@@ -97,7 +115,10 @@ async function applyIdentity() {
       limit 1
     `;
     // Let resolveUserId / resolveOrCreateUserId reuse this result instead of repeating the lookup.
-    if (rows.length > 0) rememberRequestIdentity(authUserId, rows[0].id);
+    if (rows.length > 0) {
+      rememberRequestIdentity(authUserId, rows[0].id);
+      cacheProfileId(authUserId, rows[0].id);
+    }
   } catch {
     // Identity is non-enforcing in R1; never let resolution failure break the route.
   }

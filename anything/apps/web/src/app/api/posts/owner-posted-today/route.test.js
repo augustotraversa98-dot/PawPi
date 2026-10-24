@@ -35,20 +35,21 @@ describe("GET /api/posts/owner-posted-today", () => {
 
   it("true when any owned pet posted today; scoped on user_profiles.id + owner-local day", async () => {
     auth.mockResolvedValue(SESSION);
-    sql
-      .mockResolvedValueOnce([{ id: 7, local_today: "2026-06-10" }])
-      .mockResolvedValueOnce([{ "?column?": 1 }]);
+    sql.mockResolvedValueOnce([{ id: 7, local_today: "2026-06-10", posted_today: true }]);
     const body = await (await GET(req())).json();
     expect(body).toEqual({ hasPostedToday: true, todayDate: "2026-06-10" });
-    expect(sql.mock.calls[0].slice(1)).toEqual([42]); // auth id → profile
-    expect(sql.mock.calls[1].slice(1)).toEqual([7, "2026-06-10"]); // profile id, never the auth id
+    // ONE statement (profile lookup + posted-today): the only bound value is the auth id, which the SQL
+    // maps to user_profiles.id; the posts check is owner-scoped on that profile id inside the statement.
+    expect(sql).toHaveBeenCalledTimes(1);
+    expect(sql.mock.calls[0].slice(1)).toEqual([42]);
+    const text = sql.mock.calls[0][0].join(" ");
+    expect(text).toContain("pet.owner_user_id = up.id");
+    expect(text).toContain("up.auth_user_id =");
   });
 
   it("false when nothing posted today", async () => {
     auth.mockResolvedValue(SESSION);
-    sql
-      .mockResolvedValueOnce([{ id: 7, local_today: "2026-06-10" }])
-      .mockResolvedValueOnce([]);
+    sql.mockResolvedValueOnce([{ id: 7, local_today: "2026-06-10", posted_today: false }]);
     expect((await (await GET(req())).json()).hasPostedToday).toBe(false);
   });
 });

@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { forgetCachedProfileId } from "@/app/api/utils/requestIdentity";
 
 // DELETE /api/account — in-app ACCOUNT DELETION (App Store readiness, ticket 2.78; Apple 5.1.1(v)).
 // Irreversibly deletes the CALLER's account + all owner-scoped data via the SECURITY DEFINER
@@ -15,6 +16,8 @@ async function DELETE() {
     if (!session?.user?.id) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // The process-wide auth id -> profile id cache must not outlive the account (requestIdentity.js).
+    forgetCachedProfileId(session.user.id);
     // Establish the caller's identity so delete_my_account() resolves current_app_user_id(). A user
     // with no profile yet (never created a pet) still has an auth row — fall back to deleting that.
     const userId = await resolveUserId(session.user.id);

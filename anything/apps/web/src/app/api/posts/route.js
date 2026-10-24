@@ -74,7 +74,8 @@ export function mergeFollowingByRecency(petPosts, providerPosts, cap) {
 // PRE-migration database would degrade (0083 provider_follows, 0087 media columns, provider_post_paws,
 // provider_post_comments). Verified read-only on production 2026-10-23: all of those tables and columns
 // exist, and CI applies every migration, so the guards (and the image-only fallback read) are gone.
-// The two count reads are independent of each other, so they run pipelined in ONE round trip.
+// The paw / comment counts are correlated subselects in the same statement (only the page's rows are
+// counted), so a follower of a business pays ONE round trip for the whole business block.
 // The caller still wraps this in try/catch for JS-level failures. A SQL error here aborts the request
 // transaction exactly as it does in every other route (it is no longer isolated by a savepoint).
 async function fetchFollowedProviderPosts(cap) {
@@ -83,7 +84,10 @@ async function fetchFollowedProviderPosts(cap) {
       pp.id, pp.provider_id, pp.body, pp.image_urls,
       pp.media_type, pp.video_url, pp.video_thumbnail_url,
       pp.created_at,
-      pr.name AS provider_name, pr.slug AS provider_slug, pr.logo_url AS provider_logo_url
+      pr.name AS provider_name, pr.slug AS provider_slug, pr.logo_url AS provider_logo_url,
+      (SELECT COUNT(*)::int FROM provider_post_paws pw WHERE pw.post_id = pp.id) AS paw_count,
+      (SELECT COUNT(*)::int FROM provider_post_comments pc
+        WHERE pc.post_id = pp.id AND pc.deleted_at IS NULL AND pc.hidden_at IS NULL) AS comment_count
     FROM provider_posts pp
     JOIN providers pr ON pr.id = pp.provider_id
     WHERE pp.provider_id IN (
@@ -98,27 +102,6 @@ async function fetchFollowedProviderPosts(cap) {
   `;
 
   if (!Array.isArray(rows) || rows.length === 0) return [];
-  const ids = rows.map((r) => r.id);
-
-  // Paw + comment counts, issued together so they share one round trip.
-  const [pawCounts, commentCounts] = await Promise.all([
-    sql`
-      SELECT post_id, COUNT(*)::int AS n
-      FROM provider_post_paws
-      WHERE post_id = ANY(${ids})
-      GROUP BY post_id
-    `,
-    sql`
-      SELECT post_id, COUNT(*)::int AS n
-      FROM provider_post_comments
-      WHERE post_id = ANY(${ids}) AND deleted_at IS NULL AND hidden_at IS NULL
-      GROUP BY post_id
-    `,
-  ]);
-  const pawMap = {};
-  for (const c of pawCounts) pawMap[c.post_id] = c.n;
-  const commentMap = {};
-  for (const c of commentCounts) commentMap[c.post_id] = c.n;
 
   return rows.map((r) => ({
     id: r.id,
@@ -136,8 +119,8 @@ async function fetchFollowedProviderPosts(cap) {
       slug: r.provider_slug,
       logo_url: r.provider_logo_url,
     },
-    paw_count: pawMap[r.id] ?? 0,
-    comment_count: commentMap[r.id] ?? 0,
+    paw_count: r.paw_count ?? 0,
+    comment_count: r.comment_count ?? 0,
     // Discriminator: the mobile feed renders these with the business card, never as a pet post.
     item_type: "provider_post",
   }));
@@ -180,21 +163,15 @@ async function GET(request) {
             pet.avatar_url as pet_avatar,
             pet.birthday as pet_birthday,
             pet.adoption_date as pet_adoption_date,
-            COALESCE(paw_count.count, 0)::int as paw_count,
-            COALESCE(bark_count.count, 0)::int as bark_count
+            (SELECT COUNT(*) FROM post_paws pc WHERE pc.post_id = p.id)::int as paw_count,
+            (SELECT COUNT(*) FROM post_barks bc WHERE bc.post_id = p.id)::int as bark_count,
+            EXISTS (
+              SELECT 1 FROM post_paws mine
+              WHERE mine.post_id = p.id AND mine.user_id = current_app_user_id()
+            ) as user_has_pawed
           FROM posts p
           INNER JOIN user_profiles up ON p.user_id = up.id
           INNER JOIN pets pet ON p.pet_id = pet.id
-          LEFT JOIN (
-            SELECT post_id, COUNT(*) as count
-            FROM post_paws
-            GROUP BY post_id
-          ) paw_count ON p.id = paw_count.post_id
-          LEFT JOIN (
-            SELECT post_id, COUNT(*) as count
-            FROM post_barks
-            GROUP BY post_id
-          ) bark_count ON p.id = bark_count.post_id
           WHERE (
             p.pet_id = ${viewerPetId}
             OR p.pet_id IN (
@@ -223,21 +200,15 @@ async function GET(request) {
         pet.avatar_url as pet_avatar,
         pet.birthday as pet_birthday,
         pet.adoption_date as pet_adoption_date,
-        COALESCE(paw_count.count, 0)::int as paw_count,
-        COALESCE(bark_count.count, 0)::int as bark_count
+        (SELECT COUNT(*) FROM post_paws pc WHERE pc.post_id = p.id)::int as paw_count,
+        (SELECT COUNT(*) FROM post_barks bc WHERE bc.post_id = p.id)::int as bark_count,
+        EXISTS (
+          SELECT 1 FROM post_paws mine
+          WHERE mine.post_id = p.id AND mine.user_id = current_app_user_id()
+        ) as user_has_pawed
       FROM posts p
       INNER JOIN user_profiles up ON p.user_id = up.id
       INNER JOIN pets pet ON p.pet_id = pet.id
-      LEFT JOIN (
-        SELECT post_id, COUNT(*) as count
-        FROM post_paws
-        GROUP BY post_id
-      ) paw_count ON p.id = paw_count.post_id
-      LEFT JOIN (
-        SELECT post_id, COUNT(*) as count
-        FROM post_barks
-        GROUP BY post_id
-      ) bark_count ON p.id = bark_count.post_id
       WHERE (
         ${viewerPetId}::int IS NULL
         OR (
@@ -273,10 +244,20 @@ async function GET(request) {
         })
       : [];
 
-    const [following, suggested, providerFollowing] = await Promise.all([
+    // The viewer's daily-post status is independent of the three reads above, so it joins the same batch.
+    // Daily-post lock, enforced here and not only on-device: until the viewer has posted today,
+    // other owners' media never leaves the server (utils/dailyMomentsGate.js — the same query
+    // that powers /owner-posted-today, so the Feed's lock and the data returned always agree).
+    // Fails closed: an anonymous viewer, or one with no profile yet, counts as "not posted".
+    const statusQuery = session?.user?.id
+      ? getViewerDailyStatus(session.user.id)
+      : null;
+
+    const [following, suggested, providerFollowing, status] = await Promise.all([
       followingQuery,
       suggestedQuery,
       providerQuery,
+      statusQuery,
     ]);
     const mergedFollowing = mergeFollowingByRecency(
       following,
@@ -285,40 +266,15 @@ async function GET(request) {
     );
 
     const page = mergeFeed(mergedFollowing, suggested, { limit, offset });
-
-    // Daily-post lock, enforced here and not only on-device: until the viewer has posted today,
-    // other owners' media never leaves the server (utils/dailyMomentsGate.js — the same query
-    // that powers /owner-posted-today, so the Feed's lock and the data returned always agree).
-    // Fails closed: an anonymous viewer, or one with no profile yet, counts as "not posted".
-    const status = session?.user?.id
-      ? await getViewerDailyStatus(session.user.id)
-      : null;
     const posts = applyDailyMomentsLock(page, status);
 
-    // Check if current user has pawed each PET post. Business posts carry their own
-    // paw_count/paw state from fetchFollowedProviderPosts and are EXCLUDED here — their id
-    // space is separate from pet posts, so mixing them into a post_paws lookup would be wrong.
-    if (status) {
-      const userId = status.userId;
-      const postIds = posts
-        .filter((p) => p.item_type !== "provider_post")
-        .map((p) => p.id);
-
-      if (postIds.length > 0) {
-        const userPaws = await sql`
-          SELECT post_id
-          FROM post_paws
-          WHERE user_id = ${userId}
-            AND post_id = ANY(${postIds})
-        `;
-
-        const pawedPostIds = new Set(userPaws.map((p) => p.post_id));
-
-        posts.forEach((post) => {
-          if (post.item_type === "provider_post") return;
-          post.user_has_pawed = pawedPostIds.has(post.id);
-        });
-      }
+    // Whether the current user has pawed each PET post comes back with the page itself (user_has_pawed,
+    // an EXISTS in the feed queries) instead of a follow-up lookup: one round trip fewer. Business posts
+    // carry their own paw_count/paw state from fetchFollowedProviderPosts and have no such field. Without
+    // a resolved viewer profile the flag is omitted entirely, as before.
+    for (const post of posts) {
+      if (post.item_type === "provider_post") continue;
+      if (!status) delete post.user_has_pawed;
     }
 
     return Response.json({ posts });

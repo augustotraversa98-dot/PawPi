@@ -19,34 +19,40 @@ import { ownerTodayFrom } from "@/app/api/utils/ownerLocalDay";
 //   - isOwner is true when `targetOwnerId` is the viewer's own user_profiles.id (own pets are
 //     never gated); the posted-today query is skipped then and hasPostedToday is null.
 export async function getViewerDailyStatus(authUserId, { targetOwnerId } = {}) {
-  const profileRows = await sql`
-    SELECT id, (now() AT TIME ZONE COALESCE(timezone, 'America/Buenos_Aires'))::date AS local_today
-    FROM user_profiles
-    WHERE auth_user_id = ${authUserId}
+  // ONE statement (perf audit 5.2): the profile lookup and the "posted today" check used to be two
+  // sequential cross-region round trips, the second depending on the first. The owner-local day is computed
+  // once, in a LATERAL, and shared by `local_today` and the EXISTS, so both always agree.
+  const rows = await sql`
+    SELECT
+      up.id,
+      d.local_today,
+      EXISTS (
+        SELECT 1
+        FROM posts p
+        INNER JOIN pets pet ON p.pet_id = pet.id
+        WHERE pet.owner_user_id = up.id
+          AND p.is_daily_update = true
+          AND p.post_date = d.local_today
+      ) AS posted_today
+    FROM user_profiles up
+    CROSS JOIN LATERAL (
+      SELECT (now() AT TIME ZONE COALESCE(up.timezone, 'America/Buenos_Aires'))::date AS local_today
+    ) d
+    WHERE up.auth_user_id = ${authUserId}
     LIMIT 1
   `;
-  if (profileRows.length === 0) return null;
+  if (rows.length === 0) return null;
 
-  const userId = profileRows[0].id;
+  const userId = rows[0].id;
   // Owner-local today (AUDIT_2026-09 A-10) — must agree with the Care Ring and POST /api/posts.
-  const todayDate = ownerTodayFrom(profileRows[0]);
+  const todayDate = ownerTodayFrom(rows[0]);
 
   if (targetOwnerId != null && String(targetOwnerId) === String(userId)) {
     return { userId, todayDate, isOwner: true, hasPostedToday: null };
   }
 
   // Any daily update today across ALL pets owned by this viewer.
-  const rows = await sql`
-    SELECT 1
-    FROM posts p
-    INNER JOIN pets pet ON p.pet_id = pet.id
-    WHERE pet.owner_user_id = ${userId}
-      AND p.is_daily_update = true
-      AND p.post_date = ${todayDate}
-    LIMIT 1
-  `;
-
-  return { userId, todayDate, isOwner: false, hasPostedToday: rows.length > 0 };
+  return { userId, todayDate, isOwner: false, hasPostedToday: rows[0].posted_today === true };
 }
 
 // Fields that expose another owner's moment: the photo, the video + its poster frame, and the

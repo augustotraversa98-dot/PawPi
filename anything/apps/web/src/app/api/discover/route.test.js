@@ -35,8 +35,7 @@ describe("GET /api/discover", () => {
     sql
       .mockResolvedValueOnce(PROFILES)
       .mockResolvedValueOnce(MOMENTS)
-      .mockResolvedValueOnce([{ id: 42, local_today: "2026-08-12" }]) // daily gate — profile
-      .mockResolvedValueOnce([{ "?column?": 1 }]); // daily gate — posted today
+      .mockResolvedValueOnce([{ id: 42, local_today: "2026-08-12", posted_today: true }]); // daily gate — ONE statement
 
     const res = await GET(req("?limit=12"));
 
@@ -66,8 +65,7 @@ describe("GET /api/discover", () => {
     sql
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce(MOMENTS)
-      .mockResolvedValueOnce([{ id: 42, local_today: "2026-08-12" }])
-      .mockResolvedValueOnce([]); // nothing posted today
+      .mockResolvedValueOnce([{ id: 42, local_today: "2026-08-12", posted_today: false }]); // nothing posted today
 
     const { moments } = await (await GET(req())).json();
     // Not redacted — the tile shows the real thumbnail — but tagged so a tap prompts instead of opens.
@@ -86,8 +84,7 @@ describe("GET /api/discover", () => {
     sql
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce(MOMENTS)
-      .mockResolvedValueOnce([{ id: 42, local_today: "2026-08-12" }])
-      .mockResolvedValueOnce([{ "?column?": 1 }]); // posted today
+      .mockResolvedValueOnce([{ id: 42, local_today: "2026-08-12", posted_today: true }]); // posted today
 
     const { moments } = await (await GET(req())).json();
     expect(moments).toEqual(MOMENTS);
