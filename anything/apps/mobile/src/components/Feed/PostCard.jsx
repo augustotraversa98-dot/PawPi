@@ -51,6 +51,10 @@ const LOCKED_PHOTO_SOLID = "rgba(216, 197, 181, 0.97)"; // muted sand, near-opaq
 // card shows one — varied by position so the wall of teases never reads as a
 // single repeated line — nudging the viewer to post their own daily moment. All
 // four ship EN + ES; {{petName}} is the poster's pet.
+// Only the first few locked cards run the infinite attention pulse: every locked card used to loop its own
+// Moti animation forever (up to 20 concurrent infinite animations on a feed that is mostly off-screen).
+const LOCKED_PULSE_CARDS = 3;
+
 const LOCKED_CTA_KEYS = [
   "feed.lockedCard1",
   "feed.lockedCard2",
@@ -157,6 +161,7 @@ export const PostCard = memo(function PostCard({
     { petName: dogName },
   );
   const lockedPostCta = t("feed.lockedPostCta");
+  const pulses = !reduceMotion && (lockedCtaIndex || 0) < LOCKED_PULSE_CARDS;
 
   // Primary CTA press: a light haptic + open the composer. Lazy-require keeps a
   // missing native module from ever crashing the render/test.
@@ -404,11 +409,11 @@ export const PostCard = memo(function PostCard({
               {/* Gentle pulse to draw the eye — disabled under Reduce Motion. */}
               <MotiView
                 from={{ scale: 1 }}
-                animate={{ scale: reduceMotion ? 1 : 1.04 }}
+                animate={{ scale: pulses ? 1.04 : 1 }}
                 transition={{
                   type: "timing",
                   duration: 1100,
-                  loop: !reduceMotion,
+                  loop: pulses,
                   repeatReverse: true,
                 }}
               >
