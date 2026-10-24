@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Pressable, View, StyleSheet } from "react-native";
 import { Video, ResizeMode } from "expo-av";
 import { Image } from "expo-image";
+import { FEED_IMAGE_PROPS } from "@/utils/feedImageProps";
 import { PawPrint, Play } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 
@@ -120,6 +121,7 @@ export function FeedVideo({
         // No playable URL but we have a poster — show it as a still rather than a
         // dead player.
         <Image
+          {...FEED_IMAGE_PROPS}
           source={{ uri: posterUri }}
           style={StyleSheet.absoluteFill}
           contentFit="cover"

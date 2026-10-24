@@ -1,6 +1,7 @@
 import React, { memo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Image } from "expo-image";
+import { FEED_IMAGE_PROPS } from "@/utils/feedImageProps";
 import { Store, PawPrint, MessageCircle } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import {
@@ -79,7 +80,7 @@ export const BusinessPostCard = memo(function BusinessPostCard({ post, onPress }
           }}
         >
           {logo ? (
-            <Image source={{ uri: logo }} style={{ width: 42, height: 42 }} contentFit="cover" />
+            <Image {...FEED_IMAGE_PROPS} source={{ uri: logo }} style={{ width: 42, height: 42 }} contentFit="cover" />
           ) : (
             <Store size={20} color={COLORS.terracotta} />
           )}
@@ -120,6 +121,7 @@ export const BusinessPostCard = memo(function BusinessPostCard({ post, onPress }
       ) : photo ? (
         <TouchableOpacity testID="business-post-photo" onPress={onPress} activeOpacity={0.95}>
           <Image
+            {...FEED_IMAGE_PROPS}
             source={{ uri: photo }}
             style={{ width: "100%", height: 320, backgroundColor: COLORS.sand }}
             contentFit="cover"

@@ -2,12 +2,13 @@ import React from "react";
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   ActivityIndicator,
   Dimensions,
 } from "react-native";
+import { Image } from "expo-image";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
+import { FEED_IMAGE_PROPS } from "@/utils/feedImageProps";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 // 3-up grid: full width minus the two SPACING.lg page gutters (16 each) minus the two
@@ -56,6 +57,8 @@ export function MomentsGrid({
         >
           {m.imageUri ? (
             <Image
+              {...FEED_IMAGE_PROPS}
+              testID="moments-grid-image"
               source={{ uri: m.imageUri }}
               style={{
                 width: TILE,
@@ -63,7 +66,7 @@ export function MomentsGrid({
                 borderRadius: RADIUS.control,
                 backgroundColor: MATERIALS.surfaceSunken,
               }}
-              resizeMode="cover"
+              contentFit="cover"
             />
           ) : (
             <View

@@ -6,6 +6,11 @@ import { Text } from "react-native";
 import { render, fireEvent } from "@testing-library/react-native";
 import { MomentsGrid } from "./MomentsGrid";
 
+jest.mock("expo-image", () => {
+  const { View } = require("react-native");
+  return { Image: (props) => <View {...props} /> };
+});
+
 const MOMENTS = [
   { id: 1, imageUri: "https://x/a.jpg", post: { id: 1 }, badge: { icon: null, count: 2 } },
   { id: 2, imageUri: null, body: "text only", post: { id: 2 } },
@@ -38,3 +43,15 @@ test("shows a spinner while the first page loads (no empty node yet)", () => {
   );
   expect(queryByText("Nothing here")).toBeNull();
 });
+
+test("grid thumbnails use the shared memory-disk cache + cross-fade", () => {
+  const { getByTestId } = render(
+    <MomentsGrid moments={MOMENTS} tileTestID="tile" />,
+  );
+  expect(getByTestId("moments-grid-image").props).toMatchObject({
+    cachePolicy: "memory-disk",
+    transition: 150,
+    contentFit: "cover",
+  });
+});
+

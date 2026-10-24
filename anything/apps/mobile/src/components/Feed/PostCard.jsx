@@ -9,6 +9,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { Image } from "expo-image";
+import { FEED_IMAGE_PROPS } from "@/utils/feedImageProps";
 import { BlurView } from "expo-blur";
 import { MotiView } from "moti";
 import { PawPrint, Megaphone, Lock, Camera } from "lucide-react-native";
@@ -214,6 +215,7 @@ export const PostCard = memo(function PostCard({
             }}
           >
             <Image
+              {...FEED_IMAGE_PROPS}
               source={{ uri: avatar }}
               style={{ width: 42, height: 42, borderRadius: 21 }}
             />
@@ -290,6 +292,7 @@ export const PostCard = memo(function PostCard({
               is something to blur, so there's no broken-image flash. */}
           {lockedMediaUri ? (
             <Image
+              {...FEED_IMAGE_PROPS}
               testID="feed-post-locked-media"
               source={{ uri: lockedMediaUri }}
               style={StyleSheet.absoluteFill}
