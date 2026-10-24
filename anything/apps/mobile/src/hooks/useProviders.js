@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toCanonicalDate, toCanonicalTime } from "@/utils/canonicalDateTime";
 import { MY_PROVIDERS_QUERY_KEY, fetchMyProviders } from "@/utils/launchQueries";
+import { useFocusedQuery } from "@/hooks/useFocusedPolling";
 
 // Owner-facing provider discovery + booking (docs/provider-design.md §4 items 5–6).
 // These wrap the public/owner routes shipped in T5/T6:
@@ -253,29 +254,31 @@ export function useProviderAvailability(
 // throw on !res.ok. REALTIME = short-interval POLLING (refetchInterval), the
 // documented lightweight choice — no Supabase Realtime websocket infra.
 
-// The owner's thread inbox (GET /api/threads?side=owner). Polls every 15s.
+// The owner's thread inbox (GET /api/threads?side=owner). Polls every 30s, and only while the inbox
+// screen is focused (a hidden screen does not poll).
 export function useMyThreads() {
-  return useQuery({
-    queryKey: ["threads", "owner"],
-    refetchInterval: 15000,
-    queryFn: async () => {
-      const response = await fetch("/api/threads?side=owner");
-      if (!response.ok) {
-        throw new Error("Failed to fetch conversations");
-      }
-      const data = await response.json();
-      return data.threads ?? [];
+  return useFocusedQuery(
+    {
+      queryKey: ["threads", "owner"],
+      queryFn: async () => {
+        const response = await fetch("/api/threads?side=owner");
+        if (!response.ok) {
+          throw new Error("Failed to fetch conversations");
+        }
+        const data = await response.json();
+        return data.threads ?? [];
+      },
     },
-  });
+    30000,
+  );
 }
 
 // One thread's messages (GET /api/threads/[id]/messages). Newest-first; polls every
-// 8s while open. Disabled until a thread id is known.
+// 8s while open and focused. Disabled until a thread id is known.
 export function useThreadMessages(threadId) {
-  return useQuery({
+  return useFocusedQuery({
     queryKey: ["thread-messages", threadId],
     enabled: threadId != null,
-    refetchInterval: 8000,
     queryFn: async () => {
       const response = await fetch(
         `/api/threads/${encodeURIComponent(threadId)}/messages?limit=50`,
@@ -286,7 +289,7 @@ export function useThreadMessages(threadId) {
       const data = await response.json();
       return data.messages ?? [];
     },
-  });
+  }, 8000);
 }
 
 // Start (or reuse) a thread with a provider (POST /api/threads). Idempotent — returns
@@ -363,20 +366,23 @@ export function useMarkThreadRead() {
 }
 
 // The owner's total unread message count (GET /api/threads/unread-count?side=owner).
-// Drives the Messages badge. Polls every 30s.
+// Drives the Messages badge. Polls every 30s while the screen that shows the badge is focused (it used to
+// poll from every mounted-but-hidden tab too: 32k runs in the audit window).
 export function useUnreadCount() {
-  return useQuery({
-    queryKey: ["threads", "unread"],
-    refetchInterval: 30000,
-    queryFn: async () => {
-      const response = await fetch("/api/threads/unread-count?side=owner");
-      if (!response.ok) {
-        throw new Error("Failed to fetch unread count");
-      }
-      const data = await response.json();
-      return data.unread_count ?? 0;
+  return useFocusedQuery(
+    {
+      queryKey: ["threads", "unread"],
+      queryFn: async () => {
+        const response = await fetch("/api/threads/unread-count?side=owner");
+        if (!response.ok) {
+          throw new Error("Failed to fetch unread count");
+        }
+        const data = await response.json();
+        return data.unread_count ?? 0;
+      },
     },
-  });
+    30000,
+  );
 }
 
 // Create a provider — the caller becomes its active 'owner' (POST /api/providers, the
