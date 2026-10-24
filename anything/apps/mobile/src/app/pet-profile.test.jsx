@@ -299,11 +299,26 @@ describe("daily moments gate", () => {
     expect(getByText("About Rex")).toBeTruthy();
     // The grid is replaced by a friendly locked state with a post CTA…
     expect(getByTestId("pet-profile-moments-locked")).toBeTruthy();
-    expect(getByText("Post your moment to see Rex's")).toBeTruthy();
+    expect(getByText("Post your moment to see more of Rex")).toBeTruthy();
     expect(getByText("Post today's moment")).toBeTruthy();
     // …and it is NOT the misleading "this pet has no posts" empty state.
     expect(queryByText("No daily posts yet")).toBeNull();
     expect(queryByTestId("pet-profile-moment-tile")).toBeNull();
+  });
+
+  test("a pet name ending in an emoji never gets a dangling possessive on the lock card", () => {
+    mockViewer = { id: 4 };
+    mockProfile = {
+      ...mockProfile,
+      pet: { ...mockProfile.pet, name: "Lila 💜" },
+      posts: [],
+      momentsLocked: true,
+    };
+    const { getByText, queryByText } = render(<PetProfileScreen />);
+
+    // Reads "…see more of Lila 💜" - NOT "…see Lila 💜's".
+    expect(getByText("Post your moment to see more of Lila 💜")).toBeTruthy();
+    expect(queryByText(/💜['’]s/)).toBeNull();
   });
 
   test("the lock CTA opens the composer, and posting goes through the Feed's handlePost", () => {
