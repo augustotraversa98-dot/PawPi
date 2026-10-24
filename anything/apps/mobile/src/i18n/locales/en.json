@@ -41,7 +41,7 @@
     "noDailyPosts": "No daily posts yet",
     "momentsEmpty": "{{name}}'s daily moments will appear here.",
     "momentsEmptyGeneric": "These daily moments will appear here.",
-    "momentsLockedTitle": "Post your moment to see {{name}}'s",
+    "momentsLockedTitle": "Post your moment to see more of {{name}}",
     "momentsLockedTitleGeneric": "Post your moment to see these",
     "momentsLockedBody": "Daily moments unlock once you share your own for today.",
     "momentsLockedCta": "Post today's moment",

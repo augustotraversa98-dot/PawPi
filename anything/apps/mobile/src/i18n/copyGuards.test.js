@@ -39,3 +39,23 @@ describe("locale files", () => {
     expect(hits.map(([k]) => k)).toEqual([]);
   });
 });
+
+// Pet names can end in an emoji ("Lila 💜"), which makes a trailing possessive read "Lila 💜's". A string whose
+// interpolated name is followed by a bare 's with nothing after it (a dangling possessive) also only works with a
+// clean trailing letter, so reword those to a form that doesn't need the suffix (e.g. "to see more of {{name}}").
+describe("copy that interpolates a pet name", () => {
+  const DANGLING_POSSESSIVE = /\{\{\s*\w+\s*\}\}['’]s[\s.!?…]*$/;
+
+  test("no English string ends in a dangling {{name}}'s", () => {
+    const hits = [...values(en)].filter(([, v]) => DANGLING_POSSESSIVE.test(v));
+    expect(hits.map(([k]) => k)).toEqual([]);
+  });
+
+  test("the profile lock title reads cleanly for a name ending in an emoji", () => {
+    for (const locale of [en, es]) {
+      const out = locale.petProfile.momentsLockedTitle.replace("{{name}}", "Lila 💜");
+      expect(out).toContain("Lila 💜");
+      expect(out).not.toMatch(/\p{Extended_Pictographic}\uFE0F?['’]s/u);
+    }
+  });
+});
