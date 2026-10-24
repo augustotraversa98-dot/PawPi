@@ -8,7 +8,10 @@ import sql from "@/app/api/utils/sql";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
-vi.mock("@/app/api/utils/requestContext", () => ({ withRequestContext: (fn) => fn }));
+vi.mock("@/app/api/utils/requestContext", () => ({
+  withRequestContext: (fn) => fn,
+  withSavepoint: (fn) => fn(),
+}));
 
 const SESSION = { user: { id: 42 }, expires: "9999999999" };
 const put = (body) =>
@@ -44,7 +47,7 @@ describe("flag ON", () => {
 
   it("stores a known zone for the caller (scoped by auth_user_id)", async () => {
     auth.mockResolvedValue(SESSION);
-    sql.mockResolvedValueOnce([{ name: "Europe/Madrid" }]); // pg_timezone_names
+    sql.mockResolvedValueOnce([{ timezone: "Europe/Madrid" }]); // timezone(zone, now()) accepted
     sql.mockResolvedValueOnce([{ timezone: "Europe/Madrid" }]); // UPDATE
     const res = await PUT(put({ timezone: "Europe/Madrid" }));
     expect(res.status).toBe(200);
@@ -65,23 +68,46 @@ describe("flag ON", () => {
 
   it("rejects a zone Postgres does not know (400, nothing stored)", async () => {
     auth.mockResolvedValue(SESSION);
-    sql.mockResolvedValueOnce([]); // not in pg_timezone_names
-    expect((await PUT(put({ timezone: "Europe/Madrid" }))).status).toBe(400);
+    sql.mockRejectedValueOnce(Object.assign(new Error('time zone "Nope/Zone" not recognized'), { code: "22023" }));
+    // A zone no other test accepts (accepted zones are cached in process).
+    expect((await PUT(put({ timezone: "Pacific/Fiji" }))).status).toBe(400);
     expect(sql).toHaveBeenCalledTimes(1);
   });
 
   it("no profile row → 404", async () => {
     auth.mockResolvedValue(SESSION);
-    sql.mockResolvedValueOnce([{ name: "Europe/Madrid" }]);
+    sql.mockResolvedValueOnce([{ timezone: "Asia/Tokyo" }]);
     sql.mockResolvedValueOnce([]);
-    expect((await PUT(put({ timezone: "Europe/Madrid" }))).status).toBe(404);
+    expect((await PUT(put({ timezone: "Asia/Tokyo" }))).status).toBe(404);
   });
 
   it("DB failure → 500 with a generic message", async () => {
     auth.mockResolvedValue(SESSION);
     sql.mockRejectedValueOnce(new Error("secret internals"));
-    const res = await PUT(put({ timezone: "Europe/Madrid" }));
+    const res = await PUT(put({ timezone: "America/Lima" }));
     expect(res.status).toBe(500);
     expect(JSON.stringify(await res.json())).not.toContain("secret internals");
+  });
+});
+
+describe("Postgres zone check is cheap and cached (perf audit 2026-10-23)", () => {
+  it("never queries pg_timezone_names", async () => {
+    process.env.NOTIF_V2_ENABLED = "true";
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValue([{ timezone: "America/Bogota" }]);
+    await PUT(put({ timezone: "America/Bogota" }));
+    const texts = sql.mock.calls.map((c) => c[0].join(" "));
+    expect(texts.some((t) => t.includes("pg_timezone_names"))).toBe(false);
+    expect(texts[0]).toContain("timezone(");
+  });
+
+  it("an accepted zone is remembered: the second PUT skips the check", async () => {
+    process.env.NOTIF_V2_ENABLED = "true";
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValue([{ timezone: "America/Montevideo" }]);
+    await PUT(put({ timezone: "America/Montevideo" }));
+    const first = sql.mock.calls.length; // check + UPDATE
+    await PUT(put({ timezone: "America/Montevideo" }));
+    expect(sql.mock.calls.length - first).toBe(1); // UPDATE only
   });
 });

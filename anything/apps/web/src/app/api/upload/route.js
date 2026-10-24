@@ -99,6 +99,11 @@ async function POST(request) {
           apikey: serviceKey,
           "Content-Type": mimeType,
           "x-upsert": "true",
+          // PERF (docs/perf-audit-2026-10-23.md, finding 6): public media was served `cache-control: no-cache`,
+          // so every view revalidated. Object names are random UUIDs and never rewritten, so a year is safe.
+          // Private (medical/chat) objects keep the storage default: they are only reached via short-lived
+          // signed URLs.
+          ...(isPrivate ? {} : { "cache-control": "max-age=31536000" }),
         },
         body: bytes,
       },

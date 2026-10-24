@@ -65,6 +65,8 @@ describe("POST /api/upload", () => {
     expect(body.url).toContain("/storage/v1/object/public/media/uploads/");
     // Supabase object write used the validated Content-Type.
     expect(fetchMock.mock.calls[0][1].headers["Content-Type"]).toBe("image/png");
+    // Public media is immutable (UUID names): a year of caching instead of `no-cache` (perf audit 2026-10-23).
+    expect(fetchMock.mock.calls[0][1].headers["cache-control"]).toBe("max-age=31536000");
   });
 
   // (AUDIT A-04) Private mode: medical/chat uploads go to the private bucket under
@@ -95,6 +97,8 @@ describe("POST /api/upload", () => {
     expect(body.key).toMatch(/^pets\/5\/[a-f0-9-]+\.pdf$/);
     // The object write targeted the PRIVATE bucket.
     expect(fetchMock.mock.calls[0][0]).toContain("/object/media-private/pets/5/");
+    // Private objects keep the storage default (signed URLs only).
+    expect(fetchMock.mock.calls[0][1].headers["cache-control"]).toBeUndefined();
   });
 
   it("active-markup type (text/html) → 400, no storage write", async () => {
