@@ -524,6 +524,30 @@ Rollout: set `REQUEST_SINGLE_FLIGHT=on` in Railway, redeploy, re-run the section
 
 Targets after the flag is on (origin time): pets/posts/discover <= 0.35 s, a no-database 401 <= the 0.30 s floor.
 
+### 6.2 Result with `REQUEST_SINGLE_FLIGHT=on` in production (2026-10-26)
+
+PR #727 merged as `f5c8c48`; the flag was turned on in Railway the same day. Timings are the section-6 script (20 requests per route, `time_starttransfer`, demo account, from the maintainer's Mac through `www.pawpi.info`).
+
+| Route | Before (flag off) | After (flag on), p50 / p90 | Target | Result |
+|---|---|---|---|---|
+| `GET /api/pets` | 1.06 s | 0.29 / 0.36 s | <= 0.35 s | met at p50 |
+| `GET /api/discover` | about 1.2 s | 0.28 / 0.33 s | <= 0.35 s | met |
+| `GET /api/posts/owner-posted-today` | 0.80 s | 0.32 / 0.36 s | about the 0.30 s floor | close |
+| `GET /api/threads/unread-count` | about 0.80 s | 0.30 / 0.36 s | about the 0.30 s floor | met |
+| `GET /api/posts` | 1.34 s | 0.46 / 0.64 s (max 0.82 s) | <= 0.35 s | **missed**, about 3x faster |
+| unauthenticated 401 | 0.27 s above the floor (2 flights) | 0.27-0.28 s, equal to the database-free floor (`/api/telemetry/config`, 0.263 s); 5 probes | <= 0.30 s | met (0 flights) |
+
+How to read it: "before" is the 2026-10-26 re-measure in section 6.1 (discover: the section-6 M1 baseline of 2026-10-23, a different instrument); "after" is client-side time to first byte, which includes the network from the Mac, so the real server-side improvement is at least as large as shown. Differences of about 0.05 s are inside the run-to-run noise (p90 and max move by 0.1-0.3 s between runs).
+
+`GET /api/posts` still costs about 0.15 s more than `/api/pets`. What was ruled out on 2026-10-26:
+
+- not the page size: `?limit=1` p50 0.42 s, `?limit=20` p50 0.44-0.47 s;
+- not cold statements: no warm-up gain across 60 requests;
+- not database time: `pg_stat_statements` shows the feed query at about 2 ms, the business-posts query about 1.5 ms and the daily-status query 0.5 ms (about 5 ms per request);
+- not an extra trip in the code: the route's reads go out together, its SQL is read-only (so `COMMIT` is deferred), and the wire-level test (`single-flight.integration.test.ts`) sees one flight to the response.
+
+The remaining gap is unexplained. Chasing it needs server-side timing (for example a `Server-Timing` header); that was deliberately not added. The flag stays on.
+
 ## 7. What this audit did and did not do
 
 **Did (all read-only):** read the request path, 15 hot routes and the mobile launch/tabs/lists/images code at `origin/main` 8bcbc75e; queried Railway (service config, p50-p99 latency per route, CPU/memory) and Supabase (`pg_stat_user_tables`, `pg_stat_statements`, `pg_stat_activity`,
