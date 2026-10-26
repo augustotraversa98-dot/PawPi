@@ -264,6 +264,7 @@ async function POST(request) {
 // usePetProfile auto-repair). There is no longer a PATCH method on this route.
 
 // RLS R1: export the identity-scoped wrappers under the public method names.
-const wrappedGET = withRequestContext(GET);
+// REQUEST_SINGLE_FLIGHT: read-only GET, so its COMMIT is not awaited (utils/singleFlightTx.js; skipped if a write is seen).
+const wrappedGET = withRequestContext(GET, { deferCommit: true });
 const wrappedPOST = withRequestContext(POST);
 export { wrappedGET as GET, wrappedPOST as POST };
