@@ -19,6 +19,8 @@
 
 import sql, { getActiveTx, runWithTx } from './sql';
 import { isValidAuthUserId } from './authUserId';
+import { singleFlightEnabled } from './singleFlight';
+import { runSingleFlight, deferIdentityStamp } from './singleFlightTx';
 import {
   runWithIdentityScope,
   rememberRequestIdentity,
@@ -99,6 +101,12 @@ async function applyIdentity() {
     // un-stamped. The id comes from this process's cache of an earlier user_profiles read (requestIdentity).
     const cachedId = getCachedProfileId(authUserId);
     if (cachedId !== null) {
+      // REQUEST_SINGLE_FLIGHT: BEGIN has not been sent yet either; the stamp is held and goes out in the same chunk
+      // as BEGIN and the handler's first statement (utils/singleFlightTx.js), or never if the handler uses no DB.
+      if (deferIdentityStamp(tx, cachedId)) {
+        rememberRequestIdentity(authUserId, cachedId);
+        return;
+      }
       tx`select set_config('app.current_user_id', ${String(cachedId)}, true)`.catch(() => {});
       rememberRequestIdentity(authUserId, cachedId);
       return;
@@ -137,12 +145,31 @@ async function applyIdentity() {
  * (the export the unit mocks DO provide) rather than the named `pool`, so the
  * passthrough path never touches an export a mock might omit.
  */
-export function withRequestContext(handler) {
+export function withRequestContext(handler, options = {}) {
+  const { deferCommit = false } = options;
   return async (request, ctx) => {
     if (typeof sql.begin !== 'function') {
       return handler(request, ctx);
     }
     try {
+      // REQUEST_SINGLE_FLIGHT (OFF by default): BEGIN + identity stamp + the handler's statements (+ COMMIT) share
+      // network flights instead of each waiting for the previous one. See utils/singleFlightTx.js for the design and
+      // the safety argument. `deferCommit` is a per-route opt-in that is ONLY for GET handlers that read: the response
+      // is returned without waiting for COMMIT's flight. It is skipped automatically for a request whose statements
+      // look like writes (e.g. a lazily created profile). Never opt in a handler that calls a function with side effects.
+      if (singleFlightEnabled() && typeof sql.reserve === 'function') {
+        return await runSingleFlight(
+          () => sql.reserve(),
+          (tx) =>
+            runWithTx(tx, () =>
+              runWithIdentityScope(async () => {
+                await applyIdentity();
+                return handler(request, ctx);
+              })
+            ),
+          { deferCommit }
+        );
+      }
       // No tx is active here, so the proxy's `begin` runs on the global pool.
       return await sql.begin((tx) =>
         runWithTx(tx, () =>

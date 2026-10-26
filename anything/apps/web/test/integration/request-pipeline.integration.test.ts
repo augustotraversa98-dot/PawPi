@@ -59,6 +59,9 @@ beforeAll(async () => {
   process.env.DATABASE_URL = url.toString();
   process.env.DATABASE_SSL = 'disable';
   process.env.IDENTITY_CACHE_TTL_MS = '300000';
+  // This file counts statements through `pool.begin`, i.e. the sql.begin request path. The single-flight path
+  // (REQUEST_SINGLE_FLIGHT) reserves a connection instead and is measured on the wire in single-flight.integration.test.ts.
+  process.env.REQUEST_SINGLE_FLIGHT = 'off';
 
   ({ api } = (await import('../../__create/route-builder')) as any);
   const sqlModule = await import('@/app/api/utils/sql');
@@ -73,6 +76,7 @@ afterAll(async () => {
   counter.uninstall();
   await resetDb(raw);
   delete process.env.IDENTITY_CACHE_TTL_MS;
+  delete process.env.REQUEST_SINGLE_FLIGHT;
   await appSql.end?.();
   await raw.end();
 });

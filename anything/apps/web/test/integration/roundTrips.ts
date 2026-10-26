@@ -7,6 +7,14 @@
 // that starts while another is still in flight joins its flight; one that starts when nothing is in flight
 // opens a new flight.
 //
+// WHAT THIS CANNOT SEE (why production was slower than this test said): it counts awaits in JavaScript, not packets.
+// With porsager's `prepare:false` every statement that has a bound parameter makes porsager send a Describe, WAIT
+// for Postgres to answer, and only then send the query: two network flights that look like one await here, and they
+// never overlap. Against a Postgres on localhost that is invisible; at 133 ms per flight it was most of the latency
+// (2026-10-26 re-measure: /api/pets = 8 flights = 1064 ms). The wire-level counter that does see it, and the flag
+// that removes it, are test/integration/delayProxy.ts and single-flight.integration.test.ts. Keep using this file for
+// what it is good at: proving independent statements are queued together instead of awaited in series.
+//
 // Scope: statements issued on the request transaction handle (`tx`). BEGIN and COMMIT happen inside porsager
 // and are not counted here, so a route's real total is `flights + 2` (+ the token-revocation check, which
 // runs before the transaction and is cached). Statements issued on a savepoint handle are not counted either;

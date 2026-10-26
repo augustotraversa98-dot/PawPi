@@ -495,6 +495,7 @@ async function POST(request) {
 // bodies are unchanged — only their DB connection is now request-scoped.
 // PP3: the WRITE handlers are additionally wrapped with withRateLimit (utils/rateLimit)
 // — a shared, DB-backed fixed-window counter. Reads are never limited.
-const wrappedGET = withRequestContext(GET);
+// REQUEST_SINGLE_FLIGHT: read-only GET, so its COMMIT is not awaited (utils/singleFlightTx.js; skipped if a write is seen).
+const wrappedGET = withRequestContext(GET, { deferCommit: true });
 const wrappedPOST = withRequestContext(withRateLimit("post_create", POST));
 export { wrappedGET as GET, wrappedPOST as POST };

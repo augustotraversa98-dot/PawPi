@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import postgres from 'postgres';
 import { observeQuery } from '../../../lib/telemetry/dbMetrics.js';
+import { singleFlightEnabled, preparedStatementsAllowed } from './singleFlight.js';
 
 const NullishQueryFunction = () => {
   throw new Error(
@@ -20,20 +21,29 @@ NullishQueryFunction.transaction = () => {
 // letting `postgres(url)` parse it. porsager mishandles Supabase pooler usernames
 // that contain a dot (`postgres.<project-ref>`) — it sends just "postgres", which
 // fails auth. Passing username/password explicitly avoids that.
-// prepare:false keeps us compatible with Supabase's pooler (pgbouncer).
+// prepare:false keeps us compatible with Supabase's pooler (pgbouncer); REQUEST_SINGLE_FLIGHT turns it on where safe.
 //
 // SSL defaults to 'require' (Supabase). DATABASE_SSL=disable is an opt-in escape
 // hatch for SSL-less Postgres (the embedded integration harness, local dev); it
 // does NOT change production, where the env is unset and 'require' stands.
 function createSql(connectionString) {
   const u = new URL(connectionString);
+  const port = u.port ? Number(u.port) : 5432;
+  // REQUEST_SINGLE_FLIGHT (utils/singleFlight.js): with prepare:false every parameterised statement costs TWO
+  // network flights (porsager first asks Postgres for the parameter types, waits, then sends the query), and
+  // such statements cannot overlap. Named prepared statements remove that, but Supavisor's transaction-mode port
+  // (6543) cannot serve them, so they stay off there even when the flag is on.
+  const prepare = singleFlightEnabled() && preparedStatementsAllowed(port);
+  if (singleFlightEnabled() && !prepare) {
+    console.warn('[db] REQUEST_SINGLE_FLIGHT is on but DATABASE_URL uses the transaction-mode pooler port; prepared statements stay off');
+  }
   return postgres({
     host: u.hostname,
-    port: u.port ? Number(u.port) : 5432,
+    port,
     database: u.pathname.replace(/^\//, '') || 'postgres',
     username: decodeURIComponent(u.username),
     password: decodeURIComponent(u.password),
-    prepare: false,
+    prepare,
     ssl: process.env.DATABASE_SSL === 'disable' ? false : 'require',
     // PERF (docs/perf-audit-2026-10-23.md, finding 5): porsager's default recycles each connection after a
     // random 30-60 minutes, and every NEW connection costs TCP + TLS + auth + a type-fetch query (~3-5

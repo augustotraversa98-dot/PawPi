@@ -474,6 +474,56 @@ Pipelining experiment (reproduces the numbers in section 2.3): a 30-line Node sc
 (the `@embedded-postgres` binary already in `anything/apps/web/node_modules`), then times `sql.begin` bodies with statements awaited in series vs `Promise.all`. Re-run it if porsager is upgraded.
 
 
+### 6.1 The flight-cost model (2026-10-26) and REQUEST_SINGLE_FLIGHT
+
+The 2026-10-26 re-measure showed origin time was NOT "(2 + N) x 267 ms" as first read, and PR #723's pipelining did not remove round trips in production. The corrected model, which fits every measurement:
+
+> **latency = flights x ~133 ms** (Railway us-east4 <-> Supabase sa-east-1). A *flight* is one wait for the database.
+
+With porsager 3.4.9 and `prepare:false` (what `sql.js` used until now):
+
+| Statement | Flights | Why |
+|---|---|---|
+| `BEGIN` (`sql.begin`) | 1 | porsager awaits it alone before it runs the handler |
+| statement with no parameters | 1 | Parse/Bind/Execute/Sync in one write; several of them overlap (`Promise.all` works) |
+| statement with a bound parameter | **2, and they never overlap** | porsager sends Parse+Describe, WAITS for the parameter types, then sends Bind+Execute (`describeFirst`, `connection.js:238`) |
+| identity stamp `set_config($1)` | 2 | it is parameterised, so "pipelined with the first statement" (#723) only moved it, it still cost two flights |
+| `COMMIT` | 1 | awaited alone after the handler |
+
+| Route | BEGIN | stamp | handler | COMMIT | flights | measured |
+|---|---|---|---|---|---|---|
+| unauthenticated 401 | 1 | - | - | 1 | 2 | 268 ms |
+| `/api/posts/owner-posted-today` | 1 | 2 | 2 | 1 | 6 | 800 ms |
+| `/api/pets` (pets + weights) | 1 | 2 | 2 + 2 | 1 | 8 | 1064 ms |
+| `/api/posts` (3 reads) | 1 | 2 | 2 x 3 | 1 | 10 | 1335 ms |
+
+The #723 integration test counted awaits in JavaScript, so against a Postgres on localhost it saw "1 flight" for `/api/pets` and could not see any of this. `test/integration/roundTrips.ts` now says so; the wire-level counter is `test/integration/delayProxy.ts` (a TCP proxy that delays each direction and counts real flights).
+
+**Spike on production** (`railway run -s PawPi node spike.mjs`, `select 1` statements only; the pooler port in `DATABASE_URL` is **5432**, session mode):
+
+| Scenario (port 5432) | flights |
+|---|---|
+| 4 parallel `select $1::int` in `sql.begin`, `prepare:false` | 10.9 |
+| same, `prepare:true` | 3.9 |
+| BEGIN + stamp(`$1`) + 4 reads + COMMIT written together on a reserved connection, `prepare:true` | **1.1** |
+| the same, `prepare:false` | 7.9 |
+| `prepare:true`, 4 + 1 clients x 20 transactions | 0 errors |
+| port **6543** (transaction mode), `prepare:true`, same stress | **37 x `26000` (prepared statement does not exist)** + 6 closed connections |
+
+So: Supavisor in session mode relays pipelined messages and serves named prepared statements; the cost was porsager's, not the pooler's. **Never point `DATABASE_URL` at 6543 with prepared statements on** (the code refuses: `preparedStatementsAllowed`).
+
+**The fix, behind `REQUEST_SINGLE_FLIGHT` (OFF by default).** `on` / `1` / `true` / `yes` turns on:
+
+1. `prepare:true` on the pool (not on port 6543), so a parameterised statement is one flight once prepared on that connection. The first use of each statement on each connection still costs the extra flight; the pool keeps connections for 5-7 h.
+2. `withRequestContext` reserves a connection (`utils/singleFlightTx.js`), does not send `BEGIN` until the handler's first statement, and writes `BEGIN` + the identity stamp + that statement in one chunk. A request that never touches the database (a 401, a validation error) costs **0** flights.
+3. Routes that pass `{ deferCommit: true }` (the five hot GETs: pets, posts, discover, owner-posted-today, unread-count) return their response without waiting for `COMMIT`'s flight, **unless** a statement that looks like a write ran (e.g. the lazy profile create), in which case `COMMIT` is awaited as before.
+
+Expected: warm identity cache, prepared statements warm: the five hot GETs = **1 flight** (~133 ms + handler time), cache miss = 2, 401 = 0; the old path stays at 6-10.
+
+Rollout: set `REQUEST_SINGLE_FLIGHT=on` in Railway, redeploy, re-run the section-6 timing script; roll back by removing the variable (no migration, no data change). Watch `pg_prepared_statements` per backend (statements that vary in shape, e.g. `IN (...)` lists of different length, add one entry each) and the pool's busy count (a deferred `COMMIT` holds its connection for one extra flight).
+
+Targets after the flag is on (origin time): pets/posts/discover <= 0.35 s, a no-database 401 <= the 0.30 s floor.
+
 ## 7. What this audit did and did not do
 
 **Did (all read-only):** read the request path, 15 hot routes and the mobile launch/tabs/lists/images code at `origin/main` 8bcbc75e; queried Railway (service config, p50-p99 latency per route, CPU/memory) and Supabase (`pg_stat_user_tables`, `pg_stat_statements`, `pg_stat_activity`,

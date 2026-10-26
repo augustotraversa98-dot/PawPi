@@ -117,5 +117,6 @@ async function GET(request) {
   }
 }
 
-const wrappedGET = withRequestContext(GET);
+// REQUEST_SINGLE_FLIGHT: read-only GET, so its COMMIT is not awaited (utils/singleFlightTx.js; skipped if a write is seen).
+const wrappedGET = withRequestContext(GET, { deferCommit: true });
 export { wrappedGET as GET };

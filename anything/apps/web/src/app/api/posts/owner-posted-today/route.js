@@ -52,5 +52,6 @@ async function GET(request) {
 
 // RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
 // bodies are unchanged — only their DB connection is now request-scoped.
-const wrappedGET = withRequestContext(GET);
+// REQUEST_SINGLE_FLIGHT: read-only GET, so its COMMIT is not awaited (utils/singleFlightTx.js; skipped if a write is seen).
+const wrappedGET = withRequestContext(GET, { deferCommit: true });
 export { wrappedGET as GET };
