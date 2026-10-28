@@ -134,4 +134,13 @@ Notes:
 
 ## 8. Build record
 
-_Filled in after the build, if one was made:_ not built yet.
+| Item | Value |
+|---|---|
+| Version / EAS iOS build number | **1.0.4 / 30** |
+| EAS build | `66caf988-1657-4f7d-a8c4-b6664b4c200c` — https://expo.dev/accounts/augusto-firulais/projects/pawpi/builds/66caf988-1657-4f7d-a8c4-b6664b4c200c |
+| Built from commit | `280fc814` (main after #729 + #730), profile `production`, channel `production`, runtime `1.0.0` |
+| Built | 2026-10-27 (EAS build finished 12:50 UTC) |
+| EAS submission | `c244403c-5fbf-4f05-ba9a-f0199e7b1568` — uploaded to App Store Connect / TestFlight on 2026-10-28 (upload only; **not** submitted for review) |
+| Next step | Wait for Apple's processing email, install from TestFlight, run §5, then paste the What's New and Submit for Review manually |
+
+Build 30 is the one to test; any earlier 1.0.4 build numbers (28, 29) are not used.
