@@ -1,7 +1,7 @@
-# Signed-in users logged out after 1.0.4 — diagnosis (no code changed)
+# Signed-in users logged out after 1.0.4 — diagnosis and fix
 
-Status: investigation only. Nothing here changes behaviour. Build 30 = 1.0.4; build 27 (`d49b494c`) = 1.0.3.
-Written 2026-11-02 against `origin/main` @ `95b2e2dc`.
+Status: diagnosis (sections below) plus the approved fix (see "Implementation"). Build 30 = 1.0.4; build 27 (`d49b494c`) = 1.0.3.
+Written 2026-11-02 against `origin/main` @ `95b2e2dc`; telemetry evidence and implementation notes added the same day.
 
 ## TL;DR
 
@@ -19,9 +19,32 @@ Written 2026-11-02 against `origin/main` @ `95b2e2dc`.
 4. There is a **second, real bug** that can log a user out on a transient failure (H3): a request that goes out
    *without* a bearer gets a 401 that the server stamps `session_expired`, and the launch gate believes that stamp
    without checking a bearer was sent. It predates 1.0.4 and is a plausible rare contributor.
-5. **The telemetry numbers were not pasted** (the prompt still contains `<PASTE FROM GRAFANA…>` placeholders) and I have
-   no Grafana access from here, so nothing below is confirmed by auth_diag data. The exact queries that settle it are in
-   "What to read from telemetry".
+5. **Telemetry (added 2026-11-02, see next section) supports H1 and does not support a Keychain cause.**
+
+## Telemetry evidence (Grafana `auth_diag`, last 14 days, supplied by Augusto)
+
+| kind | 1.0.4 (build 30) | 1.0.3 (build 27) |
+|---|---|---|
+| `launch_token_found` | 5 | 16 |
+| `launch_no_token` | 3 | 6 |
+| `keychain_ok` | 4 | 11 |
+| `session_cleared_launch_401` | 2 | 1 |
+| `keychain_write_failed` | 0 | n/a |
+| `keychain_readback_mismatch` | 0 | n/a |
+
+- Both 1.0.4 clears were a `401` on `GET /api/pets` at cold launch **immediately after `launch_token_found`**, matching
+  Railway 401s on 2026-11-01 12:36Z and 2026-11-02 12:22Z (build 30). The token was found and sent; the server
+  rejected it. That is the H1 signature ("token found, server says expired") and the opposite of a Keychain cause
+  (H2 would show `launch_no_token` with no 401).
+- The rate is the same order on 1.0.3 (1 clear / 16 token-found launches vs 2 / 5), so there is no evidence of a
+  1.0.4 regression; the small counts cannot say more.
+- `launch_no_token` (3 and 6) is a minority of launches and is not paired with any server 401, so it is the benign
+  "signed out / fresh install / sign-in not completed" mix plus whatever H2 contributes. It stays unexplained until
+  the new `launch_read_timeout` / `launch_read_error` kinds split it (PR 2).
+- `keychain_write_failed = 0` and `keychain_readback_mismatch = 0`: sign-in tokens do reach the Keychain.
+- **AUTH_SECRET was rotated on 2026-10-21/22.** Tokens issued before that are signature-invalid (one-time,
+  expected): they decode to nothing and 401 exactly like an expired token, so some of the clears above may be
+  those. They cannot recur.
 
 ## Evidence that the observed 401 trio carries a bearer
 
@@ -42,7 +65,7 @@ inference weakens — the 0.3 s spacing argues against it.
 
 ## Hypotheses, ranked
 
-### H1 — 7-day absolute JWT expiry, no refresh (HIGH; unconfirmed by telemetry)
+### H1 — 7-day absolute JWT expiry, no refresh (HIGH; supported by the telemetry above)
 
 - `web/__create/index.ts:251` `session: { strategy: 'jwt', maxAge: 7*24*60*60 }`. In `@auth/core` 0.37.4 `jwt.maxAge`
   defaults to `session.maxAge` (`lib/init.js:83`), so `exp = iat + 604800`. Verified locally: `encode(maxAge=7d)` →
@@ -156,6 +179,8 @@ logout, H1 is confirmed.
 
 ## Smallest safe fix for the top hypothesis (H1) — NOT implemented, needs approval
 
+> **Implemented** in PR 1 (server) as A + B together and PR 2 (app); see "Implementation" at the end.
+
 **Option A (smallest, config only):** raise `session.maxAge` from 7 d to 30 d (`web/__create/index.ts:251`). A-05's
 real protection is the `token_invalidated_at` check, which stays. Tokens already issued keep their baked-in `exp`, so
 this only helps from the next sign-in; users currently on 7 d tokens still hit it once. Risk: a leaked token that is
@@ -193,9 +218,39 @@ allowlist must ship first or the events are rejected). No tokens, ids or emails:
   `signedInAt` epoch-ms stored next to `jwt`/`user` (additive field; sessions that predate it report `unknown`). This is
   the single most decisive signal for H1: expiry clears will all be `ge7d`.
 
+## Implementation (approved 2026-11-02)
+
+**PR 1 — server, backward compatible, ships first (no app build needed)**
+
+- `session.maxAge` is now `AUTH_JWT_MAX_AGE_SECONDS` (default **30 days**, hard cap 1 year, invalid values ignored).
+- Rolling refresh in `web/src/app/api/utils/sessionGuard.js` (the revocation guard moved out of `__create/index.ts` so it
+  can be tested): on an authenticated **Bearer** `/api/*` request answered with a 2xx/3xx whose token is older than
+  `AUTH_JWT_REFRESH_AFTER_SECONDS` (default **24 h**; must be below the lifetime, else it falls back to the default or
+  to half the lifetime), the response carries `X-Pawpi-Refreshed-Token`: the same claims with a fresh `iat`/`exp`/`jti`,
+  encoded with the same secret and cookie salt as sign-in. The response also gets `Cache-Control: private, no-store`
+  so no shared cache can store a credential.
+- Never refreshes on any 4xx/5xx (so never on a 401), on `/api/auth/*`, for a cookie-only request, for a revoked or
+  ghost token, or when the request itself revoked the token (the revocation lookup is repeated just before minting;
+  covers reset-password / sign-out-everywhere).
+- Revocation still applies: the refreshed token has a new `iat`, so a `token_invalidated_at` cutoff kills every older
+  token (including the one it replaced) and the 30 s cutoff cache is unchanged. The refresh lookup reuses that cache.
+- Old builds (21-30) ignore the header; nothing else about the response changes. `CORS_ORIGINS` now also sends
+  `Access-Control-Expose-Headers: X-Pawpi-Refreshed-Token`. No schema change, no new endpoint.
+- Residual risks: a leaked token that is never revoked now lives up to 30 days instead of 7, and anyone replaying
+  it also receives refreshed tokens (a thief who keeps using it keeps it alive). Revocation (password reset) is the
+  mitigation and is unchanged. If the DB lookup fails the guard fails
+  open (as before) and **no** refresh happens. Account deletion does not currently call `invalidateUserTokens`
+  (only reset-password does), so a deleted user's token is not revoked by that path — unchanged by this PR.
+- Env for a device test (set on a test server, then redeploy): `AUTH_JWT_MAX_AGE_SECONDS=300`,
+  `AUTH_JWT_REFRESH_AFTER_SECONDS=60`. Tokens already issued keep their original `exp`; sign in again after changing.
+
+**PR 2 — app (1.0.5, no version bump)**: stores the refreshed token through `setAuth`; the launch gate only treats a
+`session_expired` 401 as dead when a bearer was actually sent; the token cache is written only if still unset and the
+first Keychain read is shared; new anonymous `auth_diag` kinds. Described in that PR.
+
 ## Not done / not verified
 
-- Telemetry numbers and the user's report were not supplied (placeholders); no Grafana access from this session.
+- No Grafana access from this session; the telemetry table above was supplied by Augusto.
 - I did not read raw production log lines; the "bearer was present" inference is from code.
 - Build 27 vs 30 signing entitlements were not compared (needs the binaries).
 - No on-device repro.

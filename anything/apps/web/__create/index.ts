@@ -2,8 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import nodeConsole from 'node:console';
 import Credentials from '@auth/core/providers/credentials';
 import { authHandler, initAuthConfig } from '@hono/auth-js';
-import { getToken } from '@auth/core/jwt';
-import { isValidAuthUserId } from '../src/app/api/utils/authUserId.js';
+import { resolveJwtLifetimes, sessionGuard, REFRESHED_TOKEN_HEADER } from '../src/app/api/utils/sessionGuard.js';
 import pg from 'pg';
 import { hash, verify } from 'argon2';
 import { Hono } from 'hono';
@@ -15,10 +14,7 @@ import { requestId } from 'hono/request-id';
 import { createHonoServer } from 'react-router-hono-server/node';
 import { securityHeaders } from '../src/app/api/utils/securityHeaders.js';
 import { apiNotFound } from '../src/app/api/utils/apiNotFound.js';
-import {
-  SESSION_EXPIRED_CODE,
-  stampSessionExpired,
-} from '../src/app/api/utils/sessionExpiredCode.js';
+import { stampSessionExpired } from '../src/app/api/utils/sessionExpiredCode.js';
 import { blockProbePaths } from '../src/app/api/utils/probePaths.js';
 import { serializeError } from 'serialize-error';
 import { metrics } from '@opentelemetry/api';
@@ -172,6 +168,8 @@ if (process.env.CORS_ORIGINS) {
     '/*',
     cors({
       origin: process.env.CORS_ORIGINS.split(',').map((origin) => origin.trim()),
+      // A browser client can only read the refreshed token if the header is exposed.
+      exposeHeaders: [REFRESHED_TOKEN_HEADER],
     })
   );
 }
@@ -245,10 +243,11 @@ if (process.env.AUTH_SECRET) {
       // (web localhost) and on device given the protocol-aware cookies below.
       session: {
         strategy: 'jwt',
-        // (AUDIT A-05) Shorten the session lifetime from the 30-day default to
-        // 7 days so a leaked/replayed token has a bounded blast radius even
-        // before the server-side revocation check below kicks in.
-        maxAge: 7 * 24 * 60 * 60,
+        // Lifetime of the session JWT (jwt.maxAge defaults to this). AUTH_JWT_MAX_AGE_SECONDS,
+        // default 30 days: A-05 shortened it to 7 days with no refresh, which signed every user
+        // out a week after sign-in. Leaked tokens are bounded by the revocation check (A-05)
+        // and by the rolling refresh keeping an ACTIVE session short-lived-in-effect.
+        maxAge: resolveJwtLifetimes().maxAge,
       },
       callbacks: {
         session({ session, token }) {
@@ -476,63 +475,16 @@ app.use('/api/auth/*', async (c, next) => {
 // Registered BEFORE the revocation guard below so it also wraps that guard's own 401s.
 app.use('/api/*', stampSessionExpired());
 
-// (AUDIT A-05) Server-side JWT revocation guard. For every authenticated /api/*
-// request (never the auth endpoints themselves), if the caller's JWT was issued
-// before their auth_users.token_invalidated_at cutoff, reject it. That cutoff is
-// bumped on password reset / sign-out-everywhere / account deletion, so a leaked
-// or replayed token dies the moment one of those happens instead of living out
-// the 7-day JWT lifetime. Unauthenticated requests and any error fail OPEN (the
-// per-route auth still gates them) so a DB blip can never lock everyone out.
-app.use('/api/*', async (c, next) => {
-  if (c.req.path.startsWith('/api/auth/')) return next();
-  let sub: string | undefined;
-  let iat: number | undefined;
-  try {
-    // Read the token exactly as the per-route auth() shim does (Bearer header OR cookie),
-    // so a mobile Bearer ghost token can't slip past a guard that reads a different source.
-    const token = await getToken({
-      req: c.req.raw,
-      secret: process.env.AUTH_SECRET,
-      secureCookie:
-        process.env.AUTH_URL?.startsWith('https') ||
-        c.req.header('x-forwarded-proto') === 'https',
-    });
-    sub = token?.sub ?? undefined;
-    iat = typeof token?.iat === 'number' ? token.iat : undefined;
-  } catch {
-    // undecodable token → unauthenticated; the per-route auth() will 401 it
-  }
-  // Ghost session (non-integer/UUID sub): FAIL CLOSED with 401 before any handler or query
-  // touches the id (a 22P02 would abort the request tx and 500). Independent of iat.
-  if (sub != null && !isValidAuthUserId(sub)) {
-    return c.json(
-      {
-        error: 'Your session has expired. Please sign in again.',
-        code: SESSION_EXPIRED_CODE,
-      },
-      401
-    );
-  }
-  if (sub != null && iat != null) {
-    try {
-      const { isTokenRevoked } = await import(
-        '../src/app/api/utils/tokenRevocation.js'
-      );
-      if (await isTokenRevoked(sub, iat)) {
-        return c.json(
-          {
-            error: 'Your session has expired. Please sign in again.',
-            code: SESSION_EXPIRED_CODE,
-          },
-          401
-        );
-      }
-    } catch {
-      // revocation lookup is fail-open — a DB blip must never lock everyone out
-    }
-  }
-  return next();
-});
+// (AUDIT A-05) Server-side JWT revocation guard + rolling refresh (src/app/api/utils/sessionGuard.js).
+// For every authenticated /api/* request (never the auth endpoints themselves), if the caller's JWT was
+// issued before their auth_users.token_invalidated_at cutoff, reject it. That cutoff is bumped on password
+// reset / sign-out-everywhere / account deletion, so a leaked or replayed token dies the moment one of those
+// happens instead of living out the JWT lifetime. Unauthenticated requests and any error fail OPEN (the
+// per-route auth still gates them) so a DB blip can never lock everyone out. After a successful response the
+// same guard hands a Bearer client a freshly minted token (X-Pawpi-Refreshed-Token) once its token is older
+// than AUTH_JWT_REFRESH_AFTER_SECONDS, so an active user is never signed out by the lifetime.
+// Registered after stampSessionExpired so that wrapper also stamps this guard's own 401s.
+app.use('/api/*', sessionGuard());
 
 app.route(API_BASENAME, api);
 

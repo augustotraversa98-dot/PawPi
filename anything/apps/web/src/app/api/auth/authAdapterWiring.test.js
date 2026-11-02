@@ -13,13 +13,19 @@ describe("auth handler config", () => {
 });
 
 // Ghost-session guard: the /api/* middleware must 401 a non-integer sub BEFORE the iat gate
-// (a token without iat used to skip the check and 500 downstream).
+// (a token without iat used to skip the check and 500 downstream). The guard lives in
+// api/utils/sessionGuard.js (behaviour covered by sessionGuard.test.js); this keeps the ordering
+// invariant in the source and checks the server entry file still mounts it on /api/*.
 describe("api ghost-session guard", () => {
-  it("rejects non-integer subs independent of iat, ahead of the revocation lookup", () => {
+  it("is mounted on /api/* in the server entry file", () => {
     const src = readFileSync(resolve(__dirname, "../../../../__create/index.ts"), "utf8");
-    const g = src.slice(src.indexOf("app.use('/api/*'"), src.indexOf("app.route(API_BASENAME"));
+    expect(src).toMatch(/app\.use\('\/api\/\*', sessionGuard\(\)\);/);
+  });
+
+  it("rejects non-integer subs independent of iat, ahead of the revocation lookup", () => {
+    const g = readFileSync(resolve(__dirname, "../utils/sessionGuard.js"), "utf8");
     expect(g.indexOf("isValidAuthUserId(sub)")).toBeGreaterThan(-1);
-    expect(g.indexOf("isValidAuthUserId(sub)")).toBeLessThan(g.indexOf("isTokenRevoked"));
+    expect(g.indexOf("isValidAuthUserId(sub)")).toBeLessThan(g.indexOf("await isTokenRevoked(sub, iat)"));
     expect(g).not.toMatch(/sub != null && typeof iat === 'number'/);
   });
 });
