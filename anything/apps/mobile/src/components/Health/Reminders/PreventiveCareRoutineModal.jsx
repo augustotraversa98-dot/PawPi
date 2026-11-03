@@ -4,13 +4,13 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   Modal,
   TextInput,
   Switch,
   Platform,
   KeyboardAvoidingView,
 } from "react-native";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { X } from "lucide-react-native";
 import { ROUTINE_TYPES } from "@/data/routinesData";
 import DateField from "@/components/DateField";
@@ -142,7 +142,7 @@ export default function PreventiveCareRoutineModal({
             </TouchableOpacity>
           </View>
 
-          <ScrollView
+          <KeyboardAwareScrollView
             contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
@@ -391,7 +391,7 @@ export default function PreventiveCareRoutineModal({
                 marginBottom: 24,
               }}
             />
-          </ScrollView>
+          </KeyboardAwareScrollView>
 
           <View
             style={{

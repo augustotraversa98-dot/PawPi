@@ -11,9 +11,9 @@ import {
   TextInput,
   Platform,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Alert,
 } from "react-native";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import {
   X,
   Scale,
@@ -215,11 +215,7 @@ export default function WeightModal({ visible, onClose }) {
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={0}
-      >
+      <View style={{ flex: 1 }}>
         <View
           style={{
             flex: 1,
@@ -332,7 +328,7 @@ export default function WeightModal({ visible, onClose }) {
           </View>
 
           {/* Content */}
-          <ScrollView
+          <KeyboardAwareScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
             keyboardShouldPersistTaps="handled"
@@ -720,9 +716,9 @@ export default function WeightModal({ visible, onClose }) {
                 )}
               </View>
             )}
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }

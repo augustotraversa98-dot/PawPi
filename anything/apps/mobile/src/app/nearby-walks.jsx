@@ -3,12 +3,12 @@ import { COLORS } from "@/constants/theme";
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   TextInput,
   Modal,
   ActivityIndicator,
 } from "react-native";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as Location from "expo-location";
@@ -576,7 +576,7 @@ export default function NearbyWalksPage() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView
+          <KeyboardAwareScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{
               padding: 20,
@@ -724,7 +724,7 @@ export default function NearbyWalksPage() {
                 </View>
               </>
             )}
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </View>
       </Modal>
     </View>

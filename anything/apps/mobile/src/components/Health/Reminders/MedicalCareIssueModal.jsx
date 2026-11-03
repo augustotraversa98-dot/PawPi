@@ -5,12 +5,12 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   Modal,
   TextInput,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { X } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 
@@ -118,7 +118,7 @@ export default function MedicalCareIssueModal({
               </TouchableOpacity>
             </View>
 
-            <ScrollView
+            <KeyboardAwareScrollView
               contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
               keyboardShouldPersistTaps="handled"
             >
@@ -197,7 +197,7 @@ export default function MedicalCareIssueModal({
                   Save issue
                 </Text>
               </TouchableOpacity>
-            </ScrollView>
+            </KeyboardAwareScrollView>
           </View>
         </View>
       </KeyboardAvoidingView>

@@ -5,13 +5,11 @@ import {
   Text,
   TouchableOpacity,
   Modal,
-  ScrollView,
   TextInput,
   Image,
   ActivityIndicator,
-  Platform,
-  KeyboardAvoidingView,
 } from "react-native";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import {
   X,
   Check,
@@ -222,11 +220,7 @@ export default function PooTrackerModal({ visible, onClose }) {
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={0}
-      >
+      <View style={{ flex: 1 }}>
         <View
           style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}
         >
@@ -262,7 +256,7 @@ export default function PooTrackerModal({ visible, onClose }) {
             </TouchableOpacity>
           </View>
 
-          <ScrollView
+          <KeyboardAwareScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
             keyboardShouldPersistTaps="handled"
@@ -1019,9 +1013,9 @@ export default function PooTrackerModal({ visible, onClose }) {
                 </TouchableOpacity>
               </View>
             )}
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }

@@ -13,6 +13,7 @@ import {
   Switch,
   Alert,
 } from "react-native";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { X, Plus, Edit3, Trash2, ChevronRight } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import {
@@ -667,7 +668,7 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
             onClose={onCancel}
           />
 
-          <ScrollView
+          <KeyboardAwareScrollView
             contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
@@ -1009,7 +1010,7 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
               placeholder="Additional notes..."
               multiline
             />
-          </ScrollView>
+          </KeyboardAwareScrollView>
 
           <View
             style={{
