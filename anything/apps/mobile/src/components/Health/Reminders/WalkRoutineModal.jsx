@@ -3,13 +3,13 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   Modal,
   KeyboardAvoidingView,
   Platform,
   Alert,
   ActivityIndicator,
 } from "react-native";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { X, Plus, Trash2 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { WALK_ROUTINE_COLORS as C } from "@/constants/walkRoutineColors";
@@ -310,7 +310,7 @@ export default function WalkRoutineModal({
             </TouchableOpacity>
           </View>
 
-          <ScrollView
+          <KeyboardAwareScrollView
             contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
@@ -460,7 +460,7 @@ export default function WalkRoutineModal({
                 </View>
               </View>
             )}
-          </ScrollView>
+          </KeyboardAwareScrollView>
 
           <View
             style={{

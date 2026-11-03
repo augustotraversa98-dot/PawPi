@@ -5,13 +5,13 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   Modal,
   TextInput,
   Switch,
   Platform,
   KeyboardAvoidingView,
 } from "react-native";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { X } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { ROUTINE_TYPES, ROUTINE_FREQUENCY } from "@/data/routinesData";
@@ -157,7 +157,7 @@ export default function MedicationRoutineModal({
             </TouchableOpacity>
           </View>
 
-          <ScrollView
+          <KeyboardAwareScrollView
             contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
@@ -480,7 +480,7 @@ export default function MedicationRoutineModal({
                 marginBottom: 24,
               }}
             />
-          </ScrollView>
+          </KeyboardAwareScrollView>
 
           <View
             style={{

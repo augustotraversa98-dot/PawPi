@@ -4,8 +4,8 @@
 // request and its friendly denied message stay. Native deps are mocked.
 
 import React from "react";
-import { Alert } from "react-native";
-import { render, fireEvent, waitFor } from "@testing-library/react-native";
+import { Alert, Keyboard, KeyboardAvoidingView, ScrollView, StyleSheet } from "react-native";
+import { render, fireEvent, waitFor, act } from "@testing-library/react-native";
 
 jest.mock("react-i18next", () =>
   require("@/i18n/testMock").makeReactI18nextMock(),
@@ -187,5 +187,68 @@ test("eligible user can record a video → previews it and posts media_type 'vid
     uri: "file:///moment.mov",
     caption: "",
     mediaType: "video",
+  });
+});
+
+// Keyboard avoidance (daily-moment caption hidden behind the keyboard). The compose step is a
+// pageSheet, where KeyboardAvoidingView under-pads by the sheet's top offset and a plain
+// ScrollView never scrolls the focused caption into view — so the compose step uses
+// KeyboardAwareScrollView alone, and keeps the end of the form (caption + Post) in view.
+describe("compose step keyboard avoidance", () => {
+  async function openCompose() {
+    mockRequestCameraPerm.mockResolvedValue({ granted: true });
+    mockLaunchCamera.mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: "file:///moment.jpg" }],
+    });
+    const utils = render(
+      <PostComposerModal visible petName="Rex" onClose={jest.fn()} onPost={jest.fn()} />,
+    );
+    fireEvent.press(utils.getByTestId("composer-take-photo"));
+    await waitFor(() => expect(utils.getByTestId("composer-caption")).toBeTruthy());
+    return utils;
+  }
+
+  it("scrolls the caption via KeyboardAwareScrollView with no KeyboardAvoidingView stacked on it", async () => {
+    const { getByTestId, UNSAFE_queryByType } = await openCompose();
+    expect(getByTestId("composer-scroll").props.keyboardShouldPersistTaps).toBe("handled");
+    expect(UNSAFE_queryByType(KeyboardAvoidingView)).toBeNull();
+  });
+
+  it("bounds the caption so a long multi-line caption scrolls inside the field", async () => {
+    const { getByTestId } = await openCompose();
+    const style = StyleSheet.flatten(getByTestId("composer-caption").props.style);
+    expect(style.maxHeight).toBeGreaterThanOrEqual(style.minHeight);
+    expect(style.maxHeight).toBeLessThanOrEqual(200);
+  });
+
+  it("keeps caption + Post in view when the content grows under the open keyboard", async () => {
+    const handlers = {};
+    const addSpy = jest.spyOn(Keyboard, "addListener").mockImplementation((name, cb) => {
+      handlers[name] = [...(handlers[name] ?? []), cb];
+      return { remove: () => {} };
+    });
+    const { getByTestId, UNSAFE_getByType } = await openCompose();
+    const scrollToEnd = jest.fn();
+    UNSAFE_getByType(ScrollView).instance.scrollToEnd = scrollToEnd;
+    const grow = () => fireEvent(getByTestId("composer-scroll"), "contentSizeChange", 320, 900);
+    const emit = (name) =>
+      act(() => (handlers[name] ?? []).forEach((cb) => cb({ endCoordinates: { screenY: 516 } })));
+
+    // Keyboard closed: layout changes never yank the scroll position.
+    grow();
+    expect(scrollToEnd).not.toHaveBeenCalled();
+
+    // Keyboard open: growth (keyboard padding landing, caption lines added) pins the Post button.
+    emit("keyboardWillShow");
+    grow();
+    expect(scrollToEnd).toHaveBeenCalledTimes(1);
+
+    // Keyboard dismissed: back to leaving the scroll position alone.
+    emit("keyboardWillHide");
+    grow();
+    expect(scrollToEnd).toHaveBeenCalledTimes(1);
+
+    addSpy.mockRestore();
   });
 });

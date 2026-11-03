@@ -2,13 +2,12 @@ import React, { useState, useEffect, useRef, useCallback, memo } from "react";
 import {
   View,
   Text,
-  ScrollView,
   Image,
   TextInput,
   Modal,
   Platform,
   Alert,
-  KeyboardAvoidingView,
+  Keyboard,
   Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -25,6 +24,7 @@ import {
   ELEVATION,
 } from "@/constants/theme";
 import { PawMark, PressableScale } from "@/components/ui";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 // Preview mirrors the feed frame: 4:5 portrait (height = 1.25 × width) so what you
@@ -100,6 +100,28 @@ export const PostComposerModal = memo(function PostComposerModal({
   // server is the real gate, POST re-checks); a caller can force it on/off via allowVideo.
   const [videoEligible, setVideoEligible] = useState(false);
   const captionRef = useRef(null);
+  const scrollRef = useRef(null);
+  const keyboardUpRef = useRef(false);
+
+  // While the keyboard is up, keep the end of the form (caption + Post button) pinned in view.
+  // KeyboardAwareScrollView scrolls the focused input above the keyboard when it opens; this
+  // covers the content growing afterwards (it adds the keyboard padding a beat later, and the
+  // caption grows as you type) so the Post button never slides back under the keyboard.
+  useEffect(() => {
+    const ios = Platform.OS === "ios";
+    const subs = [
+      Keyboard.addListener(ios ? "keyboardWillShow" : "keyboardDidShow", () => {
+        keyboardUpRef.current = true;
+      }),
+      Keyboard.addListener(ios ? "keyboardWillHide" : "keyboardDidHide", () => {
+        keyboardUpRef.current = false;
+      }),
+    ];
+    return () => subs.forEach((sub) => sub.remove());
+  }, []);
+  const handleContentSizeChange = useCallback(() => {
+    if (keyboardUpRef.current) scrollRef.current?.scrollToEnd?.({ animated: true });
+  }, []);
 
   // Effective copy — pet daily-moment defaults, overridable per key by the `copy` prop.
   const c = copy ?? {};
@@ -213,10 +235,10 @@ export const PostComposerModal = memo(function PostComposerModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
-        style={{ flex: 1, backgroundColor: COLORS.cream }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
+      {/* No KeyboardAvoidingView: it measures against the screen, not the pageSheet, so it
+          under-pads by the sheet's top offset. KeyboardAwareScrollView below measures in
+          window coordinates and is the single keyboard mechanism for the compose step. */}
+      <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
         {/* Header */}
         <View
           style={{
@@ -347,10 +369,13 @@ export const PostComposerModal = memo(function PostComposerModal({
           </View>
         ) : (
           // ── STEP 2: Preview + caption ──
-          <ScrollView
+          <KeyboardAwareScrollView
+            ref={scrollRef}
+            testID="composer-scroll"
             contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            onContentSizeChange={handleContentSizeChange}
           >
             {/* Media preview — a looping muted video for video posts, the photo
                 as before for image posts. */}
@@ -420,6 +445,9 @@ export const PostComposerModal = memo(function PostComposerModal({
                   borderRadius: RADIUS.control,
                   padding: SPACING.lg,
                   minHeight: 100,
+                  // Bounded so a long caption scrolls inside the field instead of pushing the
+                  // Post button off-screen above the keyboard (small iPhones, ES copy).
+                  maxHeight: 160,
                   textAlignVertical: "top",
                   marginBottom: SPACING.xxl,
                   color: COLORS.warmBrown,
@@ -451,9 +479,9 @@ export const PostComposerModal = memo(function PostComposerModal({
                 {t.submit}
               </Text>
             </PressableScale>
-          </ScrollView>
+          </KeyboardAwareScrollView>
         )}
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 });
