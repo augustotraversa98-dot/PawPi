@@ -18,6 +18,17 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-03 — v1.0.5 PREPARED (docs + version bump only) — NOT built, NOT submitted, NOT device-tested
+
+v1.0.4 (EAS build 30, built from `280fc814`) is live. 1.0.5 exists for two bugs found after it; the plan, commands and checklist are in [`release-1.0.5.md`](release-1.0.5.md), the store text in [`app-store-whats-new-1.0.5.md`](app-store-whats-new-1.0.5.md).
+
+- ✅ **Signed out ~7 days after sign-in:** the server session token lived 7 days with no refresh. **#732 (server, LIVE on Railway):** 30-day lifetime (`AUTH_JWT_MAX_AGE_SECONDS`) + rolling refresh header `X-Pawpi-Refreshed-Token` after 24 h (`AUTH_JWT_REFRESH_AFTER_SECONDS`), backward compatible (builds 21–30 ignore it). **#733 (app, in 1.0.5):** stores the refreshed token, a header-less launch 401 no longer clears the session, token-cache race fix, new anonymous `auth_diag` kinds (`token_refreshed`, `cleared_age_*`, `launch_*`). Builds ≤ 1.0.4 keep their 7-day tokens until the user updates and signs in once.
+- ✅ **Keyboard covered the daily-moment caption:** **#734** swaps `KeyboardAvoidingView` + plain `ScrollView` for the existing `KeyboardAwareScrollView` on 12 screens (composer, Pee, Poo, Weight, Wellness log, six reminder sheets, Nearby walks); caption box capped at 160 pt. **Not verified on a device before merge.**
+- ✅ **No native change** vs build 30 (`package.json`, lockfile, `eas.json`, `patches/`, `app.json` plugins/infoPlist identical); only `expo.version` 1.0.4 → 1.0.5. App Store privacy declaration: no change.
+- ⏳ Owner: run the build commands (`release-1.0.5.md` §4), do the TestFlight pass (§5 — first real-device test of #733 and #734), then Submit for Review manually.
+
+---
+
 ## 2026-10-23 — Discover is a sneak peek again — NOT device-tested
 
 - ✅ **Discover tiles are unredacted for locked viewers:** `GET /api/discover` returns other owners' tile thumbnail (`image_url` / `video_thumbnail_url`) and `caption` as before, tagged `locked: true` until the viewer has posted today (`applyDailyMomentsLock(..., { redact: false })`); `video_url` is never selected. `GET /api/posts` redaction and the welcome-back friends' photos are unchanged. Pet profile + `posts/history` stay server-gated, so a tile can't open more than its thumbnail.
