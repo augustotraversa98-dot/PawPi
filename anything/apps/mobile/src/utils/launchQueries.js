@@ -13,7 +13,7 @@
 // Bearer token) and the cache is cleared on every identity change (utils/auth/store.js), so one
 // user's entry can never be served to another.
 
-import { carriesSessionExpiredCode } from "@/utils/auth/sessionHealth";
+import { carriesSessionExpiredCode, wasBearerSent } from "@/utils/auth/sessionHealth";
 
 export const PETS_QUERY_KEY = ["pets"];
 export const MY_PROVIDERS_QUERY_KEY = ["providers", "mine"];
@@ -32,8 +32,11 @@ export async function fetchPets({ signal } = {}) {
     const error = new Error("Failed to fetch pets");
     error.status = response.status;
     // The server's session_expired code (only a 401 can carry it): lets the EntryPoint tell a dead
-    // session from a bare 401 without a second request.
-    error.sessionExpired = response.status === 401 && (await carriesSessionExpiredCode(response));
+    // session from a bare 401 without a second request. The server stamps the code on EVERY 401, also
+    // on a request that went out with no token, so it only counts when a token was actually sent.
+    error.bearerSent = wasBearerSent(response);
+    error.sessionExpired =
+      response.status === 401 && error.bearerSent && (await carriesSessionExpiredCode(response));
     throw error;
   }
   const data = await response.json();

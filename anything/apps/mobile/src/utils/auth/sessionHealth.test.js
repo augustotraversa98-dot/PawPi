@@ -4,6 +4,10 @@ import {
   confirmSessionDead,
   isSessionDead,
   reportLaunchToken,
+  noteLaunchRead,
+  markBearerSent,
+  wasBearerSent,
+  clearedAgeKind,
   RECHECK_TIMEOUT_MS,
   RECHECK_ALIVE_COOLDOWN_MS,
   __resetSessionHealthForTests,
@@ -114,4 +118,58 @@ test('reportLaunchToken reports once per launch: found vs none', () => {
   reportLaunchToken(true);
   reportLaunchToken(false);
   expect(mockTrack.mock.calls).toEqual([['auth_diag', { kind: 'launch_token_found' }]]);
+});
+
+test('reportLaunchToken says WHY there was no token: the read timed out, threw, or simply found nothing', () => {
+  for (const [outcome, kind] of [
+    ['timeout', 'launch_read_timeout'],
+    ['error', 'launch_read_error'],
+    ['empty', 'launch_no_token'],
+  ]) {
+    __resetSessionHealthForTests();
+    mockTrack.mockClear();
+    noteLaunchRead(outcome);
+    reportLaunchToken(false);
+    expect(mockTrack.mock.calls).toEqual([['auth_diag', { kind }]]);
+  }
+  // a token that was found is just found, whatever happened to an earlier read
+  __resetSessionHealthForTests();
+  mockTrack.mockClear();
+  noteLaunchRead('timeout');
+  reportLaunchToken(true);
+  expect(mockTrack.mock.calls).toEqual([['auth_diag', { kind: 'launch_token_found' }]]);
+});
+
+describe('clearedAgeKind (age of the token when the session was cleared)', () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  const now = 1_800_000_000_000;
+  test.each([
+    [now - 1000, 'cleared_age_lt1d'],
+    [now - 2 * DAY, 'cleared_age_lt7d'],
+    [now - 8 * DAY, 'cleared_age_lt30d'],
+    [now - 29.9 * DAY, 'cleared_age_lt30d'],
+    [now - 30 * DAY, 'cleared_age_ge30d'],
+    [now - 90 * DAY, 'cleared_age_ge30d'],
+    [undefined, 'cleared_age_unknown'],
+    [null, 'cleared_age_unknown'],
+    ['yesterday', 'cleared_age_unknown'],
+    [NaN, 'cleared_age_unknown'],
+    [now + 10 * DAY, 'cleared_age_unknown'], // clock went backwards: no honest bucket
+  ])('%p -> %s', (tokenAt, kind) => {
+    expect(clearedAgeKind(tokenAt, now)).toBe(kind);
+  });
+});
+
+describe('bearer-sent bookkeeping', () => {
+  test('only responses the wrapper marked count; junk never throws', () => {
+    const res = {};
+    expect(wasBearerSent(res)).toBe(false);
+    markBearerSent(res);
+    expect(wasBearerSent(res)).toBe(true);
+    expect(wasBearerSent({})).toBe(false);
+    expect(() => markBearerSent(undefined)).not.toThrow();
+    expect(() => markBearerSent('x')).not.toThrow();
+    expect(wasBearerSent(undefined)).toBe(false);
+    expect(wasBearerSent('x')).toBe(false);
+  });
 });

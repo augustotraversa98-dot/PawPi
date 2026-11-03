@@ -15,12 +15,13 @@ import { trackAuthDiag } from './sessionHealth';
 
 /**
  * @param {object} auth      the { jwt, user } being signed in
- * @param {{ isCurrent?: () => boolean }} [opts]
+ * @param {{ isCurrent?: () => boolean, reportOk?: boolean }} [opts]
  *   isCurrent  returns false once this session was replaced / signed out while we were verifying,
  *              so a retry can never resurrect a session the user already left.
+ *   reportOk   false for a rolling token refresh: a good write is not a sign-in, so no `keychain_ok` event.
  * @returns {Promise<'ok'|'retried_ok'|'write_failed'|'readback_mismatch'|'superseded'>}
  */
-export async function persistAuth(auth, { isCurrent = () => true } = {}) {
+export async function persistAuth(auth, { isCurrent = () => true, reportOk = true } = {}) {
   try {
     const value = JSON.stringify(auth);
 
@@ -42,7 +43,7 @@ export async function persistAuth(auth, { isCurrent = () => true } = {}) {
 
     let result = await attempt();
     if (result === 'ok') {
-      trackAuthDiag('keychain_ok');
+      if (reportOk) trackAuthDiag('keychain_ok');
       return finish(isCurrent, 'ok');
     }
     if (!isCurrent()) return finish(isCurrent, 'superseded');

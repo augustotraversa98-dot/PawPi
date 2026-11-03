@@ -33,7 +33,7 @@ describe("useAuthStore.setAuth", () => {
   it("clears the query cache on login (account switch)", () => {
     useAuthStore.getState().setAuth({ jwt: "t", user: { id: 1 } });
     expect(queryClient.clear).toHaveBeenCalledTimes(1);
-    expect(useAuthStore.getState().auth).toEqual({ jwt: "t", user: { id: 1 } });
+    expect(useAuthStore.getState().auth).toMatchObject({ jwt: "t", user: { id: 1 } });
   });
 
   it("clears the query cache on logout", () => {
@@ -58,7 +58,7 @@ describe("useAuthStore.setAuth", () => {
       useAuthStore.setState({ auth: A });
       useAuthStore.getState().setAuth(B);
       expect(cleanUpAfterIdentityChange).toHaveBeenCalledWith(A);
-      expect(useAuthStore.getState().auth).toEqual(B);
+      expect(useAuthStore.getState().auth).toMatchObject(B);
     });
 
     it("does not run on a first sign-in or a same-user token refresh", () => {
@@ -91,6 +91,61 @@ describe("useAuthStore.setAuth", () => {
   });
 });
 
+describe("useAuthStore.applyRefreshedToken (rolling session refresh)", () => {
+  const A = { jwt: "jwt-A.x.y", user: { id: 1 } };
+
+  beforeEach(() => {
+    cleanUpAfterIdentityChange.mockClear();
+    queryClient.clear.mockClear();
+    resetCachedAuthForTests();
+    useAuthStore.setState({ auth: null });
+    useAuthStore.getState().setAuth(A);
+    queryClient.clear.mockClear();
+  });
+
+  it("swaps the jwt, keeps the user, stamps tokenAt, and moves the in-memory cache with it", () => {
+    expect(useAuthStore.getState().applyRefreshedToken("jwt-A.x.y", "jwt-A2.x.y")).toBe(true);
+    const auth = useAuthStore.getState().auth;
+    expect(auth).toMatchObject({ jwt: "jwt-A2.x.y", user: { id: 1 } });
+    expect(typeof auth.tokenAt).toBe("number");
+    expect(getCachedAuth()).toEqual(auth);
+  });
+
+  it("keeps the React Query cache and runs no device cleanup (same user)", () => {
+    useAuthStore.getState().applyRefreshedToken("jwt-A.x.y", "jwt-A2.x.y");
+    expect(queryClient.clear).not.toHaveBeenCalled();
+    expect(cleanUpAfterIdentityChange).not.toHaveBeenCalled();
+  });
+
+  it("refuses when the signed-in session is no longer the one that sent the request", () => {
+    expect(useAuthStore.getState().applyRefreshedToken("some-other-jwt", "jwt-A2.x.y")).toBe(false);
+    useAuthStore.getState().setAuth(null);
+    expect(useAuthStore.getState().applyRefreshedToken("jwt-A.x.y", "jwt-A2.x.y")).toBe(false);
+    expect(useAuthStore.getState().auth).toBeNull();
+    expect(getCachedAuth()).toBeNull();
+  });
+
+  it("refuses a malformed or unchanged token", () => {
+    expect(useAuthStore.getState().applyRefreshedToken("jwt-A.x.y", "bad token")).toBe(false);
+    expect(useAuthStore.getState().applyRefreshedToken("jwt-A.x.y", "")).toBe(false);
+    expect(useAuthStore.getState().applyRefreshedToken("jwt-A.x.y", "jwt-A.x.y")).toBe(false);
+    expect(useAuthStore.getState().auth.jwt).toBe("jwt-A.x.y");
+  });
+
+  it("a normal sign-in still clears the cache; re-setting the same token keeps its tokenAt", () => {
+    const stamped = useAuthStore.getState().auth;
+    useAuthStore.getState().setAuth({ jwt: "jwt-A.x.y", user: { id: 1, name: "x" } });
+    expect(useAuthStore.getState().auth.tokenAt).toBe(stamped.tokenAt);
+    expect(queryClient.clear).toHaveBeenCalledTimes(1);
+  });
+
+  it("a session stored before tokenAt existed stays 'unknown' when the same token is re-set", () => {
+    useAuthStore.setState({ auth: { jwt: "old.x.y", user: { id: 1 } } });
+    useAuthStore.getState().setAuth({ jwt: "old.x.y", user: { id: 1, name: "n" } });
+    expect(useAuthStore.getState().auth.tokenAt).toBeUndefined();
+  });
+});
+
 // Perf audit 2026-10-23 (F1.6): the fetch wrapper serves the token from memory, so setAuth must keep that copy in
 // lockstep with the Keychain: login / account switch replace it, logout marks "known signed out" (null).
 describe("useAuthStore.setAuth keeps the in-memory session copy in sync", () => {
@@ -101,13 +156,13 @@ describe("useAuthStore.setAuth keeps the in-memory session copy in sync", () => 
 
   it("login stores the new session", () => {
     useAuthStore.getState().setAuth({ jwt: "t1", user: { id: 1 } });
-    expect(getCachedAuth()).toEqual({ jwt: "t1", user: { id: 1 } });
+    expect(getCachedAuth()).toMatchObject({ jwt: "t1", user: { id: 1 } });
   });
 
   it("an account switch replaces it (A's token can never be sent as B)", () => {
     useAuthStore.getState().setAuth({ jwt: "tA", user: { id: 1 } });
     useAuthStore.getState().setAuth({ jwt: "tB", user: { id: 2 } });
-    expect(getCachedAuth()).toEqual({ jwt: "tB", user: { id: 2 } });
+    expect(getCachedAuth()).toMatchObject({ jwt: "tB", user: { id: 2 } });
   });
 
   it("logout marks the session as known-signed-out (null), not unknown", () => {

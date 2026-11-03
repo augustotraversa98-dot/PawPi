@@ -7,7 +7,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/utils/auth/useAuth";
 import { determinePetsRoute } from "@/utils/auth/determinePetsRoute";
 import { isUsableToken, startOver } from "@/utils/auth/recovery";
-import { isSessionDead, reportLaunchToken } from "@/utils/auth/sessionHealth";
+import { isSessionDead, reportLaunchToken, trackAuthDiag } from "@/utils/auth/sessionHealth";
 import { expireSession } from "@/utils/auth/sessionExpiry";
 import { closeLaunchGate } from "@/utils/auth/sessionLaunchGate";
 import { markBootStep, markBootComplete } from "../../__create/boot-trace";
@@ -23,6 +23,28 @@ import { reportStartup } from "@/telemetry/startup";
 import { PawMark } from "@/components/ui";
 import { COLORS } from "@/constants/theme";
 
+// The key the EntryPoint routes a session under. It is the JWT, except that a rolling token refresh (same
+// signed-in user, new JWT) keeps the key it already had: a refresh is not a new session and must not re-run
+// the launch gate. Another account, a logout, or a fresh sign-in changes it as before. (Render-time ref update
+// is idempotent: the same inputs always give the same key.)
+function useSessionKey(auth) {
+  const ref = useRef({ key: null, userId: null });
+  const jwt = auth?.jwt ?? null;
+  const userId = auth?.user?.id ?? null;
+  const current = ref.current;
+  if (jwt === null) {
+    ref.current = { key: null, userId: null };
+  } else if (current.key === null) {
+    ref.current = { key: jwt, userId };
+  } else if (current.key !== jwt) {
+    const sameUser = userId !== null && current.userId !== null && userId === current.userId;
+    ref.current = { key: sameUser ? current.key : jwt, userId };
+  } else if (current.userId === null && userId !== null) {
+    ref.current = { key: current.key, userId };
+  }
+  return ref.current.key;
+}
+
 export default function EntryPoint() {
   markBootStep("entrypoint:render");
   const [loading, setLoading] = useState(true);
@@ -37,10 +59,11 @@ export default function EntryPoint() {
   // it must not re-run, because a re-run that sees a different answer (e.g. a transient empty
   // pets list) would redirect a user who is already inside the app back to onboarding/welcome.
   // Keyed on the JWT, not the `auth` object: the store can hand us a new object for the same
-  // session (re-hydration, a user-info refresh) and that is not a new session. A real change —
-  // logout (null), "Use a different account", a fresh sign-in — changes the key and routes again.
+  // session (re-hydration, a user-info refresh) and that is not a new session; nor is a rolling
+  // token refresh (useSessionKey). A real change — logout (null), "Use a different account", a
+  // fresh sign-in — changes the key and routes again.
   const routedForSession = useRef(undefined);
-  const sessionKey = auth?.jwt ?? null;
+  const sessionKey = useSessionKey(auth);
 
   const determineRoute = useCallback(async ({ force = false } = {}) => {
     if (isReady && !force && routedForSession.current === sessionKey) {
@@ -130,7 +153,12 @@ export default function EntryPoint() {
           // A 401/403 is NOT proof the token is dead (a business or proxy answer can look the same,
           // and signing out on it is the "logged out every time" bug). Only the server's
           // session_expired code, or one re-check against GET /api/session, clears the session;
-          // anything else gets the retry screen, which keeps the user signed in.
+          // anything else gets the retry screen, which keeps the user signed in. The code only counts when a
+          // token was actually sent: a header-less 401 carries it too, and goes to the re-check (which sends the
+          // stored token explicitly) instead of clearing the session on the server's say-so.
+          if (apiError.status === 401 && apiError.bearerSent === false) {
+            trackAuthDiag("launch_401_no_bearer");
+          }
           const verdict = await isSessionDead({
             hasCode: apiError.sessionExpired === true,
             jwt: auth.jwt,

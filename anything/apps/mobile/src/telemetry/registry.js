@@ -300,7 +300,15 @@ export const NAV_REDIRECT_REASONS = ['onboarding_guard', 'welcome_guard', 'sessi
 //                        or by the launch gate on a 401 / 403 (`launch_401`, `launch_403`).
 //   recheck_alive      : a 401 without the code was NOT a dead session (the re-check said the session is fine).
 //   keychain_*         : after sign-in the token is written, read back and compared (one retry on a mismatch).
-//   launch_*           : the cold-launch Keychain read found a stored token / found none.
+//   launch_*           : the cold-launch Keychain read found a stored token / found none, or why it found none:
+//                        `launch_read_timeout` (the 3 s guard fired) / `launch_read_error` (the read threw).
+//                        `launch_401_no_bearer`: the launch pets read got a 401 on a request that went out WITHOUT
+//                        a token (not a verdict on the stored session; it is re-checked, not cleared).
+//   cleared_age_*      : how old the stored token was when the session was cleared (since sign-in or its last
+//                        refresh): lt1d / lt7d / lt30d / ge30d / unknown (stored before 1.0.5). With the rolling
+//                        refresh a healthy session is under a day old, so ge30d = genuine expiry and lt1d/lt7d =
+//                        the server rejected a young token.
+//   token_refreshed    : the rolling-refresh token from the server was stored.
 export const AUTH_DIAG_KINDS = [
   'session_cleared_code',
   'session_cleared_recheck',
@@ -312,6 +320,15 @@ export const AUTH_DIAG_KINDS = [
   'keychain_readback_mismatch',
   'launch_token_found',
   'launch_no_token',
+  'launch_read_timeout',
+  'launch_read_error',
+  'launch_401_no_bearer',
+  'cleared_age_lt1d',
+  'cleared_age_lt7d',
+  'cleared_age_lt30d',
+  'cleared_age_ge30d',
+  'cleared_age_unknown',
+  'token_refreshed',
 ];
 
 // error.code: a short machine code (HTTP status, error class name, ...), never a message.

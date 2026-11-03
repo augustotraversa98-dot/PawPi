@@ -278,7 +278,15 @@ describe('expired-session handling', () => {
     expect(mockSetAuth).toHaveBeenCalledWith(null);
     expect(mockReplace).toHaveBeenCalledWith('/welcome');
     expect(recheckCalls()).toHaveLength(0);
-    expect(diag()).toEqual(['session_cleared_code']);
+    expect(diag()).toEqual(['session_cleared_code', 'cleared_age_unknown']);
+  });
+
+  test('the cleared session reports how old its token was (a bucket, never a timestamp)', async () => {
+    storedAuth = { jwt: 'test-jwt', user: { id: 'u1' }, tokenAt: Date.now() - 31 * 24 * 60 * 60 * 1000 };
+    serve({ main: sessionExpired() });
+    await fetchToWeb('/api/pets');
+    await flush();
+    expect(diag()).toEqual(['session_cleared_code', 'cleared_age_ge30d']);
   });
 
   test('a business 403 (what a bad pickup code now returns) does NOT sign out', async () => {
@@ -303,7 +311,7 @@ describe('expired-session handling', () => {
     expect(recheckCalls()[0][1].headers.authorization).toBe('Bearer test-jwt');
     expect(mockSetAuth).toHaveBeenCalledWith(null);
     expect(mockReplace).toHaveBeenCalledWith('/welcome');
-    expect(diag()).toEqual(['session_cleared_recheck']);
+    expect(diag()).toEqual(['session_cleared_recheck', 'cleared_age_unknown']);
   });
 
   test('a bare 401 whose re-check says the session is fine does NOT sign out (and is reported)', async () => {

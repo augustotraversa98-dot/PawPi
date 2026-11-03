@@ -5,6 +5,10 @@ import { create } from 'zustand';
 import { Modal, View } from 'react-native';
 import { useAuthModal, useAuthStore, authKey, secureStoreOptions } from './store';
 import { markBootStep } from '../../../__create/boot-trace';
+import { noteLaunchRead } from './sessionHealth';
+import { setCachedAuthIfUnset } from './tokenCache';
+
+const READ_TIMED_OUT = Symbol('keychain-read-timed-out');
 
 
 /**
@@ -27,16 +31,22 @@ export const useAuth = () => {
     markBootStep('auth:initiate-start');
     Promise.race([
       SecureStore.getItemAsync(authKey, secureStoreOptions),
-      new Promise((resolve) => setTimeout(() => resolve(null), 3000)),
+      new Promise((resolve) => setTimeout(() => resolve(READ_TIMED_OUT), 3000)),
     ])
       .then((stored) => {
         markBootStep('auth:ready');
+        if (stored === READ_TIMED_OUT) noteLaunchRead('timeout');
+        const parsed = stored && stored !== READ_TIMED_OUT ? JSON.parse(stored) : null;
+        // The first request would otherwise read the Keychain a second time: hand it this result (only a real
+        // session, and only if nothing has set the cache since).
+        setCachedAuthIfUnset(parsed);
         useAuthStore.setState({
-          auth: stored ? JSON.parse(stored) : null,
+          auth: parsed,
           isReady: true,
         });
       })
       .catch(() => {
+        noteLaunchRead('error');
         markBootStep('auth:ready-after-error');
         useAuthStore.setState({ auth: null, isReady: true });
       });

@@ -3,7 +3,7 @@
 // same one-shot guard, cleanup and telemetry. The auth store + router are required lazily so the
 // entry-file fetch module keeps zustand/expo-router out of its import graph.
 
-import { trackAuthDiag } from './sessionHealth';
+import { clearedAgeKind, trackAuthDiag } from './sessionHealth';
 
 // Why the session was dropped -> auth_diag kind (registry AUTH_DIAG_KINDS).
 const DIAG_KIND = {
@@ -36,6 +36,7 @@ export function expireSession({ reason, jwt, navigate = true, markExpired = true
       if (markExpired) require('@/utils/auth/sessionEpoch').markSessionExpired();
       useAuthStore.getState().setAuth(null);
       trackAuthDiag(DIAG_KIND[reason] ?? 'session_cleared_code');
+      trackAuthDiag(clearedAgeKind(current.tokenAt));
     }
     // Anonymous telemetry only: tag the coming landing on Welcome as "session_expired" (annotation, no
     // navigation change; it can never throw into the session handling below).

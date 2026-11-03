@@ -244,9 +244,33 @@ allowlist must ship first or the events are rejected). No tokens, ids or emails:
 - Env for a device test (set on a test server, then redeploy): `AUTH_JWT_MAX_AGE_SECONDS=300`,
   `AUTH_JWT_REFRESH_AFTER_SECONDS=60`. Tokens already issued keep their original `exp`; sign in again after changing.
 
-**PR 2 — app (1.0.5, no version bump)**: stores the refreshed token through `setAuth`; the launch gate only treats a
-`session_expired` 401 as dead when a bearer was actually sent; the token cache is written only if still unset and the
-first Keychain read is shared; new anonymous `auth_diag` kinds. Described in that PR.
+**PR 2 — app (1.0.5, no version bump; implemented)**
+
+- **Refresh stored**: `__create/fetch.ts` reads `X-Pawpi-Refreshed-Token` on a 2xx/3xx first-party `/api` response (not
+  `/api/auth/*`, not while the launch gate is deciding) and calls `useAuthStore.applyRefreshedToken(sentJwt, newJwt)`. That
+  goes through `setAuth(…, { refresh: true })`: Keychain write + read-back (`persistAuth`), the in-memory `tokenCache` and the
+  store move together. It is ignored when the signed-in session is no longer the one that sent the request (sign-out or
+  another account while in flight), when the value is not a well-formed token, or when it is the token we already hold.
+  A refresh keeps the user's React Query cache (no identity change) and does not emit `keychain_ok`.
+- **H3 closed**: the wrapper marks every response whose request carried the stored token (`markBearerSent`);
+  `fetchPets` only reports `sessionExpired` when the 401 answers a request that sent a token. A header-less 401 at launch
+  goes to the existing re-check (which sends the stored token explicitly): alive → retry screen, 401 → cleared. It is
+  counted as `launch_401_no_bearer`.
+- **H4 closed**: `tokenCache.loadCachedAuth` shares ONE Keychain read between concurrent first requests and writes the
+  result with `setCachedAuthIfUnset`, so a read that resolves after a logout / sign-in / refresh cannot overwrite it.
+  `useAuth.initiate` also hands its (already awaited) read to the cache, so the first request does not read the Keychain again.
+- **EntryPoint key**: a refresh changes the JWT but not the signed-in user, so `useSessionKey` keeps the key and the launch gate
+  does not re-run; another account still routes again.
+- **Telemetry** (`AUTH_DIAG_KINDS`, web allowlist ships with this PR, app events only exist from build 1.0.5): `launch_read_timeout`,
+  `launch_read_error` (split `launch_no_token`), `launch_401_no_bearer`, `token_refreshed`, and the age of the token when a session
+  is cleared — `cleared_age_lt1d | lt7d | lt30d | ge30d | unknown`. Age comes from `tokenAt`, an additive epoch-ms field the
+  store stamps next to `jwt`/`user` (sign-in or refresh; a session stored before 1.0.5 reports `unknown` until its first
+  refresh). Only the bucket leaves the device. The buckets replace the 7-day ones proposed above, now that the lifetime is 30
+  days: with the refresh a healthy session is < 1 day old, so `ge30d` = genuine expiry, `lt1d`/`lt7d` = the server rejected a young token.
+- **How to read it after 1.0.5 ships**: `token_refreshed` should be roughly one per active device per day. `session_cleared_*`
+  followed by `cleared_age_ge30d` means a real 30-day idle expiry (expected, rare). `cleared_age_lt1d`/`lt7d` is the signal to
+  investigate (revocation, secret rotation or a server bug). `launch_read_timeout` > 0 means the 3 s Keychain guard (H2) is real.
+- Not done: no "your session expired" line on Welcome (a genuine expiry now needs 30 idle days; add EN+ES copy later if wanted).
 
 ## Not done / not verified
 
