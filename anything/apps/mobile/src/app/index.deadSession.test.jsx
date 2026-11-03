@@ -27,21 +27,25 @@ jest.mock("@/components/ui", () => ({ PawMark: () => null }));
 
 import * as SecureStore from "expo-secure-store";
 import { useAuthStore, authKey, secureStoreOptions } from "@/utils/auth/store";
+import { markBearerSent } from "@/utils/auth/sessionHealth";
 import EntryPoint from "./index";
 
 const GOOD = "eyJhbGciOiJkaXIifQ..abc-_1.def.ghi";
 
 test("startup 401 deletes the Keychain token and lands on Welcome (not the network-error screen)", async () => {
   useAuthStore.setState({ isReady: true, auth: { jwt: GOOD } });
-  global.fetch = jest.fn(() =>
-    Promise.resolve({
+  // (the real fetch wrapper marks a response whose request carried the Bearer token; the code only counts then)
+  global.fetch = jest.fn(() => {
+    const res = {
       ok: false,
       status: 401,
       headers: { get: (h) => (h.toLowerCase() === "x-pawpi-error-code" ? "session_expired" : null) },
       clone() { return this; },
       json: async () => ({ error: "expired", code: "session_expired" }),
-    }),
-  );
+    };
+    markBearerSent(res);
+    return Promise.resolve(res);
+  });
 
   const { findByText, queryByText } = render(<EntryPoint />);
 

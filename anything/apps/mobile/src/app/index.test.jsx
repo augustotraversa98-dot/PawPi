@@ -106,6 +106,32 @@ describe("EntryPoint routes once per session", () => {
     expect(queryByText("redirect:/onboarding-photo")).toBeNull();
   });
 
+  test("a rolling token refresh (same user, NEW jwt) does not re-run the gate", async () => {
+    mockAuth = { isReady: true, auth: { jwt: JWT_A, user: { id: 1 } }, setAuth: mockSetAuth };
+    const { findByText, rerender, queryByText } = render(<EntryPoint />);
+    await findByText("redirect:/(tabs)");
+    expect(petsCalls()).toBe(1);
+
+    petsAnswer = []; // a re-run would now bounce this user to onboarding
+    mockAuth = { isReady: true, auth: { jwt: JWT_B, user: { id: 1 }, tokenAt: Date.now() }, setAuth: mockSetAuth };
+    rerender(<EntryPoint />);
+    await waitFor(() => expect(queryByText("redirect:/(tabs)")).toBeTruthy());
+
+    expect(petsCalls()).toBe(1);
+    expect(queryByText("redirect:/onboarding-photo")).toBeNull();
+  });
+
+  test("a DIFFERENT user's session (new jwt, other id) routes again", async () => {
+    mockAuth = { isReady: true, auth: { jwt: JWT_A, user: { id: 1 } }, setAuth: mockSetAuth };
+    const { findByText, rerender } = render(<EntryPoint />);
+    await findByText("redirect:/(tabs)");
+    expect(petsCalls()).toBe(1);
+
+    mockAuth = { isReady: true, auth: { jwt: JWT_B, user: { id: 2 } }, setAuth: mockSetAuth };
+    rerender(<EntryPoint />);
+    await waitFor(() => expect(petsCalls()).toBe(2));
+  });
+
   test("logout re-routes to Welcome", async () => {
     mockAuth = { isReady: true, auth: { jwt: JWT_A }, setAuth: mockSetAuth };
     const { findByText, rerender } = render(<EntryPoint />);

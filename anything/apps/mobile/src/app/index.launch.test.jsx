@@ -89,7 +89,7 @@ beforeEach(() => {
 });
 
 test("stale token + session_expired 401: cleared, Welcome once, no home flash, no second navigation", async () => {
-  mockFetchPets.mockRejectedValue(httpError(401, { sessionExpired: true }));
+  mockFetchPets.mockRejectedValue(httpError(401, { sessionExpired: true, bearerSent: true }));
   const { findByText, queryByText } = render(<EntryPoint />);
 
   await findByText("redirect:/welcome");
@@ -99,7 +99,7 @@ test("stale token + session_expired 401: cleared, Welcome once, no home flash, n
   expect(mockReplace).not.toHaveBeenCalled(); // the Redirect is the ONLY navigation
   expect(recheckCalls()).toHaveLength(0); // the code is proof enough
   expect(mockFetchPets).toHaveBeenCalledTimes(1); // no retry loop
-  expect(diag()).toEqual(["launch_token_found", "session_cleared_launch_401"]);
+  expect(diag()).toEqual(["launch_token_found", "session_cleared_launch_401", "cleared_age_unknown"]);
   expect(isLaunchGateOpen()).toBe(false);
 });
 
@@ -112,7 +112,54 @@ test("bare launch 401 that one re-check confirms dead: cleared once", async () =
 
   expect(recheckCalls()).toHaveLength(1);
   expect(useAuthStore.getState().auth).toBeNull();
-  expect(diag()).toEqual(["launch_token_found", "session_cleared_launch_401"]);
+  expect(diag()).toEqual(["launch_token_found", "session_cleared_launch_401", "cleared_age_unknown"]);
+});
+
+// The server stamps session_expired on EVERY 401, also on a request that went out without a token (a failed
+// Keychain read in the fetch wrapper). fetchPets reports that as bearerSent:false, sessionExpired:false: the code
+// is NOT a verdict on the stored session, so the stored token gets one explicit re-check instead of being cleared.
+const noBearer401 = () => httpError(401, { bearerSent: false, sessionExpired: false });
+
+test("a 401 on a request that sent NO token never clears the session by itself: re-check says alive -> retry screen", async () => {
+  mockFetchPets.mockRejectedValue(noBearer401());
+  recheckAnswers({ ok: true, status: 200 });
+  const { findByText, queryByText } = render(<EntryPoint />);
+
+  await findByText("Try again");
+
+  expect(recheckCalls()).toHaveLength(1);
+  expect(useAuthStore.getState().auth).toEqual(AUTH);
+  expect(queryByText("redirect:/welcome")).toBeNull();
+  expect(diag()).toEqual([
+    "launch_token_found",
+    "launch_401_no_bearer",
+  ]);
+});
+
+test("…and when the explicit re-check with the stored token is itself a 401, the session is cleared (a dead session is still cleared)", async () => {
+  mockFetchPets.mockRejectedValue(noBearer401());
+  recheckAnswers({ ok: false, status: 401 });
+  const { findByText } = render(<EntryPoint />);
+
+  await findByText("redirect:/welcome");
+
+  expect(recheckCalls()).toHaveLength(1);
+  expect(recheckCalls()[0][1].headers.authorization).toBe(`Bearer ${AUTH.jwt}`);
+  expect(useAuthStore.getState().auth).toBeNull();
+  expect(diag()).toEqual([
+    "launch_token_found",
+    "launch_401_no_bearer",
+    "session_cleared_launch_401",
+    "cleared_age_unknown",
+  ]);
+});
+
+test("a coded 401 on a request that DID send the token is still proof enough: no re-check", async () => {
+  mockFetchPets.mockRejectedValue(httpError(401, { bearerSent: true, sessionExpired: true }));
+  const { findByText } = render(<EntryPoint />);
+  await findByText("redirect:/welcome");
+  expect(recheckCalls()).toHaveLength(0);
+  expect(diag()).not.toContain("launch_401_no_bearer");
 });
 
 test("launch 403 confirmed dead by the re-check is cleared and reported as launch_403", async () => {
@@ -123,7 +170,7 @@ test("launch 403 confirmed dead by the re-check is cleared and reported as launc
   await findByText("redirect:/welcome");
 
   expect(useAuthStore.getState().auth).toBeNull();
-  expect(diag()).toEqual(["launch_token_found", "session_cleared_launch_403"]);
+  expect(diag()).toEqual(["launch_token_found", "session_cleared_launch_403", "cleared_age_unknown"]);
 });
 
 test.each([

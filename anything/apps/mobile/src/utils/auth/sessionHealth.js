@@ -49,6 +49,30 @@ export async function carriesSessionExpiredCode(response) {
   }
 }
 
+// Was a Bearer token actually attached to this request? The server stamps `session_expired` on EVERY
+// non-machine 401, including a request that arrived with no token at all — which is not a verdict on the
+// stored session (H3 in docs/auth-logout-after-1.0.4-diagnosis.md). The fetch wrapper marks the responses it
+// sent a token for; a code on an unmarked response is ignored.
+const bearerSent = new WeakSet();
+
+/** fetch wrapper: this response answers a request that carried the stored session's Bearer token. */
+export function markBearerSent(response) {
+  try {
+    if (response && typeof response === 'object') bearerSent.add(response);
+  } catch {
+    // diagnostics-grade bookkeeping; never affects a request
+  }
+}
+
+/** Did the request that produced `response` carry a Bearer token? */
+export function wasBearerSent(response) {
+  try {
+    return !!response && typeof response === 'object' && bearerSent.has(response);
+  } catch {
+    return false;
+  }
+}
+
 let recheckInFlight = null;
 let aliveUntil = 0;
 
@@ -112,11 +136,40 @@ export function trackAuthDiag(kind) {
 }
 
 let launchTokenReported = false;
-/** Once per launch: did the cold-launch Keychain read find a stored token? */
+let launchReadOutcome = 'empty'; // 'empty' | 'timeout' | 'error' — why the cold-launch read produced no token
+/** useAuth: the cold-launch Keychain read hit the 3 s guard / threw. Reported with the launch token verdict. */
+export function noteLaunchRead(outcome) {
+  launchReadOutcome = outcome;
+}
+/** Once per launch: did the cold-launch Keychain read find a stored token? (and, if not, why) */
 export function reportLaunchToken(found) {
   if (launchTokenReported) return;
   launchTokenReported = true;
-  trackAuthDiag(found ? 'launch_token_found' : 'launch_no_token');
+  if (found) return trackAuthDiag('launch_token_found');
+  trackAuthDiag(
+    launchReadOutcome === 'timeout'
+      ? 'launch_read_timeout'
+      : launchReadOutcome === 'error'
+        ? 'launch_read_error'
+        : 'launch_no_token',
+  );
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+/**
+ * auth_diag kind for how old the stored token was when the session was cleared (`tokenAt` = epoch ms the app
+ * received it: sign-in or last refresh; absent for sessions stored before 1.0.5). Only a bucket leaves the device.
+ * With the rolling refresh a healthy session is < 1 day old; a clear at ge30d is a genuine expiry, a clear
+ * at lt1d/lt7d is the server rejecting a young token (revocation, secret rotation, a bug).
+ */
+export function clearedAgeKind(tokenAt, now = Date.now()) {
+  if (typeof tokenAt !== 'number' || !Number.isFinite(tokenAt)) return 'cleared_age_unknown';
+  const age = now - tokenAt;
+  if (age < -60_000) return 'cleared_age_unknown'; // clock went backwards: no honest bucket
+  if (age < DAY_MS) return 'cleared_age_lt1d';
+  if (age < 7 * DAY_MS) return 'cleared_age_lt7d';
+  if (age < 30 * DAY_MS) return 'cleared_age_lt30d';
+  return 'cleared_age_ge30d';
 }
 
 // Test-only.
@@ -124,4 +177,5 @@ export function __resetSessionHealthForTests() {
   recheckInFlight = null;
   aliveUntil = 0;
   launchTokenReported = false;
+  launchReadOutcome = 'empty';
 }

@@ -102,14 +102,14 @@ describe('through the real store', () => {
     process.on('unhandledRejection', unhandled);
 
     expect(() => useAuthStore.getState().setAuth(AUTH)).not.toThrow();
-    expect(useAuthStore.getState().auth).toEqual(AUTH);
+    expect(useAuthStore.getState().auth).toMatchObject(AUTH);
 
     await new Promise((r) => setTimeout(r, 0));
     await new Promise((r) => setTimeout(r, 0));
     process.off('unhandledRejection', unhandled);
     expect(unhandled).not.toHaveBeenCalled();
     expect(diag()).toEqual(['keychain_write_failed']);
-    expect(useAuthStore.getState().auth).toEqual(AUTH);
+    expect(useAuthStore.getState().auth).toMatchObject(AUTH);
   });
 
   test('signing out right after signing in wins: the retry is skipped and the Keychain ends up empty', async () => {

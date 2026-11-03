@@ -107,7 +107,7 @@ import { resetCachedAuthForTests } from "@/utils/auth/tokenCache";
 import { __resetRegisterPushTokenForTests } from "@/utils/registerPushToken";
 import { __resetSessionExpiryForTests } from "../../__create/fetch";
 import { closeLaunchGate, __resetLaunchGateForTests } from "@/utils/auth/sessionLaunchGate";
-import { __resetSessionHealthForTests } from "@/utils/auth/sessionHealth";
+import { __resetSessionHealthForTests, markBearerSent } from "@/utils/auth/sessionHealth";
 import fetchToWeb from "../../__create/fetch";
 import { OwnerMenu } from "@/components/More/OwnerMenu";
 import BusinessProfile from "@/app/business/profile";
@@ -140,13 +140,15 @@ beforeEach(() => {
     if (url === "/api/account") return { ok: true, status: 200, json: async () => ({}) };
     // a REAL dead session: the server stamps its 401 with the session_expired code
     if (url === "/api/pets") {
-      return {
+      const res = {
         ok: false,
         status: 401,
         headers: { get: (h) => (h.toLowerCase() === "x-pawpi-error-code" ? "session_expired" : null) },
         clone() { return this; },
         json: async () => ({ code: "session_expired" }),
       };
+      markBearerSent(res); // the real fetch wrapper marks a response whose request carried the Bearer token
+      return res;
     }
     return { ok: true, status: 200, json: async () => ({ providers: [] }) };
   });
@@ -214,7 +216,7 @@ test("5. signing in as a DIFFERENT user over a live session", async () => {
   await act(async () => {
     useAuthStore.getState().setAuth(USER_B);
   });
-  expect(useAuthStore.getState().auth).toEqual(USER_B);
+  expect(useAuthStore.getState().auth).toMatchObject(USER_B);
   await expectDeviceCleanedFor(JWT_A);
 });
 

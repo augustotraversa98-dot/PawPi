@@ -1,9 +1,9 @@
 import * as SecureStore from 'expo-secure-store';
 import { fetch as expoFetch } from 'expo/fetch';
 import { authKey, secureStoreOptions } from '@/utils/auth/secureStore';
-import { getCachedAuth, setCachedAuth } from '@/utils/auth/tokenCache';
+import { loadCachedAuth } from '@/utils/auth/tokenCache';
 import { expireSession, __resetSessionExpiryForTests as resetExpiry } from '@/utils/auth/sessionExpiry';
-import { hasSessionExpiredHeader, isSessionDead, trackAuthDiag } from '@/utils/auth/sessionHealth';
+import { hasSessionExpiredHeader, isSessionDead, markBearerSent, trackAuthDiag } from '@/utils/auth/sessionHealth';
 import { isLaunchGateOpen } from '@/utils/auth/sessionLaunchGate';
 
 const originalFetch = fetch;
@@ -88,6 +88,27 @@ const isAuthBridgeURL = (url: string) => {
 // Test-only: clear the one-shot guard between cases.
 export const __resetSessionExpiryForTests = resetExpiry;
 
+// Rolling session refresh: the server hands a fresh token back in this header on a successful, authenticated
+// /api response once the one we sent has aged (anything/apps/web/src/app/api/utils/sessionGuard.js). Keep it:
+// the 30-day lifetime restarts on every day of use. Applied through the auth store only while the signed-in
+// session is still the one that sent the request, and never while the launch gate is deciding; the next
+// request refreshes again. Anything wrong with the value is ignored (the old token keeps working until it expires).
+const REFRESHED_TOKEN_HEADER = 'x-pawpi-refreshed-token';
+
+const handleRefreshedToken = (response: Response, sentJwt: string) => {
+  try {
+    if (isLaunchGateOpen()) return;
+    const refreshed = response.headers?.get?.(REFRESHED_TOKEN_HEADER);
+    if (!refreshed) return;
+    const { useAuthStore } = require('@/utils/auth/store');
+    if (useAuthStore.getState().applyRefreshedToken(sentJwt, refreshed)) {
+      trackAuthDiag('token_refreshed');
+    }
+  } catch {
+    // refresh is best-effort; it must never break the request it rode in on
+  }
+};
+
 // A first-party /api 401 while a bearer was attached. It is a dead session ONLY if it carries the
 // server's `session_expired` code, or one re-check against GET /api/session confirms it (see
 // utils/auth/sessionHealth). A bare 401 that the re-check does not confirm — and any network error —
@@ -160,18 +181,9 @@ const fetchToWeb = async function fetchWithHeaders(...args: Params) {
   // Authorization header off every first-party request. See ./auth/secureStore.
   // The parsed session is cached in memory (./auth/tokenCache, kept in sync by the auth store), so the Keychain
   // is read at most until the first successful read instead of before every request.
-  let auth = getCachedAuth();
-  if (auth === undefined) {
-    auth = await SecureStore.getItemAsync(authKey, secureStoreOptions)
-      .then((stored) => {
-        return stored ? JSON.parse(stored) : null;
-      })
-      .catch(() => {
-        return null;
-      });
-    // Cache only a real session; an empty/failed read stays "unknown" so it is retried.
-    if (auth) setCachedAuth(auth);
-  }
+  const auth = await loadCachedAuth(() =>
+    SecureStore.getItemAsync(authKey, secureStoreOptions).then((stored) => (stored ? JSON.parse(stored) : null)),
+  );
 
   if (auth) {
     finalHeaders.set('authorization', `Bearer ${auth.jwt}`);
@@ -209,8 +221,15 @@ const fetchToWeb = async function fetchWithHeaders(...args: Params) {
   // bridge itself (/api/auth/*), which legitimately 401s during sign-in. The auth store + router are
   // required lazily so this entry-file module keeps zustand/expo-router out of its import graph
   // (see utils/auth/secureStore).
-  if (auth && response.status === 401 && isApiURL(url) && !isAuthBridgeURL(url)) {
-    handleUnauthorized(response, auth.jwt);
+  if (auth && isApiURL(url) && !isAuthBridgeURL(url)) {
+    // Remember that this response answers a request WITH a token: a session_expired code on a response
+    // that did not (see utils/auth/sessionHealth) says nothing about the stored session.
+    markBearerSent(response);
+    if (response.status === 401) {
+      handleUnauthorized(response, auth.jwt);
+    } else if (response.status >= 200 && response.status < 400) {
+      handleRefreshedToken(response, auth.jwt);
+    }
   }
 
   // Misrouted-API guard: a backend that is MISSING an /api route serves the SPA app-shell —
