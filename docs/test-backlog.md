@@ -24,6 +24,19 @@ Reasoning, the exact expected residual (`supabase_admin:r|S|f` only) and when to
 
 ---
 
+## 📱 To test — v1.0.5 (auth refresh #733 + keyboard #734; server #732 already live)
+
+**Needs the 1.0.5 build** (next EAS build number: 31, iOS). Merged + CI-green, **not device-verified** — the keyboard fix in particular could not be exercised in the Simulator. Full checklist with the 12-screen table: [`release-1.0.5.md`](release-1.0.5.md) §5.
+
+- [ ] **Daily moment, long caption (10+ lines), EN and ES:** caption box and the post button stay above the keyboard; the caption scrolls inside its box (capped at 160 pt). Also from a pet profile and the business "Post a moment".
+- [ ] **Keyboard on the other 11 screens:** Weight, Pee, Poo, Wellness log, Medication, Vaccine, Preventive care, Medical care (issue + routine details), Walk routine, Nearby walks (create) — focused field and Save visible. Regression glance: Bark, Write review, chat composer.
+- [ ] **Sign in, use several tabs, force-quit and reopen** → still signed in. **Airplane mode at launch** → "We couldn't reach PawPi", not Welcome.
+- [ ] **MOST IMPORTANT — log out, log in as a different account:** nothing from the first account is visible anywhere.
+- [ ] *(optional, test server with `AUTH_JWT_MAX_AGE_SECONDS=300`, `AUTH_JWT_REFRESH_AFTER_SECONDS=60`)* stays signed in past 5 minutes of use; idle > 5 min → Welcome once.
+- [ ] Settings footer reads `v1.0.5 (N)`; after a few days Grafana `pawpi_client_auth_diag_total{diag=…}` shows `token_refreshed` and `cleared_age_*` for `app_version="1.0.5"` (`cleared_age_lt1d`/`lt7d` = investigate).
+
+---
+
 ## 📱 To test — "logged out every time" fix (session 401 code + Keychain write check)
 
 **⚠️ The app-side fix needs a NEW NATIVE BUILD — next EAS build number: 27** (iOS, version 1.0.2; builds up to 26 still log out on ANY 401 and never write-verify the Keychain). The server half (PR #698: `session_expired` code, walk-pickup 403, `GET /api/session`) is **already live on production** (deploy SUCCESS, `GET /api/session` without a token → 401 + `session_expired`, checked 2026-10-20), and already protects old builds from the business-401 logout. Merged + CI-green, **not device-verified**. Telemetry to read afterwards: `pawpi_client_auth_diag_total{diag=…}` (Grafana).
