@@ -1,10 +1,12 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { WALK_ROUTINE_COLORS as C } from "@/constants/walkRoutineColors";
+import { useTranslation } from "react-i18next";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export default function CustomDaysSelector({ selectedDays, onToggleDay }) {
+  const { t } = useTranslation();
   return (
     <View style={{ marginBottom: 16 }}>
       <Text
@@ -15,7 +17,7 @@ export default function CustomDaysSelector({ selectedDays, onToggleDay }) {
           marginBottom: 8,
         }}
       >
-        Select Days
+        {t("routinesUi.customDaysSelector.selectDays")}
       </Text>
       <View
         style={{

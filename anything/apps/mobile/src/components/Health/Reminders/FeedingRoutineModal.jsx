@@ -258,10 +258,10 @@ export default function FeedingRoutineModal({
                     marginBottom: 4,
                   }}
                 >
-                  🍽️ Feeding Routine
+                  {t("routinesUi.feeding.feedingRoutine")}
                 </Text>
                 <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-                  How many meals does {petName} eat per day?
+                  {t("routinesUi.feeding.howManyMeals", { name: petName })}
                 </Text>
               </View>
               <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -300,7 +300,7 @@ export default function FeedingRoutineModal({
                       textAlign: "center",
                     }}
                   >
-                    {count} meal{count > 1 ? "s" : ""} per day
+                    {t("routinesUi.shared.mealsPerDay", { count })}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -327,7 +327,7 @@ export default function FeedingRoutineModal({
                     textAlign: "center",
                   }}
                 >
-                  Custom
+                  {t("routinesUi.feeding.custom")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -365,10 +365,12 @@ export default function FeedingRoutineModal({
                 marginBottom: 4,
               }}
             >
-              🍽️ {editingRoutine ? "Edit" : "Create"} Feeding Routine
+              {editingRoutine
+                ? t("routinesUi.feeding.titleEdit")
+                : t("routinesUi.feeding.titleCreate")}
             </Text>
             <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-              Set meal-specific schedules
+              {t("routinesUi.feeding.setMealSpecificSchedules")}
             </Text>
           </View>
           <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -406,10 +408,10 @@ export default function FeedingRoutineModal({
                 color: C.warmBrown,
               }}
             >
-              Meals
+              {t("routinesUi.feeding.meals")}
             </Text>
             <Text style={{ fontSize: 13, color: C.mutedBrown }}>
-              Tap to expand
+              {t("routinesUi.feeding.tapToExpand")}
             </Text>
           </View>
 
@@ -451,12 +453,12 @@ export default function FeedingRoutineModal({
                     <Text style={{ fontSize: 13, color: C.mutedBrown }}>
                       {meal.time} •{" "}
                       {meal.frequency === ROUTINE_FREQUENCY.DAILY
-                        ? "Every day"
+                        ? t("routinesUi.feeding.everyDay")
                         : meal.frequency === ROUTINE_FREQUENCY.WEEKDAYS
-                          ? "Weekdays"
+                          ? t("routinesUi.feeding.weekdays")
                           : meal.frequency === ROUTINE_FREQUENCY.WEEKENDS
-                            ? "Weekends"
-                            : "Custom days"}
+                            ? t("routinesUi.feeding.weekends")
+                            : t("routinesUi.feeding.customDays")}
                     </Text>
                   </View>
                   <View
@@ -494,14 +496,14 @@ export default function FeedingRoutineModal({
                         marginBottom: 6,
                       }}
                     >
-                      Meal Name
+                      {t("routinesUi.feeding.mealName")}
                     </Text>
                     <TextInput
                       value={meal.name}
                       onChangeText={(text) =>
                         handleMealChange(index, "name", text)
                       }
-                      placeholder="e.g., Breakfast"
+                      placeholder={t("routinesUi.feeding.exampleBreakfast")}
                       placeholderTextColor={C.mutedBrown}
                       style={{
                         backgroundColor: C.sand,
@@ -522,7 +524,7 @@ export default function FeedingRoutineModal({
                         marginBottom: 6,
                       }}
                     >
-                      Time
+                      {t("routinesUi.feeding.time")}
                     </Text>
                     <View style={{ marginBottom: 16 }}>
                       <TimeField
@@ -546,22 +548,22 @@ export default function FeedingRoutineModal({
                         marginBottom: 8,
                       }}
                     >
-                      Repeat
+                      {t("routinesUi.feeding.repeat")}
                     </Text>
                     <View style={{ gap: 8, marginBottom: 12 }}>
                       {[
-                        { value: ROUTINE_FREQUENCY.DAILY, label: "Every day" },
+                        { value: ROUTINE_FREQUENCY.DAILY, label: t("routinesUi.feeding.everyDay") },
                         {
                           value: ROUTINE_FREQUENCY.WEEKDAYS,
-                          label: "Weekdays",
+                          label: t("routinesUi.feeding.weekdays"),
                         },
                         {
                           value: ROUTINE_FREQUENCY.WEEKENDS,
-                          label: "Weekends",
+                          label: t("routinesUi.feeding.weekends"),
                         },
                         {
                           value: ROUTINE_FREQUENCY.CUSTOM,
-                          label: "Custom days",
+                          label: t("routinesUi.feeding.customDays"),
                         },
                       ].map((option) => (
                         <TouchableOpacity
@@ -611,7 +613,7 @@ export default function FeedingRoutineModal({
                             marginBottom: 8,
                           }}
                         >
-                          Select Days
+                          {t("routinesUi.feeding.selectDays")}
                         </Text>
                         <View
                           style={{
@@ -687,7 +689,7 @@ export default function FeedingRoutineModal({
                             color: C.warmBrown,
                           }}
                         >
-                          Reminder enabled
+                          {t("routinesUi.feeding.reminderEnabled")}
                         </Text>
                         <Switch
                           value={meal.reminderEnabled}
@@ -712,7 +714,7 @@ export default function FeedingRoutineModal({
                             color: C.warmBrown,
                           }}
                         >
-                          Time-sensitive
+                          {t("routinesUi.feeding.timeSensitive")}
                         </Text>
                         <Switch
                           value={meal.timeSensitive}
@@ -734,14 +736,14 @@ export default function FeedingRoutineModal({
                         marginBottom: 6,
                       }}
                     >
-                      Notes (optional)
+                      {t("routinesUi.feeding.notesOptional")}
                     </Text>
                     <TextInput
                       value={meal.notes}
                       onChangeText={(text) =>
                         handleMealChange(index, "notes", text)
                       }
-                      placeholder="e.g., Morning kibble with supplement"
+                      placeholder={t("routinesUi.feeding.exampleMorningKibbleWithSupplement")}
                       placeholderTextColor={C.mutedBrown}
                       multiline
                       numberOfLines={2}
@@ -781,7 +783,7 @@ export default function FeedingRoutineModal({
             <Text
               style={{ fontSize: 15, fontWeight: "600", color: C.mutedBrown }}
             >
-              Add Another Meal
+              {t("routinesUi.feeding.addAnotherMeal")}
             </Text>
           </TouchableOpacity>
         </KeyboardAwareScrollView>
@@ -809,7 +811,9 @@ export default function FeedingRoutineModal({
             }}
           >
             <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}>
-              {editingRoutine ? "Save Changes" : "Create Routine"}
+              {editingRoutine
+                ? t("routinesUi.shared.saveChanges")
+                : t("routinesUi.shared.createRoutine")}
             </Text>
           </TouchableOpacity>
         </View>

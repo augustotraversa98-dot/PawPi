@@ -273,7 +273,7 @@ export default function UpcomingTab() {
           <Text
             style={{ fontSize: 13, fontWeight: "600", color: C.mutedBrown }}
           >
-            Snooze
+            {t("routinesUi.upcomingTab.snooze")}
           </Text>
         </TouchableOpacity>
       </View>
@@ -340,7 +340,7 @@ export default function UpcomingTab() {
               <Text
                 style={{ fontSize: 16, fontWeight: "700", color: C.warmBrown }}
               >
-                Due Soon
+                {t("routinesUi.upcomingTab.dueSoon")}
               </Text>
             </View>
             {timeSensitiveReminders.slice(0, 2).map((reminder) => (
@@ -390,7 +390,7 @@ export default function UpcomingTab() {
                 marginBottom: 8,
               }}
             >
-              No reminders scheduled
+              {t("routinesUi.upcomingTab.noRemindersScheduled")}
             </Text>
             <Text
               style={{
@@ -401,7 +401,7 @@ export default function UpcomingTab() {
                 marginBottom: 16,
               }}
             >
-              Create a routine to generate reminders automatically
+              {t("routinesUi.upcomingTab.createARoutineToGenerate")}
             </Text>
           </View>
         )}

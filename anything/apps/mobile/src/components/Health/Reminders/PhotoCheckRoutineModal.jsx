@@ -11,7 +11,7 @@ import {
 import { Check, ChevronDown, ChevronUp } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
-import { CADENCE_LABELS } from "./CadenceFrequencySelector";
+import { cadenceLabel } from "./CadenceFrequencySelector";
 import { DAY_CHIP_LABELS } from "./DayChips";
 import ScheduleBlock, {
   scheduleFromItem,
@@ -361,10 +361,18 @@ export default function PhotoCheckRoutineModal({
     <KeyboardSafeFormModal
       visible={visible}
       onClose={onClose}
-      title={`${editingRoutine ? "Edit" : "Create"} Photo Check`}
+      title={
+        editingRoutine
+          ? t("routinesUi.photoCheck.titleEdit")
+          : t("routinesUi.photoCheck.titleCreate")
+      }
       subtitle={t("health.photoCheck.subtitle")}
       icon="📸"
-      ctaLabel={editingRoutine ? "Save Changes" : "Create Routine"}
+      ctaLabel={
+        editingRoutine
+          ? t("routinesUi.shared.saveChanges")
+          : t("routinesUi.shared.createRoutine")
+      }
       ctaColor={ACCENT}
       onCtaPress={handleSave}
       backgroundColor={C.cream}
@@ -390,7 +398,7 @@ export default function PhotoCheckRoutineModal({
         }}
       >
         <Text style={{ fontSize: 13, fontWeight: "700", color: C.warmBrown }}>
-          Body areas
+          {t("routinesUi.photoCheck.bodyAreas")}
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Text
@@ -446,10 +454,12 @@ export default function PhotoCheckRoutineModal({
                     color: isSelected ? ACCENT : C.warmBrown,
                   }}
                 >
-                  {area.label}
+                  {t(`routineCard.areas.${area.value}`)}
                 </Text>
                 <Text style={{ fontSize: 12, color: C.mutedBrown }}>
-                  Recommended: {CADENCE_LABELS[area.defaultFreq] || "Monthly"}
+                  {t("routinesUi.photoCheck.recommended", {
+                    cadence: cadenceLabel(t, area.defaultFreq, ROUTINE_FREQUENCY.MONTHLY),
+                  })}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -469,7 +479,7 @@ export default function PhotoCheckRoutineModal({
               marginBottom: 12,
             }}
           >
-            Schedule
+            {t("routinesUi.photoCheck.schedule")}
           </Text>
           <View style={{ gap: 8, marginBottom: 20 }}>
             <TouchableOpacity
@@ -489,7 +499,7 @@ export default function PhotoCheckRoutineModal({
                   color: scheduleMode === "same" ? ACCENT : C.warmBrown,
                 }}
               >
-                Use same schedule for all selected areas
+                {t("routinesUi.photoCheck.useSameScheduleForAll")}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -510,7 +520,7 @@ export default function PhotoCheckRoutineModal({
                   color: scheduleMode === "custom" ? ACCENT : C.warmBrown,
                 }}
               >
-                Customize per area
+                {t("routinesUi.photoCheck.customizePerArea")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -557,7 +567,7 @@ export default function PhotoCheckRoutineModal({
                   color: C.warmBrown,
                 }}
               >
-                Reminder enabled
+                {t("routinesUi.photoCheck.reminderEnabled")}
               </Text>
               <Switch
                 value={sharedSchedule.reminderEnabled}
@@ -585,7 +595,7 @@ export default function PhotoCheckRoutineModal({
                   color: C.warmBrown,
                 }}
               >
-                Time-sensitive
+                {t("routinesUi.photoCheck.timeSensitive")}
               </Text>
               <Switch
                 value={sharedSchedule.timeSensitive}
@@ -609,7 +619,7 @@ export default function PhotoCheckRoutineModal({
               marginBottom: 12,
             }}
           >
-            Notes (optional)
+            {t("routinesUi.photoCheck.notesOptional")}
           </Text>
           <TextInput
             value={sharedSchedule.notes}
@@ -646,7 +656,7 @@ export default function PhotoCheckRoutineModal({
               marginBottom: 12,
             }}
           >
-            Custom Schedules
+            {t("routinesUi.photoCheck.customSchedules")}
           </Text>
           {selectedBodyAreas.map((areaValue) => {
             const area = BODY_AREAS.find((a) => a.value === areaValue);
@@ -699,10 +709,10 @@ export default function PhotoCheckRoutineModal({
                           color: C.warmBrown,
                         }}
                       >
-                        {area?.label}
+                        {area ? t(`routineCard.areas.${area.value}`) : null}
                       </Text>
                       <Text style={{ fontSize: 12, color: C.mutedBrown }}>
-                        {CADENCE_LABELS[schedule.frequency] || "Monthly"}
+                        {cadenceLabel(t, schedule.frequency, ROUTINE_FREQUENCY.MONTHLY)}
                         {dayLabel} at {schedule.preferredTime}
                       </Text>
                     </View>
@@ -751,7 +761,7 @@ export default function PhotoCheckRoutineModal({
                           color: C.warmBrown,
                         }}
                       >
-                        Reminder enabled
+                        {t("routinesUi.photoCheck.reminderEnabled")}
                       </Text>
                       <Switch
                         value={schedule.reminderEnabled}
@@ -781,7 +791,7 @@ export default function PhotoCheckRoutineModal({
                           color: C.warmBrown,
                         }}
                       >
-                        Time-sensitive
+                        {t("routinesUi.photoCheck.timeSensitive")}
                       </Text>
                       <Switch
                         value={schedule.timeSensitive}
@@ -806,7 +816,7 @@ export default function PhotoCheckRoutineModal({
                         marginBottom: 8,
                       }}
                     >
-                      Notes (optional)
+                      {t("routinesUi.photoCheck.notesOptional")}
                     </Text>
                     <TextInput
                       value={schedule.notes}

@@ -1,11 +1,13 @@
 import React from "react";
 import { View, Text, Switch } from "react-native";
 import { WALK_ROUTINE_COLORS as C } from "@/constants/walkRoutineColors";
+import { useTranslation } from "react-i18next";
 
 export default function SocialWalkToggle({
   socialWalkEnabled,
   onSocialWalkEnabledChange,
 }) {
+  const { t } = useTranslation();
   return (
     <View
       style={{
@@ -30,7 +32,7 @@ export default function SocialWalkToggle({
             color: C.warmBrown,
           }}
         >
-          Offer as social walk
+          {t("routinesUi.socialWalkToggle.offerAsSocialWalk")}
         </Text>
         <Switch
           value={socialWalkEnabled}
@@ -45,7 +47,7 @@ export default function SocialWalkToggle({
           color: C.mutedBrown,
         }}
       >
-        Allow friends or nearby pets to join
+        {t("routinesUi.socialWalkToggle.allowFriendsOrNearbyPets")}
       </Text>
     </View>
   );

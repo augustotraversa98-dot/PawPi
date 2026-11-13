@@ -39,13 +39,13 @@ export const INTERVAL_PRESETS = [2, 4, 6, 8, 12];
 // Early-reminder lead-time options. P1 stores the chosen value verbatim into the
 // schedule object; generalizing the notification layer to honor it is P2.
 export const EARLY_REMINDER_OPTIONS = [
-  { value: "on_time", label: "At time" },
-  { value: "5m", label: "5 min before" },
-  { value: "15m", label: "15 min before" },
-  { value: "30m", label: "30 min before" },
-  { value: "1h", label: "1 hour before" },
-  { value: "1d", label: "1 day before" },
-  { value: "1w", label: "1 week before" },
+  { value: "on_time" },
+  { value: "5m" },
+  { value: "15m" },
+  { value: "30m" },
+  { value: "1h" },
+  { value: "1d" },
+  { value: "1w" },
 ];
 
 const DEFAULT_INTERVAL_HOURS = 4;

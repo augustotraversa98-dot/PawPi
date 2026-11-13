@@ -21,7 +21,7 @@ import {
 } from "@/data/routinesData";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 import { canonicalizeDateValue } from "@/utils/canonicalDateTime";
-import { CADENCE_LABELS } from "./CadenceFrequencySelector";
+import { cadenceLabel } from "./CadenceFrequencySelector";
 import ScheduleBlock, { scheduleFromItem } from "./ScheduleBlock";
 import useRoutinesStore from "@/store/routinesStore";
 import { useTranslation } from "react-i18next";
@@ -41,36 +41,36 @@ const C = {
 };
 
 const WELLNESS_OPTIONS = [
-  { value: WELLNESS_CHECK_ITEMS.GENERAL, label: "General check", icon: "✅" },
-  { value: WELLNESS_CHECK_ITEMS.WEIGHT, label: "Weight", icon: "⚖️" },
+  { value: WELLNESS_CHECK_ITEMS.GENERAL, labelKey: "routinesUi.wellnessCheck.option.general", icon: "✅" },
+  { value: WELLNESS_CHECK_ITEMS.WEIGHT, labelKey: "routinesUi.wellnessCheck.option.weight", icon: "⚖️" },
   {
     value: WELLNESS_CHECK_ITEMS.BODY_CONDITION,
-    label: "Body condition",
+    labelKey: "routinesUi.wellnessCheck.option.bodyCondition",
     icon: "🫀",
   },
-  { value: WELLNESS_CHECK_ITEMS.MOBILITY, label: "Mobility", icon: "🚶" },
+  { value: WELLNESS_CHECK_ITEMS.MOBILITY, labelKey: "routinesUi.wellnessCheck.option.mobility", icon: "🚶" },
   {
     value: WELLNESS_CHECK_ITEMS.MOOD_ENERGY,
-    label: "Mood / Energy",
+    labelKey: "routinesUi.wellnessCheck.option.moodEnergy",
     icon: "😊",
   },
   {
     value: WELLNESS_CHECK_ITEMS.SKIN_COAT,
-    label: "Skin / Coat",
+    labelKey: "routinesUi.wellnessCheck.option.skinCoat",
     icon: "🧴",
   },
   {
     value: WELLNESS_CHECK_ITEMS.APPETITE_HYDRATION,
-    label: "Appetite / Hydration",
+    labelKey: "routinesUi.wellnessCheck.option.appetiteHydration",
     icon: "💧",
   },
-  { value: WELLNESS_CHECK_ITEMS.CUSTOM, label: "Custom", icon: "📋" },
+  { value: WELLNESS_CHECK_ITEMS.CUSTOM, labelKey: "routinesUi.wellnessCheck.option.custom", icon: "📋" },
 ];
 
 // Map for type picker - using the same data
 const CHECK_TYPES = WELLNESS_OPTIONS.map((opt) => ({
   id: opt.value,
-  label: opt.label,
+  labelKey: opt.labelKey,
   icon: opt.icon,
 }));
 
@@ -524,10 +524,10 @@ export default function WellnessCheckRoutineModal({
 
   const getItemLabel = (item) => {
     if (item.checkType === WELLNESS_CHECK_ITEMS.CUSTOM) {
-      return item.customName || "Custom check";
+      return item.customName || t("routinesUi.wellnessCheck.customCheck");
     }
     const option = WELLNESS_OPTIONS.find((o) => o.value === item.checkType);
-    return option?.label || "Check";
+    return option?.labelKey ? t(option.labelKey) : t("routinesUi.wellnessCheck.checkFallback");
   };
 
   const getItemIcon = (item) => {
@@ -563,10 +563,12 @@ export default function WellnessCheckRoutineModal({
                 marginBottom: 4,
               }}
             >
-              ⚖️ {editingRoutine ? "Edit" : "Create"} Wellness Check
+              {editingRoutine
+                ? t("routinesUi.wellnessCheck.titleEdit")
+                : t("routinesUi.wellnessCheck.titleCreate")}
             </Text>
             <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-              Track health changes over time
+              {t("routinesUi.wellnessCheck.trackHealthChangesOverTime")}
             </Text>
           </View>
           <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -610,7 +612,7 @@ export default function WellnessCheckRoutineModal({
                   textAlign: "center",
                 }}
               >
-                No wellness checks yet
+                {t("routinesUi.wellnessCheck.noWellnessChecksYet")}
               </Text>
               <Text
                 style={{
@@ -620,8 +622,7 @@ export default function WellnessCheckRoutineModal({
                   lineHeight: 20,
                 }}
               >
-                Add weight, body condition, mobility, mood, or general checks to
-                keep track of changes.
+                {t("routinesUi.wellnessCheck.addWeightBodyConditionMobility")}
               </Text>
             </View>
           ) : (
@@ -642,10 +643,10 @@ export default function WellnessCheckRoutineModal({
                     color: C.warmBrown,
                   }}
                 >
-                  Check Items
+                  {t("routinesUi.wellnessCheck.checkItems")}
                 </Text>
                 <Text style={{ fontSize: 13, color: C.mutedBrown }}>
-                  Tap to expand
+                  {t("routinesUi.wellnessCheck.tapToExpand")}
                 </Text>
               </View>
 
@@ -698,7 +699,7 @@ export default function WellnessCheckRoutineModal({
                           </Text>
                           <Text style={{ fontSize: 13, color: C.mutedBrown }}>
                             {item.preferredTime} •{" "}
-                            {CADENCE_LABELS[item.frequency] || "Custom"}
+                            {cadenceLabel(t, item.frequency)}
                           </Text>
                         </View>
                       </View>
@@ -737,14 +738,14 @@ export default function WellnessCheckRoutineModal({
                                 marginBottom: 6,
                               }}
                             >
-                              Check Name
+                              {t("routinesUi.wellnessCheck.checkName")}
                             </Text>
                             <TextInput
                               value={item.customName}
                               onChangeText={(text) =>
                                 handleItemChange(item.id, "customName", text)
                               }
-                              placeholder="e.g., Allergy check"
+                              placeholder={t("routinesUi.wellnessCheck.exampleAllergyCheck")}
                               placeholderTextColor={C.mutedBrown}
                               style={{
                                 backgroundColor: C.sand,
@@ -781,7 +782,7 @@ export default function WellnessCheckRoutineModal({
                                 marginBottom: 8,
                               }}
                             >
-                              Unit
+                              {t("routinesUi.wellnessCheck.unit")}
                             </Text>
                             <View
                               style={{
@@ -861,7 +862,7 @@ export default function WellnessCheckRoutineModal({
                                 color: C.warmBrown,
                               }}
                             >
-                              Reminder enabled
+                              {t("routinesUi.wellnessCheck.reminderEnabled")}
                             </Text>
                             <Switch
                               value={item.reminderEnabled}
@@ -895,7 +896,7 @@ export default function WellnessCheckRoutineModal({
                                 color: C.warmBrown,
                               }}
                             >
-                              Time-sensitive
+                              {t("routinesUi.wellnessCheck.timeSensitive")}
                             </Text>
                             <Switch
                               value={item.timeSensitive}
@@ -926,7 +927,7 @@ export default function WellnessCheckRoutineModal({
                             marginBottom: 6,
                           }}
                         >
-                          Notes (optional)
+                          {t("routinesUi.wellnessCheck.notesOptional")}
                         </Text>
                         <TextInput
                           value={item.notes}
@@ -982,7 +983,7 @@ export default function WellnessCheckRoutineModal({
                 marginLeft: 8,
               }}
             >
-              Add check item
+              {t("routinesUi.wellnessCheck.addCheckItem")}
             </Text>
           </TouchableOpacity>
         </KeyboardAwareScrollView>
@@ -1011,7 +1012,9 @@ export default function WellnessCheckRoutineModal({
             }}
           >
             <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}>
-              {editingRoutine ? "Save Changes" : "Create Routine"}
+              {editingRoutine
+                ? t("routinesUi.shared.saveChanges")
+                : t("routinesUi.shared.createRoutine")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -1049,7 +1052,7 @@ export default function WellnessCheckRoutineModal({
                   marginBottom: 8,
                 }}
               >
-                Add check item
+                {t("routinesUi.wellnessCheck.addCheckItem")}
               </Text>
               <Text
                 style={{
@@ -1058,7 +1061,7 @@ export default function WellnessCheckRoutineModal({
                   marginBottom: 20,
                 }}
               >
-                Choose what you want to track.
+                {t("routinesUi.wellnessCheck.chooseWhatYouWantTo")}
               </Text>
               <ScrollView
                 style={{ maxHeight: 400 }}
@@ -1089,7 +1092,7 @@ export default function WellnessCheckRoutineModal({
                         color: "#321E17",
                       }}
                     >
-                      {type.label}
+                      {t(type.labelKey)}
                     </Text>
                   </Pressable>
                 ))}
@@ -1109,7 +1112,7 @@ export default function WellnessCheckRoutineModal({
                     color: "#8A6F5B",
                   }}
                 >
-                  Cancel
+                  {t("routinesUi.wellnessCheck.cancel")}
                 </Text>
               </Pressable>
             </View>

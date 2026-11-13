@@ -5,6 +5,7 @@ import { View, Text, TouchableOpacity, Modal } from "react-native";
 import { X, Clock } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SNOOZE_OPTIONS } from "@/data/remindersData";
+import { useTranslation } from "react-i18next";
 
 const C = {
   cream: COLORS.cream,
@@ -18,6 +19,7 @@ const C = {
 };
 
 export default function SnoozeModal({ visible, onClose, onSelect, reminder }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
 
   if (!reminder) return null;
@@ -68,10 +70,11 @@ export default function SnoozeModal({ visible, onClose, onSelect, reminder }) {
               <Text
                 style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}
               >
-                Snooze Reminder
+                {t("routinesUi.snooze.snoozeReminder")}
               </Text>
             </View>
             <TouchableOpacity
+              accessibilityLabel={t("common.close")} accessibilityRole="button"
               onPress={onClose}
               style={{
                 width: 32,
@@ -116,7 +119,7 @@ export default function SnoozeModal({ visible, onClose, onSelect, reminder }) {
               marginBottom: 12,
             }}
           >
-            Snooze for:
+            {t("routinesUi.snooze.snoozeFor")}
           </Text>
 
           <View style={{ gap: 10 }}>
@@ -163,7 +166,7 @@ export default function SnoozeModal({ visible, onClose, onSelect, reminder }) {
                 textAlign: "center",
               }}
             >
-              Cancel
+              {t("routinesUi.snooze.cancel")}
             </Text>
           </TouchableOpacity>
         </View>

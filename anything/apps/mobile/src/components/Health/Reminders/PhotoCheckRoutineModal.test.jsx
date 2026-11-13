@@ -2,6 +2,9 @@ import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
 import PhotoCheckRoutineModal from "./PhotoCheckRoutineModal";
 
+// Resolve t() against the real English catalog so the assertions below read real copy.
+jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
+
 // Render pin for the Body-areas collapsible header (PR: photocheck-bodyareas-collapse).
 // The multi-select is boxed behind a summary header like ScheduleBlock's Frequency:
 //   - starts collapsed, chips hidden, summary reflects the default selection;

@@ -4,6 +4,7 @@ import { View, Text, TouchableOpacity } from "react-native";
 import { X, Pencil } from "lucide-react-native";
 import { REMINDER_TYPE_CONFIG } from "@/data/remindersData";
 import { formatScheduledTime } from "@/utils/scheduledTimeFormat";
+import { useTranslation } from "react-i18next";
 
 // A heads-up (early reminder) card for Health → Today. Deliberately NOT a task card:
 // it surfaces during the early window of a lead-time reminder ("1 day before", etc.)
@@ -24,6 +25,7 @@ const C = {
 };
 
 export default function HeadsUpReminderCard({ reminder, now, onClose, onEdit }) {
+  const { t } = useTranslation();
   const config = REMINDER_TYPE_CONFIG[reminder.type];
   const eventTime =
     reminder.eventTime ?? reminder.scheduledAt ?? reminder.nextTriggerAt;
@@ -67,7 +69,7 @@ export default function HeadsUpReminderCard({ reminder, now, onClose, onEdit }) 
               fontWeight: "600",
             }}
           >
-            Due {formatScheduledTime(eventTime, now)}
+            {t("routinesUi.shared.due", { when: formatScheduledTime(eventTime, now) })}
           </Text>
         </View>
       </View>
@@ -91,7 +93,7 @@ export default function HeadsUpReminderCard({ reminder, now, onClose, onEdit }) 
           <Text
             style={{ fontSize: 14, fontWeight: "700", color: C.mutedBrown }}
           >
-            Close
+            {t("routinesUi.headsUpReminderCard.close")}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -112,7 +114,7 @@ export default function HeadsUpReminderCard({ reminder, now, onClose, onEdit }) 
           <Text
             style={{ fontSize: 14, fontWeight: "700", color: C.terracotta }}
           >
-            Edit
+            {t("routinesUi.headsUpReminderCard.edit")}
           </Text>
         </TouchableOpacity>
       </View>

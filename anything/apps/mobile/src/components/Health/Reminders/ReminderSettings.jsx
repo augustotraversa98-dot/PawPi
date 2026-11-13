@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, Switch } from "react-native";
 import { WALK_ROUTINE_COLORS as C } from "@/constants/walkRoutineColors";
+import { useTranslation } from "react-i18next";
 
 export default function ReminderSettings({
   reminderEnabled,
@@ -8,6 +9,7 @@ export default function ReminderSettings({
   onReminderEnabledChange,
   onTimeSensitiveChange,
 }) {
+  const { t } = useTranslation();
   return (
     <View
       style={{
@@ -32,7 +34,7 @@ export default function ReminderSettings({
             color: C.warmBrown,
           }}
         >
-          Reminder enabled
+          {t("routinesUi.reminderSettings.reminderEnabled")}
         </Text>
         <Switch
           value={reminderEnabled}
@@ -55,7 +57,7 @@ export default function ReminderSettings({
             color: C.warmBrown,
           }}
         >
-          Time-sensitive
+          {t("routinesUi.reminderSettings.timeSensitive")}
         </Text>
         <Switch
           value={timeSensitive}

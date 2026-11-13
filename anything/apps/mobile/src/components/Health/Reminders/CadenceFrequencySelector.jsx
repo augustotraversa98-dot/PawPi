@@ -38,6 +38,12 @@ const CADENCE_I18N_KEYS = {
   [ROUTINE_FREQUENCY.ONCE]: "cadenceSelector.labels.once",
 };
 
+// Localized cadence label for display outside the selector (falls back to the English label).
+export function cadenceLabel(t, freq, fallbackFreq = ROUTINE_FREQUENCY.CUSTOM) {
+  const f = CADENCE_I18N_KEYS[freq] ? freq : fallbackFreq;
+  return CADENCE_I18N_KEYS[f] ? t(CADENCE_I18N_KEYS[f]) : CADENCE_LABELS[f];
+}
+
 export const CADENCE_OPTIONS = [
   ROUTINE_FREQUENCY.DAILY,
   ROUTINE_FREQUENCY.WEEKLY,

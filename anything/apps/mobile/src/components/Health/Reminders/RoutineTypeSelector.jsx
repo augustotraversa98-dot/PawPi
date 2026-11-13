@@ -4,6 +4,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, ScrollView, Modal } from "react-native";
 import { X } from "lucide-react-native";
 import { ROUTINE_TYPES, ROUTINE_TYPE_CONFIG } from "@/data/routinesData";
+import { useTranslation } from "react-i18next";
 
 const C = {
   cream: COLORS.cream,
@@ -22,6 +23,7 @@ export default function RoutineTypeSelector({
   onClose,
   onSelectType,
 }) {
+  const { t } = useTranslation();
   const routineTypes = [
     ROUTINE_TYPES.FEEDING,
     ROUTINE_TYPES.WALK,
@@ -73,13 +75,14 @@ export default function RoutineTypeSelector({
                   marginBottom: 4,
                 }}
               >
-                Create Routine
+                {t("routinesUi.routineTypeSelector.createRoutine")}
               </Text>
               <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-                Choose the type of care routine
+                {t("routinesUi.routineTypeSelector.chooseTheTypeOfCare")}
               </Text>
             </View>
             <TouchableOpacity
+              accessibilityLabel={t("common.close")} accessibilityRole="button"
               onPress={onClose}
               style={{
                 width: 36,
