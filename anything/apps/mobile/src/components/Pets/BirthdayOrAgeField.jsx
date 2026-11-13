@@ -3,6 +3,7 @@ import { View, Text, TextInput } from "react-native";
 import DateField from "@/components/DateField";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
+import { useTranslation } from "react-i18next";
 
 const inputStyle = {
   backgroundColor: MATERIALS.surfaceSunken,
@@ -33,9 +34,10 @@ export default function BirthdayOrAgeField({
   ageMonths,
   onAgeMonthsChange,
 }) {
+  const { t } = useTranslation();
   const options = [
-    { value: false, label: "I know the birthday" },
-    { value: true, label: "I'm not sure" },
+    { value: false, label: t("feedUi.birthdayOrAgeField.iKnowTheBirthday") },
+    { value: true, label: t("feedUi.birthdayOrAgeField.iMNotSure") },
   ];
 
   return (
@@ -92,7 +94,7 @@ export default function BirthdayOrAgeField({
                 { color: COLORS.mutedBrown, marginBottom: SPACING.xs + 2 },
               ]}
             >
-              Estimated years
+              {t("feedUi.birthdayOrAgeField.estimatedYears")}
             </Text>
             <TextInput
               testID="estimated-age-years"
@@ -113,7 +115,7 @@ export default function BirthdayOrAgeField({
                 { color: COLORS.mutedBrown, marginBottom: SPACING.xs + 2 },
               ]}
             >
-              Estimated months
+              {t("feedUi.birthdayOrAgeField.estimatedMonths")}
             </Text>
             <TextInput
               testID="estimated-age-months"

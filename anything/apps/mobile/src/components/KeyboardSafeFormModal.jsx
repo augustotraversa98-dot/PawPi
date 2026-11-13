@@ -17,6 +17,7 @@ import {
   TYPE,
   ELEVATION,
 } from "@/constants/theme";
+import { useTranslation } from "react-i18next";
 
 // Restyled to the 2.77 design tokens (was a local hex map). Same palette family,
 // now centralized + lighter chrome.
@@ -67,6 +68,7 @@ export default function KeyboardSafeFormModal({
   backgroundColor = C.cream,
   headerPaddingTop = 60,
 }) {
+  const { t } = useTranslation();
   return (
     <Modal
       visible={visible}
@@ -106,7 +108,7 @@ export default function KeyboardSafeFormModal({
             <PressableScale
               onPress={onClose}
               accessibilityRole="button"
-              accessibilityLabel="Close"
+              accessibilityLabel={t("feedUi.keyboardSafeFormModal.close")}
               style={{
                 width: 36,
                 height: 36,

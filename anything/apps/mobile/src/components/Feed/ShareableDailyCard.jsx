@@ -3,6 +3,7 @@ import { View, Text } from "react-native";
 import { Image } from "expo-image";
 import { PawPrint } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
+import { useTranslation } from "react-i18next";
 
 // A story-sized (9:16) branded frame for sharing a pet's daily photo (ticket 2.28).
 // Rendered OFF-SCREEN and snapshotted with react-native-view-shot. Tasteful + on-brand;
@@ -13,6 +14,7 @@ const ShareableDailyCard = forwardRef(function ShareableDailyCard(
   { petName, photoUri, onReady, onError },
   ref,
 ) {
+  const { t } = useTranslation();
   const name = petName || "My pup";
   // The card is "ready" to capture only once the hero image has decoded. When
   // there's no photo, it's ready as soon as it lays out (nothing to wait for).
@@ -87,7 +89,7 @@ const ShareableDailyCard = forwardRef(function ShareableDailyCard(
             textAlign: "center",
           }}
         >
-          {name} is part of PawPi 🐾
+          {t("feedUi.shareableDailyCard.partOfPawpi", { name })}
         </Text>
         <Text
           style={{
@@ -98,7 +100,7 @@ const ShareableDailyCard = forwardRef(function ShareableDailyCard(
             marginTop: 6,
           }}
         >
-          one honest moment, every day
+          {t("feedUi.shareableDailyCard.oneHonestMomentEveryDay")}
         </Text>
       </View>
     </View>

@@ -236,7 +236,7 @@ export const PostCard = memo(function PostCard({
                 </Text>
               ) : null}
               {streak > 0 ? (
-                <Text accessibilityLabel={`${streak} day streak`} style={{ fontSize: 13 }}>
+                <Text accessibilityLabel={t("feedUi.shared.dayStreak", { count: streak })} style={{ fontSize: 13 }}>
                   🔥{streak}
                 </Text>
               ) : null}

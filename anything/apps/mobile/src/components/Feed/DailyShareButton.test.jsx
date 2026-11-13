@@ -7,6 +7,9 @@
 import React from "react";
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
 
+// Resolve t() against the real English catalog (the frame copy is localized now).
+jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
+
 jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),
 );
