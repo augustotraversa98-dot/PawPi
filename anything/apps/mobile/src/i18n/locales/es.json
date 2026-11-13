@@ -4318,5 +4318,128 @@
       "duePrefix": "Vence",
       "upcomingPrefix": "Próximo:"
     }
+  },
+  "healthUi": {
+    "generalCheckDashboard": {
+      "generalCheck": "Control general",
+      "quickVisualHealthReview": "Revisión visual rápida de la salud",
+      "areasWithChanges": "Zonas con cambios",
+      "noGeneralChecksLoggedYet": "Todavía no hay controles generales registrados",
+      "tapTheButtonToStart": "Tocá el botón + para empezar un control visual rápido",
+      "lastCheck": "Último control: {{date}} a las {{time}}"
+    },
+    "healthToday": {
+      "skip": "Omitir"
+    },
+    "photoCheckCaptureModal": {
+      "photoCheckHelpsYouTrack": "El chequeo con foto te ayuda a seguir los cambios visibles a lo largo del tiempo. No diagnostica ni reemplaza la atención veterinaria profesional.",
+      "photoTip": "💡 Consejo para la foto",
+      "tryToUseSimilarLighting": "Intentá usar una luz y un ángulo parecidos cada vez. Las fotos te ayudan a vos y a tu veterinario a comparar los cambios visibles con el tiempo.",
+      "takePhoto": "Sacar foto",
+      "chooseFromGallery": "Elegir de la galería",
+      "photoRecommendedForBetterComparison": "Se recomienda una foto para comparar mejor con el tiempo",
+      "skipPhoto": "Omitir la foto",
+      "saveWithoutPhoto": "¿Guardar sin foto?",
+      "photosMakeItEasierTo": "Las fotos facilitan comparar los cambios con el tiempo. Igual podés guardar solo una nota si lo necesitás.",
+      "addPhoto": "Agregar foto",
+      "saveNoteOnly": "Guardar solo la nota",
+      "photoPreview": "Vista previa de la foto",
+      "changePhoto": "Cambiar foto",
+      "anythingChanged": "¿Algo cambió?",
+      "notesOptional": "Notas (opcional)",
+      "thisPhotoCheckWillBe": "Este chequeo con foto se va a guardar en tu historial de fotos y se puede incluir en futuros resúmenes veterinarios."
+    },
+    "photoCheckModal": {
+      "whatDoYouWantTo": "¿Qué querés fotografiar?",
+      "selectABodyAreaTo": "Elegí una zona del cuerpo para seguir sus cambios visibles con el tiempo",
+      "photoCheckHelpsYouTrack": "El chequeo con foto te ayuda a seguir los cambios visibles a lo largo del tiempo. No diagnostica ni reemplaza la atención veterinaria profesional.",
+      "takePhoto": "Sacar foto",
+      "chooseFromGallery": "Elegir de la galería",
+      "optionalNotes": "Notas opcionales",
+      "savePhotoCheck": "Guardar chequeo con foto",
+      "thisPhotoWillBeSaved": "Esta foto se va a guardar en tu historial de fotos y se puede incluir en futuros resúmenes veterinarios.",
+      "title": "Chequeo con foto",
+      "reviewPhoto": "Revisar foto",
+      "tip": "Intentá usar una luz y un ángulo parecidos cada vez.\nLas fotos pueden ayudarte a vos y a tu veterinario a comparar los cambios visibles con el tiempo."
+    },
+    "editMedicalProfileModal": {
+      "exampleDrSarahJohnson": "Ej.: Dra. Sofía Pérez",
+      "exampleHappyPawsVeterinaryClinic": "Ej.: Veterinaria Patitas Felices",
+      "exampleJaneDoe": "Ej.: María Gómez",
+      "examplePetplanPremium": "Ej.: Plan Premium",
+      "examplePp123456789": "Ej.: PP123456789"
+    },
+    "vetSummaryDashboard": {
+      "vetSummary": "Resumen veterinario",
+      "prepareForYourVetVisit": "Prepará la visita al veterinario",
+      "recentActivityLast7Days": "Actividad reciente (últimos 7 días)",
+      "createVetSummary": "Crear resumen veterinario",
+      "intro": "Un resumen real de los registros recientes de {{name}} para compartir con tu veterinario.",
+      "logsCount_one": "{{count}} registro",
+      "logsCount_other": "{{count}} registros",
+      "photosCount_one": "{{count}} foto",
+      "photosCount_other": "{{count}} fotos",
+      "medsCount_one": "{{count}} medicamento",
+      "medsCount_other": "{{count}} medicamentos",
+      "flags_one": "{{count}} cosa para hablar con tu veterinario",
+      "flags_other": "{{count}} cosas para hablar con tu veterinario"
+    },
+    "walkActivityModal": {
+      "poo": "💩 Caca",
+      "pee": "💦 Pis"
+    },
+    "walkCountdownCard": {
+      "addToCalendar": "Agregar al calendario",
+      "startWalk": "Empezar paseo",
+      "logManually": "Registrar a mano",
+      "snooze": "Posponer",
+      "summary": "{{name}} · {{minutes}} min · {{pace}}"
+    },
+    "walkerLiveMap": {
+      "start": "Inicio",
+      "now": "Ahora"
+    },
+    "photoCheckCapture": {
+      "titleWithArea": "Chequeo con foto: {{area}}",
+      "subtitleCapture": "Sacá una foto para comparar los cambios con el tiempo",
+      "subtitleNotes": "Agregá notas y observaciones",
+      "subtitleSkip": "¿Omitir la foto?",
+      "uploading": "Subiendo...",
+      "saving": "Guardando...",
+      "savePhotoCheck": "Guardar chequeo con foto",
+      "bodyAreaFallback": "Zona del cuerpo"
+    },
+    "photoAreaPrompt": {
+      "paws": "¿Hay enrojecimiento, hinchazón, cortes, cojera o lamido excesivo?",
+      "ears": "¿Hay olor, secreción, enrojecimiento, rascado o sacudidas de cabeza?",
+      "eyes": "¿Hay enrojecimiento, opacidad, secreción o entrecierra los ojos?",
+      "teeth": "¿Hay sarro, mal aliento, encías rojas o dientes rotos?",
+      "skin_fur": "¿Hay enrojecimiento, caída de pelo, heridas, bultos, pulgas, garrapatas o picazón?",
+      "face": "¿Hay hinchazón, heridas, secreción o asimetría?",
+      "full_body": "Sirve para seguir la forma del cuerpo, la postura, el pelaje y los cambios visibles.",
+      "other": "¿Algún otro cambio visible que quieras seguir?"
+    },
+    "photoObs": {
+      "noVisibleChange": "Sin cambios visibles",
+      "redness": "Enrojecimiento",
+      "discharge": "Secreción",
+      "cloudy": "Opaco",
+      "squinting": "Entrecierra los ojos",
+      "other": "Otro",
+      "smell": "Olor",
+      "scratching": "Rascado",
+      "swelling": "Hinchazón",
+      "limping": "Cojera",
+      "crackedPads": "Almohadillas agrietadas",
+      "badBreath": "Mal aliento",
+      "redGums": "Encías rojas",
+      "tartar": "Sarro",
+      "bleeding": "Sangrado",
+      "rash": "Sarpullido",
+      "drySkin": "Piel seca",
+      "hairLoss": "Caída de pelo",
+      "sensitivity": "Sensibilidad",
+      "lumps": "Bultos"
+    }
   }
 }

@@ -36,51 +36,50 @@ const C = {
 const BODY_AREAS = [
   {
     id: "paws",
-    label: "Paws",
-    prompt: "Any redness, swelling, cuts, limping, or excessive licking?",
+    labelKey: "routineCard.areas.paws",
+    promptKey: "healthUi.photoAreaPrompt.paws",
     color: "#FFB74D",
   },
   {
     id: "ears",
-    label: "Ears",
-    prompt: "Any smell, discharge, redness, scratching, or head shaking?",
+    labelKey: "routineCard.areas.ears",
+    promptKey: "healthUi.photoAreaPrompt.ears",
     color: "#9575CD",
   },
   {
     id: "eyes",
-    label: "Eyes",
-    prompt: "Any redness, cloudiness, discharge, or squinting?",
+    labelKey: "routineCard.areas.eyes",
+    promptKey: "healthUi.photoAreaPrompt.eyes",
     color: "#64B5F6",
   },
   {
     id: "teeth",
-    label: "Teeth",
-    prompt: "Any tartar, bad breath, gum redness, or broken teeth?",
+    labelKey: "routineCard.areas.teeth",
+    promptKey: "healthUi.photoAreaPrompt.teeth",
     color: "#4DB6AC",
   },
   {
     id: "skin_fur",
-    label: "Skin / Fur",
-    prompt: "Any redness, hair loss, wounds, bumps, fleas, ticks, or itching?",
+    labelKey: "routineCard.areas.skin_fur",
+    promptKey: "healthUi.photoAreaPrompt.skin_fur",
     color: "#FF8A65",
   },
   {
     id: "face",
-    label: "Face",
-    prompt: "Any swelling, wounds, discharge, or asymmetry?",
+    labelKey: "routineCard.areas.face",
+    promptKey: "healthUi.photoAreaPrompt.face",
     color: C.coral,
   },
   {
     id: "full_body",
-    label: "Full body",
-    prompt:
-      "Useful for tracking body shape, posture, coat, and visible changes.",
+    labelKey: "routineCard.areas.full_body",
+    promptKey: "healthUi.photoAreaPrompt.full_body",
     color: C.sage,
   },
   {
     id: "other",
-    label: "Other",
-    prompt: "Any other visible changes you want to track?",
+    labelKey: "routineCard.areas.other",
+    promptKey: "healthUi.photoAreaPrompt.other",
     color: C.terracotta,
   },
 ];
@@ -222,9 +221,9 @@ export default function PhotoCheckModal({ visible, onClose, onSave, onSelectArea
               color: C.warmBrown,
             }}
           >
-            {step === "select" && "Photo Check"}
-            {step === "capture" && selectedArea?.label}
-            {step === "preview" && "Review Photo"}
+            {step === "select" && t("healthUi.photoCheckModal.title")}
+            {step === "capture" && selectedArea ? t(selectedArea.labelKey) : null}
+            {step === "preview" && t("healthUi.photoCheckModal.reviewPhoto")}
           </Text>
           <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={handleClose}>
             <X size={24} color={C.warmBrown} />
@@ -243,7 +242,7 @@ export default function PhotoCheckModal({ visible, onClose, onSave, onSelectArea
                   marginBottom: 8,
                 }}
               >
-                What do you want to photograph?
+                {t("healthUi.photoCheckModal.whatDoYouWantTo")}
               </Text>
               <Text
                 style={{
@@ -253,7 +252,7 @@ export default function PhotoCheckModal({ visible, onClose, onSave, onSelectArea
                   lineHeight: 20,
                 }}
               >
-                Select a body area to track visible changes over time
+                {t("healthUi.photoCheckModal.selectABodyAreaTo")}
               </Text>
 
               {/* Body Area Grid */}
@@ -294,7 +293,7 @@ export default function PhotoCheckModal({ visible, onClose, onSave, onSelectArea
                           marginBottom: 3,
                         }}
                       >
-                        {area.label}
+                        {t(area.labelKey)}
                       </Text>
                       <Text
                         style={{
@@ -303,7 +302,7 @@ export default function PhotoCheckModal({ visible, onClose, onSave, onSelectArea
                           lineHeight: 17,
                         }}
                       >
-                        {area.prompt}
+                        {t(area.promptKey)}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -332,8 +331,7 @@ export default function PhotoCheckModal({ visible, onClose, onSave, onSelectArea
                     flex: 1,
                   }}
                 >
-                  Photo Check helps you track visible changes over time. It does
-                  not diagnose or replace veterinary care.
+                  {t("healthUi.photoCheckModal.photoCheckHelpsYouTrack")}
                 </Text>
               </View>
             </View>
@@ -359,7 +357,7 @@ export default function PhotoCheckModal({ visible, onClose, onSave, onSelectArea
                     marginBottom: 8,
                   }}
                 >
-                  {selectedArea?.prompt}
+                  {selectedArea ? t(selectedArea.promptKey) : null}
                 </Text>
                 <Text
                   style={{
@@ -368,9 +366,7 @@ export default function PhotoCheckModal({ visible, onClose, onSave, onSelectArea
                     lineHeight: 18,
                   }}
                 >
-                  Try to use similar lighting and angle each time.{"\n"}
-                  Photos can help you and your vet compare visible changes over
-                  time.
+                  {t("healthUi.photoCheckModal.tip")}
                 </Text>
               </View>
 
@@ -411,7 +407,7 @@ export default function PhotoCheckModal({ visible, onClose, onSave, onSelectArea
                     color: "#FFF",
                   }}
                 >
-                  Take Photo
+                  {t("healthUi.photoCheckModal.takePhoto")}
                 </Text>
               </TouchableOpacity>
 
@@ -447,7 +443,7 @@ export default function PhotoCheckModal({ visible, onClose, onSave, onSelectArea
                     color: C.warmBrown,
                   }}
                 >
-                  Choose from Gallery
+                  {t("healthUi.photoCheckModal.chooseFromGallery")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -486,7 +482,7 @@ export default function PhotoCheckModal({ visible, onClose, onSave, onSelectArea
                   marginBottom: 10,
                 }}
               >
-                Optional notes
+                {t("healthUi.photoCheckModal.optionalNotes")}
               </Text>
               <TextInput
                 value={notes}
@@ -535,7 +531,7 @@ export default function PhotoCheckModal({ visible, onClose, onSave, onSelectArea
                     color: "#FFF",
                   }}
                 >
-                  Save Photo Check
+                  {t("healthUi.photoCheckModal.savePhotoCheck")}
                 </Text>
               </TouchableOpacity>
 
@@ -561,8 +557,7 @@ export default function PhotoCheckModal({ visible, onClose, onSave, onSelectArea
                     flex: 1,
                   }}
                 >
-                  This photo will be saved to your Photo History and can be
-                  included in future Vet Summaries.
+                  {t("healthUi.photoCheckModal.thisPhotoWillBeSaved")}
                 </Text>
               </View>
             </View>

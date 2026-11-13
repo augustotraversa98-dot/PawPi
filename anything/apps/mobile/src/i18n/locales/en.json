@@ -4318,5 +4318,128 @@
       "duePrefix": "Due",
       "upcomingPrefix": "Upcoming:"
     }
+  },
+  "healthUi": {
+    "generalCheckDashboard": {
+      "generalCheck": "General Check",
+      "quickVisualHealthReview": "Quick visual health review",
+      "areasWithChanges": "Areas with changes",
+      "noGeneralChecksLoggedYet": "No general checks logged yet",
+      "tapTheButtonToStart": "Tap the + button to start a quick visual check",
+      "lastCheck": "Last check: {{date}} at {{time}}"
+    },
+    "healthToday": {
+      "skip": "Skip"
+    },
+    "photoCheckCaptureModal": {
+      "photoCheckHelpsYouTrack": "Photo Check helps you track visible changes over time. It does not diagnose or replace veterinary care.",
+      "photoTip": "💡 Photo tip",
+      "tryToUseSimilarLighting": "Try to use similar lighting and angle each time. Photos help you and your vet compare visible changes over time.",
+      "takePhoto": "Take Photo",
+      "chooseFromGallery": "Choose from Gallery",
+      "photoRecommendedForBetterComparison": "Photo recommended for better comparison over time",
+      "skipPhoto": "Skip photo",
+      "saveWithoutPhoto": "Save without photo?",
+      "photosMakeItEasierTo": "Photos make it easier to compare changes over time. You can still save a note if needed.",
+      "addPhoto": "Add Photo",
+      "saveNoteOnly": "Save Note Only",
+      "photoPreview": "Photo Preview",
+      "changePhoto": "Change photo",
+      "anythingChanged": "Anything changed?",
+      "notesOptional": "Notes (optional)",
+      "thisPhotoCheckWillBe": "This photo check will be saved to your Photo History and can be included in future Vet Summaries."
+    },
+    "photoCheckModal": {
+      "whatDoYouWantTo": "What do you want to photograph?",
+      "selectABodyAreaTo": "Select a body area to track visible changes over time",
+      "photoCheckHelpsYouTrack": "Photo Check helps you track visible changes over time. It does not diagnose or replace veterinary care.",
+      "takePhoto": "Take Photo",
+      "chooseFromGallery": "Choose from Gallery",
+      "optionalNotes": "Optional notes",
+      "savePhotoCheck": "Save Photo Check",
+      "thisPhotoWillBeSaved": "This photo will be saved to your Photo History and can be included in future Vet Summaries.",
+      "title": "Photo Check",
+      "reviewPhoto": "Review Photo",
+      "tip": "Try to use similar lighting and angle each time.\nPhotos can help you and your vet compare visible changes over time."
+    },
+    "editMedicalProfileModal": {
+      "exampleDrSarahJohnson": "e.g., Dr. Sarah Johnson",
+      "exampleHappyPawsVeterinaryClinic": "e.g., Happy Paws Veterinary Clinic",
+      "exampleJaneDoe": "e.g., Jane Doe",
+      "examplePetplanPremium": "e.g., PetPlan Premium",
+      "examplePp123456789": "e.g., PP123456789"
+    },
+    "vetSummaryDashboard": {
+      "vetSummary": "Vet Summary",
+      "prepareForYourVetVisit": "Prepare for your vet visit",
+      "recentActivityLast7Days": "Recent Activity (Last 7 Days)",
+      "createVetSummary": "Create Vet Summary",
+      "intro": "A real summary of {{name}}'s recent logs to share with your veterinarian.",
+      "logsCount_one": "{{count}} log",
+      "logsCount_other": "{{count}} logs",
+      "photosCount_one": "{{count}} photo",
+      "photosCount_other": "{{count}} photos",
+      "medsCount_one": "{{count}} medication",
+      "medsCount_other": "{{count}} medications",
+      "flags_one": "{{count}} thing worth discussing with your vet",
+      "flags_other": "{{count}} things worth discussing with your vet"
+    },
+    "walkActivityModal": {
+      "poo": "💩 Poo",
+      "pee": "💦 Pee"
+    },
+    "walkCountdownCard": {
+      "addToCalendar": "Add to calendar",
+      "startWalk": "Start walk",
+      "logManually": "Log manually",
+      "snooze": "Snooze",
+      "summary": "{{name}} · {{minutes}} min · {{pace}}"
+    },
+    "walkerLiveMap": {
+      "start": "Start",
+      "now": "Now"
+    },
+    "photoCheckCapture": {
+      "titleWithArea": "{{area}} Photo Check",
+      "subtitleCapture": "Take a photo to compare changes over time",
+      "subtitleNotes": "Add notes and observations",
+      "subtitleSkip": "Skip photo?",
+      "uploading": "Uploading...",
+      "saving": "Saving...",
+      "savePhotoCheck": "Save Photo Check",
+      "bodyAreaFallback": "Body Area"
+    },
+    "photoAreaPrompt": {
+      "paws": "Any redness, swelling, cuts, limping, or excessive licking?",
+      "ears": "Any smell, discharge, redness, scratching, or head shaking?",
+      "eyes": "Any redness, cloudiness, discharge, or squinting?",
+      "teeth": "Any tartar, bad breath, gum redness, or broken teeth?",
+      "skin_fur": "Any redness, hair loss, wounds, bumps, fleas, ticks, or itching?",
+      "face": "Any swelling, wounds, discharge, or asymmetry?",
+      "full_body": "Useful for tracking body shape, posture, coat, and visible changes.",
+      "other": "Any other visible changes you want to track?"
+    },
+    "photoObs": {
+      "noVisibleChange": "No visible change",
+      "redness": "Redness",
+      "discharge": "Discharge",
+      "cloudy": "Cloudy",
+      "squinting": "Squinting",
+      "other": "Other",
+      "smell": "Smell",
+      "scratching": "Scratching",
+      "swelling": "Swelling",
+      "limping": "Limping",
+      "crackedPads": "Cracked pads",
+      "badBreath": "Bad breath",
+      "redGums": "Red gums",
+      "tartar": "Tartar",
+      "bleeding": "Bleeding",
+      "rash": "Rash",
+      "drySkin": "Dry skin",
+      "hairLoss": "Hair loss",
+      "sensitivity": "Sensitivity",
+      "lumps": "Lumps"
+    }
   }
 }

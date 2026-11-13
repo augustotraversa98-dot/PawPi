@@ -244,7 +244,7 @@ export default function PhotoHistory() {
                           marginBottom: 3,
                         }}
                       >
-                        {BODY_AREA_LABELS[area] || area}
+                        {BODY_AREA_LABELS[area] ? t(`routineCard.areas.${area}`) : area}
                       </Text>
                       <View
                         style={{

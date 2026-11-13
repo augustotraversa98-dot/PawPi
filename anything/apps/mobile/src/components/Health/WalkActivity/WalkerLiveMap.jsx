@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { View, Text } from "react-native";
 import { MapPin, MapPinOff } from "lucide-react-native";
 import MapLocationView from "@/components/Map/MapLocationView";
@@ -16,6 +17,7 @@ const C = {
 // Real data only: no valid points yet → a "waiting" note; foreground location permission
 // denied → a graceful "time still tracks, no map" note (no nag, no fake route).
 export default function WalkerLiveMap({ points = [], permissionDenied = false }) {
+  const { t } = useTranslation();
   const valid = (Array.isArray(points) ? points : []).filter(
     (p) => p && isValidCoord(p.lat, p.lng),
   );
@@ -51,8 +53,8 @@ export default function WalkerLiveMap({ points = [], permissionDenied = false })
         key={`walker-route-${valid.length}`}
         polyline={valid}
         points={[
-          { ...start, title: "Start" },
-          { ...latest, title: "Now" },
+          { ...start, title: t("healthUi.walkerLiveMap.start") },
+          { ...latest, title: t("healthUi.walkerLiveMap.now") },
         ]}
         height={200}
         interactive={false}

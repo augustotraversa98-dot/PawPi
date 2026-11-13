@@ -109,6 +109,30 @@ const BODY_AREA_OBSERVATIONS = {
   ],
 };
 
+// Display-only mapping: the English chip text is what gets saved in the note, so it stays the stored value.
+const OBS_KEYS = {
+  "No visible change": "noVisibleChange",
+  Redness: "redness",
+  Discharge: "discharge",
+  Cloudy: "cloudy",
+  Squinting: "squinting",
+  Other: "other",
+  Smell: "smell",
+  Scratching: "scratching",
+  Swelling: "swelling",
+  Limping: "limping",
+  "Cracked pads": "crackedPads",
+  "Bad breath": "badBreath",
+  "Red gums": "redGums",
+  Tartar: "tartar",
+  Bleeding: "bleeding",
+  Rash: "rash",
+  "Dry skin": "drySkin",
+  "Hair loss": "hairLoss",
+  Sensitivity: "sensitivity",
+  Lumps: "lumps",
+};
+
 const BODY_AREA_LABELS = {
   eyes: "Eyes",
   ears: "Ears",
@@ -138,7 +162,9 @@ export default function PhotoCheckCaptureModal({
   const [selectedObservations, setSelectedObservations] = useState([]);
   const [saving, setSaving] = useState(false);
 
-  const bodyAreaLabel = BODY_AREA_LABELS[bodyArea] || "Body Area";
+  const bodyAreaLabel = BODY_AREA_LABELS[bodyArea]
+    ? t(`routineCard.areas.${bodyArea}`)
+    : t("healthUi.photoCheckCapture.bodyAreaFallback");
   const observations = BODY_AREA_OBSERVATIONS[bodyArea] || [];
 
   const handleClose = () => {
@@ -339,13 +365,13 @@ export default function PhotoCheckCaptureModal({
                 marginBottom: 4,
               }}
             >
-              {bodyAreaLabel} Photo Check
+              {t("healthUi.photoCheckCapture.titleWithArea", { area: bodyAreaLabel })}
             </Text>
             <Text style={{ fontSize: 14, color: C.mutedBrown }}>
               {step === "capture" &&
-                "Take a photo to compare changes over time"}
-              {step === "notes" && "Add notes and observations"}
-              {step === "skipConfirm" && "Skip photo?"}
+                t("healthUi.photoCheckCapture.subtitleCapture")}
+              {step === "notes" && t("healthUi.photoCheckCapture.subtitleNotes")}
+              {step === "skipConfirm" && t("healthUi.photoCheckCapture.subtitleSkip")}
             </Text>
           </View>
           <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -391,8 +417,7 @@ export default function PhotoCheckCaptureModal({
                   flex: 1,
                 }}
               >
-                Photo Check helps you track visible changes over time. It does
-                not diagnose or replace veterinary care.
+                {t("healthUi.photoCheckCaptureModal.photoCheckHelpsYouTrack")}
               </Text>
             </View>
 
@@ -415,7 +440,7 @@ export default function PhotoCheckCaptureModal({
                   marginBottom: 8,
                 }}
               >
-                💡 Photo tip
+                {t("healthUi.photoCheckCaptureModal.photoTip")}
               </Text>
               <Text
                 style={{
@@ -424,8 +449,7 @@ export default function PhotoCheckCaptureModal({
                   lineHeight: 18,
                 }}
               >
-                Try to use similar lighting and angle each time. Photos help you
-                and your vet compare visible changes over time.
+                {t("healthUi.photoCheckCaptureModal.tryToUseSimilarLighting")}
               </Text>
             </View>
 
@@ -466,7 +490,7 @@ export default function PhotoCheckCaptureModal({
                   color: "#FFF",
                 }}
               >
-                Take Photo
+                {t("healthUi.photoCheckCaptureModal.takePhoto")}
               </Text>
             </TouchableOpacity>
 
@@ -504,7 +528,7 @@ export default function PhotoCheckCaptureModal({
                   color: C.warmBrown,
                 }}
               >
-                Choose from Gallery
+                {t("healthUi.photoCheckCaptureModal.chooseFromGallery")}
               </Text>
             </TouchableOpacity>
 
@@ -526,7 +550,7 @@ export default function PhotoCheckCaptureModal({
                   marginBottom: 12,
                 }}
               >
-                Photo recommended for better comparison over time
+                {t("healthUi.photoCheckCaptureModal.photoRecommendedForBetterComparison")}
               </Text>
               <TouchableOpacity
                 onPress={handleSkipPhoto}
@@ -543,7 +567,7 @@ export default function PhotoCheckCaptureModal({
                     textDecorationLine: "underline",
                   }}
                 >
-                  Skip photo
+                  {t("healthUi.photoCheckCaptureModal.skipPhoto")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -576,7 +600,7 @@ export default function PhotoCheckCaptureModal({
                   marginBottom: 12,
                 }}
               >
-                Save without photo?
+                {t("healthUi.photoCheckCaptureModal.saveWithoutPhoto")}
               </Text>
               <Text
                 style={{
@@ -586,8 +610,7 @@ export default function PhotoCheckCaptureModal({
                   lineHeight: 22,
                 }}
               >
-                Photos make it easier to compare changes over time. You can
-                still save a note if needed.
+                {t("healthUi.photoCheckCaptureModal.photosMakeItEasierTo")}
               </Text>
             </View>
 
@@ -602,7 +625,7 @@ export default function PhotoCheckCaptureModal({
               }}
             >
               <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}>
-                Add Photo
+                {t("healthUi.photoCheckCaptureModal.addPhoto")}
               </Text>
             </TouchableOpacity>
 
@@ -620,7 +643,7 @@ export default function PhotoCheckCaptureModal({
               <Text
                 style={{ fontSize: 16, fontWeight: "700", color: C.terracotta }}
               >
-                Save Note Only
+                {t("healthUi.photoCheckCaptureModal.saveNoteOnly")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -643,7 +666,7 @@ export default function PhotoCheckCaptureModal({
                     marginBottom: 12,
                   }}
                 >
-                  Photo Preview
+                  {t("healthUi.photoCheckCaptureModal.photoPreview")}
                 </Text>
                 <View
                   style={{
@@ -682,7 +705,7 @@ export default function PhotoCheckCaptureModal({
                       textDecorationLine: "underline",
                     }}
                   >
-                    Change photo
+                    {t("healthUi.photoCheckCaptureModal.changePhoto")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -697,7 +720,7 @@ export default function PhotoCheckCaptureModal({
                 marginBottom: 12,
               }}
             >
-              Anything changed?
+              {t("healthUi.photoCheckCaptureModal.anythingChanged")}
             </Text>
             <View
               style={{
@@ -729,7 +752,7 @@ export default function PhotoCheckCaptureModal({
                         color: isSelected ? "#FFF" : C.warmBrown,
                       }}
                     >
-                      {obs}
+                      {t(`healthUi.photoObs.${OBS_KEYS[obs] || "other"}`)}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -745,7 +768,7 @@ export default function PhotoCheckCaptureModal({
                 marginBottom: 12,
               }}
             >
-              Notes (optional)
+              {t("healthUi.photoCheckCaptureModal.notesOptional")}
             </Text>
             <TextInput
               value={notes}
@@ -789,8 +812,7 @@ export default function PhotoCheckCaptureModal({
                   flex: 1,
                 }}
               >
-                This photo check will be saved to your Photo History and can be
-                included in future Vet Summaries.
+                {t("healthUi.photoCheckCaptureModal.thisPhotoCheckWillBe")}
               </Text>
             </View>
           </KeyboardAwareScrollView>
@@ -839,10 +861,10 @@ export default function PhotoCheckCaptureModal({
                 }}
               >
                 {uploading
-                  ? "Uploading..."
+                  ? t("healthUi.photoCheckCapture.uploading")
                   : saving
-                    ? "Saving..."
-                    : "Save Photo Check"}
+                    ? t("healthUi.photoCheckCapture.saving")
+                    : t("healthUi.photoCheckCapture.savePhotoCheck")}
               </Text>
             </TouchableOpacity>
           </View>
