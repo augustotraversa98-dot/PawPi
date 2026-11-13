@@ -424,25 +424,79 @@ export async function getNotificationPermissionGranted() {
   }
 }
 
+// Deterministic OS identifier: scheduling the same identifier REPLACES the pending request instead of
+// adding a second one, so even two racing calls can never leave two daily notifications behind.
+export const DAILY_RETURN_IDENTIFIER = "pawpi-daily-return";
+const DAILY_RETURN_DATA = { kind: "daily_return" };
+
 /**
- * Schedule the daily-return reminder EXACTLY ONCE. No-ops if permission isn't granted or if it's
- * already scheduled (persisted id), so calling it on every render / re-enable is safe.
- * @param {string} [body] pre-localized notification body (the caller passes t(...) for EN/ES)
- * @returns {Promise<string|null>} the scheduled id (existing or new), or null when not scheduled
+ * Is this pending OS notification a daily-return reminder (current OR legacy)?
+ * Legacy ones (builds <= 1.0.5) have a random OS id, no data marker and a DAILY trigger at 10:00
+ * titled "PawPi"; they could be orphaned because only the LAST scheduled id was ever persisted.
+ * Never matches routine reminders (data.reminderId), engagement nudges (data.category / DATE
+ * triggers) or anything that is not a repeating 10:00 trigger.
  */
-export async function ensureDailyReturnReminder(body) {
+export function isDailyReturnRequest(req) {
+  const content = req?.content ?? {};
+  const data = content.data ?? {};
+  if (data.kind === DAILY_RETURN_DATA.kind) return true;
+  if (data.reminderId != null || data.category != null || data.petId != null) return false;
+  if (content.title !== "PawPi") return false;
+  const trigger = req?.trigger ?? {};
+  const dc = trigger.dateComponents ?? {};
+  const hour = trigger.hour ?? dc.hour;
+  const minute = trigger.minute ?? dc.minute;
+  const repeating = trigger.type === "daily" || trigger.repeats === true;
+  const hasCalendarDay = dc.day != null || dc.month != null || dc.year != null;
+  return repeating && !hasCalendarDay && hour === DAILY_RETURN_HOUR && minute === DAILY_RETURN_MINUTE;
+}
+
+// Cancel every daily-return request except `keepId`. Best effort — never throws.
+async function cancelStrayDailyReturns(keepId) {
+  try {
+    const pending = (await Notifications.getAllScheduledNotificationsAsync?.()) ?? [];
+    await Promise.all(
+      pending
+        .filter((req) => req?.identifier !== keepId && isDailyReturnRequest(req))
+        .map((req) => Notifications.cancelScheduledNotificationAsync(req.identifier)),
+    );
+  } catch (error) {
+    console.error("Error sweeping duplicate daily return reminders:", error);
+  }
+}
+
+let dailyReturnInFlight = null;
+
+async function doEnsureDailyReturnReminder(body) {
   try {
     const permissions = await Notifications.getPermissionsAsync();
     if (!isNotificationPermissionGranted(permissions)) return null;
 
     const existing = await AsyncStorage.getItem(DAILY_RETURN_KEY);
-    if (existing) return existing; // already scheduled — never duplicate
+    if (existing === DAILY_RETURN_IDENTIFIER) {
+      // Already on the deterministic id; just make sure no legacy duplicate is still pending.
+      await cancelStrayDailyReturns(DAILY_RETURN_IDENTIFIER);
+      return existing;
+    }
+
+    // First run (or migrating from a legacy random id): drop EVERY daily-return request, including
+    // orphans the old code lost track of, then schedule exactly one under the deterministic id.
+    await cancelStrayDailyReturns(null);
+    if (existing) {
+      try {
+        await Notifications.cancelScheduledNotificationAsync(existing);
+      } catch {
+        // already gone
+      }
+    }
 
     const id = await Notifications.scheduleNotificationAsync({
+      identifier: DAILY_RETURN_IDENTIFIER,
       content: {
         title: "PawPi",
         body: body || "Your pup would love to see you today 🐾",
         sound: true,
+        data: DAILY_RETURN_DATA,
       },
       // Repeats every day at the given local time. Typed trigger (SDK 54); channelId routes
       // Android to the "default" channel initNotifications() creates, iOS ignores it.
@@ -462,6 +516,27 @@ export async function ensureDailyReturnReminder(body) {
 }
 
 /**
+ * Schedule the daily-return reminder EXACTLY ONCE. No-ops if permission isn't granted or if it's
+ * already scheduled (persisted id), so calling it on every render / re-enable is safe.
+ *
+ * Concurrency: check-then-schedule spans several awaits, and the caller's effect re-fires (permission
+ * flips true, pet name / `t` identity changes), so two calls can overlap. They are single-flighted
+ * here (overlapping callers share one run) AND the OS request has a deterministic identifier, so a
+ * duplicate can not be created even across a race the in-memory guard misses. Production bug
+ * 2026-11-13: the same "…le encantaría verte hoy" notification arrived twice at 10:00.
+ * @param {string} [body] pre-localized notification body (the caller passes t(...) for EN/ES)
+ * @returns {Promise<string|null>} the scheduled id (existing or new), or null when not scheduled
+ */
+export function ensureDailyReturnReminder(body) {
+  if (!dailyReturnInFlight) {
+    dailyReturnInFlight = doEnsureDailyReturnReminder(body).finally(() => {
+      dailyReturnInFlight = null;
+    });
+  }
+  return dailyReturnInFlight;
+}
+
+/**
  * Cancel + forget the daily-return reminder (e.g. permission revoked). Safe to call anytime.
  */
 export async function cancelDailyReturnReminder() {
@@ -471,6 +546,7 @@ export async function cancelDailyReturnReminder() {
       await Notifications.cancelScheduledNotificationAsync(existing);
       await AsyncStorage.removeItem(DAILY_RETURN_KEY);
     }
+    await cancelStrayDailyReturns(null);
   } catch (error) {
     console.error("Error canceling daily return reminder:", error);
   }
