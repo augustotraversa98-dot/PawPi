@@ -311,7 +311,7 @@ export const PostDetailModal = memo(function PostDetailModal({
                     accessibilityRole="button"
                   >
                     <Text style={[TYPE.subhead, { fontWeight: "800", color: COLORS.coral }]}>
-                      {savingCaption ? "Saving…" : "Save"}
+                      {savingCaption ? t("feedUi.postDetailModal.saving") : t("common.save")}
                     </Text>
                   </PressableScale>
                 </View>
@@ -358,7 +358,7 @@ export const PostDetailModal = memo(function PostDetailModal({
               >
                 <Pencil size={16} color={COLORS.coral} />
                 <Text style={[TYPE.body, { color: COLORS.coral, fontWeight: "700" }]}>
-                  Add a caption ✍️
+                  {t("feedUi.postDetailModal.addACaption")}
                 </Text>
               </PressableScale>
             ) : null}
@@ -417,7 +417,7 @@ export const PostDetailModal = memo(function PostDetailModal({
             }}
           >
             <Text style={[TYPE.callout, { fontWeight: "800", color: COLORS.warmBrown, marginBottom: SPACING.md }]}>
-              Barks ({barksCount})
+              {t("feedUi.postDetailModal.barksCount", { count: barksCount })}
             </Text>
             {loadingBarks ? (
               <View style={{ alignItems: "center", paddingVertical: SPACING.xl }}>
@@ -476,7 +476,7 @@ export const PostDetailModal = memo(function PostDetailModal({
               }}
             >
               <Text style={[TYPE.callout, { color: COLORS.coral, fontWeight: "700" }]}>
-                Add a bark 🐾
+                {t("feedUi.postDetailModal.addABark")}
               </Text>
             </PressableScale>
           </View>

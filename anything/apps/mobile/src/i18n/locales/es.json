@@ -4441,5 +4441,35 @@
       "sensitivity": "Sensibilidad",
       "lumps": "Bultos"
     }
+  },
+  "feedUi": {
+    "dayCard": {
+
+    },
+    "postCard": {
+
+    },
+    "postDetailModal": {
+      "addACaption": "Agregá un epígrafe ✍️",
+      "addABark": "Agregá un ladrido 🐾",
+      "barksCount": "Ladridos ({{count}})",
+      "saving": "Guardando…"
+    },
+    "shareableDailyCard": {
+      "oneHonestMomentEveryDay": "un momento sincero, todos los días",
+      "partOfPawpi": "{{name}} es parte de PawPi 🐾"
+    },
+    "keyboardSafeFormModal": {
+      "close": "Cerrar"
+    },
+    "birthdayOrAgeField": {
+      "iKnowTheBirthday": "Sé el cumpleaños",
+      "iMNotSure": "No estoy seguro",
+      "estimatedYears": "Años estimados",
+      "estimatedMonths": "Meses estimados"
+    },
+    "shared": {
+      "dayStreak": "Racha de {{count}} días"
+    }
   }
 }

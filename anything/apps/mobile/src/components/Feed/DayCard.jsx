@@ -66,7 +66,7 @@ export function DayCard({ dayCard, likedByPostId, streak = 0, onOpenDetail }) {
           <View style={styles.nameRow}>
             <Text style={styles.petName}>{dayCard?.pet?.name}</Text>
             {streak > 0 ? (
-              <Text accessibilityLabel={`${streak} day streak`} style={{ fontSize: 13 }}>
+              <Text accessibilityLabel={t("feedUi.shared.dayStreak", { count: streak })} style={{ fontSize: 13 }}>
                 🔥{streak}
               </Text>
             ) : null}
