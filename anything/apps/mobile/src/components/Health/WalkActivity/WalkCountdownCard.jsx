@@ -155,7 +155,11 @@ export default function WalkCountdownCard({ reminder, onComplete, onSnooze }) {
               fontWeight: "600",
             }}
           >
-            {petName} · {walk.durationMinutes} min · {walk.pace}
+            {t("healthUi.walkCountdownCard.summary", {
+              name: petName,
+              minutes: walk.durationMinutes,
+              pace: walk.pace,
+            })}
           </Text>
 
           {/* Add to Calendar */}
@@ -186,7 +190,7 @@ export default function WalkCountdownCard({ reminder, onComplete, onSnooze }) {
                 color: C.sage,
               }}
             >
-              Add to calendar
+              {t("healthUi.walkCountdownCard.addToCalendar")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -213,7 +217,7 @@ export default function WalkCountdownCard({ reminder, onComplete, onSnooze }) {
           >
             <Play size={18} color="#FFF" />
             <Text style={{ fontSize: 15, fontWeight: "800", color: "#FFF" }}>
-              Start walk
+              {t("healthUi.walkCountdownCard.startWalk")}
             </Text>
           </TouchableOpacity>
 
@@ -236,7 +240,7 @@ export default function WalkCountdownCard({ reminder, onComplete, onSnooze }) {
             <Text
               style={{ fontSize: 14, fontWeight: "700", color: C.mutedBrown }}
             >
-              Log manually
+              {t("healthUi.walkCountdownCard.logManually")}
             </Text>
           </TouchableOpacity>
 
@@ -259,7 +263,7 @@ export default function WalkCountdownCard({ reminder, onComplete, onSnooze }) {
             <Text
               style={{ fontSize: 14, fontWeight: "700", color: C.mutedBrown }}
             >
-              Snooze
+              {t("healthUi.walkCountdownCard.snooze")}
             </Text>
           </TouchableOpacity>
         </View>

@@ -554,13 +554,13 @@ export default function EditMedicalProfileModal({
           label={t("editMedicalProfile.fieldPrimaryVet")}
           value={primaryVetName}
           onChangeText={setPrimaryVetName}
-          placeholder="e.g., Dr. Sarah Johnson"
+          placeholder={t("healthUi.editMedicalProfileModal.exampleDrSarahJohnson")}
         />
         <FormInput
           label={t("editMedicalProfile.fieldPrimaryClinic")}
           value={primaryClinicName}
           onChangeText={setPrimaryClinicName}
-          placeholder="e.g., Happy Paws Veterinary Clinic"
+          placeholder={t("healthUi.editMedicalProfileModal.exampleHappyPawsVeterinaryClinic")}
         />
         <FormInput
           label={t("editMedicalProfile.fieldVetPhone")}
@@ -581,7 +581,7 @@ export default function EditMedicalProfileModal({
           label={t("editMedicalProfile.fieldEmergencyContact")}
           value={emergencyContactName}
           onChangeText={setEmergencyContactName}
-          placeholder="e.g., Jane Doe"
+          placeholder={t("healthUi.editMedicalProfileModal.exampleJaneDoe")}
         />
         <FormInput
           label={t("editMedicalProfile.fieldEmergencyPhone")}
@@ -594,13 +594,13 @@ export default function EditMedicalProfileModal({
           label={t("editMedicalProfile.fieldInsurance")}
           value={insuranceProvider}
           onChangeText={setInsuranceProvider}
-          placeholder="e.g., PetPlan Premium"
+          placeholder={t("healthUi.editMedicalProfileModal.examplePetplanPremium")}
         />
         <FormInput
           label={t("editMedicalProfile.fieldPolicyNumber")}
           value={insurancePolicyNumber}
           onChangeText={setInsurancePolicyNumber}
-          placeholder="e.g., PP123456789"
+          placeholder={t("healthUi.editMedicalProfileModal.examplePp123456789")}
         />
       </FormSection>
 

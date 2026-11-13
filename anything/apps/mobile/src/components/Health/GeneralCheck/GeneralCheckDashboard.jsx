@@ -13,6 +13,7 @@ import {
   getChangeEmoji,
 } from "@/data/generalCheckData";
 import GeneralCheckModal from "./GeneralCheckModal";
+import { useTranslation } from "react-i18next";
 
 const C = {
   cream: COLORS.cream,
@@ -27,6 +28,7 @@ const C = {
 };
 
 export default function GeneralCheckDashboard() {
+  const { t } = useTranslation();
   const [modalVisible, setModalVisible] = useState(false);
 
   const lastCheck = getLastGeneralCheck();
@@ -71,10 +73,10 @@ export default function GeneralCheckDashboard() {
                 marginBottom: 2,
               }}
             >
-              General Check
+              {t("healthUi.generalCheckDashboard.generalCheck")}
             </Text>
             <Text style={{ fontSize: 12, color: C.mutedBrown }}>
-              Quick visual health review
+              {t("healthUi.generalCheckDashboard.quickVisualHealthReview")}
             </Text>
           </View>
           <TouchableOpacity
@@ -137,8 +139,10 @@ export default function GeneralCheckDashboard() {
             >
               <Clock size={14} color={C.mutedBrown} />
               <Text style={{ fontSize: 12, color: C.mutedBrown }}>
-                Last check: {formatCheckDate(lastCheck.timestamp)} at{" "}
-                {formatCheckTime(lastCheck.timestamp)}
+                {t("healthUi.generalCheckDashboard.lastCheck", {
+                  date: formatCheckDate(lastCheck.timestamp),
+                  time: formatCheckTime(lastCheck.timestamp),
+                })}
               </Text>
             </View>
 
@@ -153,7 +157,7 @@ export default function GeneralCheckDashboard() {
                     marginBottom: 4,
                   }}
                 >
-                  Areas with changes
+                  {t("healthUi.generalCheckDashboard.areasWithChanges")}
                 </Text>
                 {areasWithChanges.map((area, idx) => (
                   <View
@@ -255,7 +259,7 @@ export default function GeneralCheckDashboard() {
                 marginBottom: 12,
               }}
             >
-              No general checks logged yet
+              {t("healthUi.generalCheckDashboard.noGeneralChecksLoggedYet")}
             </Text>
             <Text
               style={{
@@ -265,7 +269,7 @@ export default function GeneralCheckDashboard() {
                 lineHeight: 17,
               }}
             >
-              Tap the + button to start a quick visual check
+              {t("healthUi.generalCheckDashboard.tapTheButtonToStart")}
             </Text>
           </View>
         )}

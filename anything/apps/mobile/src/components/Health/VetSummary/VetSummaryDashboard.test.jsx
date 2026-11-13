@@ -6,6 +6,9 @@ import { render } from "@testing-library/react-native";
 
 let mockSummary;
 
+// Resolve t() against the real English catalog (counts are pluralised copy now).
+jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
+
 jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),

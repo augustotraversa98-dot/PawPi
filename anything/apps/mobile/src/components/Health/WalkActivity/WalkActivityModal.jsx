@@ -474,7 +474,7 @@ export default function WalkActivityModal({
                         marginBottom: 6,
                       }}
                     >
-                      💩 Poo
+                      {t("healthUi.walkActivityModal.poo")}
                     </Text>
                     <View style={{ flexDirection: "row", gap: 6 }}>
                       {[0, 1, 2, 3].map((count) => (
@@ -514,7 +514,7 @@ export default function WalkActivityModal({
                         marginBottom: 6,
                       }}
                     >
-                      💦 Pee
+                      {t("healthUi.walkActivityModal.pee")}
                     </Text>
                     <View style={{ flexDirection: "row", gap: 6 }}>
                       {[0, 1, 2, 3].map((count) => (

@@ -786,7 +786,7 @@ export default function HealthToday() {
                       >
                         <X size={15} color={COLORS.mutedBrown} strokeWidth={2.5} />
                         <Text style={[TYPE.callout, { fontWeight: "700", color: COLORS.mutedBrown }]}>
-                          Skip
+                          {t("healthUi.healthToday.skip")}
                         </Text>
                       </PressableScale>
                     </View>

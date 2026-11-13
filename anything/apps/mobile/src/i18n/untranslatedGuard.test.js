@@ -72,6 +72,7 @@ const SAME_ON_PURPOSE = {
   "sitting.videos_one": "🎥 {{count}} video — same word",
   "sitting.videos_other": "🎥 {{count}} videos — same word",
   "routinesUi.medicalCareIssue.no": "same word (No)",
+  "healthUi.walkCountdownCard.summary": "placeholders and the min abbreviation only",
 };
 
 describe("es.json is actually translated", () => {

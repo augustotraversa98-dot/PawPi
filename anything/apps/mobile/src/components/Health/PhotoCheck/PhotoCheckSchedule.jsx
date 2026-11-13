@@ -128,7 +128,7 @@ export default function PhotoCheckSchedule() {
                         marginBottom: 2,
                       }}
                     >
-                      {BODY_AREA_LABELS[area]}
+                      {t(`routineCard.areas.${area}`)}
                     </Text>
                     <Text
                       style={{

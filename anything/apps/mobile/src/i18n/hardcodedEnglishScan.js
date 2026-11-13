@@ -49,6 +49,8 @@ const USER_KEYS = new Set([
   "description",
   "accessibilityLabel",
   "text",
+  "prompt",
+  "hint",
 ]);
 const ALERT_CALLEES = new Set(["Alert.alert", "Alert.prompt", "toast", "toast.success", "toast.error", "toast.info", "toast.warning", "toast.message", "Toast.show", "showToast"]);
 
