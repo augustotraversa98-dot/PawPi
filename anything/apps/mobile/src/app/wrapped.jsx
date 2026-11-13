@@ -9,6 +9,7 @@ import { usePetHistory } from "@/hooks/useMemories";
 import { getLocalPostDateString } from "@/utils/dateUtils";
 import { buildWrapped, wrappedSlides } from "@/utils/memoriesWrapped";
 import { MemoryShareButton } from "@/components/Feed/MemoryShareButton";
+import { useTranslation } from "react-i18next";
 
 const C = {
   cream: COLORS.cream,
@@ -20,6 +21,7 @@ const C = {
 };
 
 export default function WrappedScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { data: currentPet } = useCurrentPet();
@@ -36,7 +38,7 @@ export default function WrappedScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}>
       <View style={styles.header}>
-        <TouchableOpacity testID="wrapped-back" onPress={() => router.back()} style={{ marginRight: 12 }}>
+        <TouchableOpacity testID="wrapped-back" accessibilityLabel={t("common.back")} accessibilityRole="button" onPress={() => router.back()} style={{ marginRight: 12 }}>
           <ArrowLeft size={22} color={C.warmBrown} />
         </TouchableOpacity>
         <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>
@@ -51,7 +53,7 @@ export default function WrappedScreen() {
           <View testID="wrapped-empty" style={{ alignItems: "center", padding: 30 }}>
             <Text style={{ fontSize: 44 }}>🌱</Text>
             <Text style={{ fontSize: 17, fontWeight: "800", color: C.warmBrown, marginTop: 14, textAlign: "center" }}>
-              Your Wrapped is growing
+              {t("screensUi.wrapped.yourWrappedIsGrowing")}
             </Text>
             <Text style={{ fontSize: 13, color: C.mutedBrown, marginTop: 6, textAlign: "center", lineHeight: 19 }}>
               {wrapped.message}
@@ -75,7 +77,7 @@ export default function WrappedScreen() {
               <View style={{ marginTop: 16 }}>
                 <MemoryShareButton
                   petName={petName}
-                  label="Share slide"
+                  label={t("screensUi.wrapped.shareSlide")}
                   card={{
                     emoji: s.emoji,
                     stat: s.stat,

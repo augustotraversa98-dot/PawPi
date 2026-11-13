@@ -297,7 +297,7 @@ export default function EntryPoint() {
             color: COLORS.mutedBrown,
           }}
         >
-          Loading...
+          {t("screensUi.index.loading")}
         </Text>
       </View>
     );

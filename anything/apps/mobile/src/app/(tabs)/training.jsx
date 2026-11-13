@@ -184,7 +184,7 @@ function TrainingScreenContent() {
           testID={`program-progress-${program.key}`}
           style={{ fontSize: 12, color: C.mutedBrown, marginTop: 6, fontWeight: "700" }}
         >
-          {done} of {total} sessions done
+          {t("screensUi.training.sessionsDone", { done, total })}
         </Text>
       </TouchableOpacity>
     );
@@ -324,10 +324,10 @@ function TrainingScreenContent() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 15, fontWeight: "800", color: C.warmBrown }}>
-              Want a pro? Hire a trainer
+              {t("screensUi.training.wantAProHireA")}
             </Text>
             <Text style={{ fontSize: 12, color: C.mutedBrown, marginTop: 2 }}>
-              1:1 sessions, group classes, and multi-week programs
+              {t("screensUi.training.11SessionsGroupClasses")}
             </Text>
           </View>
           <ChevronRight size={18} color={C.mutedBrown} />
@@ -343,14 +343,17 @@ function TrainingScreenContent() {
           }}
         >
           <Text style={{ fontSize: 17, fontWeight: "800", color: C.warmBrown }}>
-            Your training journey 🏆
+            {t("screensUi.training.yourTrainingJourney")}
           </Text>
           <Text
             testID="overall-progress"
             style={{ fontSize: 13, color: C.terracotta, marginTop: 4, fontWeight: "700" }}
           >
-            {totalDone} of {totalSessions} sessions completed across{" "}
-            {TRAINING_PROGRAMS.length} programs
+            {t("screensUi.training.overallProgress", {
+              done: totalDone,
+              total: totalSessions,
+              programs: TRAINING_PROGRAMS.length,
+            })}
           </Text>
         </View>
 
@@ -362,7 +365,7 @@ function TrainingScreenContent() {
             marginBottom: 14,
           }}
         >
-          Programs
+          {t("screensUi.training.programs")}
         </Text>
 
         {TRAINING_PROGRAMS.map((program) => (
@@ -442,7 +445,10 @@ function TrainingScreenContent() {
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 }}>
                       <Clock size={12} color={C.mutedBrown} />
                       <Text style={{ fontSize: 12, color: C.mutedBrown }}>
-                        {session.durationMin} min · {session.difficulty}
+                        {t("screensUi.training.sessionMeta", {
+                          minutes: session.durationMin,
+                          difficulty: session.difficulty,
+                        })}
                       </Text>
                     </View>
                   </View>
@@ -494,7 +500,7 @@ function TrainingScreenContent() {
                 </Text>
 
                 <Text style={{ fontSize: 17, fontWeight: "800", color: C.warmBrown, marginBottom: 14 }}>
-                  Step-by-step
+                  {t("screensUi.training.stepByStep")}
                 </Text>
                 {openSession.steps.map((step, i) => (
                   <View key={i} style={{ flexDirection: "row", marginBottom: 14, alignItems: "flex-start" }}>

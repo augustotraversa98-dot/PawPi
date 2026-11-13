@@ -1,6 +1,10 @@
 // Owner↔owner conversation on real data (ticket 2.27): the DM hooks + upload are mocked
 // so this isolates message rendering (alignment by sender), send, and mark-read on open.
 
+
+// Resolve t() against the real English catalog so assertions read real copy.
+jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
+
 import React from "react";
 import { render, fireEvent, act } from "@testing-library/react-native";
 
@@ -100,7 +104,7 @@ test("opened without a threadId and the thread cannot be started: a message, not
   mockParams = { otherUserId: "9", otherName: "Jane Doe", otherAvatar: "" };
   mockStartDM.mockRejectedValue(new Error("nope"));
   const { findByText } = render(<ChatScreen />);
-  expect(await findByText("common.somethingWrong")).toBeTruthy();
+  expect(await findByText("Something went wrong. Please try again.")).toBeTruthy();
 });
 
 test("opened WITH a threadId: no thread request", () => {

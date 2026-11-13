@@ -34,9 +34,7 @@ jest.mock("@/hooks/useProviders", () => ({
 jest.mock("@/hooks/useCareAccessGrants", () => ({
   useAllCareAccessGrants: () => mockGrants,
 }));
-jest.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (k) => k }),
-}));
+jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
 
 import MyHubScreen from "./hub";
 

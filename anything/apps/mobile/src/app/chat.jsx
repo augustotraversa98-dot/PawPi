@@ -193,7 +193,7 @@ export default function ChatScreen() {
           ) : messages.length === 0 ? (
             <View style={{ alignItems: "center", paddingVertical: 40 }}>
               <Text style={[TYPE.subhead, { fontWeight: "500", color: COLORS.mutedBrown }]}>
-                Say hello to start the conversation.
+                {t("screensUi.chat.sayHelloToStartThe")}
               </Text>
             </View>
           ) : (
@@ -322,7 +322,7 @@ export default function ChatScreen() {
                 maxHeight: 90,
               },
             ]}
-            placeholder="Send a message…"
+            placeholder={t("screensUi.chat.sendAMessage")}
             placeholderTextColor={COLORS.mutedBrown}
             value={text}
             onChangeText={setText}

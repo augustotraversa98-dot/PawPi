@@ -4471,5 +4471,63 @@
     "shared": {
       "dayStreak": "Racha de {{count}} días"
     }
+  },
+  "screensUi": {
+    "community": {
+      "noDiscussionsHereYet": "Todavía no hay conversaciones acá.",
+      "beTheFirstToBark": "¡Sé el primero en ladrar!"
+    },
+    "hub": {
+      "myHub": "Mi centro",
+      "whoHasAccess": "Quién tiene acceso",
+      "savedDogs": "Perros guardados"
+    },
+    "training": {
+      "wantAProHireA": "¿Querés un profesional? Contratá a un entrenador",
+      "11SessionsGroupClasses": "Sesiones individuales, clases grupales y programas de varias semanas",
+      "yourTrainingJourney": "Tu camino de entrenamiento 🏆",
+      "programs": "Programas",
+      "stepByStep": "Paso a paso",
+      "sessionsDone": "{{done}} de {{total}} sesiones completadas",
+      "overallProgress": "{{done}} de {{total}} sesiones completadas en {{programs}} programas",
+      "sessionMeta": "{{minutes}} min · {{difficulty}}"
+    },
+    "chat": {
+      "sayHelloToStartThe": "Saludá para empezar la conversación.",
+      "sendAMessage": "Escribí un mensaje…"
+    },
+    "index": {
+      "loading": "Cargando..."
+    },
+    "walkLive": {
+      "walkNotFound": "No se encontró el paseo",
+      "distance": "Distancia",
+      "time": "Tiempo",
+      "gpsPoints": "Puntos GPS",
+      "summary": "Resumen",
+      "potty": "Pis y caca",
+      "notes": "Notas",
+      "thisWalkWasAddedTo": "Este paseo se agregó a la línea de tiempo de salud de tu mascota.",
+      "walkInProgress": "Paseo en curso",
+      "walkReport": "Informe del paseo",
+      "yourWalker": "Tu paseador",
+      "yourDog": "tu perro",
+      "updatingLive": "Actualizando en vivo: el recorrido se renueva mientras {{name}} pasea.",
+      "waitingForGps": "Esperando los primeros puntos GPS…",
+      "noRoute": "No se registró un recorrido para este paseo.",
+      "markerStart": "Inicio",
+      "markerNow": "Ahora",
+      "markerEnd": "Fin",
+      "pee": "💦 Pis",
+      "poo": "💩 Caca",
+      "noneRecorded": "Sin registros"
+    },
+    "welcome": {
+
+    },
+    "wrapped": {
+      "yourWrappedIsGrowing": "Tu Wrapped está creciendo",
+      "shareSlide": "Compartir diapositiva"
+    }
   }
 }
