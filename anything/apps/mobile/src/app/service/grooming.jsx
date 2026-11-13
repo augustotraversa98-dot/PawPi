@@ -80,16 +80,16 @@ export default function GroomingScreen() {
         </PressableScale>
         <View style={{ flex: 1 }}>
           <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>
-            Grooming ✂️
+            {t("servicesUi.grooming.grooming")}
           </Text>
           <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
-            Find and book a groomer
+            {t("servicesUi.grooming.findAndBookAGroomer")}
           </Text>
         </View>
         {/* Owner ↔ provider Messages inbox (ticket 2.5). */}
         <PressableScale
           onPress={() => router.push("/provider-messages")}
-          accessibilityLabel="Messages"
+          accessibilityLabel={t("servicesUi.grooming.messages")}
           style={{
             width: 40,
             height: 40,
@@ -135,7 +135,7 @@ export default function GroomingScreen() {
                 },
               ]}
             >
-              GROOMERS NEAR YOU
+              {t("servicesUi.grooming.groomersNearYou")}
             </Text>
             {hasProviders ? (
               <ProviderListControls
@@ -157,12 +157,12 @@ export default function GroomingScreen() {
             </View>
           ) : isError ? (
             <EmptyState
-              title="Couldn't load groomers"
+              title={t("servicesUi.grooming.couldnTLoadGroomers")}
               body="Something went wrong. Pull down to try again."
             />
           ) : !hasProviders ? (
             <EmptyState
-              title="No groomers available yet"
+              title={t("servicesUi.grooming.noGroomersAvailableYet")}
               body="Check back soon — groomers are joining PawPi."
             />
           ) : (

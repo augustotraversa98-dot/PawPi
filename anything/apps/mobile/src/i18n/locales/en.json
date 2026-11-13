@@ -4490,7 +4490,9 @@
       "stepByStep": "Step-by-step",
       "sessionsDone": "{{done}} of {{total}} sessions done",
       "overallProgress": "{{done}} of {{total}} sessions completed across {{programs}} programs",
-      "sessionMeta": "{{minutes}} min · {{difficulty}}"
+      "sessionMeta": "{{minutes}} min · {{difficulty}}",
+      "completedTapToUndo": "✓ Completed — tap to undo",
+      "markAsCompleted": "Mark as completed"
     },
     "chat": {
       "sayHelloToStartThe": "Say hello to start the conversation.",
@@ -4527,7 +4529,72 @@
     },
     "wrapped": {
       "yourWrappedIsGrowing": "Your Wrapped is growing",
-      "shareSlide": "Share slide"
+      "shareSlide": "Share slide",
+      "title": "Wrapped",
+      "titleWithPet": "{{name}}'s Wrapped"
+    }
+  },
+  "servicesUi": {
+    "providerChat": {
+      "noMessagesYetSayHello": "No messages yet. Say hello.",
+      "typeAMessage": "Type a message…"
+    },
+    "providerMessages": {
+      "messages": "Messages",
+      "noConversationsYet": "No conversations yet",
+      "messageAVetOrService": "Message a vet or service provider from their profile to start a conversation.",
+      "photo": "Photo",
+      "noMessagesYet": "No messages yet"
+    },
+    "adoption": {
+
+    },
+    "grooming": {
+      "grooming": "Grooming ✂️",
+      "findAndBookAGroomer": "Find and book a groomer",
+      "messages": "Messages",
+      "groomersNearYou": "GROOMERS NEAR YOU",
+      "couldnTLoadGroomers": "Couldn't load groomers",
+      "noGroomersAvailableYet": "No groomers available yet"
+    },
+    "provider": {
+      "providerNotFound": "Provider not found",
+      "thisProviderIsnTAvailable": "This provider isn't available right now."
+    },
+    "vet": {
+      "veterinary": "Veterinary 🏥",
+      "findAndBookAVet": "Find and book a vet",
+      "messages": "Messages",
+      "couldnTLoadVets": "Couldn't load vets",
+      "noVetsAvailableYet": "No vets available yet"
+    },
+    "walking": {
+
+    },
+    "bookingFormModal": {
+      "any": "Any",
+      "repeatEvery6Weeks": "Repeat every 6 weeks",
+      "repeatWeeklyPackWalk": "Repeat weekly (pack walk)"
+    },
+    "aboutPanel": {
+      "website": "Website"
+    },
+    "locationsPanel": {
+      "locations": "Locations"
+    },
+    "reviewsPanel": {
+      "reviews": "Reviews",
+      "noReviewsYetAfterA": "No reviews yet. After a completed appointment you can be the first to leave one.",
+      "petParent": "Pet parent"
+    },
+    "servicesPanel": {
+      "services": "Services"
+    },
+    "catalogShared": {
+
+    },
+    "shared": {
+      "provider": "Provider"
     }
   }
 }

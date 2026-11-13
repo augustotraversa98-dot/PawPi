@@ -414,7 +414,7 @@ function AdoptionFilterSheet({ visible, filters, onApply, onClear, onClose }) {
           </FilterGroup>
           <FilterGroup label={t("adoption.filter.energy")}>
             {ENERGY.map((e) => (
-              <FilterPill key={e} label={`${e} energy`} active={draft.energy_level === e} onPress={() => toggle("energy_level", e)} />
+              <FilterPill key={e} label={t(`adoption.energy.${e}`)} active={draft.energy_level === e} onPress={() => toggle("energy_level", e)} />
             ))}
           </FilterGroup>
           <FilterGroup label={t("adoption.filter.goodWith")}>

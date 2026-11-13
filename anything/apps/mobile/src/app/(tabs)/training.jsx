@@ -565,7 +565,9 @@ function TrainingScreenContent() {
                       }}
                     >
                       <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 16 }}>
-                        {isDone ? "✓ Completed — tap to undo" : "Mark as completed"}
+                        {isDone
+                          ? t("screensUi.training.completedTapToUndo")
+                          : t("screensUi.training.markAsCompleted")}
                       </Text>
                     </TouchableOpacity>
                   );

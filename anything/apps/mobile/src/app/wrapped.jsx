@@ -42,7 +42,9 @@ export default function WrappedScreen() {
           <ArrowLeft size={22} color={C.warmBrown} />
         </TouchableOpacity>
         <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>
-          {petName ? `${petName}'s Wrapped` : "Wrapped"}
+          {petName
+            ? t("screensUi.wrapped.titleWithPet", { name: petName })
+            : t("screensUi.wrapped.title")}
         </Text>
       </View>
 

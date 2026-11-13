@@ -73,16 +73,16 @@ export default function VetScreen() {
         </PressableScale>
         <View style={{ flex: 1 }}>
           <Text style={[TYPE.title, { color: COLORS.warmBrown }]}>
-            Veterinary 🏥
+            {t("servicesUi.vet.veterinary")}
           </Text>
           <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
-            Find and book a vet
+            {t("servicesUi.vet.findAndBookAVet")}
           </Text>
         </View>
         {/* Owner ↔ provider Messages inbox (ticket 2.5). */}
         <PressableScale
           onPress={() => router.push("/provider-messages")}
-          accessibilityLabel="Messages"
+          accessibilityLabel={t("servicesUi.vet.messages")}
           style={{
             width: 40,
             height: 40,
@@ -138,12 +138,12 @@ export default function VetScreen() {
             </View>
           ) : isError ? (
             <EmptyState
-              title="Couldn't load vets"
+              title={t("servicesUi.vet.couldnTLoadVets")}
               body="Something went wrong. Pull down to try again."
             />
           ) : !hasProviders ? (
             <EmptyState
-              title="No vets available yet"
+              title={t("servicesUi.vet.noVetsAvailableYet")}
               body="Check back soon — vet clinics are joining PawPi."
             />
           ) : (
