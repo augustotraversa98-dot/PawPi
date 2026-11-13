@@ -39,12 +39,12 @@ const C = {
 };
 
 const REMINDER_TIMING_OPTIONS = [
-  { value: "at_time", label: "At time of appointment" },
-  { value: "1_hour_before", label: "1 hour before" },
-  { value: "1_day_before", label: "1 day before" },
-  { value: "2_days_before", label: "2 days before" },
-  { value: "1_week_before", label: "1 week before" },
-  { value: "custom", label: "Custom" },
+  { value: "at_time" },
+  { value: "1_hour_before" },
+  { value: "1_day_before" },
+  { value: "2_days_before" },
+  { value: "1_week_before" },
+  { value: "custom" },
 ];
 
 export default function VetAppointmentRoutineModal({
@@ -114,7 +114,7 @@ export default function VetAppointmentRoutineModal({
       if (appointmentData.addToCalendar) {
         const calendarResult = await addVetAppointmentToCalendar(
           appointmentData,
-          currentPet?.name || "Your pet",
+          currentPet?.name || t("routineCard.yourPet"),
         );
 
         if (calendarResult.success) {
@@ -175,7 +175,7 @@ export default function VetAppointmentRoutineModal({
           const updateResult = await updateVetAppointmentInCalendar(
             calendarEventId,
             appointmentData,
-            currentPet?.name || "Your pet",
+            currentPet?.name || t("routineCard.yourPet"),
           );
 
           if (!updateResult.success) {
@@ -188,7 +188,7 @@ export default function VetAppointmentRoutineModal({
           // Create new calendar event
           const createResult = await addVetAppointmentToCalendar(
             appointmentData,
-            currentPet?.name || "Your pet",
+            currentPet?.name || t("routineCard.yourPet"),
           );
 
           if (createResult.success) {
@@ -454,10 +454,10 @@ export default function VetAppointmentRoutineModal({
                 marginBottom: 4,
               }}
             >
-              🩺 Vet Appointments
+              {t("routinesUi.vetAppointment.vetAppointments")}
             </Text>
             <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-              Manage upcoming vet visits
+              {t("routinesUi.vetAppointment.manageUpcomingVetVisits")}
             </Text>
           </View>
           <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -506,8 +506,8 @@ export default function VetAppointmentRoutineModal({
                     }}
                   >
                     {typeof editingAppointmentId === "number"
-                      ? "Edit Appointment"
-                      : "New Appointment"}
+                      ? t("routinesUi.vetAppointment.editAppointment")
+                      : t("routinesUi.vetAppointment.newAppointment")}
                   </Text>
 
                   {/* Title */}
@@ -519,14 +519,14 @@ export default function VetAppointmentRoutineModal({
                       marginBottom: 6,
                     }}
                   >
-                    Appointment Title *
+                    {t("routinesUi.vetAppointment.appointmentTitle")}
                   </Text>
                   <TextInput
                     value={formData.title}
                     onChangeText={(text) =>
                       setFormData((prev) => ({ ...prev, title: text }))
                     }
-                    placeholder="e.g., Annual Checkup"
+                    placeholder={t("routinesUi.vetAppointment.exampleAnnualCheckup")}
                     placeholderTextColor={C.mutedBrown}
                     style={{
                       backgroundColor: C.sand,
@@ -549,7 +549,7 @@ export default function VetAppointmentRoutineModal({
                           marginBottom: 6,
                         }}
                       >
-                        Date *
+                        {t("routinesUi.vetAppointment.date")}
                       </Text>
                       <DateField
                         value={formData.appointmentDate}
@@ -574,7 +574,7 @@ export default function VetAppointmentRoutineModal({
                           marginBottom: 6,
                         }}
                       >
-                        Time *
+                        {t("routinesUi.vetAppointment.time")}
                       </Text>
                       <TimeField
                         value={formData.appointmentTime}
@@ -601,7 +601,7 @@ export default function VetAppointmentRoutineModal({
                       marginBottom: 6,
                     }}
                   >
-                    Clinic (optional)
+                    {t("routinesUi.vetAppointment.clinicOptional")}
                   </Text>
                   <TextInput
                     value={formData.clinic}
@@ -629,7 +629,7 @@ export default function VetAppointmentRoutineModal({
                       marginBottom: 6,
                     }}
                   >
-                    Veterinarian (optional)
+                    {t("routinesUi.vetAppointment.veterinarianOptional")}
                   </Text>
                   <TextInput
                     value={formData.veterinarian}
@@ -657,14 +657,14 @@ export default function VetAppointmentRoutineModal({
                       marginBottom: 6,
                     }}
                   >
-                    Reason for Visit (optional)
+                    {t("routinesUi.vetAppointment.reasonForVisitOptional")}
                   </Text>
                   <TextInput
                     value={formData.reasonForVisit}
                     onChangeText={(text) =>
                       setFormData((prev) => ({ ...prev, reasonForVisit: text }))
                     }
-                    placeholder="e.g., Annual checkup"
+                    placeholder={t("routinesUi.vetAppointment.exampleAnnualCheckup2")}
                     placeholderTextColor={C.mutedBrown}
                     multiline
                     numberOfLines={2}
@@ -689,7 +689,7 @@ export default function VetAppointmentRoutineModal({
                       marginBottom: 6,
                     }}
                   >
-                    Notes (optional)
+                    {t("routinesUi.vetAppointment.notesOptional")}
                   </Text>
                   <TextInput
                     value={formData.notes}
@@ -721,7 +721,7 @@ export default function VetAppointmentRoutineModal({
                       marginBottom: 6,
                     }}
                   >
-                    Reminder Timing
+                    {t("routinesUi.vetAppointment.reminderTiming")}
                   </Text>
                   <View style={{ gap: 6, marginBottom: 12 }}>
                     {REMINDER_TIMING_OPTIONS.map((option) => (
@@ -760,7 +760,7 @@ export default function VetAppointmentRoutineModal({
                                 : C.warmBrown,
                           }}
                         >
-                          {REMINDER_TIMING_LABELS[option.value] || option.label}
+                          {REMINDER_TIMING_LABELS[option.value] || option.value}
                         </Text>
                       </TouchableOpacity>
                     ))}
@@ -790,7 +790,7 @@ export default function VetAppointmentRoutineModal({
                           color: C.warmBrown,
                         }}
                       >
-                        Reminder enabled
+                        {t("routinesUi.vetAppointment.reminderEnabled")}
                       </Text>
                       <Switch
                         value={formData.reminderEnabled}
@@ -819,7 +819,7 @@ export default function VetAppointmentRoutineModal({
                           color: C.warmBrown,
                         }}
                       >
-                        Time-sensitive
+                        {t("routinesUi.vetAppointment.timeSensitive")}
                       </Text>
                       <Switch
                         value={formData.timeSensitive}
@@ -847,7 +847,7 @@ export default function VetAppointmentRoutineModal({
                           color: C.warmBrown,
                         }}
                       >
-                        Add to phone calendar
+                        {t("routinesUi.vetAppointment.addToPhoneCalendar")}
                       </Text>
                       <Switch
                         value={formData.addToCalendar}
@@ -887,7 +887,7 @@ export default function VetAppointmentRoutineModal({
                           color: C.mutedBrown,
                         }}
                       >
-                        Cancel
+                        {t("routinesUi.vetAppointment.cancel")}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -912,8 +912,8 @@ export default function VetAppointmentRoutineModal({
                           }}
                         >
                           {typeof editingAppointmentId === "number"
-                            ? "Update"
-                            : "Create"}
+                            ? t("routinesUi.vetAppointment.update")
+                            : t("routinesUi.vetAppointment.create")}
                         </Text>
                       )}
                     </TouchableOpacity>
@@ -947,7 +947,7 @@ export default function VetAppointmentRoutineModal({
                           textAlign: "center",
                         }}
                       >
-                        No vet appointments yet
+                        {t("routinesUi.vetAppointment.noVetAppointmentsYet")}
                       </Text>
                       <Text
                         style={{
@@ -957,8 +957,7 @@ export default function VetAppointmentRoutineModal({
                           lineHeight: 20,
                         }}
                       >
-                        Add upcoming visits so PawPi can remind you and
-                        keep your dog's health history organized.
+                        {t("routinesUi.vetAppointment.addUpcomingVisitsSoPawpi")}
                       </Text>
                     </View>
                   ) : (
@@ -978,7 +977,7 @@ export default function VetAppointmentRoutineModal({
                             color: C.warmBrown,
                           }}
                         >
-                          Upcoming Appointments
+                          {t("routinesUi.vetAppointment.upcomingAppointments")}
                         </Text>
                       </View>
 
@@ -1090,7 +1089,7 @@ export default function VetAppointmentRoutineModal({
                                         marginBottom: 2,
                                       }}
                                     >
-                                      Veterinarian
+                                      {t("routinesUi.vetAppointment.veterinarian")}
                                     </Text>
                                     <Text
                                       style={{
@@ -1112,7 +1111,7 @@ export default function VetAppointmentRoutineModal({
                                         marginBottom: 2,
                                       }}
                                     >
-                                      Reason
+                                      {t("routinesUi.vetAppointment.reason")}
                                     </Text>
                                     <Text
                                       style={{
@@ -1133,7 +1132,7 @@ export default function VetAppointmentRoutineModal({
                                         marginBottom: 2,
                                       }}
                                     >
-                                      Notes
+                                      {t("routinesUi.vetAppointment.notes")}
                                     </Text>
                                     <Text
                                       style={{
@@ -1153,7 +1152,7 @@ export default function VetAppointmentRoutineModal({
                                       marginBottom: 2,
                                     }}
                                   >
-                                    Reminder
+                                    {t("routinesUi.vetAppointment.reminder")}
                                   </Text>
                                   <Text
                                     style={{
@@ -1193,7 +1192,7 @@ export default function VetAppointmentRoutineModal({
                                         color: "#FFF",
                                       }}
                                     >
-                                      Edit
+                                      {t("routinesUi.vetAppointment.edit")}
                                     </Text>
                                   </TouchableOpacity>
                                   <TouchableOpacity
@@ -1225,7 +1224,7 @@ export default function VetAppointmentRoutineModal({
                                           color: "#FFF",
                                         }}
                                       >
-                                        Delete
+                                        {t("routinesUi.vetAppointment.delete")}
                                       </Text>
                                     )}
                                   </TouchableOpacity>
@@ -1262,7 +1261,7 @@ export default function VetAppointmentRoutineModal({
                         marginLeft: 8,
                       }}
                     >
-                      Add appointment
+                      {t("routinesUi.vetAppointment.addAppointment")}
                     </Text>
                   </TouchableOpacity>
                 </>
@@ -1295,7 +1294,7 @@ export default function VetAppointmentRoutineModal({
             }}
           >
             <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}>
-              Close
+              {t("routinesUi.vetAppointment.close")}
             </Text>
           </TouchableOpacity>
         </View>

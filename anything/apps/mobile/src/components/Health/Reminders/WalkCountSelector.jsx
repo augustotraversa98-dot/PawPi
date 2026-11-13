@@ -3,6 +3,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, Modal } from "react-native";
 import { X } from "lucide-react-native";
 import { WALK_ROUTINE_COLORS as C } from "@/constants/walkRoutineColors";
+import { useTranslation } from "react-i18next";
 
 export default function WalkCountSelector({
   visible,
@@ -10,6 +11,7 @@ export default function WalkCountSelector({
   onSelectCount,
   petName = "your pet",
 }) {
+  const { t } = useTranslation();
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <View
@@ -46,13 +48,14 @@ export default function WalkCountSelector({
                   marginBottom: 4,
                 }}
               >
-                🚶 Walk Routine
+                {t("routinesUi.walkCountSelector.walkRoutine")}
               </Text>
               <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-                How often does {petName} usually walk?
+                {t("routinesUi.walkCountSelector.howOften", { name: petName })}
               </Text>
             </View>
             <TouchableOpacity
+              accessibilityLabel={t("common.close")} accessibilityRole="button"
               onPress={onClose}
               style={{
                 width: 36,
@@ -88,7 +91,9 @@ export default function WalkCountSelector({
                     textAlign: "center",
                   }}
                 >
-                  {count === 1 ? "Once per day" : "Twice per day"}
+                  {count === 1
+                    ? t("routinesUi.walkCountSelector.oncePerDay")
+                    : t("routinesUi.walkCountSelector.twicePerDay")}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -111,7 +116,7 @@ export default function WalkCountSelector({
                   textAlign: "center",
                 }}
               >
-                Custom
+                {t("routinesUi.walkCountSelector.custom")}
               </Text>
             </TouchableOpacity>
           </View>

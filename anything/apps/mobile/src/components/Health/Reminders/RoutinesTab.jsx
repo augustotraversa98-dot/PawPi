@@ -263,7 +263,7 @@ export default function RoutinesTab({ editRoutineId } = {}) {
   };
 
   const hasAnyRoutines = validRoutines.length > 0;
-  const petName = currentPet?.name || "Your pet";
+  const petName = currentPet?.name || t("routineCard.yourPet");
 
   // Show loading spinner while loading routines
   if (
@@ -274,7 +274,7 @@ export default function RoutinesTab({ editRoutineId } = {}) {
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" color={C.coral} />
         <Text style={{ marginTop: 12, fontSize: 14, color: C.mutedBrown }}>
-          Loading routines...
+          {t("routinesUi.routinesTab.loadingRoutines")}
         </Text>
       </View>
     );
@@ -297,10 +297,10 @@ export default function RoutinesTab({ editRoutineId } = {}) {
               marginBottom: 4,
             }}
           >
-            {petName}'s Routines
+            {t("routinesUi.routinesTab.title", { name: petName })}
           </Text>
           <Text style={{ fontSize: 14, color: C.mutedBrown, lineHeight: 20 }}>
-            Set {petName}'s care schedule so PawPi knows when to remind you
+            {t("routinesUi.routinesTab.subtitle", { name: petName })}
           </Text>
         </View>
 
@@ -338,7 +338,7 @@ export default function RoutinesTab({ editRoutineId } = {}) {
                 marginBottom: 8,
               }}
             >
-              No routines yet
+              {t("routinesUi.routinesTab.noRoutinesYet")}
             </Text>
             <Text
               style={{
@@ -349,8 +349,7 @@ export default function RoutinesTab({ editRoutineId } = {}) {
                 marginBottom: 20,
               }}
             >
-              Set {petName}'s care schedule so PawPi knows when to remind
-              you
+              {t("routinesUi.routinesTab.subtitle", { name: petName })}
             </Text>
             <TouchableOpacity
               onPress={handleCreateRoutine}
@@ -366,7 +365,7 @@ export default function RoutinesTab({ editRoutineId } = {}) {
             >
               <Plus size={18} color="#FFF" strokeWidth={3} />
               <Text style={{ fontSize: 15, fontWeight: "700", color: "#FFF" }}>
-                Create First Routine
+                {t("routinesUi.routinesTab.createFirstRoutine")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -392,8 +391,7 @@ export default function RoutinesTab({ editRoutineId } = {}) {
                 textAlign: "center",
               }}
             >
-              💡 Routines automatically generate reminders. Turn them on/off
-              anytime without losing your schedule
+              {t("routinesUi.routinesTab.routinesAutomaticallyGenerateRemindersTurn")}
             </Text>
           </View>
         )}

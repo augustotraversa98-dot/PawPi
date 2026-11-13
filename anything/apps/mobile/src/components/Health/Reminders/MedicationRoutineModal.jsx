@@ -136,10 +136,12 @@ export default function MedicationRoutineModal({
                   marginBottom: 4,
                 }}
               >
-                💊 {editingRoutine ? "Edit" : "Create"} Medication
+                {editingRoutine
+                  ? t("routinesUi.medication.titleEdit")
+                  : t("routinesUi.medication.titleCreate")}
               </Text>
               <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-                Track {petName}'s medication schedule
+                {t("routinesUi.medication.trackSchedule", { name: petName })}
               </Text>
             </View>
             <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -173,8 +175,7 @@ export default function MedicationRoutineModal({
               }}
             >
               <Text style={{ fontSize: 13, color: "#92400E", lineHeight: 19 }}>
-                ⚠️ Follow your veterinarian's instructions for medication dose
-                and schedule
+                {t("routinesUi.medication.followYourVeterinarianSInstructions")}
               </Text>
             </View>
 
@@ -186,12 +187,12 @@ export default function MedicationRoutineModal({
                 marginBottom: 12,
               }}
             >
-              Medication Name
+              {t("routinesUi.medication.medicationName")}
             </Text>
             <TextInput
               value={medicationName}
               onChangeText={setMedicationName}
-              placeholder="e.g., Apoquel"
+              placeholder={t("routinesUi.medication.exampleApoquel")}
               placeholderTextColor={C.mutedBrown}
               style={{
                 backgroundColor: C.card,
@@ -213,12 +214,12 @@ export default function MedicationRoutineModal({
                 marginBottom: 12,
               }}
             >
-              Dose
+              {t("routinesUi.medication.dose")}
             </Text>
             <TextInput
               value={dose}
               onChangeText={setDose}
-              placeholder="e.g., 1 tablet"
+              placeholder={t("routinesUi.medication.example1Tablet")}
               placeholderTextColor={C.mutedBrown}
               style={{
                 backgroundColor: C.card,
@@ -240,13 +241,13 @@ export default function MedicationRoutineModal({
                 marginBottom: 12,
               }}
             >
-              Frequency
+              {t("routinesUi.medication.frequency")}
             </Text>
             <View style={{ gap: 8, marginBottom: 20 }}>
               {[
-                { value: ROUTINE_FREQUENCY.DAILY, label: "Once daily" },
-                { value: "twice_daily", label: "Twice daily" },
-                { value: "every_12_hours", label: "Every 12 hours" },
+                { value: ROUTINE_FREQUENCY.DAILY, label: t("routinesUi.medication.onceDaily") },
+                { value: "twice_daily", label: t("routinesUi.medication.twiceDaily") },
+                { value: "every_12_hours", label: t("routinesUi.medication.every12Hours") },
               ].map((option) => (
                 <TouchableOpacity
                   key={option.value}
@@ -290,7 +291,7 @@ export default function MedicationRoutineModal({
                 marginBottom: 12,
               }}
             >
-              Time(s)
+              {t("routinesUi.medication.timeS")}
             </Text>
             {times.map((time, index) => (
               <View key={index} style={{ marginBottom: 10 }}>
@@ -316,7 +317,7 @@ export default function MedicationRoutineModal({
                     marginBottom: 8,
                   }}
                 >
-                  Start Date
+                  {t("routinesUi.medication.startDate")}
                 </Text>
                 <DateField value={startDate} onChange={setStartDate} />
               </View>
@@ -329,7 +330,7 @@ export default function MedicationRoutineModal({
                     marginBottom: 8,
                   }}
                 >
-                  End Date
+                  {t("routinesUi.medication.endDate")}
                 </Text>
                 <DateField value={endDate} onChange={setEndDate} />
               </View>
@@ -343,7 +344,7 @@ export default function MedicationRoutineModal({
                 marginBottom: 12,
               }}
             >
-              Prescribed By
+              {t("routinesUi.medication.prescribedBy")}
             </Text>
             <TextInput
               value={prescribedBy}
@@ -370,12 +371,12 @@ export default function MedicationRoutineModal({
                 marginBottom: 12,
               }}
             >
-              Instructions
+              {t("routinesUi.medication.instructions")}
             </Text>
             <TextInput
               value={instructions}
               onChangeText={setInstructions}
-              placeholder="e.g., Give with food"
+              placeholder={t("routinesUi.medication.exampleGiveWithFood")}
               placeholderTextColor={C.mutedBrown}
               multiline
               numberOfLines={2}
@@ -417,7 +418,7 @@ export default function MedicationRoutineModal({
                     color: C.warmBrown,
                   }}
                 >
-                  Reminder enabled
+                  {t("routinesUi.medication.reminderEnabled")}
                 </Text>
                 <Switch
                   value={reminderEnabled}
@@ -440,7 +441,7 @@ export default function MedicationRoutineModal({
                     color: C.warmBrown,
                   }}
                 >
-                  Time-sensitive
+                  {t("routinesUi.medication.timeSensitive")}
                 </Text>
                 <Switch
                   value={timeSensitive}
@@ -459,7 +460,7 @@ export default function MedicationRoutineModal({
                 marginBottom: 12,
               }}
             >
-              Notes (optional)
+              {t("routinesUi.medication.notesOptional")}
             </Text>
             <TextInput
               value={notes}
@@ -501,7 +502,9 @@ export default function MedicationRoutineModal({
               }}
             >
               <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}>
-                {editingRoutine ? "Save Changes" : "Create Routine"}
+                {editingRoutine
+                ? t("routinesUi.shared.saveChanges")
+                : t("routinesUi.shared.createRoutine")}
               </Text>
             </TouchableOpacity>
           </View>

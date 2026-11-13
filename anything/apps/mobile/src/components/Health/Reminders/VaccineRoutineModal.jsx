@@ -114,10 +114,12 @@ export default function VaccineRoutineModal({
                   marginBottom: 4,
                 }}
               >
-                💉 {editingRoutine ? "Edit" : "Create"} Vaccine
+                {editingRoutine
+                  ? t("routinesUi.vaccine.titleEdit")
+                  : t("routinesUi.vaccine.titleCreate")}
               </Text>
               <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-                Track vaccination schedule
+                {t("routinesUi.vaccine.trackVaccinationSchedule")}
               </Text>
             </View>
             <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -148,7 +150,7 @@ export default function VaccineRoutineModal({
                 marginBottom: 12,
               }}
             >
-              Vaccine Name
+              {t("routinesUi.vaccine.vaccineName")}
             </Text>
             <TextInput
               value={vaccineName}
@@ -178,7 +180,7 @@ export default function VaccineRoutineModal({
                     marginBottom: 8,
                   }}
                 >
-                  Last Given
+                  {t("routinesUi.vaccine.lastGiven")}
                 </Text>
                 <DateField value={lastGiven} onChange={setLastGiven} maximumDate={new Date()} />
               </View>
@@ -191,7 +193,7 @@ export default function VaccineRoutineModal({
                     marginBottom: 8,
                   }}
                 >
-                  Next Due
+                  {t("routinesUi.vaccine.nextDue")}
                 </Text>
                 <DateField value={nextDue} onChange={setNextDue} />
               </View>
@@ -205,7 +207,7 @@ export default function VaccineRoutineModal({
                 marginBottom: 12,
               }}
             >
-              Vet Clinic
+              {t("routinesUi.vaccine.vetClinic")}
             </Text>
             <TextInput
               value={vetClinic}
@@ -249,7 +251,7 @@ export default function VaccineRoutineModal({
                     color: C.warmBrown,
                   }}
                 >
-                  Reminder enabled
+                  {t("routinesUi.vaccine.reminderEnabled")}
                 </Text>
                 <Switch
                   value={reminderEnabled}
@@ -272,7 +274,7 @@ export default function VaccineRoutineModal({
                     color: C.warmBrown,
                   }}
                 >
-                  Time-sensitive
+                  {t("routinesUi.vaccine.timeSensitive")}
                 </Text>
                 <Switch
                   value={timeSensitive}
@@ -291,7 +293,7 @@ export default function VaccineRoutineModal({
                 marginBottom: 12,
               }}
             >
-              Notes (optional)
+              {t("routinesUi.vaccine.notesOptional")}
             </Text>
             <TextInput
               value={notes}
@@ -333,7 +335,9 @@ export default function VaccineRoutineModal({
               }}
             >
               <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}>
-                {editingRoutine ? "Save Changes" : "Create Routine"}
+                {editingRoutine
+                ? t("routinesUi.shared.saveChanges")
+                : t("routinesUi.shared.createRoutine")}
               </Text>
             </TouchableOpacity>
           </View>

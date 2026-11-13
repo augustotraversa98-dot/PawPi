@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
 import { WALK_ROUTINE_COLORS as C } from "@/constants/walkRoutineColors";
+import { useTranslation } from "react-i18next";
 
 const PACE_OPTIONS = ["relaxed", "normal", "active"];
 
@@ -10,6 +11,7 @@ export default function DurationPaceSelector({
   onDurationChange,
   onPaceChange,
 }) {
+  const { t } = useTranslation();
   return (
     <View
       style={{
@@ -27,7 +29,7 @@ export default function DurationPaceSelector({
             marginBottom: 8,
           }}
         >
-          Duration (min)
+          {t("routinesUi.durationPaceSelector.durationMin")}
         </Text>
         <TextInput
           value={durationMinutes?.toString() || "30"}
@@ -55,7 +57,7 @@ export default function DurationPaceSelector({
             marginBottom: 8,
           }}
         >
-          Pace
+          {t("routinesUi.durationPaceSelector.pace")}
         </Text>
         <View style={{ gap: 4 }}>
           {PACE_OPTIONS.map((paceOption) => (

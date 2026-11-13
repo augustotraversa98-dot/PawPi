@@ -97,7 +97,7 @@ export default function MedicalCareIssueModal({
                     marginBottom: 4,
                   }}
                 >
-                  Something was off?
+                  {t("routinesUi.medicalCareIssue.somethingWasOff")}
                 </Text>
                 <Text style={{ fontSize: 13, color: C.mutedBrown }}>
                   {reminder.title}
@@ -135,17 +135,16 @@ export default function MedicalCareIssueModal({
                 <Text
                   style={{ fontSize: 13, color: "#92400E", lineHeight: 19 }}
                 >
-                  ⚠️ Contact your veterinarian if you notice concerning reactions
-                  or symptoms.
+                  {t("routinesUi.medicalCareIssue.contactYourVeterinarianIfYou")}
                 </Text>
               </View>
 
               <Label>{t("health.reminders.medicalCareIssue.givenLabel")}</Label>
               <ChoiceGroup
                 options={[
-                  { value: "yes", label: "Yes" },
-                  { value: "partially", label: "Partially" },
-                  { value: "no", label: "No" },
+                  { value: "yes", label: t("routinesUi.medicalCareIssue.yes") },
+                  { value: "partially", label: t("routinesUi.medicalCareIssue.partially") },
+                  { value: "no", label: t("routinesUi.medicalCareIssue.no") },
                 ]}
                 value={givenAnswer}
                 onChange={setGivenAnswer}
@@ -154,8 +153,8 @@ export default function MedicalCareIssueModal({
               <Label>{t("health.reminders.medicalCareIssue.reactionLabel")}</Label>
               <ChoiceGroup
                 options={[
-                  { value: "no", label: "No" },
-                  { value: "yes", label: "Yes" },
+                  { value: "no", label: t("routinesUi.medicalCareIssue.no") },
+                  { value: "yes", label: t("routinesUi.medicalCareIssue.yes") },
                 ]}
                 value={reactionAnswer}
                 onChange={setReactionAnswer}
@@ -194,7 +193,7 @@ export default function MedicalCareIssueModal({
                 <Text
                   style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}
                 >
-                  Save issue
+                  {t("routinesUi.medicalCareIssue.saveIssue")}
                 </Text>
               </TouchableOpacity>
             </KeyboardAwareScrollView>

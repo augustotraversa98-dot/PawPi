@@ -224,11 +224,11 @@ export function buildReminderNotificationContent(
     return { title: `${config.icon} ${reminder.title}`, body: reminder.description };
   }
 
-  const dueLine = `Due ${formatScheduledTime(eventTime, triggerTime)}`;
+  const dueLine = `${translate("routinesUi.scheduledTime.duePrefix", "Due")} ${formatScheduledTime(eventTime, triggerTime)}`;
   const body = reminder.description
     ? `${reminder.description}\n${dueLine}`
     : dueLine;
-  return { title: `${config.icon} Upcoming: ${reminder.title}`, body };
+  return { title: `${config.icon} ${translate("routinesUi.scheduledTime.upcomingPrefix", "Upcoming:")} ${reminder.title}`, body };
 }
 
 /**

@@ -4,6 +4,7 @@ import { View, Text, TouchableOpacity } from "react-native";
 import { Clock, CheckCircle, Zap } from "lucide-react-native";
 import { getTimeDisplay, REMINDER_TYPE_CONFIG } from "@/data/remindersData";
 import { formatScheduledTime } from "@/utils/scheduledTimeFormat";
+import { useTranslation } from "react-i18next";
 
 const C = {
   coral: COLORS.coral,
@@ -20,6 +21,7 @@ export default function CountdownCard({
   onSnooze,
   onSomethingOff,
 }) {
+  const { t } = useTranslation();
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Auto-refresh every minute to update countdown
@@ -230,7 +232,7 @@ export default function CountdownCard({
                     color: C.mutedBrown,
                   }}
                 >
-                  Snooze
+                  {t("routinesUi.countdownCard.snooze")}
                 </Text>
               </TouchableOpacity>
             </>

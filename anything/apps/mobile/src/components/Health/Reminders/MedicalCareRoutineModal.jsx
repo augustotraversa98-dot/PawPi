@@ -51,35 +51,37 @@ const C = {
 const MEDICAL_CARE_OPTIONS = [
   {
     value: MEDICAL_CARE_SUBTYPES.MEDICATION,
-    label: "Medication",
+    labelKey: "routinesUi.medicalCare.type.medication",
     icon: "💊",
   },
-  { value: MEDICAL_CARE_SUBTYPES.VACCINE, label: "Vaccine", icon: "💉" },
+  { value: MEDICAL_CARE_SUBTYPES.VACCINE, labelKey: "routinesUi.medicalCare.type.vaccine", icon: "💉" },
   {
     value: MEDICAL_CARE_SUBTYPES.FLEA_TICK,
-    label: "Flea / tick prevention",
+    labelKey: "routinesUi.medicalCare.type.fleaTick",
     icon: "🛡️",
   },
   {
     value: MEDICAL_CARE_SUBTYPES.DEWORMING,
-    label: "Deworming",
+    labelKey: "routinesUi.medicalCare.type.deworming",
     icon: "🪱",
   },
   {
     value: MEDICAL_CARE_SUBTYPES.HEARTWORM,
-    label: "Heartworm prevention",
+    labelKey: "routinesUi.medicalCare.type.heartworm",
     icon: "🫀",
   },
   {
     value: MEDICAL_CARE_SUBTYPES.SUPPLEMENT,
-    label: "Supplement",
+    labelKey: "routinesUi.medicalCare.type.supplement",
     icon: "🧪",
   },
-  { value: MEDICAL_CARE_SUBTYPES.OTHER, label: "Other", icon: "📋" },
+  { value: MEDICAL_CARE_SUBTYPES.OTHER, labelKey: "routinesUi.medicalCare.type.other", icon: "📋" },
 ];
 
-const getSubtypeLabel = (type) =>
-  MEDICAL_CARE_OPTIONS.find((o) => o.value === type)?.label || "Medical care";
+const getSubtypeLabel = (type, t) => {
+  const key = MEDICAL_CARE_OPTIONS.find((o) => o.value === type)?.labelKey;
+  return key ? t(key) : t("routinesUi.medicalCare.fallbackLabel");
+};
 
 const getSubtypeIcon = (type) =>
   MEDICAL_CARE_OPTIONS.find((o) => o.value === type)?.icon || "📋";
@@ -253,8 +255,8 @@ export default function MedicalCareRoutineModal({
       <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
         <View style={{ flex: 1, backgroundColor: C.cream }}>
           <Header
-            title="💊 Medical Care"
-            subtitle="Medications, vaccines, preventives, supplements"
+            title={t("routinesUi.medicalCare.medicalCare")}
+            subtitle={t("routinesUi.medicalCare.medicationsVaccinesPreventivesSupplements")}
             onClose={onClose}
           />
 
@@ -273,8 +275,7 @@ export default function MedicalCareRoutineModal({
               }}
             >
               <Text style={{ fontSize: 13, color: "#92400E", lineHeight: 19 }}>
-                ⚠️ Follow your veterinarian's instructions for medication,
-                vaccine, and preventive care schedules
+                {t("routinesUi.medicalCare.followYourVeterinarianSInstructions")}
               </Text>
             </View>
 
@@ -300,7 +301,7 @@ export default function MedicalCareRoutineModal({
                     textAlign: "center",
                   }}
                 >
-                  No medical care items yet
+                  {t("routinesUi.medicalCare.noMedicalCareItemsYet")}
                 </Text>
                 <Text
                   style={{
@@ -310,8 +311,7 @@ export default function MedicalCareRoutineModal({
                     lineHeight: 20,
                   }}
                 >
-                  Add medications, vaccines, preventives, or supplements to keep
-                  track of care.
+                  {t("routinesUi.medicalCare.addMedicationsVaccinesPreventivesOr")}
                 </Text>
               </View>
             ) : (
@@ -350,7 +350,7 @@ export default function MedicalCareRoutineModal({
                   color: C.terracotta,
                 }}
               >
-                Add care item
+                {t("routinesUi.medicalCare.addCareItem")}
               </Text>
             </TouchableOpacity>
           </ScrollView>
@@ -381,7 +381,9 @@ export default function MedicalCareRoutineModal({
                   color: items.length === 0 ? C.mutedBrown : "#FFF",
                 }}
               >
-                {editingRoutine ? "Save Changes" : "Create Routine"}
+                {editingRoutine
+                ? t("routinesUi.shared.saveChanges")
+                : t("routinesUi.shared.createRoutine")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -410,8 +412,8 @@ export default function MedicalCareRoutineModal({
             }}
           >
             <Header
-              title="Add care item"
-              subtitle="What type of care do you want to add?"
+              title={t("routinesUi.medicalCare.addCareItem")}
+              subtitle={t("routinesUi.medicalCare.whatTypeOfCareDo")}
               onClose={() => setStep("list")}
               compact
             />
@@ -452,7 +454,7 @@ export default function MedicalCareRoutineModal({
                         flex: 1,
                       }}
                     >
-                      {option.label}
+                      {t(option.labelKey)}
                     </Text>
                     <ChevronRight size={18} color={C.mutedBrown} />
                   </TouchableOpacity>
@@ -531,6 +533,7 @@ function Header({ title, subtitle, onClose, compact }) {
 // ItemRow - summary card for one item in the list
 // =========================================================================
 function ItemRow({ item, onEdit, onDelete }) {
+  const { t } = useTranslation();
   const subtitle = buildItemSubtitle(item);
   return (
     <View
@@ -562,13 +565,13 @@ function ItemRow({ item, onEdit, onDelete }) {
           style={{ fontSize: 15, fontWeight: "700", color: C.warmBrown }}
           numberOfLines={1}
         >
-          {item.name || getSubtypeLabel(item.type)}
+          {item.name || getSubtypeLabel(item.type, t)}
         </Text>
         <Text
           style={{ fontSize: 12, color: C.mutedBrown, marginTop: 2 }}
           numberOfLines={2}
         >
-          {getSubtypeLabel(item.type)}
+          {getSubtypeLabel(item.type, t)}
           {subtitle ? ` · ${subtitle}` : ""}
         </Text>
       </View>
@@ -587,6 +590,7 @@ function ItemRow({ item, onEdit, onDelete }) {
         <Edit3 size={16} color={C.mutedBrown} />
       </TouchableOpacity>
       <TouchableOpacity
+        accessibilityLabel={t("common.delete")} accessibilityRole="button"
         onPress={onDelete}
         style={{
           width: 34,
@@ -663,8 +667,8 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
       >
         <View style={{ flex: 1, backgroundColor: C.cream }}>
           <Header
-            title={`${getSubtypeIcon(subtype)} ${getSubtypeLabel(subtype)}`}
-            subtitle="Care item details"
+            title={`${getSubtypeIcon(subtype)} ${getSubtypeLabel(subtype, t)}`}
+            subtitle={t("routinesUi.medicalCare.careItemDetails")}
             onClose={onCancel}
           />
 
@@ -676,60 +680,58 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
             {/* Safety copy per type */}
             {subtype === MEDICAL_CARE_SUBTYPES.MEDICATION && (
               <SafetyNote>
-                Follow your veterinarian's instructions for medication dose and
-                schedule.
+                {t("routinesUi.medicalCare.followYourVeterinarianSInstructions2")}
               </SafetyNote>
             )}
             {subtype === MEDICAL_CARE_SUBTYPES.VACCINE && (
               <SafetyNote>
-                Follow your veterinarian's vaccination schedule.
+                {t("routinesUi.medicalCare.followYourVeterinarianSVaccination")}
               </SafetyNote>
             )}
             {(subtype === MEDICAL_CARE_SUBTYPES.FLEA_TICK ||
               subtype === MEDICAL_CARE_SUBTYPES.DEWORMING ||
               subtype === MEDICAL_CARE_SUBTYPES.HEARTWORM) && (
               <SafetyNote>
-                Follow your veterinarian's instructions for preventive care
-                products and schedules.
+                {t("routinesUi.medicalCare.followYourVeterinarianSInstructions3")}
               </SafetyNote>
             )}
 
             {/* Name field (label varies per type) */}
             <Label>
               {subtype === MEDICAL_CARE_SUBTYPES.MEDICATION
-                ? "Medication name"
+                ? t("routinesUi.medicalCare.nameMedication")
                 : subtype === MEDICAL_CARE_SUBTYPES.VACCINE
-                  ? "Vaccine name"
+                  ? t("routinesUi.medicalCare.nameVaccine")
                   : subtype === MEDICAL_CARE_SUBTYPES.SUPPLEMENT
-                    ? "Supplement name"
+                    ? t("routinesUi.medicalCare.nameSupplement")
                     : subtype === MEDICAL_CARE_SUBTYPES.OTHER
-                      ? "Care name"
-                      : "Product / treatment name"}
+                      ? t("routinesUi.medicalCare.nameOther")
+                      : t("routinesUi.medicalCare.nameProduct")}
             </Label>
             <Input
               value={draft.name}
               onChangeText={(v) => set({ name: v })}
               placeholder={
                 subtype === MEDICAL_CARE_SUBTYPES.MEDICATION
-                  ? "e.g., Apoquel"
+                  ? t("routinesUi.medicalCare.exampleApoquel")
                   : subtype === MEDICAL_CARE_SUBTYPES.VACCINE
-                    ? "e.g., Rabies vaccine"
+                    ? t("routinesUi.medicalCare.exampleRabies")
                     : subtype === MEDICAL_CARE_SUBTYPES.SUPPLEMENT
-                      ? "e.g., Omega 3"
+                      ? t("routinesUi.medicalCare.exampleOmega")
                       : subtype === MEDICAL_CARE_SUBTYPES.OTHER
-                        ? "e.g., Ear cleaning"
-                        : "e.g., Bravecto"
+                        ? t("routinesUi.medicalCare.exampleEarCleaning")
+                        : t("routinesUi.medicalCare.exampleBravecto")
               }
             />
 
             {/* =========================== MEDICATION =========================== */}
             {subtype === MEDICAL_CARE_SUBTYPES.MEDICATION && (
               <>
-                <Label>Dose</Label>
+                <Label>{t("routinesUi.medicalCare.dose")}</Label>
                 <Input
                   value={draft.dose}
                   onChangeText={(v) => set({ dose: v })}
-                  placeholder="e.g., 1 tablet"
+                  placeholder={t("routinesUi.medicalCare.example1Tablet")}
                 />
 
                 {/* Schedule — shared ScheduleBlock owns Date / Frequency / day
@@ -748,7 +750,7 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
 
                 {/* Stacked (not Row/Half) so the inline calendar has full width.
                     Dose-course honors item.endDate to bound the course. */}
-                <Label small>End date (optional)</Label>
+                <Label small>{t("routinesUi.medicalCare.endDateOptional")}</Label>
                 <View style={{ marginBottom: 10 }}>
                   <DateField
                     value={draft.endDate}
@@ -756,11 +758,11 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
                   />
                 </View>
 
-                <Label>Instructions (optional)</Label>
+                <Label>{t("routinesUi.medicalCare.instructionsOptional")}</Label>
                 <Input
                   value={draft.instructions}
                   onChangeText={(v) => set({ instructions: v })}
-                  placeholder="e.g., Give with food"
+                  placeholder={t("routinesUi.medicalCare.exampleGiveWithFood")}
                   multiline
                 />
               </>
@@ -769,7 +771,7 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
             {/* =========================== VACCINE =========================== */}
             {subtype === MEDICAL_CARE_SUBTYPES.VACCINE && (
               <>
-                <Label>Last given date (optional)</Label>
+                <Label>{t("routinesUi.medicalCare.lastGivenDateOptional")}</Label>
                 <View style={{ marginBottom: 10 }}>
                   <DateField
                     value={draft.lastGiven}
@@ -778,7 +780,7 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
                   />
                 </View>
 
-                <Label>Next due date</Label>
+                <Label>{t("routinesUi.medicalCare.nextDueDate")}</Label>
                 <View style={{ marginBottom: 10 }}>
                   <DateField
                     value={draft.nextDue}
@@ -786,20 +788,20 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
                   />
                 </View>
 
-                <Label>Vet clinic (optional)</Label>
+                <Label>{t("routinesUi.medicalCare.vetClinicOptional")}</Label>
                 <Input
                   value={draft.vetClinic}
                   onChangeText={(v) => set({ vetClinic: v })}
-                  placeholder="Veterinarian or clinic name"
+                  placeholder={t("routinesUi.medicalCare.veterinarianOrClinicName")}
                 />
 
-                <Label>Reminder timing</Label>
+                <Label>{t("routinesUi.medicalCare.reminderTiming")}</Label>
                 <View style={{ gap: 8, marginBottom: 20 }}>
                   {[
-                    { value: "on_due", label: "On due date" },
-                    { value: "1w", label: "1 week before" },
-                    { value: "2w", label: "2 weeks before" },
-                    { value: "1m", label: "1 month before" },
+                    { value: "on_due", label: t("routinesUi.medicalCare.onDueDate") },
+                    { value: "1w", label: t("routinesUi.medicalCare.1WeekBefore") },
+                    { value: "2w", label: t("routinesUi.medicalCare.2WeeksBefore") },
+                    { value: "1m", label: t("routinesUi.medicalCare.1MonthBefore") },
                   ].map((option) => (
                     <ChoiceRow
                       key={option.value}
@@ -817,7 +819,7 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
               subtype === MEDICAL_CARE_SUBTYPES.DEWORMING ||
               subtype === MEDICAL_CARE_SUBTYPES.HEARTWORM) && (
               <>
-                <Label>Last given date</Label>
+                <Label>{t("routinesUi.medicalCare.lastGivenDate")}</Label>
                 <View style={{ marginBottom: 10 }}>
                   <DateField
                     value={draft.lastGiven}
@@ -826,14 +828,14 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
                   />
                 </View>
 
-                <Label>Repeat interval</Label>
+                <Label>{t("routinesUi.medicalCare.repeatInterval")}</Label>
                 <View style={{ gap: 8, marginBottom: 20 }}>
                   {[
-                    { value: "monthly", label: "Monthly" },
-                    { value: "every_3_months", label: "Every 3 months" },
-                    { value: "every_6_months", label: "Every 6 months" },
-                    { value: "yearly", label: "Yearly" },
-                    { value: "custom", label: "Custom" },
+                    { value: "monthly", label: t("routinesUi.medicalCare.monthly") },
+                    { value: "every_3_months", label: t("routinesUi.medicalCare.every3Months") },
+                    { value: "every_6_months", label: t("routinesUi.medicalCare.every6Months") },
+                    { value: "yearly", label: t("routinesUi.medicalCare.yearly") },
+                    { value: "custom", label: t("routinesUi.medicalCare.custom") },
                   ].map((option) => (
                     <ChoiceRow
                       key={option.value}
@@ -844,7 +846,7 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
                   ))}
                 </View>
 
-                <Label>Next due date</Label>
+                <Label>{t("routinesUi.medicalCare.nextDueDate")}</Label>
                 <View style={{ marginBottom: 10 }}>
                   <DateField
                     value={draft.nextDue}
@@ -857,11 +859,11 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
             {/* =========================== SUPPLEMENT =========================== */}
             {subtype === MEDICAL_CARE_SUBTYPES.SUPPLEMENT && (
               <>
-                <Label>Amount / dose</Label>
+                <Label>{t("routinesUi.medicalCare.amountDose")}</Label>
                 <Input
                   value={draft.dose}
                   onChangeText={(v) => set({ dose: v })}
-                  placeholder="e.g., 1 chew"
+                  placeholder={t("routinesUi.medicalCare.example1Chew")}
                 />
 
                 {/* Schedule — shared ScheduleBlock (hideTime); dose times stay in
@@ -875,18 +877,18 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
                   style={{ marginBottom: 16 }}
                 />
 
-                <Label>When to give</Label>
+                <Label>{t("routinesUi.medicalCare.whenToGive")}</Label>
                 <View
                   style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}
                 >
                   <SegmentBtn
                     selected={draft.timingMode === "linked"}
-                    label="Linked to meal"
+                    label={t("routinesUi.medicalCare.linkedToMeal")}
                     onPress={() => set({ timingMode: "linked" })}
                   />
                   <SegmentBtn
                     selected={draft.timingMode === "time"}
-                    label="Custom time"
+                    label={t("routinesUi.medicalCare.customTime")}
                     onPress={() => set({ timingMode: "time" })}
                   />
                 </View>
@@ -894,10 +896,10 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
                 {draft.timingMode === "linked" ? (
                   <View style={{ gap: 8, marginBottom: 20 }}>
                     {[
-                      { value: "breakfast", label: "With breakfast" },
-                      { value: "dinner", label: "With dinner" },
-                      { value: "meal", label: "With meal" },
-                      { value: "custom", label: "Custom time" },
+                      { value: "breakfast", label: t("routinesUi.medicalCare.withBreakfast") },
+                      { value: "dinner", label: t("routinesUi.medicalCare.withDinner") },
+                      { value: "meal", label: t("routinesUi.medicalCare.withMeal") },
+                      { value: "custom", label: t("routinesUi.medicalCare.customTime") },
                     ].map((option) => (
                       <ChoiceRow
                         key={option.value}
@@ -920,11 +922,11 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
                   <DoseTimes draft={draft} set={set} />
                 )}
 
-                <Label>Instructions (optional)</Label>
+                <Label>{t("routinesUi.medicalCare.instructionsOptional")}</Label>
                 <Input
                   value={draft.instructions}
                   onChangeText={(v) => set({ instructions: v })}
-                  placeholder="e.g., Give with food"
+                  placeholder={t("routinesUi.medicalCare.exampleGiveWithFood")}
                   multiline
                 />
               </>
@@ -933,22 +935,22 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
             {/* =========================== OTHER =========================== */}
             {subtype === MEDICAL_CARE_SUBTYPES.OTHER && (
               <>
-                <Label>Description</Label>
+                <Label>{t("routinesUi.medicalCare.description")}</Label>
                 <Input
                   value={draft.description}
                   onChangeText={(v) => set({ description: v })}
-                  placeholder="What kind of care is this?"
+                  placeholder={t("routinesUi.medicalCare.whatKindOfCareIs")}
                   multiline
                 />
 
-                <Label>Frequency</Label>
+                <Label>{t("routinesUi.medicalCare.frequency")}</Label>
                 <View style={{ gap: 8, marginBottom: 20 }}>
                   {[
-                    { value: ROUTINE_FREQUENCY.DAILY, label: "Daily" },
-                    { value: ROUTINE_FREQUENCY.WEEKLY, label: "Weekly" },
-                    { value: ROUTINE_FREQUENCY.MONTHLY, label: "Monthly" },
-                    { value: "one_time", label: "One time" },
-                    { value: ROUTINE_FREQUENCY.CUSTOM, label: "Custom" },
+                    { value: ROUTINE_FREQUENCY.DAILY, label: t("routinesUi.medicalCare.daily") },
+                    { value: ROUTINE_FREQUENCY.WEEKLY, label: t("routinesUi.medicalCare.weekly") },
+                    { value: ROUTINE_FREQUENCY.MONTHLY, label: t("routinesUi.medicalCare.monthly") },
+                    { value: "one_time", label: t("routinesUi.medicalCare.oneTime") },
+                    { value: ROUTINE_FREQUENCY.CUSTOM, label: t("routinesUi.medicalCare.custom") },
                   ].map((option) => (
                     <ChoiceRow
                       key={option.value}
@@ -960,14 +962,14 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
                 </View>
 
                 {/* Stacked (not Row/Half) so the inline pickers have full width */}
-                <Label small>Date</Label>
+                <Label small>{t("routinesUi.medicalCare.date")}</Label>
                 <View style={{ marginBottom: 10 }}>
                   <DateField
                     value={draft.startDate}
                     onChange={(v) => set({ startDate: v })}
                   />
                 </View>
-                <Label small>Time</Label>
+                <Label small>{t("routinesUi.medicalCare.time")}</Label>
                 <View style={{ marginBottom: 10 }}>
                   <TimeField
                     value={draft.times?.[0] || ""}
@@ -989,25 +991,25 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
               }}
             >
               <ToggleRow
-                label="Reminder enabled"
+                label={t("routinesUi.medicalCare.reminderEnabled")}
                 value={draft.reminderEnabled}
                 onValueChange={(v) => set({ reminderEnabled: v })}
                 color={C.sage}
               />
               <View style={{ height: 14 }} />
               <ToggleRow
-                label="Time-sensitive"
+                label={t("routinesUi.medicalCare.timeSensitive")}
                 value={draft.timeSensitive}
                 onValueChange={(v) => set({ timeSensitive: v })}
                 color={C.coral}
               />
             </View>
 
-            <Label>Notes (optional)</Label>
+            <Label>{t("routinesUi.medicalCare.notesOptional")}</Label>
             <Input
               value={draft.notes}
               onChangeText={(v) => set({ notes: v })}
-              placeholder="Additional notes..."
+              placeholder={t("routinesUi.medicalCare.additionalNotes")}
               multiline
             />
           </KeyboardAwareScrollView>
@@ -1036,7 +1038,7 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
               <Text
                 style={{ fontSize: 16, fontWeight: "700", color: C.warmBrown }}
               >
-                Cancel
+                {t("routinesUi.medicalCare.cancel")}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -1050,7 +1052,7 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
               }}
             >
               <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}>
-                Save item
+                {t("routinesUi.medicalCare.saveItem")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -1176,11 +1178,12 @@ function SegmentBtn({ selected, label, onPress }) {
 // firing every N hours) — its value feeds medicalCareHourlyAnchorTime via
 // preferredTime; every other cadence offers an add/remove list.
 function DoseTimes({ draft, set }) {
+  const { t } = useTranslation();
   if (draft.frequency === ROUTINE_FREQUENCY.HOURLY) {
     const anchor = draft.preferredTime || draft.times?.[0] || "09:00";
     return (
       <>
-        <Label>Start time</Label>
+        <Label>{t("routinesUi.medicalCare.startTime")}</Label>
         <View style={{ marginBottom: 16 }}>
           <TimeField
             value={anchor}
@@ -1194,7 +1197,7 @@ function DoseTimes({ draft, set }) {
   const times = Array.isArray(draft.times) ? draft.times : [];
   return (
     <>
-      <Label>Time(s)</Label>
+      <Label>{t("routinesUi.medicalCare.timeS")}</Label>
       {times.map((time, index) => (
         <View
           key={index}
@@ -1217,6 +1220,7 @@ function DoseTimes({ draft, set }) {
           </View>
           {times.length > 1 && (
             <TouchableOpacity
+              accessibilityLabel={t("common.delete")} accessibilityRole="button"
               onPress={() => set({ times: times.filter((_, i) => i !== index) })}
               style={{
                 width: 40,
@@ -1249,7 +1253,7 @@ function DoseTimes({ draft, set }) {
       >
         <Plus size={16} color={C.terracotta} />
         <Text style={{ fontSize: 14, fontWeight: "700", color: C.terracotta }}>
-          Add another time
+          {t("routinesUi.medicalCare.addAnotherTime")}
         </Text>
       </TouchableOpacity>
     </>

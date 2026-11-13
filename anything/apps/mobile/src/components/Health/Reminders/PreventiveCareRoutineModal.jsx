@@ -121,10 +121,12 @@ export default function PreventiveCareRoutineModal({
                   marginBottom: 4,
                 }}
               >
-                🛡️ {editingRoutine ? "Edit" : "Create"} Preventive Care
+                {editingRoutine
+                  ? t("routinesUi.preventiveCare.titleEdit")
+                  : t("routinesUi.preventiveCare.titleCreate")}
               </Text>
               <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-                Flea, tick, heartworm prevention
+                {t("routinesUi.preventiveCare.fleaTickHeartwormPrevention")}
               </Text>
             </View>
             <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -155,12 +157,12 @@ export default function PreventiveCareRoutineModal({
                 marginBottom: 12,
               }}
             >
-              Product / Treatment Name
+              {t("routinesUi.preventiveCare.productTreatmentName")}
             </Text>
             <TextInput
               value={productName}
               onChangeText={setProductName}
-              placeholder="e.g., NexGard"
+              placeholder={t("routinesUi.preventiveCare.exampleNexgard")}
               placeholderTextColor={C.mutedBrown}
               style={{
                 backgroundColor: C.card,
@@ -182,15 +184,15 @@ export default function PreventiveCareRoutineModal({
                 marginBottom: 12,
               }}
             >
-              Treatment Type
+              {t("routinesUi.preventiveCare.treatmentType")}
             </Text>
             <View style={{ gap: 8, marginBottom: 20 }}>
               {[
-                { value: "flea", label: "Flea Prevention" },
-                { value: "tick", label: "Tick Prevention" },
-                { value: "worm", label: "Worm Prevention" },
-                { value: "heartworm", label: "Heartworm Prevention" },
-                { value: "other", label: "Other" },
+                { value: "flea", label: t("routinesUi.preventiveCare.fleaPrevention") },
+                { value: "tick", label: t("routinesUi.preventiveCare.tickPrevention") },
+                { value: "worm", label: t("routinesUi.preventiveCare.wormPrevention") },
+                { value: "heartworm", label: t("routinesUi.preventiveCare.heartwormPrevention") },
+                { value: "other", label: t("routinesUi.preventiveCare.other") },
               ].map((option) => (
                 <TouchableOpacity
                   key={option.value}
@@ -235,7 +237,7 @@ export default function PreventiveCareRoutineModal({
                     marginBottom: 8,
                   }}
                 >
-                  Last Given
+                  {t("routinesUi.preventiveCare.lastGiven")}
                 </Text>
                 <DateField value={lastGiven} onChange={setLastGiven} maximumDate={new Date()} />
               </View>
@@ -248,7 +250,7 @@ export default function PreventiveCareRoutineModal({
                     marginBottom: 8,
                   }}
                 >
-                  Next Due
+                  {t("routinesUi.preventiveCare.nextDue")}
                 </Text>
                 <DateField value={nextDue} onChange={setNextDue} />
               </View>
@@ -262,14 +264,14 @@ export default function PreventiveCareRoutineModal({
                 marginBottom: 12,
               }}
             >
-              Repeat Interval
+              {t("routinesUi.preventiveCare.repeatInterval")}
             </Text>
             <View style={{ gap: 8, marginBottom: 20 }}>
               {[
-                { value: "monthly", label: "Monthly" },
-                { value: "every_3_months", label: "Every 3 months" },
-                { value: "every_6_months", label: "Every 6 months" },
-                { value: "yearly", label: "Yearly" },
+                { value: "monthly", label: t("routinesUi.preventiveCare.monthly") },
+                { value: "every_3_months", label: t("routinesUi.preventiveCare.every3Months") },
+                { value: "every_6_months", label: t("routinesUi.preventiveCare.every6Months") },
+                { value: "yearly", label: t("routinesUi.preventiveCare.yearly") },
               ].map((option) => (
                 <TouchableOpacity
                   key={option.value}
@@ -328,7 +330,7 @@ export default function PreventiveCareRoutineModal({
                     color: C.warmBrown,
                   }}
                 >
-                  Reminder enabled
+                  {t("routinesUi.preventiveCare.reminderEnabled")}
                 </Text>
                 <Switch
                   value={reminderEnabled}
@@ -351,7 +353,7 @@ export default function PreventiveCareRoutineModal({
                     color: C.warmBrown,
                   }}
                 >
-                  Time-sensitive
+                  {t("routinesUi.preventiveCare.timeSensitive")}
                 </Text>
                 <Switch
                   value={timeSensitive}
@@ -370,7 +372,7 @@ export default function PreventiveCareRoutineModal({
                 marginBottom: 12,
               }}
             >
-              Notes (optional)
+              {t("routinesUi.preventiveCare.notesOptional")}
             </Text>
             <TextInput
               value={notes}
@@ -412,7 +414,9 @@ export default function PreventiveCareRoutineModal({
               }}
             >
               <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}>
-                {editingRoutine ? "Save Changes" : "Create Routine"}
+                {editingRoutine
+                ? t("routinesUi.shared.saveChanges")
+                : t("routinesUi.shared.createRoutine")}
               </Text>
             </TouchableOpacity>
           </View>

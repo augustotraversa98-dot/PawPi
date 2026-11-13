@@ -20,6 +20,7 @@ function startOfLocalDay(d) {
 }
 
 import { formatLocalTime } from "@/utils/localeDateTime";
+import { translate } from "@/utils/appAlert";
 
 export function formatScheduledTime(scheduledAt, now = new Date()) {
   const t = new Date(scheduledAt ?? NaN);
@@ -35,8 +36,8 @@ export function formatScheduledTime(scheduledAt, now = new Date()) {
   );
 
   if (dayDiff === 0) return time;
-  if (dayDiff === -1) return `Yesterday ${time}`;
-  if (dayDiff === 1) return `Tomorrow ${time}`;
+  if (dayDiff === -1) return `${translate("routinesUi.scheduledTime.yesterday", "Yesterday")} ${time}`;
+  if (dayDiff === 1) return `${translate("routinesUi.scheduledTime.tomorrow", "Tomorrow")} ${time}`;
   if (Math.abs(dayDiff) <= 6) {
     const weekday = t.toLocaleDateString([], { weekday: "short" });
     return `${weekday} ${time}`;
