@@ -6,6 +6,7 @@ import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING } from "@/constants/theme";
 import { Section, Row, formatPrice } from "./primitives";
 import { FeaturedBadge } from "./catalogShared";
+import { useTranslation } from "react-i18next";
 
 // Services section (moved verbatim from app/service/provider.jsx). Presentational: takes the
 // already-fetched active services. Renders nothing when there are none. A featured service
@@ -17,7 +18,7 @@ import { FeaturedBadge } from "./catalogShared";
 export default function ServicesPanel({ services = [], t, onPressService }) {
   if (services.length === 0) return null;
   return (
-    <Section title="Services">
+    <Section title={t("servicesUi.servicesPanel.services")}>
       {services.map((s) => {
         const card = (
           <Card

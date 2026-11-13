@@ -23,6 +23,7 @@ import {
   useMarkThreadRead,
 } from "@/hooks/useProviders";
 import useUpload from "@/utils/useUpload";
+import { useTranslation } from "react-i18next";
 
 // Shared owner↔provider conversation view (Phase 2 ticket 2.5; generalized for business mode
 // v2). Reads one thread's messages (polled), sends text, and attaches an image via the SHARED
@@ -40,6 +41,7 @@ function formatTime(ts) {
 }
 
 export default function ProviderChatScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -120,13 +122,14 @@ export default function ProviderChatScreen() {
       >
         <PressableScale
           onPress={() => router.back()}
+          accessibilityLabel={t("common.back")}
           accessibilityRole="button"
           style={{ marginRight: SPACING.md }}
         >
           <ArrowLeft size={22} color={COLORS.warmBrown} />
         </PressableScale>
         <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
-          {title || providerName || "Provider"}
+          {title || providerName || t("servicesUi.shared.provider")}
         </Text>
       </GlassSurface>
 
@@ -148,7 +151,7 @@ export default function ProviderChatScreen() {
                   { color: COLORS.mutedBrown, textAlign: "center" },
                 ]}
               >
-                No messages yet. Say hello.
+                {t("servicesUi.providerChat.noMessagesYetSayHello")}
               </Text>
             </View>
           ) : (
@@ -243,7 +246,7 @@ export default function ProviderChatScreen() {
         <TextInput
           value={draft}
           onChangeText={setDraft}
-          placeholder="Type a message…"
+          placeholder={t("servicesUi.providerChat.typeAMessage")}
           placeholderTextColor={COLORS.mutedBrown}
           style={[
             TYPE.body,

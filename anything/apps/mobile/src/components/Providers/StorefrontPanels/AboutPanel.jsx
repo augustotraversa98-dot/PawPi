@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { View, Text, Linking } from "react-native";
 import { Globe, Instagram, Facebook, Map } from "lucide-react-native";
 import { PressableScale } from "@/components/ui";
@@ -17,7 +18,7 @@ export default function AboutPanel({
   t,
 }) {
   const hasBio = !!provider?.bio;
-  const hasLinks = businessLinks(provider).length > 0;
+  const hasLinks = businessLinks(provider, t).length > 0;
   const hasLocations = includeLocations && locations.length > 0;
 
   if (!hasBio && !hasLinks && !hasLocations) {
@@ -53,9 +54,9 @@ export default function AboutPanel({
   );
 }
 
-function businessLinks(provider) {
+function businessLinks(provider, t) {
   return [
-    { url: provider?.website_url, label: "Website", Icon: Globe },
+    { url: provider?.website_url, label: t("servicesUi.aboutPanel.website"), Icon: Globe },
     { url: provider?.instagram_url, label: "Instagram", Icon: Instagram },
     { url: provider?.facebook_url, label: "Facebook", Icon: Facebook },
     { url: provider?.google_maps_url, label: "Google Maps", Icon: Map },
@@ -66,7 +67,8 @@ function businessLinks(provider) {
 // rows); each opens externally via Linking. The provider profile is public, so these are
 // safe to surface read-only.
 function ProviderLinks({ provider }) {
-  const links = businessLinks(provider);
+  const { t } = useTranslation();
+  const links = businessLinks(provider, t);
 
   if (links.length === 0) return null;
 

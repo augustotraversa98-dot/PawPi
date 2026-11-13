@@ -515,7 +515,7 @@ export default function ProviderScreen() {
           <ArrowLeft size={22} color={COLORS.warmBrown} />
         </PressableScale>
         <Text style={[TYPE.title2, { color: COLORS.warmBrown }]}>
-          {provider?.name || "Provider"}
+          {provider?.name || t("servicesUi.shared.provider")}
         </Text>
       </GlassSurface>
 
@@ -536,7 +536,7 @@ export default function ProviderScreen() {
           <Text
             style={[TYPE.headline, { color: COLORS.warmBrown, marginTop: SPACING.md }]}
           >
-            Provider not found
+            {t("servicesUi.provider.providerNotFound")}
           </Text>
           <Text
             style={[
@@ -549,7 +549,7 @@ export default function ProviderScreen() {
               },
             ]}
           >
-            This provider isn't available right now.
+            {t("servicesUi.provider.thisProviderIsnTAvailable")}
           </Text>
         </View>
       ) : (
@@ -636,7 +636,7 @@ export default function ProviderScreen() {
                             pathname: "/provider-chat",
                             params: {
                               threadId: String(thread.id),
-                              providerName: provider.name || "Provider",
+                              providerName: provider.name || t("servicesUi.shared.provider"),
                               ownerUserId: String(thread.owner_user_id),
                             },
                           });

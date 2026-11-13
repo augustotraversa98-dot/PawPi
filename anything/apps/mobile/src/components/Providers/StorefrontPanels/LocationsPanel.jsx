@@ -5,13 +5,15 @@ import { Card } from "@/components/ui";
 import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING } from "@/constants/theme";
 import { Section, Row } from "./primitives";
+import { useTranslation } from "react-i18next";
 
 // Locations section (moved verbatim from app/service/provider.jsx). Presentational: takes the
 // already-fetched locations. Renders nothing when there are none.
 export default function LocationsPanel({ locations = [] }) {
+  const { t } = useTranslation();
   if (locations.length === 0) return null;
   return (
-    <Section title="Locations">
+    <Section title={t("servicesUi.locationsPanel.locations")}>
       {locations.map((l) => (
         <Card
           key={l.id}

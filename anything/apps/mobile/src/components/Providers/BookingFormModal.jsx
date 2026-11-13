@@ -43,7 +43,7 @@ const CAPABILITY_COPY = {
     // Grooming is naturally a recurring cycle (ticket 2.6). Offer "every 6 weeks" so the
     // booking carries a recurrence_rule (2.4) and the EXISTING reminder engine nudges the
     // owner to re-book — no new reminder path. iCal RRULE; INTERVAL=6 weeks.
-    recurrence: { label: "Repeat every 6 weeks", rule: "FREQ=WEEKLY;INTERVAL=6" },
+    recurrence: { labelKey: "servicesUi.bookingFormModal.repeatEvery6Weeks", rule: "FREQ=WEEKLY;INTERVAL=6" },
   },
   walker: {
     icon: "🐾",
@@ -51,7 +51,7 @@ const CAPABILITY_COPY = {
     // Walking supports both on-demand (a one-off slot — leave Repeat off) and a RECURRING
     // weekly pack walk (ticket 2.7). Opting in carries a weekly recurrence_rule (2.4) so
     // the EXISTING reminder engine nudges the owner — no new reminder path. iCal RRULE.
-    recurrence: { label: "Repeat weekly (pack walk)", rule: "FREQ=WEEKLY;INTERVAL=1" },
+    recurrence: { labelKey: "servicesUi.bookingFormModal.repeatWeeklyPackWalk", rule: "FREQ=WEEKLY;INTERVAL=1" },
   },
   daycare: { icon: "🏠", noun: "daycare" },
   sitter: { icon: "🧸", noun: "sitting" },
@@ -524,7 +524,7 @@ export default function BookingFormModal({
             }}
           >
             <Chip
-              label="Any"
+              label={t("servicesUi.bookingFormModal.any")}
               selected={locationId == null}
               onPress={() => setLocationId(null)}
             />
@@ -651,7 +651,7 @@ export default function BookingFormModal({
                 color: repeat ? "#FFF" : COLORS.mutedBrown,
               }}
             >
-              {copy.recurrence.label}
+              {t(copy.recurrence.labelKey)}
             </Text>
             <Text style={{ fontSize: 16, color: repeat ? "#FFF" : COLORS.mutedBrown }}>
               {repeat ? "✓" : ""}

@@ -13,6 +13,7 @@ import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
 import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { useMyThreads } from "@/hooks/useProviders";
+import { useTranslation } from "react-i18next";
 
 // Owner-side Messages screen (Phase 2 ticket 2.5): the list of owner ↔ provider
 // conversations. Real data only (the participant-scoped /api/threads), empty state
@@ -37,6 +38,7 @@ function formatTime(ts) {
 }
 
 export default function ProviderMessagesScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { data: threads, isLoading, refetch } = useMyThreads();
@@ -47,7 +49,7 @@ export default function ProviderMessagesScreen() {
       pathname: "/provider-chat",
       params: {
         threadId: String(thread.id),
-        providerName: thread.provider_name || "Provider",
+        providerName: thread.provider_name || t("servicesUi.shared.provider"),
         ownerUserId: String(thread.owner_user_id),
       },
     });
@@ -68,13 +70,14 @@ export default function ProviderMessagesScreen() {
       >
         <PressableScale
           onPress={() => router.back()}
+          accessibilityLabel={t("common.back")}
           accessibilityRole="button"
           style={{ marginRight: SPACING.md }}
         >
           <ArrowLeft size={22} color={COLORS.warmBrown} />
         </PressableScale>
         <Text style={[TYPE.title2, { color: COLORS.warmBrown }]}>
-          Messages
+          {t("servicesUi.providerMessages.messages")}
         </Text>
       </GlassSurface>
 
@@ -98,7 +101,7 @@ export default function ProviderMessagesScreen() {
               { fontWeight: "800", color: COLORS.warmBrown, marginTop: SPACING.md },
             ]}
           >
-            No conversations yet
+            {t("servicesUi.providerMessages.noConversationsYet")}
           </Text>
           <Text
             style={[
@@ -111,8 +114,7 @@ export default function ProviderMessagesScreen() {
               },
             ]}
           >
-            Message a vet or service provider from their profile to start a
-            conversation.
+            {t("servicesUi.providerMessages.messageAVetOrService")}
           </Text>
         </View>
       ) : (
@@ -171,7 +173,7 @@ export default function ProviderMessagesScreen() {
                     ]}
                     numberOfLines={1}
                   >
-                    {thread.provider_name || "Provider"}
+                    {thread.provider_name || t("servicesUi.shared.provider")}
                   </Text>
                   <Text
                     style={[
@@ -202,7 +204,9 @@ export default function ProviderMessagesScreen() {
                     numberOfLines={1}
                   >
                     {thread.last_message_body ||
-                      (thread.last_message_attachment_url ? "Photo" : "No messages yet")}
+                      (thread.last_message_attachment_url
+                        ? t("servicesUi.providerMessages.photo")
+                        : t("servicesUi.providerMessages.noMessagesYet"))}
                   </Text>
                   {thread.unread_count > 0 && (
                     <View

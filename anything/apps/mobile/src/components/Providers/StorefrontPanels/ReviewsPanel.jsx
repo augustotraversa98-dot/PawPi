@@ -7,6 +7,7 @@ import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING } from "@/constants/theme";
 import { Section } from "./primitives";
 import { formatLocalDate } from "@/utils/localeDateTime";
+import { useTranslation } from "react-i18next";
 
 // Reviews section (moved verbatim from app/service/provider.jsx). Presentational: takes the
 // already-fetched reviews plus the owner's eligible completed booking (the leave-a-review
@@ -19,7 +20,7 @@ export default function ReviewsPanel({
   t,
 }) {
   return (
-    <Section title="Reviews">
+    <Section title={t("servicesUi.reviewsPanel.reviews")}>
       {/* Owner entry point to leave a review — only with a completed booking here. */}
       {eligibleReviewBooking ? (
         <PressableScale
@@ -47,8 +48,7 @@ export default function ReviewsPanel({
       {reviews.length === 0 ? (
         <Card level="sm" radius={RADIUS.md} style={{ padding: SPACING.lg }}>
           <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500" }]}>
-            No reviews yet. After a completed appointment you can be the first to
-            leave one.
+            {t("servicesUi.reviewsPanel.noReviewsYetAfterA")}
           </Text>
         </Card>
       ) : (
@@ -83,7 +83,7 @@ function ReviewCard({ review }) {
           style={[TYPE.headline, { color: COLORS.warmBrown, flex: 1 }]}
           numberOfLines={1}
         >
-          {review.reviewer_name || "Pet parent"}
+          {review.reviewer_name || t("servicesUi.reviewsPanel.petParent")}
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
           <Star size={13} color={COLORS.coral} fill={COLORS.coral} />

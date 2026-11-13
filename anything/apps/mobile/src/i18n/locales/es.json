@@ -4490,7 +4490,9 @@
       "stepByStep": "Paso a paso",
       "sessionsDone": "{{done}} de {{total}} sesiones completadas",
       "overallProgress": "{{done}} de {{total}} sesiones completadas en {{programs}} programas",
-      "sessionMeta": "{{minutes}} min · {{difficulty}}"
+      "sessionMeta": "{{minutes}} min · {{difficulty}}",
+      "completedTapToUndo": "✓ Completado — tocá para deshacer",
+      "markAsCompleted": "Marcar como completado"
     },
     "chat": {
       "sayHelloToStartThe": "Saludá para empezar la conversación.",
@@ -4527,7 +4529,72 @@
     },
     "wrapped": {
       "yourWrappedIsGrowing": "Tu Wrapped está creciendo",
-      "shareSlide": "Compartir diapositiva"
+      "shareSlide": "Compartir diapositiva",
+      "title": "Wrapped",
+      "titleWithPet": "El Wrapped de {{name}}"
+    }
+  },
+  "servicesUi": {
+    "providerChat": {
+      "noMessagesYetSayHello": "Todavía no hay mensajes. Saludá.",
+      "typeAMessage": "Escribí un mensaje…"
+    },
+    "providerMessages": {
+      "messages": "Mensajes",
+      "noConversationsYet": "Todavía no hay conversaciones",
+      "messageAVetOrService": "Escribile a un veterinario o a un prestador de servicios desde su perfil para empezar una conversación.",
+      "photo": "Foto",
+      "noMessagesYet": "Todavía no hay mensajes"
+    },
+    "adoption": {
+
+    },
+    "grooming": {
+      "grooming": "Peluquería ✂️",
+      "findAndBookAGroomer": "Encontrá y reservá una peluquería canina",
+      "messages": "Mensajes",
+      "groomersNearYou": "PELUQUERÍAS CERCA TUYO",
+      "couldnTLoadGroomers": "No se pudieron cargar las peluquerías",
+      "noGroomersAvailableYet": "Todavía no hay peluquerías disponibles"
+    },
+    "provider": {
+      "providerNotFound": "No se encontró el prestador",
+      "thisProviderIsnTAvailable": "Este prestador no está disponible por ahora."
+    },
+    "vet": {
+      "veterinary": "Veterinaria 🏥",
+      "findAndBookAVet": "Encontrá y reservá un veterinario",
+      "messages": "Mensajes",
+      "couldnTLoadVets": "No se pudieron cargar los veterinarios",
+      "noVetsAvailableYet": "Todavía no hay veterinarios disponibles"
+    },
+    "walking": {
+
+    },
+    "bookingFormModal": {
+      "any": "Cualquiera",
+      "repeatEvery6Weeks": "Repetir cada 6 semanas",
+      "repeatWeeklyPackWalk": "Repetir cada semana (paseo en manada)"
+    },
+    "aboutPanel": {
+      "website": "Sitio web"
+    },
+    "locationsPanel": {
+      "locations": "Sedes"
+    },
+    "reviewsPanel": {
+      "reviews": "Reseñas",
+      "noReviewsYetAfterA": "Todavía no hay reseñas. Después de un turno completado podés ser el primero en dejar una.",
+      "petParent": "Dueño de mascota"
+    },
+    "servicesPanel": {
+      "services": "Servicios"
+    },
+    "catalogShared": {
+
+    },
+    "shared": {
+      "provider": "Prestador"
     }
   }
 }
