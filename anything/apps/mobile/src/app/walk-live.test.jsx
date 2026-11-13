@@ -6,6 +6,10 @@
 //   - an unknown session id shows "Walk not found".
 // The data hook, router, params, and the real map (MapLocationView) are mocked.
 
+
+// Resolve t() against the real English catalog so assertions read real copy.
+jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
+
 import React from "react";
 import { render } from "@testing-library/react-native";
 

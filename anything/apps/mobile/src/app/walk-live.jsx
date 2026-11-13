@@ -14,6 +14,7 @@ import MapLocationView from "@/components/Map/MapLocationView";
 import { isValidCoord } from "@/utils/walkBuddies";
 import { useWalkSessions } from "@/hooks/useProviders";
 import { useCurrentPet } from "@/hooks/usePetProfile";
+import { useTranslation } from "react-i18next";
 
 // Owner's LIVE WALK WATCH + REPORT (ticket 2.7). Polls /api/pets/[id]/walk-sessions (the
 // shared useWalkSessions hook, live mode = 5s) so the route grows in real time while the
@@ -23,6 +24,7 @@ import { useCurrentPet } from "@/hooks/usePetProfile";
 // API key needed): the owner literally sees the streets the dog is walking. As the 5s live
 // poll grows the route, the map re-fits to the newest points (no fake routes, no fake path).
 export default function WalkLiveScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { sessionId } = useLocalSearchParams();
@@ -57,6 +59,7 @@ export default function WalkLiveScreen() {
         }}
       >
         <TouchableOpacity
+          accessibilityLabel={t("common.back")} accessibilityRole="button"
           onPress={() => router.back()}
           style={{ marginRight: 14 }}
         >
@@ -66,10 +69,12 @@ export default function WalkLiveScreen() {
           <Text
             style={{ fontSize: 20, fontWeight: "800", color: COLORS.warmBrown }}
           >
-            {isLive ? "Walk in progress" : "Walk report"}
+            {isLive
+              ? t("screensUi.walkLive.walkInProgress")
+              : t("screensUi.walkLive.walkReport")}
           </Text>
           <Text style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 1 }}>
-            {session?.walker_name || session?.provider_name || "Your walker"}
+            {session?.walker_name || session?.provider_name || t("screensUi.walkLive.yourWalker")}
             {currentPet?.name ? ` · ${currentPet.name}` : ""}
           </Text>
         </View>
@@ -83,7 +88,7 @@ export default function WalkLiveScreen() {
           </View>
         ) : !session ? (
           <EmptyState
-            title="Walk not found"
+            title={t("screensUi.walkLive.walkNotFound")}
             body="This walk is no longer available."
           />
         ) : (
@@ -100,7 +105,9 @@ export default function WalkLiveScreen() {
                   marginTop: 16,
                 }}
               >
-                Updating live — the route refreshes as {currentPet?.name || "your dog"} walks.
+                {t("screensUi.walkLive.updatingLive", {
+                  name: currentPet?.name || t("screensUi.walkLive.yourDog"),
+                })}
               </Text>
             ) : null}
           </>
@@ -120,6 +127,7 @@ function metresToMiles(m) {
 // fake path. The map is keyed on the point count so each 5s poll remounts it and re-fits the
 // region to the newest points — the route visibly extends as the dog walks.
 function RoutePreview({ route, live }) {
+  const { t } = useTranslation();
   const points = (Array.isArray(route) ? route : []).filter((p) =>
     p && isValidCoord(p.lat, p.lng),
   );
@@ -149,8 +157,8 @@ function RoutePreview({ route, live }) {
           }}
         >
           {live
-            ? "Waiting for the first GPS points…"
-            : "No route was recorded for this walk."}
+            ? t("screensUi.walkLive.waitingForGps")
+            : t("screensUi.walkLive.noRoute")}
         </Text>
       </View>
     );
@@ -165,8 +173,8 @@ function RoutePreview({ route, live }) {
         key={`walk-route-${points.length}`}
         polyline={points}
         points={[
-          { ...start, title: "Start" },
-          { ...latest, title: live ? "Now" : "End" },
+          { ...start, title: t("screensUi.walkLive.markerStart") },
+          { ...latest, title: live ? t("screensUi.walkLive.markerNow") : t("screensUi.walkLive.markerEnd") },
         ]}
         height={220}
         interactive={false}
@@ -176,6 +184,7 @@ function RoutePreview({ route, live }) {
 }
 
 function StatsRow({ session }) {
+  const { t } = useTranslation();
   const miles = metresToMiles(session.distance_m);
   const mins =
     session.duration_s != null
@@ -192,9 +201,9 @@ function StatsRow({ session }) {
 
   return (
     <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
-      <Stat label="Distance" value={miles != null ? `${miles} mi` : "—"} />
-      <Stat label="Time" value={mins != null ? `${mins} min` : "—"} />
-      <Stat label="GPS points" value={String(pts)} />
+      <Stat label={t("screensUi.walkLive.distance")} value={miles != null ? `${miles} mi` : "—"} />
+      <Stat label={t("screensUi.walkLive.time")} value={mins != null ? `${mins} min` : "—"} />
+      <Stat label={t("screensUi.walkLive.gpsPoints")} value={String(pts)} />
     </View>
   );
 }
@@ -223,6 +232,7 @@ function Stat({ label, value }) {
 }
 
 function Report({ session }) {
+  const { t } = useTranslation();
   return (
     <View
       style={{
@@ -241,18 +251,18 @@ function Report({ session }) {
           marginBottom: 10,
         }}
       >
-        Summary
+        {t("screensUi.walkLive.summary")}
       </Text>
-      <Row label="Potty">
+      <Row label={t("screensUi.walkLive.potty")}>
         <Text style={{ fontSize: 14, color: COLORS.warmBrown }}>
-          {session.potty_pee ? "💦 Pee" : ""}
+          {session.potty_pee ? t("screensUi.walkLive.pee") : ""}
           {session.potty_pee && session.potty_poo ? "  " : ""}
-          {session.potty_poo ? "💩 Poo" : ""}
-          {!session.potty_pee && !session.potty_poo ? "None recorded" : ""}
+          {session.potty_poo ? t("screensUi.walkLive.poo") : ""}
+          {!session.potty_pee && !session.potty_poo ? t("screensUi.walkLive.noneRecorded") : ""}
         </Text>
       </Row>
       {session.notes ? (
-        <Row label="Notes">
+        <Row label={t("screensUi.walkLive.notes")}>
           <Text style={{ fontSize: 14, color: COLORS.warmBrown }}>
             {session.notes}
           </Text>
@@ -266,7 +276,7 @@ function Report({ session }) {
           fontStyle: "italic",
         }}
       >
-        This walk was added to your pet's Health timeline.
+        {t("screensUi.walkLive.thisWalkWasAddedTo")}
       </Text>
     </View>
   );

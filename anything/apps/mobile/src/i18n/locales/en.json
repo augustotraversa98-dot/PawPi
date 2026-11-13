@@ -4471,5 +4471,63 @@
     "shared": {
       "dayStreak": "{{count}} day streak"
     }
+  },
+  "screensUi": {
+    "community": {
+      "noDiscussionsHereYet": "No discussions here yet.",
+      "beTheFirstToBark": "Be the first to bark!"
+    },
+    "hub": {
+      "myHub": "My Hub",
+      "whoHasAccess": "Who has access",
+      "savedDogs": "Saved dogs"
+    },
+    "training": {
+      "wantAProHireA": "Want a pro? Hire a trainer",
+      "11SessionsGroupClasses": "1:1 sessions, group classes, and multi-week programs",
+      "yourTrainingJourney": "Your training journey 🏆",
+      "programs": "Programs",
+      "stepByStep": "Step-by-step",
+      "sessionsDone": "{{done}} of {{total}} sessions done",
+      "overallProgress": "{{done}} of {{total}} sessions completed across {{programs}} programs",
+      "sessionMeta": "{{minutes}} min · {{difficulty}}"
+    },
+    "chat": {
+      "sayHelloToStartThe": "Say hello to start the conversation.",
+      "sendAMessage": "Send a message…"
+    },
+    "index": {
+      "loading": "Loading..."
+    },
+    "walkLive": {
+      "walkNotFound": "Walk not found",
+      "distance": "Distance",
+      "time": "Time",
+      "gpsPoints": "GPS points",
+      "summary": "Summary",
+      "potty": "Potty",
+      "notes": "Notes",
+      "thisWalkWasAddedTo": "This walk was added to your pet's Health timeline.",
+      "walkInProgress": "Walk in progress",
+      "walkReport": "Walk report",
+      "yourWalker": "Your walker",
+      "yourDog": "your dog",
+      "updatingLive": "Updating live — the route refreshes as {{name}} walks.",
+      "waitingForGps": "Waiting for the first GPS points…",
+      "noRoute": "No route was recorded for this walk.",
+      "markerStart": "Start",
+      "markerNow": "Now",
+      "markerEnd": "End",
+      "pee": "💦 Pee",
+      "poo": "💩 Poo",
+      "noneRecorded": "None recorded"
+    },
+    "welcome": {
+
+    },
+    "wrapped": {
+      "yourWrappedIsGrowing": "Your Wrapped is growing",
+      "shareSlide": "Share slide"
+    }
   }
 }

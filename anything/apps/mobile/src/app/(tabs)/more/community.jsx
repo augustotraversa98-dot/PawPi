@@ -352,10 +352,10 @@ export default function CommunityScreen() {
                 { color: COLORS.warmBrown, fontWeight: "700", marginTop: SPACING.md },
               ]}
             >
-              No discussions here yet.
+              {t("screensUi.community.noDiscussionsHereYet")}
             </Text>
             <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.xs }]}>
-              Be the first to bark!
+              {t("screensUi.community.beTheFirstToBark")}
             </Text>
           </View>
         )}

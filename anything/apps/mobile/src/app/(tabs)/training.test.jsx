@@ -69,12 +69,9 @@ test("renders real curriculum programs", () => {
 test("per-pet progress count reflects the completed set", () => {
   mockCompletedSet = new Set([completionId(firstProgram.key, firstSession.key)]);
   const { getByTestId } = render(<TrainingScreen />);
-  expect(getByTestId(`program-progress-${firstProgram.key}`).props.children).toEqual([
-    1,
-    " of ",
-    firstProgram.sessions.length,
-    " sessions done",
-  ]);
+  expect(getByTestId(`program-progress-${firstProgram.key}`).props.children).toBe(
+    `1 of ${firstProgram.sessions.length} sessions done`,
+  );
 });
 
 test("opening a program → session → mark complete fires the toggle", () => {

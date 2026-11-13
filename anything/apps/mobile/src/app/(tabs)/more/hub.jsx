@@ -170,7 +170,7 @@ export default function MyHubScreen() {
           <ArrowLeft size={22} color={COLORS.warmBrown} />
         </TouchableOpacity>
         <Text style={{ fontSize: 20, fontWeight: "800", color: COLORS.warmBrown }}>
-          My Hub
+          {t("screensUi.hub.myHub")}
         </Text>
       </View>
 
@@ -185,7 +185,7 @@ export default function MyHubScreen() {
         >
           {/* Who has access */}
           <SectionCard
-            title="Who has access"
+            title={t("screensUi.hub.whoHasAccess")}
             Icon={ShieldCheck}
             count={activeGrants.length}
             onPress={() => router.push("/(tabs)/more/data-access")}
@@ -206,7 +206,7 @@ export default function MyHubScreen() {
 
           {/* Saved dogs */}
           <SectionCard
-            title="Saved dogs"
+            title={t("screensUi.hub.savedDogs")}
             Icon={Heart}
             count={favList.length}
             onPress={() => router.push("/service/adoption")}
