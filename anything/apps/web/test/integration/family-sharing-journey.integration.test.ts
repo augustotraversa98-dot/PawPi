@@ -304,19 +304,15 @@ describe("3. a SHARED-ONLY user (owns no dog) and duplicate pets", () => {
     expect(pets.map((p: any) => [p.id, p.is_shared, p.access_role])).toEqual([[PET, true, "family"]]);
   });
 
-  it("TODAY [B8]: POST /api/pets has NO duplicate/retry guard — the same dog posted twice creates two rows", async () => {
-    as(OWNER);
-    const body = { name: "Rex", breed: "Labrador" };
-    expect((await apiReq("/pets", "POST", body)).status).toBe(201);
-    expect((await apiReq("/pets", "POST", body)).status).toBe(201);
-    expect(Number((await raw`select count(*)::int n from pets where owner_user_id = ${OWNER.profileId} and name = 'Rex'`)[0].n)).toBe(3); // seeded Rex + 2
-  });
-
-  it.fails("DESIRED [PR2]: the same owner+name+breed retried (lost response) is idempotent — still ONE new row", async () => {
+  // FLIPPED by PR2 (was "TODAY [B8]" + "DESIRED [PR2]" pins): a retried create is a replay, never a second row.
+  // The full matrix (window, race, keys, owners) lives in pets-duplicate-guard.integration.test.ts.
+  it("a retried POST /api/pets (lost response / double tap) creates ONE row, the retry gets the existing pet", async () => {
     as(OWNER);
     const body = { name: "Milo", breed: "Beagle" };
-    await apiReq("/pets", "POST", body);
-    await apiReq("/pets", "POST", body);
+    const first = await apiReq("/pets", "POST", body);
+    const retry = await apiReq("/pets", "POST", body);
+    expect([first.status, retry.status]).toEqual([201, 200]);
+    expect((await json(retry)).pet.id).toBe((await json(first)).pet.id);
     expect(Number((await raw`select count(*)::int n from pets where owner_user_id = ${OWNER.profileId} and name = 'Milo'`)[0].n)).toBe(1);
   });
 

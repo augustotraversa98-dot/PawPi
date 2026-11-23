@@ -19,6 +19,14 @@ import {
 } from "@/app/api/utils/petHandle";
 import { moderationResponse } from "@/app/api/utils/moderateText";
 import { recordBusinessEvent } from "@/lib/telemetry/business";
+import {
+  parseIdempotencyKey,
+  lockOwnerForPetCreate,
+  findRecentSamePet,
+  findPetByIdempotencyKey,
+  rememberPetIdempotencyKey,
+  sameNormalisedName,
+} from "@/app/api/utils/petCreateGuard";
 
 // RLS R1 pilot route: handlers are wrapped at the bottom with withRequestContext
 // so their DB work runs in a transaction carrying the caller's identity. The
@@ -189,6 +197,40 @@ async function POST(request) {
     const blockedPet = moderationResponse(name, breed, notes);
     if (blockedPet) return blockedPet;
 
+    // DUPLICATE-PET GUARD (family-sharing audit B8). A retry / double tap / lost response must not create a second row for
+    // the same dog, and builds 30-32 send no idempotency key — so this works without any client cooperation (utils/
+    // petCreateGuard.js has the full rationale). It runs BEFORE the handle checks on purpose: a retry that carries an
+    // explicit handle would otherwise hit its OWN first pet's handle and get a confusing 409. Scoped by the owner's
+    // user_profiles.id only; grants are irrelevant here (a family/caregiver on someone else's dog can still add their own).
+    const idem = parseIdempotencyKey(request.headers.get("idempotency-key"));
+    if (idem.error) {
+      return Response.json({ error: idem.error, code: "idempotency_key_invalid" }, { status: 400 });
+    }
+    // Serialise this owner's creates for the rest of the transaction: a simultaneous identical request waits here for the
+    // first one's COMMIT, then finds its row below.
+    await lockOwnerForPetCreate(userId);
+
+    let replay = null;
+    if (idem.key) {
+      replay = await findPetByIdempotencyKey(userId, idem.key);
+      if (replay && !sameNormalisedName(replay.name, name)) {
+        return Response.json(
+          {
+            error: "That Idempotency-Key was already used for a different pet.",
+            code: "idempotency_key_reused",
+          },
+          { status: 422 },
+        );
+      }
+      // A key we have not seen = the client says this is a NEW attempt: no name-window match, create it.
+    } else {
+      replay = await findRecentSamePet(userId, name);
+    }
+    if (replay) {
+      // Same shape as the 201 ({ pet }), the existing row untouched. The header lets a client tell a replay from a create.
+      return Response.json({ pet: replay }, { status: 200, headers: { "Idempotent-Replay": "true" } });
+    }
+
     // Handle: normalized (lowercase, no leading "@"), validated with the SAME rules as the app,
     // and compared case-insensitively. A taken handle is a friendly 409 that carries fresh free
     // alternatives (never a raw error); the INSERT below also catches the unique-violation race.
@@ -248,6 +290,8 @@ async function POST(request) {
       }
       throw insertError;
     }
+
+    if (idem.key) await rememberPetIdempotencyKey(userId, idem.key, pet[0].id);
 
     recordBusinessEvent("pet_created");
     return Response.json({ pet: pet[0] }, { status: 201 });

@@ -98,6 +98,10 @@ for installed/in-review builds)
    as long as the code + `media-private` bucket remain. Deleting `media-private` is
    safe only after no column references a key.
 
+> **2026-11-23 count (read-only, from the family-sharing audit):** 2 of 3 `vet_documents` and 3 of 4 `health_photo_checks`
+> rows still hold public URLs (6 objects already in `media-private`; general-check photos 0). Human-run steps are tracked as
+> **ACTION 11** in [`test-backlog.md`](test-backlog.md).
+
 ## Device QA still owed (build-20 QA, on a phone — cannot be done headlessly:
 login is a WebView credential form)
 Upload a vet PDF + a health photo on build 20, confirm they render through the

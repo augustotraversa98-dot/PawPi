@@ -18,7 +18,27 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
-## 2026-11-23 — Family & caregivers (couples sharing ONE dog) — audit + fix series PR1/7 (tests + ring caller check) — OPEN, NOT merged
+## 2026-11-23 — Family & caregivers series — PR2/7: duplicate-pet guard on `POST /api/pets` — OPEN, NOT merged
+
+Fixes audit gap **B8** (a retry / double tap / lost response created a second row for the same real dog). PR1 ([#749](https://github.com/augustotraversa98-dot/PawPi/pull/749)) is **MERGED** (squash `2bbf8425`): journey tests + migration 0137 (`app_pet_ring_segments` caller check — hand-apply, ACTION 9) + two CI-harness fixes (checkpointing the throwaway Postgres, explicit heap for the single integration fork; CI had been failing on file-slot exhaustion and then heap OOM — `main`'s own run after #748 was red for the same reason).
+
+- ✅ **No client cooperation (builds 30–32):** same `owner_user_id` + same name (case- and whitespace-insensitive) as a pet that owner created in the last **5 minutes** → `200` with the SAME `{ pet }` shape (header `Idempotent-Replay: true`) and the existing row **unchanged**; no second row. A same-named dog created later, a different name, or another owner's dog → created as before. The check runs **before** the handle checks, so a retry carrying an explicit handle is a replay, not a confusing `409 handle_taken`.
+- ✅ **Concurrency:** every create takes a transaction-level advisory lock keyed on the owner (`pg_advisory_xact_lock(hashtext('pet-create'), owner)`); simultaneous identical requests are serialised, the second sees the first's committed row. Proven (and mutation-tested: without the lock the race tests fail with two `201`s).
+- ✅ **Optional `Idempotency-Key` header** (future clients): same owner + same key → the same pet forever (no window); an unseen key = a new attempt (created even if the name matches a pet from a minute ago); same key for a different dog → `422 idempotency_key_reused`; malformed → `400`. Needs **migration 0138** (`request_idempotency_keys`, own-row FORCE RLS). **Until 0138 is applied the key is ignored and the retry-window guard still protects** (tested: no 500).
+- ✅ Grants are irrelevant to the guard: a family/caregiver on someone else's dog can still add their own, even with the same name. `GET /api/pets` untouched (that is PR3).
+- Accepted trade-off: two genuinely different dogs with the SAME name added by the same owner within 5 minutes will be treated as one (a retry cannot be told apart from it without a client key). Newer clients can send a fresh `Idempotency-Key` to opt out.
+- PR1's `TODAY [B8]` / `DESIRED [PR2]` pins are flipped into one passing test; the new matrix is `pets-duplicate-guard.integration.test.ts`.
+
+| | |
+|---|---|
+| Needs build 33? | **No** (builds 30–32 benefit immediately once the server deploys) |
+| Server-only? | **Yes** |
+| Safe for builds 30–32? | **Yes** — same request/response shape; a replay is `200` instead of `201` (the app treats any 2xx as success) |
+| Migration by hand? | **0138 — optional**, only for the explicit-key path; `verify_0138.sql` (7 rows PASS) |
+
+---
+
+## 2026-11-23 — Family & caregivers (couples sharing ONE dog) — audit + fix series PR1/7 (tests + ring caller check) — MERGED #749 (2026-11-23)
 
 Audit: [`family-sharing-audit-2026-11.md`](family-sharing-audit-2026-11.md) (verdict table, permission matrix, release map, lifecycle, UI-vs-RLS, ranked gaps). Owner decisions 2026-11-23: members' posts/logs are **anonymized** (not deleted) when a member deletes their account; an owner deleting theirs takes the pet with it **after notifying members**; **caregiver** reads feeding/routines/meds/emergency/health logs and can LOG/complete but not edit; **family** reads+writes everything except managing sharing and deleting the pet (API **and** RLS, UI to match); a nullable `logged_by` on health logs + routine completions; a hashed one-time **invite link/code** table (migration written, hand-applied by the owner).
 
