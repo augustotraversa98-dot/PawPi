@@ -16,6 +16,7 @@ import {
   filterBreeds,
   hasExactBreedMatch,
   normalizeBreed,
+  breedLabel,
 } from "@/data/dogBreeds";
 
 // The canonical value we persist for the pinned "Mixed breed" option. The label
@@ -75,7 +76,8 @@ function BreedRow({ label, selected, onPress, testID }) {
  * default view is "Mixed breed" + a short list of common breeds; typing ranks real
  * matches first (prefix > word > substring), then a "Use "{typed}"" row lets a
  * rare breed/cross be saved deliberately.
- * Breed NAMES stay canonical English; only the surrounding UI strings localize.
+ * The STORED breed value stays canonical English; rows show the Spanish name where one is
+ * established (search matches both). Persisted/compared values are never translated.
  */
 export default function BreedPicker({
   value = "",
@@ -88,14 +90,14 @@ export default function BreedPicker({
   // Seed the search box with the current value so edit screens show it in
   // context; the pinned "Mixed Breed" is represented by its own row, not text.
   const [query, setQuery] = useState(() =>
-    value && value !== MIXED_VALUE ? value : "",
+    value && value !== MIXED_VALUE ? breedLabel(t, value) : "",
   );
 
   const trimmed = query.trim();
   const searching = trimmed.length > 0;
-  const matches = useMemo(() => filterBreeds(query, MAX_RESULTS), [query]);
-  const totalMatches = useMemo(() => filterBreeds(query).length, [query]);
-  const showCustom = searching && !hasExactBreedMatch(query);
+  const matches = useMemo(() => filterBreeds(query, MAX_RESULTS, t), [query, t]);
+  const totalMatches = useMemo(() => filterBreeds(query, undefined, t).length, [query, t]);
+  const showCustom = searching && !hasExactBreedMatch(query, t);
   const truncated = searching && totalMatches > matches.length;
   const showEmpty = searching && totalMatches === 0;
   // Default (not searching): a tidy short list; the full catalog appears as the
@@ -120,7 +122,7 @@ export default function BreedPicker({
   const renderMatch = ({ item: breed }) => (
     <BreedRow
       testID={`breed-option-${breed}`}
-      label={breed}
+      label={breedLabel(t, breed)}
       selected={value === breed}
       onPress={() => onChange?.(breed)}
     />

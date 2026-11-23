@@ -8,6 +8,12 @@
 //
 // Keys (program.key / session.key) are STABLE — progress rows reference them; never rename a
 // key (add new ones instead). difficulty ∈ Beginner | Intermediate | Advanced.
+//
+// LOCALIZATION: the English text below is the FALLBACK. What the user sees is resolved at render
+// from the `trainingUi` locale namespace, addressed by these same stable keys
+// (trainingUi.programs.<programKey>.{title,summary} and
+// trainingUi.programs.<programKey>.sessions.<sessionKey>.{title,objective,steps.N,tips.N}) via the
+// helpers at the bottom of this file. Ids/keys/numeric fields are never translated.
 
 export const TRAINING_PROGRAMS = [
   {
@@ -698,4 +704,51 @@ export function programDoneCount(programKey, completedSet) {
   if (!p) return 0;
   return p.sessions.filter((s) => completedSet.has(completionId(programKey, s.key)))
     .length;
+}
+
+// ---- Localized display helpers --------------------------------------------------------------
+// `t` is the react-i18next translate fn. A missing key (t returns the key itself) falls back to the
+// English text carried by the data above, so an untranslated entry never shows a raw key.
+function tr(t, key, fallback) {
+  try {
+    const v = t(key);
+    return typeof v === "string" && v && v !== key ? v : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+const P = (programKey) => `trainingUi.programs.${programKey}`;
+const S = (programKey, sessionKey) => `${P(programKey)}.sessions.${sessionKey}`;
+
+export function difficultyLabel(t, difficulty) {
+  return tr(t, `trainingUi.difficulty.${difficulty}`, difficulty);
+}
+
+export function programTitle(t, program) {
+  return tr(t, `${P(program.key)}.title`, program.title);
+}
+
+export function programSummary(t, program) {
+  return tr(t, `${P(program.key)}.summary`, program.summary);
+}
+
+export function sessionTitle(t, programKey, session) {
+  return tr(t, `${S(programKey, session.key)}.title`, session.title);
+}
+
+export function sessionObjective(t, programKey, session) {
+  return tr(t, `${S(programKey, session.key)}.objective`, session.objective);
+}
+
+export function sessionSteps(t, programKey, session) {
+  return session.steps.map((step, i) =>
+    tr(t, `${S(programKey, session.key)}.steps.${i + 1}`, step),
+  );
+}
+
+export function sessionTips(t, programKey, session) {
+  return (session.tips || []).map((tip, i) =>
+    tr(t, `${S(programKey, session.key)}.tips.${i + 1}`, tip),
+  );
 }

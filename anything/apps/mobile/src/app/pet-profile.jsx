@@ -36,6 +36,7 @@ import {
   ELEVATION,
 } from "@/constants/theme";
 import { Card, PressableScale, PawMark } from "@/components/ui";
+import { breedLabel } from "@/data/dogBreeds";
 
 export default function PetProfileScreen({ embedded = false }) {
   const insets = useSafeAreaInsets();
@@ -116,6 +117,7 @@ export default function PetProfileScreen({ embedded = false }) {
   // Message the OWNER (ticket 2.27) — same gate; needs the owner's user id. Starts
   // (or reuses) a 1:1 DM thread, then opens the conversation.
   const { t } = useTranslation();
+  const breedText = breed === "Mixed Breed" ? t("petProfile.mixedBreed") : breedLabel(t, breed);
   const canMessage = canFollow && !!owner?.id;
   const handleMessage = useCallback(() => {
     if (!owner?.id) return;
@@ -458,7 +460,7 @@ export default function PetProfileScreen({ embedded = false }) {
             >
               {!!breed && (
                 <Text style={[TYPE.body, { color: COLORS.coral, fontWeight: "600" }]}>
-                  {breed}
+                  {breedText}
                 </Text>
               )}
               {!!breed && !!ageText && <Text style={{ color: COLORS.peach }}>·</Text>}
@@ -733,7 +735,7 @@ export default function PetProfileScreen({ embedded = false }) {
               ? {
                   label: t("petProfile.breed"),
                   // "Mixed Breed" is the stored picker value (never translated in data) — show it localized.
-                  value: breed === "Mixed Breed" ? t("petProfile.mixedBreed") : breed,
+                  value: breedText,
                 }
               : null,
             ageText ? { label: t("petProfile.age"), value: ageText } : null,

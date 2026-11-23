@@ -6,8 +6,12 @@
 // the picker still allows "Mixed Breed" and a deliberate type-your-own fallback.
 //
 // The names are the CANONICAL ENGLISH strings we persist to the pet row (breed
-// comparisons rely on them) — they are NOT translated. "Mixed Breed" is handled
-// as a pinned option in the picker and is intentionally NOT in this array.
+// comparisons rely on them) — the STORED value is never translated. For display,
+// breedLabel(t, breed) resolves a Spanish name from `trainingUi.breeds.<english name>`
+// when one is established (Pastor Alemán, Caniche, Bulldog Francés…) and otherwise
+// shows the international name as-is. Search matches both the English and the
+// displayed name. "Mixed Breed" is handled as a pinned option in the picker and is
+// intentionally NOT in this array.
 //
 // Sorted alphabetically (see the dogBreeds.test sort guard).
 
@@ -240,21 +244,48 @@ export const COMMON_BREEDS = [
   "Siberian Husky",
 ];
 
-// Relevance of a breed for a normalized query: 0 = name starts with it,
+// Display label for a stored (English) breed value. `t` is the react-i18next translate fn; a
+// missing translation (t returns the key) or no `t` falls back to the stored English name. The
+// pinned "Mixed Breed" value shows its localized label.
+export function breedLabel(t, breed) {
+  if (!breed || typeof t !== "function") return breed;
+  try {
+    const key = breed === "Mixed Breed" ? "breedPicker.mixed" : `trainingUi.breeds.${breed}`;
+    const v = t(key);
+    return typeof v === "string" && v && v !== key ? v : breed;
+  } catch {
+    return breed;
+  }
+}
+
+// Relevance of a name for a normalized query: 0 = name starts with it,
 // 1 = a word in the name starts with it, 2 = appears elsewhere, -1 = no match.
-function breedRank(breed, q) {
-  const name = normalizeBreed(breed);
+function nameRank(raw, q) {
+  const name = normalizeBreed(raw);
   if (name.startsWith(q)) return 0;
   if (name.split(/[\s-]+/).some((w) => w.startsWith(q))) return 1;
   return name.includes(q) ? 2 : -1;
+}
+
+// Best rank across the canonical English name and (when `t` is given) the displayed name.
+function breedRank(breed, q, t) {
+  const en = nameRank(breed, q);
+  if (!t) return en;
+  const label = breedLabel(t, breed);
+  if (label === breed) return en;
+  const loc = nameRank(label, q);
+  if (en < 0) return loc;
+  if (loc < 0) return en;
+  return Math.min(en, loc);
 }
 
 // Filter the canonical list by a query, case/accent-insensitive. Results are
 // ranked by relevance (prefix > word-start > substring), then popular breeds
 // first, then A–Z — so "gold" puts Golden Retriever / Golden Doodle on top.
 // An empty query returns the full list in A–Z order. `limit` (optional) caps
-// the result count so the picker can render a bounded list.
-export function filterBreeds(query, limit) {
+// the result count so the picker can render a bounded list. `t` (optional) also
+// matches the localized display names (e.g. "caniche" finds Poodle).
+export function filterBreeds(query, limit, t) {
   const q = normalizeBreed(query);
   let matches = DOG_BREEDS;
   if (q) {
@@ -262,7 +293,7 @@ export function filterBreeds(query, limit) {
       const idx = COMMON_BREEDS.indexOf(b);
       return idx === -1 ? COMMON_BREEDS.length : idx;
     };
-    matches = DOG_BREEDS.map((b) => ({ b, r: breedRank(b, q) }))
+    matches = DOG_BREEDS.map((b) => ({ b, r: breedRank(b, q, t) }))
       .filter((x) => x.r >= 0)
       .sort(
         (x, y) =>
@@ -275,11 +306,15 @@ export function filterBreeds(query, limit) {
   return typeof limit === "number" ? matches.slice(0, limit) : matches;
 }
 
-// True when `query` exactly matches a canonical breed name (normalized) or the
-// pinned "Mixed Breed" option — i.e. there is nothing custom to "Use".
-export function hasExactBreedMatch(query) {
+// True when `query` exactly matches a canonical breed name (normalized), its
+// displayed name (when `t` is given) or the pinned "Mixed Breed" option — i.e.
+// there is nothing custom to "Use".
+export function hasExactBreedMatch(query, t) {
   const q = normalizeBreed(query);
   if (!q) return false;
   if (q === normalizeBreed("Mixed Breed")) return true;
-  return DOG_BREEDS.some((b) => normalizeBreed(b) === q);
+  return DOG_BREEDS.some(
+    (b) =>
+      normalizeBreed(b) === q || (!!t && normalizeBreed(breedLabel(t, b)) === q),
+  );
 }

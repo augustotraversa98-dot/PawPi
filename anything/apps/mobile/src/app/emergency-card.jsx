@@ -19,6 +19,7 @@ import QRCode from "react-native-qrcode-svg";
 import { COLORS } from "@/constants/colors";
 import { PetAvatar } from "@/components/Pets/PetAvatar";
 import { useCurrentPet } from "@/hooks/usePetProfile";
+import { breedLabel } from "@/data/dogBreeds";
 import {
   useEmergencyCard,
   useUpdateEmergencyCard,
@@ -198,7 +199,7 @@ export default function EmergencyCardScreen() {
               </View>
               <View style={{ marginTop: 12 }}>
                 <Row label={t("emergencyCard.species")} value={pet?.species} />
-                <Row label={t("emergencyCard.breed")} value={pet?.breed} />
+                <Row label={t("emergencyCard.breed")} value={breedLabel(t, pet?.breed)} />
                 <Row label={t("emergencyCard.microchip")} value={medical?.microchip_id} />
                 <Row label={t("emergencyCard.bloodType")} value={card?.blood_type} />
                 <Row label={t("emergencyCard.spayNeuter")} value={medical?.spayed_neutered_status} />

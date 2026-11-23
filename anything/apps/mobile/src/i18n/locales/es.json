@@ -4666,5 +4666,707 @@
       "alreadyDone": "Eso ya estaba hecho.",
       "notAvailable": "Eso todavía no está disponible."
     }
+  },
+  "trainingUi": {
+    "difficulty": {
+      "Beginner": "Principiante",
+      "Intermediate": "Intermedio",
+      "Advanced": "Avanzado"
+    },
+    "programs": {
+      "puppy-essentials": {
+        "title": "Lo esencial del cachorro",
+        "summary": "El primer mes con un cachorro nuevo: reconocer su nombre, manipulación, rutina para hacer pis y caca, comodidad en la jaula y mordida suave — la base de todo lo demás.",
+        "sessions": {
+          "name-recognition": {
+            "title": "Reconocer su nombre y la palabra marcadora",
+            "objective": "Enseñale a tu cachorro que su nombre significa 'mirame, que viene algo bueno', y presentá una palabra marcadora ('sí') o un clicker.",
+            "steps": {
+              "1": "En un ambiente tranquilo, decí el nombre de tu cachorro una sola vez con tono alegre.",
+              "2": "En el instante en que te mire, marcá con '¡sí!' y dale un premio chiquito.",
+              "3": "Repetí de 8 a 10 veces y hacé una pausa. Nunca repitas el nombre una y otra vez.",
+              "4": "Practicá en 2 o 3 sesiones cortas por día, sumando de a poco distracciones suaves."
+            },
+            "tips": {
+              "1": "Usá premios diminutos (del tamaño de una arveja) para poder hacer muchas repeticiones.",
+              "2": "Si no responde, estás muy lejos o hay demasiadas distracciones: hacelo más fácil."
+            }
+          },
+          "handling-touch": {
+            "title": "Manipulación suave y contacto corporal",
+            "objective": "Creá asociaciones positivas con que le toquen las patas, las orejas, la boca y el collar — fundamental para las visitas al veterinario y el baño.",
+            "steps": {
+              "1": "Tocale una pata un instante, marcá y dale un premio. Repetí con las orejas y después levantale suavemente el labio.",
+              "2": "Acompañá cada toque con un premio para que la manipulación anticipe cosas buenas.",
+              "3": "Aumentá de a poco el tiempo que sostenés cada toque.",
+              "4": "Practicá agarrarlo rápido del collar + premio para que sostenerlo nunca le dé miedo."
+            },
+            "tips": {
+              "1": "Frená antes de que se ponga inquieto: terminá en un momento tranquilo."
+            }
+          },
+          "potty-routine": {
+            "title": "Rutina para hacer sus necesidades",
+            "objective": "Armá un horario predecible y un sistema de recompensas para que tu cachorro aprenda dónde hacer.",
+            "steps": {
+              "1": "Sacá a tu cachorro después de despertarse, de comer, de jugar y cada 1 o 2 horas.",
+              "2": "Andá siempre al mismo lugar; esperá en silencio y dejalo oler.",
+              "3": "En cuanto termine, marcá y premialo con cariño ahí mismo.",
+              "4": "Supervisalo dentro de casa; limpiá los accidentes con un limpiador enzimático (sin retos)."
+            },
+            "tips": {
+              "1": "Un cachorro chico aguanta más o menos una hora por cada mes de edad.",
+              "2": "Premiá AFUERA, no después de volver a entrar: el momento justo le enseña el lugar."
+            }
+          },
+          "crate-comfort": {
+            "title": "La jaula como refugio seguro",
+            "objective": "Hacé de la jaula un lugar de descanso cómodo y voluntario — nunca un castigo.",
+            "steps": {
+              "1": "Tirá premios adentro y dejá que entre y salga libremente.",
+              "2": "Dale las comidas en la jaula con la puerta abierta.",
+              "3": "Cerrá la puerta unos segundos y andá aumentando el tiempo mientras te quedás cerca.",
+              "4": "Sumá un juguete para morder y una cama blandita; mantené cortas las primeras veces con la puerta cerrada."
+            },
+            "tips": {
+              "1": "Si llora, aumentaste el tiempo demasiado rápido: volvé un paso atrás."
+            }
+          },
+          "bite-inhibition": {
+            "title": "Control de la mordida y mordisqueo",
+            "objective": "Enseñale a tu cachorro a usar la boca con suavidad y redirigí los mordiscos hacia los juguetes.",
+            "steps": {
+              "1": "Cuando los dientes toquen la piel, decí con calma '¡ay!' y cortá el juego un momento.",
+              "2": "Redirigilo enseguida a un juguete para morder apropiado.",
+              "3": "Premiá el juego suave y que mastique sus juguetes.",
+              "4": "Mantené cortos los juegos para evitar mordiscos por sobreexcitación."
+            },
+            "tips": {
+              "1": "Nunca juegues a pelear con las manos: le enseña que las manos son juguetes."
+            }
+          },
+          "settle-on-mat": {
+            "title": "Relajarse en una manta",
+            "objective": "Enseñale un lugar de 'andá a relajarte acá' para que esté tranquilo en casa.",
+            "steps": {
+              "1": "Poné una manta en el piso y premiá cualquier interacción con ella.",
+              "2": "Premiá cuando se echa sobre la manta, con premios dados con calma y despacio.",
+              "3": "Sumá una señal como 'lugar' cuando se sube a la manta de forma confiable.",
+              "4": "Premiá de a poco tiempos más largos de quietud y agregá una palabra de liberación."
+            },
+            "tips": {
+              "1": "Dale los premios abajo y despacio para favorecer un cuerpo relajado."
+            }
+          }
+        }
+      },
+      "basic-obedience": {
+        "title": "Obediencia básica",
+        "summary": "Las señales esenciales que todo perro necesita: sentate, echate, quedate, venite, dejalo y una liberación confiable. Se aprende guiando con el premio y luego quitándolo, siempre con refuerzo positivo.",
+        "sessions": {
+          "sit": {
+            "title": "Sentate",
+            "objective": "Un sentado confiable con una sola señal verbal.",
+            "steps": {
+              "1": "Sostené un premio frente a la nariz de tu perro y subilo despacio hacia atrás por encima de su cabeza.",
+              "2": "Al subir la cabeza, la cola baja: marcá y premiá el sentado.",
+              "3": "Después de unas cuantas guías, probá el movimiento de mano sin premio y premialo después.",
+              "4": "Sumá la palabra 'sentate' justo antes del movimiento de mano y andá quitando la guía."
+            },
+            "tips": {
+              "1": "Si en vez de sentarse retrocede, practicá con su cola cerca de una pared."
+            }
+          },
+          "down": {
+            "title": "Echate",
+            "objective": "Un echado tranquilo desde sentado o parado.",
+            "steps": {
+              "1": "Desde sentado, llevá un premio de la nariz derecho hacia el piso.",
+              "2": "Deslizalo un poquito hacia adelante para que lo siga hasta echarse; marcá y premiá.",
+              "3": "Repetí y después sumá la señal 'echate' cuando empiece a acostarse.",
+              "4": "Premiá generosamente en el piso para ir logrando que dure más."
+            },
+            "tips": {
+              "1": "En pisos resbalosos, usá una alfombra: la comodidad acelera el aprendizaje."
+            }
+          },
+          "stay": {
+            "title": "Quedate (duración)",
+            "objective": "Mantener la posición hasta que lo liberes, trabajando las 3 D: duración, distancia y distracción.",
+            "steps": {
+              "1": "Pedile que se siente; decí 'quedate' con la mano abierta como señal.",
+              "2": "Esperá 1 segundo, marcá, premiá y liberalo con 'listo'.",
+              "3": "Aumentá primero el tiempo, DESPUÉS alejate un paso y por último sumá distracciones.",
+              "4": "Si se mueve, reiniciá con calma y hacé más fácil el último paso."
+            },
+            "tips": {
+              "1": "Premiá EN la posición y liberalo con otra palabra: así no se confunde."
+            }
+          },
+          "recall-intro": {
+            "title": "Venite (base)",
+            "objective": "Lograr una respuesta alegre y rápida al 'venite' dentro de casa.",
+            "steps": {
+              "1": "Alejate unos pasos y llamalo con '¡venite!' en tono alegre.",
+              "2": "Premiá a lo grande cuando llegue: una fiesta cada vez.",
+              "3": "Practicá primero distancias cortas y después entre dos personas.",
+              "4": "Nunca lo llames con 'venite' para algo desagradable (baños, cortarle las uñas)."
+            },
+            "tips": {
+              "1": "Hacé que venir hacia vos sea lo mejor que le pasa en todo el día."
+            }
+          },
+          "leave-it": {
+            "title": "Dejalo",
+            "objective": "Soltar o ignorar algo cuando se lo pedís — fundamental para su seguridad.",
+            "steps": {
+              "1": "Poné un premio en el puño cerrado; dejá que lo huela y lo lama.",
+              "2": "Esperá; en cuanto se aparte, marcá y premiá con la OTRA mano.",
+              "3": "Sumá la señal 'dejalo'; avanzá a un premio en el piso, tapado.",
+              "4": "Llegá hasta poder pasar caminando junto a comida en el suelo."
+            },
+            "tips": {
+              "1": "Premiá siempre con algo distinto del objeto prohibido."
+            }
+          },
+          "release-word": {
+            "title": "Palabra de liberación y sentado automático",
+            "objective": "Una palabra clara de 'ya podés' y un sentado automático y educado.",
+            "steps": {
+              "1": "Elegí una palabra de liberación ('listo', 'libre') y usala después de cada quedate.",
+              "2": "Premiá a tu perro cuando se sienta por su cuenta para pedirte algo.",
+              "3": "Usá el sentado automático antes de las comidas, las puertas y los saludos.",
+              "4": "Mantené la misma palabra de liberación en toda la familia."
+            },
+            "tips": {
+              "1": "Un sentado automático reemplaza los saltos y la conducta insistente."
+            }
+          }
+        }
+      },
+      "leash-manners": {
+        "title": "Buenos modales con la correa",
+        "summary": "Caminar con la correa floja sin tironear: atención, el método del árbol, giros y cómo pasar tranquilo frente a distracciones.",
+        "sessions": {
+          "engagement": {
+            "title": "Atención y conexión",
+            "objective": "Premiá a tu perro cuando te mira para chequear con vos durante el paseo con correa.",
+            "steps": {
+              "1": "Quedate quieto con la correa; marcá y premiá cualquier mirada hacia vos.",
+              "2": "Dá un paso; premiá la atención. Llegá de a poco a unos cuantos pasos.",
+              "3": "Usá una señal 'mirame' con un premio a la altura de tus ojos.",
+              "4": "Practicá en la tranquilidad de tu casa antes de salir a la calle."
+            },
+            "tips": {
+              "1": "Premiá a la altura de tu pantalón para animarlo a caminar a tu lado."
+            }
+          },
+          "be-a-tree": {
+            "title": "El método del árbol",
+            "objective": "Enseñale que tironear detiene el avance.",
+            "steps": {
+              "1": "Caminá hacia adelante; en el momento en que la correa se tense, frená y quedate quieto.",
+              "2": "Esperá a que se afloje (un paso atrás o una mirada hacia vos), marcá y seguí caminando.",
+              "3": "Premiá mucho cada vez que la correa esté floja.",
+              "4": "Tené paciencia y constancia: cada frenada enseña la lección."
+            },
+            "tips": {
+              "1": "Un arnés con enganche delantero reduce los tirones mientras entrenás."
+            }
+          },
+          "turns": {
+            "title": "Cambios de dirección",
+            "objective": "Mantené a tu perro atento cambiando de dirección.",
+            "steps": {
+              "1": "Caminá unos pasos y girá hacia el lado contrario con una señal alegre.",
+              "2": "Premiá a tu perro cuando te alcance y se ponga a tu lado.",
+              "3": "Alterná giros a la izquierda, a la derecha y medias vueltas sin avisar.",
+              "4": "Hacelo como un juego, no como una corrección."
+            },
+            "tips": {
+              "1": "Premios suaves y predecibles hacen que elija quedarse cerca."
+            }
+          },
+          "passing-distractions": {
+            "title": "Cruzarse con perros y personas",
+            "objective": "Caminar con calma frente a lo que lo altera usando distancia y premios.",
+            "steps": {
+              "1": "Empezá a una distancia en la que tu perro note el estímulo pero todavía pueda concentrarse.",
+              "2": "Premiá la atención mientras pasan a distancia.",
+              "3": "Reducí la distancia de a poco a lo largo de muchas sesiones.",
+              "4": "Si se queda fijo o tironea, ponete más lejos: no lo fuerces a acercarse."
+            },
+            "tips": {
+              "1": "Pasar con calma se construye en semanas, no en un solo paseo."
+            }
+          },
+          "auto-check-in": {
+            "title": "Chequeos automáticos",
+            "objective": "Que tu perro te mire voluntariamente durante los paseos.",
+            "steps": {
+              "1": "Premiá las miradas espontáneas durante el paseo.",
+              "2": "Dejá de pedir 'mirame' y permití que las ofrezca solo.",
+              "3": "Variá el momento del premio para que siga chequeando.",
+              "4": "Pasá de a poco a elogios + premios ocasionales."
+            },
+            "tips": {
+              "1": "Los premios sorpresa mantienen la atención fuerte a largo plazo."
+            }
+          }
+        }
+      },
+      "reliable-recall": {
+        "title": "Llamado confiable",
+        "summary": "Un 'venite' a prueba de todo en el que podés confiar: desde adentro de casa hasta el trabajo con cuerda larga al aire libre, con juegos que hacen irresistible volver.",
+        "sessions": {
+          "recall-game": {
+            "title": "El juego de la fiesta del llamado",
+            "objective": "Cargá de valor la señal de llamado.",
+            "steps": {
+              "1": "Decí '¡venite!' y corré hacia atrás unos pasos.",
+              "2": "Cuando tu perro te alcance, armá una fiesta de premios y jugá.",
+              "3": "Hacé de cada llamado una celebración.",
+              "4": "Terminá mientras todavía quiere más."
+            },
+            "tips": {
+              "1": "Usá el premio favorito de tu perro: venir es lo que mejor se paga."
+            }
+          },
+          "ping-pong": {
+            "title": "Llamado ping-pong entre dos personas",
+            "objective": "Ganá velocidad y confiabilidad con un compañero.",
+            "steps": {
+              "1": "Dos personas se sientan a poca distancia.",
+              "2": "Se turnan para llamar al perro; premien cada llegada.",
+              "3": "Aumenten de a poco la distancia entre ustedes.",
+              "4": "Sumá el nombre del perro antes de 'venite' para que se concentre."
+            },
+            "tips": {
+              "1": "Mantenelo rápido y divertido: la velocidad nace de la emoción."
+            }
+          },
+          "long-line": {
+            "title": "Llamado al aire libre con cuerda larga",
+            "objective": "Practicá el llamado de forma segura en espacios abiertos.",
+            "steps": {
+              "1": "Sujetá una cuerda larga de 5 a 10 m al arnés en un lugar seguro.",
+              "2": "Dejá que explore, después llamalo con 'venite' y premiá a lo grande.",
+              "3": "Usá la cuerda solo para evitar que se escape, nunca para arrastrarlo hacia vos.",
+              "4": "Avanzá hasta distracciones suaves, como un parque tranquilo."
+            },
+            "tips": {
+              "1": "Una cuerda larga da libertad sin perder la seguridad."
+            }
+          },
+          "proofing-distractions": {
+            "title": "Practicar con distracciones",
+            "objective": "Que venga incluso cuando está pasando algo interesante.",
+            "steps": {
+              "1": "Practicá el llamado cerca de distracciones suaves (un lugar para oler, una persona).",
+              "2": "Premiá todavía más los llamados difíciles.",
+              "3": "Si no viene, bajá la distracción la próxima vez.",
+              "4": "Nunca lo retes por tardar en venir: arruina la señal."
+            },
+            "tips": {
+              "1": "Dale un premio gordo, con varias golosinas seguidas, a los llamados más difíciles."
+            }
+          },
+          "emergency-recall": {
+            "title": "Palabra de llamado de emergencia",
+            "objective": "Una palabra especial reservada para emergencias reales.",
+            "steps": {
+              "1": "Elegí una palabra única que nunca uses en la vida diaria.",
+              "2": "Asociala con un premio increíble (carne, pollo) — sin necesidad de dar ninguna orden.",
+              "3": "Repetí la asociación hasta que la palabra sola le genere alegría instantánea.",
+              "4": "Probala pocas veces y premiá siempre enormemente."
+            },
+            "tips": {
+              "1": "Cuidá esta palabra: usala solo cuando de verdad importe."
+            }
+          }
+        }
+      },
+      "impulse-control": {
+        "title": "Control de impulsos",
+        "summary": "Habilidades de autocontrol: esperar en las puertas, no tocar la comida, relajarse cuando se lo pedís y saludar con educación en vez de saltar.",
+        "sessions": {
+          "wait-at-door": {
+            "title": "Esperar en las puertas",
+            "objective": "Que no salga disparado cuando se abre una puerta.",
+            "steps": {
+              "1": "Acercá la mano a la puerta; si tu perro se abalanza, sacá la mano del picaporte.",
+              "2": "Abrí apenas una rendija solo mientras mantiene la posición.",
+              "3": "Premiá la espera tranquila y después liberalo para que pase.",
+              "4": "Avanzá hasta una puerta bien abierta con una espera firme."
+            },
+            "tips": {
+              "1": "Es una habilidad de seguridad: practicala en todas las puertas, todas las veces."
+            }
+          },
+          "food-manners": {
+            "title": "Buenos modales con el plato",
+            "objective": "Sentarse con educación mientras se apoya el plato.",
+            "steps": {
+              "1": "Pedile que se siente; empezá a bajar el plato.",
+              "2": "Si se mueve, el plato vuelve a subir.",
+              "3": "El plato llega al piso solo mientras mantiene el sentado.",
+              "4": "Liberalo con 'listo' para que coma."
+            },
+            "tips": {
+              "1": "La calma antes de las comidas se traslada a otras situaciones."
+            }
+          },
+          "its-yer-choice": {
+            "title": "Juego de impulso con 'dejalo'",
+            "objective": "Elegir ignorar la comida es lo que gana el premio.",
+            "steps": {
+              "1": "Ofrecé un premio en la palma abierta; cerrala si se lanza encima.",
+              "2": "Abrila de nuevo; premiá en cuanto dude o mire para otro lado.",
+              "3": "Avanzá a premios en el piso que puedas tapar rápido.",
+              "4": "Sumá la señal 'dejalo' cuando espere de forma confiable."
+            },
+            "tips": {
+              "1": "El perro aprende que el autocontrol rinde más que agarrar."
+            }
+          },
+          "polite-greeting": {
+            "title": "Saludos educados (sin saltar)",
+            "objective": "Saludos con las cuatro patas en el piso en vez de saltar.",
+            "steps": {
+              "1": "Acercate con calma; si tu perro salta, date vuelta e ignoralo.",
+              "2": "Premiá con atención que tenga las cuatro patas en el piso.",
+              "3": "Pedile que se siente para saludar; premiá mucho.",
+              "4": "Pedile a las visitas que saluden solo a un perro sentado."
+            },
+            "tips": {
+              "1": "La constancia de todos es el secreto para que no salte."
+            }
+          },
+          "relax-on-cue": {
+            "title": "Relajarse cuando se lo pedís",
+            "objective": "Pasar de la emoción a la calma con una señal de relajación.",
+            "steps": {
+              "1": "Después de un juego suave, pedí 'relajate' sobre una manta.",
+              "2": "Premiá la respiración lenta y un cuerpo relajado, con premios abajo y despacio.",
+              "3": "Extendé de a poco el tiempo de calma.",
+              "4": "Usalo antes de que lleguen visitas o en lugares con movimiento."
+            },
+            "tips": {
+              "1": "Reforzar la calma es tan importante como entrenar las señales."
+            }
+          }
+        }
+      },
+      "socialization": {
+        "title": "Socialización y confianza",
+        "summary": "Exposición positiva al mundo — sonidos, superficies, personas y otros perros — al ritmo de tu perro, para criar un compañero seguro y resiliente.",
+        "sessions": {
+          "novel-sounds": {
+            "title": "Sonidos nuevos",
+            "objective": "Generá tranquilidad frente a los ruidos de todos los días.",
+            "steps": {
+              "1": "Reproducí grabaciones (tránsito, aspiradora, tormenta) a volumen bajo.",
+              "2": "Asociá cada sonido con premios y elogios tranquilos.",
+              "3": "Subí el volumen de a poco entre sesiones.",
+              "4": "Observá su lenguaje corporal; frená si se asusta."
+            },
+            "tips": {
+              "1": "El contracondicionamiento convierte los sonidos que dan miedo en anticipo de premios."
+            }
+          },
+          "surfaces": {
+            "title": "Superficies y objetos nuevos",
+            "objective": "Seguridad al caminar sobre distintas texturas.",
+            "steps": {
+              "1": "Armá distintas superficies: una toalla, plástico, rejillas, una tabla inestable.",
+              "2": "Premiá cualquier olfateada o paso hacia ellas.",
+              "3": "Dejá que elija explorar: nunca lo arrastres.",
+              "4": "Avanzá hasta que camine por completo sobre cada una."
+            },
+            "tips": {
+              "1": "Patas seguras ayudan con las balanzas del veterinario, las escaleras y las mesas de peluquería."
+            }
+          },
+          "meeting-people": {
+            "title": "Conocer gente nueva",
+            "objective": "Saludos tranquilos y amistosos con desconocidos.",
+            "steps": {
+              "1": "Pedile a la gente que tire premios en vez de estirar la mano por encima de su cabeza.",
+              "2": "Dejá que tu perro se acerque a su tiempo.",
+              "3": "Premiá el comportamiento tranquilo y curioso.",
+              "4": "Mantené los primeros encuentros cortos y positivos."
+            },
+            "tips": {
+              "1": "Poder elegir reduce el miedo: nunca fuerces una interacción."
+            }
+          },
+          "dog-introductions": {
+            "title": "Presentaciones educadas entre perros",
+            "objective": "Saludos tranquilos con otros perros.",
+            "steps": {
+              "1": "Empezá con un paseo en paralelo a distancia.",
+              "2": "Premiá la atención tranquila y un cuerpo relajado.",
+              "3": "Permití una olfateada breve y seguí de largo: que sea corto.",
+              "4": "Evitá los encuentros de frente y con correa."
+            },
+            "tips": {
+              "1": "Los buenos saludos son breves; las miradas fijas largas pueden escalar."
+            }
+          },
+          "handling-confidence": {
+            "title": "Confianza con el veterinario y la peluquería",
+            "objective": "Bases de cuidado cooperativo para una manipulación sin estrés.",
+            "steps": {
+              "1": "Practicá agarrarle las patas, revisarle las orejas y que apoye el mentón en tu mano.",
+              "2": "Premiá la quietud; dejá que sea tu perro quien decida participar.",
+              "3": "Imitá los movimientos del veterinario (sujeción suave) junto con premios.",
+              "4": "Presentá de a poco un cepillo, una lima de uñas y un cepillo de dientes."
+            },
+            "tips": {
+              "1": "Apoyar el mentón le da a tu perro una forma de decir 'estoy listo'."
+            }
+          }
+        }
+      },
+      "tricks": {
+        "title": "Trucos divertidos",
+        "summary": "Juegos para fortalecer el vínculo y trucos que lucen — dame la pata, girar, dar la vuelta, tocar y 'a la cama' — que mejoran la concentración mientras se divierten.",
+        "sessions": {
+          "shake": {
+            "title": "Dame la pata",
+            "objective": "Dar la pata cuando se lo pedís.",
+            "steps": {
+              "1": "Con tu perro sentado, sostené un premio cerca de una pata.",
+              "2": "Marcá y premiá cualquier levantada de pata.",
+              "3": "Sumá la señal 'dame la pata' mientras la levanta.",
+              "4": "Avanzá hasta que apoye la pata en tu mano abierta."
+            },
+            "tips": {
+              "1": "A la mayoría de los perros les sale natural: ¡aprovechalo!"
+            }
+          },
+          "spin": {
+            "title": "Girar",
+            "objective": "Un giro completo siguiendo el premio.",
+            "steps": {
+              "1": "Guiá la nariz de tu perro en círculo con un premio.",
+              "2": "Marcá y premiá la vuelta completa.",
+              "3": "Sumá la señal 'girá' y después reducí el movimiento de la mano.",
+              "4": "Probá hacia el otro lado con otra palabra."
+            },
+            "tips": {
+              "1": "Mové el premio despacio para que no pierda el olor."
+            }
+          },
+          "touch": {
+            "title": "Tocar (con la nariz en tu mano)",
+            "objective": "Tocar tu mano con la nariz — una señal muy versátil.",
+            "steps": {
+              "1": "Mostrá la mano abierta cerca de la nariz de tu perro.",
+              "2": "Marcá y premiá cualquier toque con la nariz.",
+              "3": "Sumá la señal 'tocá'; cambiá la mano a nuevas posiciones.",
+              "4": "Usá el toque para guiar sus movimientos y darle confianza."
+            },
+            "tips": {
+              "1": "Tocar la mano ayuda con el llamado, con el posicionamiento y con los perros tímidos."
+            }
+          },
+          "roll-over": {
+            "title": "Dar la vuelta",
+            "objective": "Una vuelta completa desde echado.",
+            "steps": {
+              "1": "Desde echado, guiá la nariz hacia el hombro.",
+              "2": "Seguí guiando para que gire de costado y después se dé la vuelta.",
+              "3": "Marcá y premiá la vuelta completa.",
+              "4": "Sumá la señal y quitá la guía de a poco."
+            },
+            "tips": {
+              "1": "Usá una superficie blanda para que girar sea cómodo."
+            }
+          },
+          "go-to-bed": {
+            "title": "A la cama",
+            "objective": "Mandar a tu perro a su cama o manta desde lejos.",
+            "steps": {
+              "1": "Premiá a tu perro cuando va a su cama.",
+              "2": "Sumá la señal 'a la cama' mientras se sube.",
+              "3": "Aumentá la distancia desde la que lo mandás.",
+              "4": "Premiá que se eche tranquilo en la cama."
+            },
+            "tips": {
+              "1": "Genial para las comidas, el timbre y las visitas."
+            }
+          }
+        }
+      },
+      "senior-enrichment": {
+        "title": "Enriquecimiento para perros mayores",
+        "summary": "Estimulación mental y física suave para perros mayores — juegos de olfato, búsqueda fácil, estiramientos suaves y repasos que mantienen despierta la mente.",
+        "sessions": {
+          "snuffle-search": {
+            "title": "Olfateo y comida esparcida",
+            "objective": "Trabajo mental de bajo impacto a través del olfato.",
+            "steps": {
+              "1": "Esparcí alimento balanceado en el pasto o en una alfombra de olfateo.",
+              "2": "Animá a tu perro a olfatear y encontrar cada pedacito.",
+              "3": "Mantenelo fácil y gratificante.",
+              "4": "Usá parte de una comida para que no sean calorías de más."
+            },
+            "tips": {
+              "1": "Olfatear es calmante y cansa la mente con suavidad."
+            }
+          },
+          "find-it": {
+            "title": "Búsqueda con el olfato",
+            "objective": "Un juego de búsqueda sencillo para ganar confianza y concentración.",
+            "steps": {
+              "1": "Mostrale un premio y después escondelo cerca, bien a la vista.",
+              "2": "Decí 'buscá' y premiá cuando lo encuentre.",
+              "3": "Hacé los escondites un poquito más difíciles de a poco.",
+              "4": "Mantené las sesiones cortas para evitar el cansancio."
+            },
+            "tips": {
+              "1": "El trabajo de olfato es ideal para perros con movilidad o visión limitadas."
+            }
+          },
+          "gentle-stretches": {
+            "title": "Movimiento y estiramientos suaves",
+            "objective": "Mantener la movilidad con ejercicios fáciles y seguros para el veterinario.",
+            "steps": {
+              "1": "Guiá ochos lentos entre tus piernas mientras camina.",
+              "2": "Animalo a hacer repeticiones suaves de sentado a parado para fortalecerse.",
+              "3": "Mantené todo lento y premiá el esfuerzo tranquilo.",
+              "4": "Frená ante cualquier señal de molestia."
+            },
+            "tips": {
+              "1": "Consultá con tu veterinario antes de empezar ejercicios nuevos con perros mayores."
+            }
+          },
+          "cue-refreshers": {
+            "title": "Repaso de señales",
+            "objective": "Mantener las señales conocidas afiladas y gratificantes.",
+            "steps": {
+              "1": "Repasá las señales que ya conoce (sentate, tocá, relajate) a un ritmo tranquilo.",
+              "2": "Premiá con generosidad: el éxito mantiene activas a las mentes mayores.",
+              "3": "Sumá un truco favorito para divertirse.",
+              "4": "Terminá cada sesión con un logro."
+            },
+            "tips": {
+              "1": "Las sesiones cortas y frecuentes rinden más que las largas en perros mayores."
+            }
+          }
+        }
+      }
+    },
+    "breeds": {
+      "Afghan Hound": "Galgo Afgano",
+      "Alaskan Malamute": "Malamute de Alaska",
+      "American Bulldog": "Bulldog Americano",
+      "American Cocker Spaniel": "Cocker Spaniel Americano",
+      "American Eskimo Dog": "Eskimo Americano",
+      "American Foxhound": "Foxhound Americano",
+      "American Hairless Terrier": "Terrier Sin Pelo Americano",
+      "American Pit Bull Terrier": "Pit Bull Terrier Americano",
+      "American Staffordshire Terrier": "Staffordshire Terrier Americano",
+      "American Water Spaniel": "Spaniel de Agua Americano",
+      "Anatolian Shepherd Dog": "Pastor de Anatolia",
+      "Australian Cattle Dog": "Ganadero Australiano",
+      "Australian Shepherd": "Pastor Australiano",
+      "Australian Terrier": "Terrier Australiano",
+      "Bearded Collie": "Collie Barbudo",
+      "Belgian Malinois": "Pastor Belga Malinois",
+      "Belgian Sheepdog": "Pastor Belga",
+      "Belgian Tervuren": "Pastor Belga Tervuren",
+      "Bernese Mountain Dog": "Boyero de Berna",
+      "Bichon Frise": "Bichón Frisé",
+      "Black and Tan Coonhound": "Coonhound Negro y Fuego",
+      "Black Russian Terrier": "Terrier Negro Ruso",
+      "Borzoi": "Borzoi (Galgo Ruso)",
+      "Bouvier des Flandres": "Boyero de Flandes",
+      "Bracco Italiano": "Braco Italiano",
+      "Brittany": "Spaniel Bretón",
+      "Brussels Griffon": "Grifón de Bruselas",
+      "Cardigan Welsh Corgi": "Corgi Galés de Cardigan",
+      "Catahoula Leopard Dog": "Perro Leopardo de Catahoula",
+      "Chinese Crested": "Crestado Chino",
+      "Chinese Shar-Pei": "Shar Pei Chino",
+      "Curly-Coated Retriever": "Retriever de Pelo Rizado",
+      "Dachshund": "Teckel (Salchicha)",
+      "Dalmatian": "Dálmata",
+      "Doberman Pinscher": "Dóberman",
+      "Dogue de Bordeaux": "Dogo de Burdeos",
+      "English Cocker Spaniel": "Cocker Spaniel Inglés",
+      "English Foxhound": "Foxhound Inglés",
+      "English Setter": "Setter Inglés",
+      "English Springer Spaniel": "Springer Spaniel Inglés",
+      "English Toy Spaniel": "Spaniel Toy Inglés",
+      "Entlebucher Mountain Dog": "Boyero de Entlebuch",
+      "Finnish Lapphund": "Lapphund Finlandés",
+      "Finnish Spitz": "Spitz Finlandés",
+      "Flat-Coated Retriever": "Retriever de Pelo Liso",
+      "French Bulldog": "Bulldog Francés",
+      "German Pinscher": "Pinscher Alemán",
+      "German Shepherd Dog": "Pastor Alemán",
+      "German Shorthaired Pointer": "Braco Alemán de Pelo Corto",
+      "German Wirehaired Pointer": "Braco Alemán de Pelo Duro",
+      "Giant Schnauzer": "Schnauzer Gigante",
+      "Great Dane": "Gran Danés",
+      "Great Pyrenees": "Gran Pirineo",
+      "Greater Swiss Mountain Dog": "Gran Boyero Suizo",
+      "Greyhound": "Galgo Inglés (Greyhound)",
+      "Havanese": "Bichón Habanero",
+      "Ibizan Hound": "Podenco Ibicenco",
+      "Icelandic Sheepdog": "Pastor Islandés",
+      "Irish Setter": "Setter Irlandés",
+      "Irish Terrier": "Terrier Irlandés",
+      "Irish Water Spaniel": "Spaniel de Agua Irlandés",
+      "Irish Wolfhound": "Lobero Irlandés",
+      "Italian Greyhound": "Galgo Italiano",
+      "Japanese Chin": "Chin Japonés",
+      "Japanese Spitz": "Spitz Japonés",
+      "Maltese": "Maltés",
+      "Mastiff": "Mastín Inglés",
+      "Miniature American Shepherd": "Pastor Americano Miniatura",
+      "Miniature Bull Terrier": "Bull Terrier Miniatura",
+      "Miniature Pinscher": "Pinscher Miniatura",
+      "Miniature Schnauzer": "Schnauzer Miniatura",
+      "Neapolitan Mastiff": "Mastín Napolitano",
+      "Newfoundland": "Terranova",
+      "Norwegian Elkhound": "Elkhound Noruego",
+      "Norwegian Lundehund": "Lundehund Noruego",
+      "Nova Scotia Duck Tolling Retriever": "Retriever de Nueva Escocia",
+      "Old English Sheepdog": "Antiguo Pastor Inglés",
+      "Pekingese": "Pequinés",
+      "Pembroke Welsh Corgi": "Corgi Galés de Pembroke",
+      "Petit Basset Griffon Vendeen": "Pequeño Basset Grifón de Vandea",
+      "Pharaoh Hound": "Perro del Faraón",
+      "Polish Lowland Sheepdog": "Pastor Polaco de Llanura",
+      "Pomeranian": "Pomerania",
+      "Poodle": "Caniche",
+      "Poodle (Miniature)": "Caniche Mini",
+      "Poodle (Standard)": "Caniche Grande",
+      "Poodle (Toy)": "Caniche Toy",
+      "Portuguese Water Dog": "Perro de Agua Portugués",
+      "Rhodesian Ridgeback": "Ridgeback de Rodesia",
+      "Saint Bernard": "San Bernardo",
+      "Samoyed": "Samoyedo",
+      "Scottish Deerhound": "Deerhound Escocés",
+      "Scottish Terrier": "Terrier Escocés",
+      "Shetland Sheepdog": "Pastor de Shetland",
+      "Siberian Husky": "Husky Siberiano",
+      "Small Munsterlander Pointer": "Munsterländer Pequeño",
+      "Soft Coated Wheaten Terrier": "Wheaten Terrier de Pelo Suave",
+      "Spanish Water Dog": "Perro de Agua Español",
+      "Standard Schnauzer": "Schnauzer Estándar",
+      "Swedish Vallhund": "Vallhund Sueco",
+      "Tibetan Mastiff": "Mastín Tibetano",
+      "Tibetan Spaniel": "Spaniel Tibetano",
+      "Tibetan Terrier": "Terrier Tibetano",
+      "Welsh Springer Spaniel": "Springer Spaniel Galés",
+      "Welsh Terrier": "Terrier Galés",
+      "Wire Fox Terrier": "Fox Terrier de Pelo Duro",
+      "Wirehaired Pointing Griffon": "Grifón de Muestra de Pelo Duro",
+      "Xoloitzcuintli": "Xoloitzcuintle"
+    }
   }
 }

@@ -21,6 +21,7 @@ import {
 import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { useCurrentPet } from "@/hooks/usePetProfile";
+import { breedLabel } from "@/data/dogBreeds";
 import { useDiscoverProviders } from "@/hooks/useProviders";
 import { useInsurancePlans, useSubmitInsuranceLead } from "@/hooks/useInsurance";
 import { friendlyErrorMessage } from "@/utils/appAlert";
@@ -234,7 +235,7 @@ export default function InsuranceScreen() {
             <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.xs }]}>
               {t("insurance.forPet", { name: currentPet?.name || t("common.yourPet") })}
               {currentPet?.species ? ` · ${currentPet.species}` : ""}
-              {currentPet?.breed ? ` · ${currentPet.breed}` : ""}
+              {currentPet?.breed ? ` · ${breedLabel(t, currentPet.breed)}` : ""}
             </Text>
             <TextInput
               testID="quote-email"

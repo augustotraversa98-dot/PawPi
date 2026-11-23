@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import { usePetProfile, useCurrentPet } from "@/hooks/usePetProfile";
 import { PetAvatar } from "./PetAvatar";
+import { breedLabel } from "@/data/dogBreeds";
 
 // Bottom-sheet picker listing the current owner's real dogs (scoped server-side
 // by owner_user_id = user_profiles.id). Marks the active dog, lets the user
@@ -131,7 +132,7 @@ export function PetPickerSheet({ visible, onClose, onAddDog }) {
                             marginTop: 2,
                           }}
                         >
-                          {pet.breed}
+                          {breedLabel(t, pet.breed)}
                         </Text>
                       ) : null}
                     </View>
