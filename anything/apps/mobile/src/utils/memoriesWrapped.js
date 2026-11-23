@@ -6,8 +6,13 @@
 // "@/i18n", to avoid that module's init side-effect in tests. Milestone copy is localized
 // here (pure functions, no hook); tests assert on milestone `key`s, not the text, so safe.
 import i18n from "i18next";
+import { tr } from "@/utils/healthText";
 
 const mt = (key, vars) => i18n.t(`memoriesScreen.milestones.${key}`, vars);
+
+// Wrapped copy (slides, month names, fallbacks): English is the fallback text.
+const wt = (key, en, params) => tr(`healthDataUi.wrapped.${key}`, en, params);
+const petFallback = () => tr("routineCard.yourPet", "Your pet");
 
 function parseYMD(s) {
   if (typeof s !== "string") return null;
@@ -22,6 +27,9 @@ const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
+// Localized month name by 0-based index (English table is the fallback).
+const cap = (str) => (str ? str.charAt(0).toUpperCase() + str.slice(1) : str);
+const monthName = (i) => wt(`months.m${i + 1}`, MONTHS[i]);
 
 /**
  * "On this day" — past posts whose month+day match today but from a STRICTLY earlier date
@@ -88,7 +96,7 @@ export function detectMilestones(pet, ctx = {}) {
   const { postDates = [], currentStreak = 0, today } = ctx;
   const t = parseYMD(today);
   const out = [];
-  const name = pet?.name || "Your pet";
+  const name = pet?.name || petFallback();
 
   if (t && pet) {
     const bd = parseYMD(pet.birthday);
@@ -153,14 +161,17 @@ export function buildWrapped(pet, ctx = {}) {
   const days = [
     ...new Set((Array.isArray(postDates) ? postDates : []).map(ymd).filter(Boolean)),
   ].sort();
-  const name = pet?.name || "Your pet";
+  const name = pet?.name || petFallback();
 
   if (days.length < 3) {
     return {
       hasEnough: false,
       petName: name,
       totalPosts: days.length,
-      message: "Keep posting daily moments — your Wrapped unlocks as the memories grow.",
+      message: wt(
+        "notEnough",
+        "Keep posting daily moments — your Wrapped unlocks as the memories grow.",
+      ),
     };
   }
 
@@ -175,7 +186,7 @@ export function buildWrapped(pet, ctx = {}) {
   for (const [m, c] of Object.entries(byMonth)) {
     if (c > topMonthCount) {
       topMonthCount = c;
-      topMonth = MONTHS[+m - 1];
+      topMonth = cap(monthName(+m - 1));
     }
   }
 
@@ -188,7 +199,13 @@ export function buildWrapped(pet, ctx = {}) {
     totalPosts: days.length,
     bestStreak: longestStreak(days),
     firstPostDate: firstDay,
-    firstPostLabel: fp ? `${MONTHS[fp.m - 1]} ${fp.d}, ${fp.y}` : null,
+    firstPostLabel: fp
+      ? wt("dateLabel", "{{month}} {{day}}, {{year}}", {
+          month: monthName(fp.m - 1),
+          day: fp.d,
+          year: fp.y,
+        })
+      : null,
     topMonth,
     topMonthCount,
     friendCount: Math.max(0, friendCount | 0),
@@ -201,21 +218,36 @@ export function wrappedSlides(wrapped) {
   if (!wrapped || !wrapped.hasEnough) return [];
   const name = wrapped.petName;
   const slides = [
-    { key: "intro", emoji: "✨", headline: `${name}'s Wrapped`, sub: "A year of little moments" },
-    { key: "posts", emoji: "📸", stat: String(wrapped.totalPosts), label: "daily moments captured" },
-    { key: "streak", emoji: "🔥", stat: String(wrapped.bestStreak), label: "longest posting streak" },
+    {
+      key: "intro",
+      emoji: "✨",
+      headline: wt("introHeadline", "{{name}}'s Wrapped", { name }),
+      sub: wt("introSub", "A year of little moments"),
+    },
+    {
+      key: "posts",
+      emoji: "📸",
+      stat: String(wrapped.totalPosts),
+      label: wt("postsLabel", "daily moments captured"),
+    },
+    {
+      key: "streak",
+      emoji: "🔥",
+      stat: String(wrapped.bestStreak),
+      label: wt("streakLabel", "longest posting streak"),
+    },
   ];
   if (wrapped.topMonth) {
-    slides.push({ key: "month", emoji: "📅", stat: wrapped.topMonth, label: "your most-posted month" });
+    slides.push({ key: "month", emoji: "📅", stat: wrapped.topMonth, label: wt("monthLabel", "your most-posted month") });
   }
   if (wrapped.friendCount > 0) {
-    slides.push({ key: "friends", emoji: "🐾", stat: String(wrapped.friendCount), label: "furry friends made" });
+    slides.push({ key: "friends", emoji: "🐾", stat: String(wrapped.friendCount), label: wt("friendsLabel", "furry friends made") });
   }
   if (wrapped.walkCount > 0) {
-    slides.push({ key: "walks", emoji: "🚶", stat: String(wrapped.walkCount), label: "walks logged" });
+    slides.push({ key: "walks", emoji: "🚶", stat: String(wrapped.walkCount), label: wt("walksLabel", "walks logged") });
   }
   if (wrapped.firstPostLabel) {
-    slides.push({ key: "since", emoji: "💛", headline: "Together since", sub: wrapped.firstPostLabel });
+    slides.push({ key: "since", emoji: "💛", headline: wt("sinceHeadline", "Together since"), sub: wrapped.firstPostLabel });
   }
   return slides;
 }

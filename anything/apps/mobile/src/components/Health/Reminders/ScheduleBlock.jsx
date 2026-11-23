@@ -9,6 +9,7 @@ import { canonicalizeDateValue } from "@/utils/canonicalDateTime";
 import CadenceFrequencySelector, {
   CADENCE_OPTIONS_FULL,
   CADENCE_LABELS,
+  cadenceLabel,
 } from "./CadenceFrequencySelector";
 import DayChips from "./DayChips";
 
@@ -281,7 +282,7 @@ export default function ScheduleBlock({
             testID={`${testID}-frequency-value`}
             style={{ fontSize: 15, fontWeight: "600", color: C.mutedBrown }}
           >
-            {CADENCE_LABELS[frequency] ?? frequency}
+            {CADENCE_LABELS[frequency] ? cadenceLabel(t, frequency) : frequency}
           </Text>
           <Text style={{ fontSize: 12, color: C.mutedBrown }}>
             {freqExpanded ? "▲" : "▼"}

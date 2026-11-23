@@ -5573,5 +5573,343 @@
       "trackedManual": "Registrado a mano",
       "steps": "{{steps}} pasos"
     }
+  },
+  "healthDataUi": {
+    "yourPetLower": "tu mascota",
+    "routineType": {
+      "feeding": {
+        "label": "Comidas",
+        "description": "Horarios de comidas, snacks y recordatorios de alimentación"
+      },
+      "walk": {
+        "label": "Paseos",
+        "description": "Horarios de paseo, paseos sociales y seguimiento de actividad"
+      },
+      "photo_check": {
+        "label": "Chequeo con foto",
+        "description": "Fotos periódicas de patas, orejas, dientes, ojos y más"
+      },
+      "medical_care": {
+        "label": "Atención médica",
+        "description": "Medicación, vacunas, prevención de pulgas y garrapatas, y suplementos"
+      },
+      "wellness_check": {
+        "label": "Chequeo de bienestar",
+        "description": "Peso, condición corporal, ánimo y chequeos rápidos de salud"
+      },
+      "vet_appointment": {
+        "label": "Turno veterinario",
+        "description": "Visitas programadas al veterinario y controles de seguimiento"
+      },
+      "medication": {
+        "label": "Medicación",
+        "description": "Horario de medicación"
+      },
+      "general_check": {
+        "label": "Control general",
+        "description": "Chequeo diario de salud"
+      },
+      "weight_check": {
+        "label": "Control de peso",
+        "description": "Seguimiento del peso"
+      },
+      "preventive": {
+        "label": "Cuidado preventivo",
+        "description": "Prevención de pulgas, garrapatas y gusano del corazón"
+      },
+      "vaccine": {
+        "label": "Vacuna",
+        "description": "Calendario de vacunación"
+      }
+    },
+    "cadence": {
+      "daily": "todos los días",
+      "weekdays": "días de semana",
+      "weekends": "fines de semana",
+      "weekly": "semanal",
+      "biweekly": "cada 2 semanas",
+      "monthly": "mensual",
+      "every_3_months": "cada 3 meses",
+      "every_6_months": "cada 6 meses",
+      "yearly": "anual",
+      "custom": "personalizada",
+      "once": "una vez",
+      "hourly": "cada hora"
+    },
+    "days": {
+      "monday": "lunes",
+      "tuesday": "martes",
+      "wednesday": "miércoles",
+      "thursday": "jueves",
+      "friday": "viernes",
+      "saturday": "sábado",
+      "sunday": "domingo"
+    },
+    "daysEvery": {
+      "monday": "los lunes",
+      "tuesday": "los martes",
+      "wednesday": "los miércoles",
+      "thursday": "los jueves",
+      "friday": "los viernes",
+      "saturday": "los sábados",
+      "sunday": "los domingos"
+    },
+    "sched": {
+      "inactive": "Inactiva",
+      "itemTypes": {
+        "medication": "Medicación",
+        "vaccine": "Vacuna",
+        "flea_tick": "Pulgas/garrapatas",
+        "deworming": "Desparasitación",
+        "heartworm": "Gusano del corazón",
+        "supplement": "Suplemento",
+        "other": "Otro",
+        "item": "Ítem"
+      },
+      "dailyAt": "todos los días a las {{times}}",
+      "daily": "todos los días",
+      "nextDue": "próxima dosis: {{date}}",
+      "noMealReminders": "No hay recordatorios de comidas activos",
+      "everyDayAt": "Todos los días a las {{times}}",
+      "and": " y ",
+      "mealsCustom_one": "{{count}} comida con horarios personalizados",
+      "mealsCustom_other": "{{count}} comidas con horarios personalizados",
+      "noWalkReminders": "No hay recordatorios de paseos activos",
+      "dailyAtWalks": "Todos los días a las {{times}}",
+      "walkFreq": {
+        "daily": "todos los días",
+        "weekdays": "días de semana",
+        "weekends": "fines de semana",
+        "custom": "personalizado"
+      },
+      "walkSummary": "{{name}} {{freq}} a las {{time}}",
+      "noPhotoReminders": "No hay recordatorios de chequeo con foto activos",
+      "cadenceDayAt": "{{cadence}}, {{day}} a las {{time}}",
+      "areaCadenceDay": "{{item}} · {{cadence}}, {{day}} {{time}}",
+      "cadenceAt": "{{cadence}} a las {{time}}",
+      "itemCadence": "{{item}} · {{cadence}} {{time}}",
+      "noWellnessReminders": "No hay recordatorios de chequeo de bienestar activos",
+      "wellnessItems": {
+        "general": "General",
+        "weight": "Peso",
+        "body_condition": "Condición corporal",
+        "mobility": "Movilidad",
+        "mood_energy": "Ánimo/Energía",
+        "skin_coat": "Piel/Pelaje",
+        "appetite_hydration": "Apetito/Hidratación"
+      },
+      "noVetReminders": "No hay recordatorios de turnos veterinarios activos",
+      "vetAppointment": "Turno veterinario",
+      "dateTbd": "Fecha a confirmar",
+      "vetLine": "{{title}} • {{date}} a las {{time}}",
+      "everyDay": "Todos los días",
+      "weekdays": "Días de semana",
+      "weekends": "Fines de semana",
+      "weekly": "Semanal",
+      "everyDayName": "Todos {{day}}",
+      "biweekly": "Cada 2 semanas",
+      "monthly": "Mensual",
+      "customSchedule": "Cronograma personalizado",
+      "custom": "Personalizado",
+      "atTimes": " a las {{times}}",
+      "untilDate": " hasta el {{date}}"
+    },
+    "next": {
+      "notScheduled": "Sin programar",
+      "wellness": {
+        "general": "Chequeo general",
+        "weight": "Control de peso",
+        "body_condition": "Control de condición corporal",
+        "mobility": "Control de movilidad",
+        "mood_energy": "Control de ánimo / energía",
+        "skin_coat": "Control de piel / pelaje",
+        "appetite_hydration": "Control de apetito / hidratación",
+        "custom": "Chequeo de bienestar"
+      },
+      "photo": {
+        "paws": "Foto de patas",
+        "ears": "Foto de orejas",
+        "eyes": "Foto de ojos",
+        "teeth": "Foto de dientes",
+        "skin_fur": "Foto de piel/pelaje",
+        "face": "Foto de cara",
+        "full_body": "Foto de cuerpo entero",
+        "other": "Chequeo con foto"
+      },
+      "reminder": "Recordatorio",
+      "todayAt": "{{label}} {{timeOfDay}} a las {{time}}",
+      "tomorrowAt": "{{label}} mañana a las {{time}}",
+      "dayAt": "{{label}} {{day}} a las {{time}}",
+      "tonight": "esta noche",
+      "thisMorning": "esta mañana",
+      "thisAfternoon": "esta tarde",
+      "thisEvening": "esta noche"
+    },
+    "wellnessLog": {
+      "types": {
+        "weight": "Peso",
+        "body_condition": "Condición corporal",
+        "mobility": "Movilidad",
+        "mood_energy": "Ánimo / Energía",
+        "skin_coat": "Piel / Pelaje",
+        "appetite_hydration": "Apetito / Hidratación",
+        "general": "Chequeo general",
+        "custom": "Personalizado"
+      },
+      "options": {
+        "body_condition": {
+          "under": "Bajo peso",
+          "ideal": "Ideal",
+          "over": "Sobrepeso"
+        },
+        "mobility": {
+          "normal": "Normal",
+          "slightly_stiff": "Algo rígido",
+          "stiff": "Rígido",
+          "limping": "Con cojera",
+          "cant_bear_weight": "No apoya la pata"
+        },
+        "mood_energy": {
+          "low": "Bajo",
+          "normal": "Normal",
+          "high": "Alto"
+        },
+        "skin_coat": {
+          "healthy": "Sano",
+          "dry": "Seco",
+          "itchy": "Con picazón",
+          "redness": "Enrojecimiento",
+          "hot_spots": "Zonas irritadas (hot spots)",
+          "other": "Otro"
+        },
+        "appetite_hydration": {
+          "normal": "Normal",
+          "reduced": "Reducido",
+          "increased": "Aumentado",
+          "not_consuming": "No come ni toma"
+        },
+        "general": {
+          "all_good": "Todo bien",
+          "noticed_something": "Noté algo"
+        }
+      },
+      "errors": {
+        "weight": "Ingresá un peso válido",
+        "value": "Ingresá un valor",
+        "option": "Elegí una opción",
+        "note": "Agregá una nota sobre lo que notaste"
+      }
+    },
+    "insights": {
+      "areas": {
+        "eyes": "Ojos",
+        "ears": "Orejas",
+        "teeth": "Dientes y boca",
+        "skin": "Piel y pelaje",
+        "paws": "Patas",
+        "face": "Cara",
+        "mood": "Ánimo",
+        "energy": "Energía"
+      },
+      "quickCheckOneTitle": "Chequeo rápido: cambios en {{area}}",
+      "quickCheckManyTitle": "El chequeo rápido marcó {{count}} zonas",
+      "quickCheckDetail_one": "En un chequeo rápido de este período se marcó un cambio en: {{labels}}.",
+      "quickCheckDetail_other": "En un chequeo rápido de este período se marcaron cambios en: {{labels}}.",
+      "weightLossTitle": "El peso viene bajando",
+      "weightLossDetail": "El peso registrado de {{name}} bajó cerca de un {{pct}}% en este período.",
+      "weightGainTitle": "El peso viene subiendo",
+      "weightGainDetail": "El peso registrado de {{name}} subió cerca de un {{pct}}% en este período.",
+      "vomitingTitle": "Vómitos repetidos registrados",
+      "vomitingDetail": "Se registraron {{count}} episodios de vómito en este período.",
+      "stoolTitle": "Varios registros de materia fecal anormal",
+      "stoolDetail": "{{count}} registros de materia fecal indicaron sangre, mucosidad o esfuerzo.",
+      "urinaryTitle": "Cambios urinarios registrados",
+      "urinaryDetail": "{{count}} registros de orina indicaron dificultad, dolor, sangre o más sed.",
+      "appetiteTitle": "Apetito reducido",
+      "appetiteDetail": "{{count}} registros de comida indicaron poco apetito o apetito reducido.",
+      "medMissedTitle_one": "{{name}}: {{count}} dosis omitida",
+      "medMissedTitle_other": "{{name}}: {{count}} dosis omitidas",
+      "medAdherenceDetail": "{{pct}}% de cumplimiento ({{given}}/{{total}} dosis dadas).",
+      "recapNotEnough": "Todavía no hay suficientes registros para detectar tendencias de {{name}}. Seguí registrando todos los días y las observaciones van a ser cada vez más claras.",
+      "recapNothing": "No se destacó nada en los registros de {{name}} de este período: una buena base para compartir con tu vet. Seguí con el registro diario.",
+      "recapSome": "Algunas cosas en los registros de {{name}} pueden valer la pena para mencionar en tu próxima visita: {{titles}}. Esto es una ayuda para el seguimiento, no un diagnóstico: tu vet puede interpretar qué significa."
+    },
+    "vetText": {
+      "defaultName": "Mascota",
+      "title": "Resumen para el veterinario de PawPi — {{name}}",
+      "period": "Período: {{range}}",
+      "worth": "Para conversar con tu veterinario:",
+      "logsHeader": "Registros de este período:",
+      "food": "Registros de comida: {{count}}",
+      "lowAppetite": "{{count}} con poco apetito",
+      "stool": "Materia fecal: {{count}}",
+      "abnormal": "{{count}} anormales",
+      "urination": "Orina: {{count}}",
+      "withConcerns": "{{count}} con observaciones",
+      "vomiting": "Episodios de vómito: {{count}}",
+      "weight_one": "Peso: {{first}} → {{last}} ({{count}} pesaje)",
+      "weight_other": "Peso: {{first}} → {{last}} ({{count}} pesajes)",
+      "walks": "Paseos: {{count}} ({{minutes}} min)",
+      "photoChecks": "Chequeos con foto: {{count}}",
+      "quickChecks": "Chequeos rápidos: {{count}}",
+      "quickChecksChanged": "Chequeos rápidos: {{count}} (con cambios: {{areas}})",
+      "medsHeader": "Medicamentos:",
+      "dosesGiven": "{{given}}/{{total}} dosis dadas",
+      "conditionsHeader": "Condiciones y alergias:",
+      "questionsHeader": "Preguntas para el veterinario:"
+    },
+    "wrapped": {
+      "months": {
+        "m1": "enero",
+        "m2": "febrero",
+        "m3": "marzo",
+        "m4": "abril",
+        "m5": "mayo",
+        "m6": "junio",
+        "m7": "julio",
+        "m8": "agosto",
+        "m9": "septiembre",
+        "m10": "octubre",
+        "m11": "noviembre",
+        "m12": "diciembre"
+      },
+      "dateLabel": "{{day}} de {{month}} de {{year}}",
+      "notEnough": "Seguí compartiendo momentos del día: tu Wrapped se desbloquea a medida que crecen los recuerdos.",
+      "introHeadline": "El Wrapped de {{name}}",
+      "introSub": "Un año de pequeños momentos",
+      "postsLabel": "momentos diarios capturados",
+      "streakLabel": "la racha de publicaciones más larga",
+      "monthLabel": "tu mes con más publicaciones",
+      "friendsLabel": "amigos peludos que hiciste",
+      "walksLabel": "paseos registrados",
+      "sinceHeadline": "Juntos desde"
+    },
+    "ui": {
+      "nextDue": "Próxima dosis: {{date}}",
+      "lastGiven": "Última dosis: {{date}}",
+      "timeSensitive": "ALERTA URGENTE",
+      "markCompleted": "Marcar como completado",
+      "somethingWasOff": "Algo no estuvo bien",
+      "selectAreas": "Elegí las zonas",
+      "areasSelected": "{{count}} zonas elegidas",
+      "mealN": "Comida {{n}}"
+    },
+    "walkerLiveMap": {
+      "locationOff": "La ubicación está desactivada para este paseo: el tiempo se sigue registrando, pero sin mapa en vivo.",
+      "waitingGps": "Esperando los primeros puntos de GPS…"
+    },
+    "editMedicalProfileModal": {
+      "validEmail": "Ingresá un email válido",
+      "validWeight": "Ingresá un peso válido",
+      "validDate": "Ingresá una fecha válida",
+      "male": "Macho",
+      "female": "Hembra"
+    },
+    "spayNeuter": {
+      "spayed": "Esterilizada",
+      "neutered": "Castrado",
+      "notSpayedNeutered": "Sin castrar/esterilizar",
+      "unknown": "Desconocido"
+    }
   }
 }

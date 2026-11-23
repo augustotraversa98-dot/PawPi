@@ -12,6 +12,7 @@
 //     carried inside values_json (jsonb).
 
 import { normalizeWeightUnit } from "@/utils/weightUnitAlias";
+import { tr } from "@/utils/healthText";
 
 export const WELLNESS_CHECK_TYPES = {
   WEIGHT: "weight",
@@ -106,9 +107,28 @@ export const WELLNESS_FIELD_SCHEMA = {
   },
 };
 
-// Unknown check types fall back to a free-text entry rather than crashing.
-export function getWellnessSchema(checkType) {
+// Unknown check types fall back to a free-text entry rather than crashing. This is the RAW (English)
+// schema: option `label`s are what get PERSISTED into values_json.label, so they must stay English.
+function rawWellnessSchema(checkType) {
   return WELLNESS_FIELD_SCHEMA[checkType] || WELLNESS_FIELD_SCHEMA.custom;
+}
+
+// Schema for DISPLAY: same shape, with the field label and each option label localized. The option `key`
+// (what is stored and compared) is untouched. Falls back to the English label when i18n isn't initialised.
+export function getWellnessSchema(checkType) {
+  const type = WELLNESS_FIELD_SCHEMA[checkType] ? checkType : WELLNESS_CHECK_TYPES.CUSTOM;
+  const raw = WELLNESS_FIELD_SCHEMA[type];
+  const localized = {
+    ...raw,
+    label: tr(`healthDataUi.wellnessLog.types.${type}`, raw.label),
+  };
+  if (raw.options) {
+    localized.options = raw.options.map((o) => ({
+      ...o,
+      label: tr(`healthDataUi.wellnessLog.options.${type}.${o.key}`, o.label),
+    }));
+  }
+  return localized;
 }
 
 // Local (not UTC) calendar date of an ISO timestamp, as YYYY-MM-DD. Matches the
@@ -126,7 +146,7 @@ export function toDateStr(iso) {
 // Fresh form state for a check type. `lastUnit` (e.g. from the pet's most recent
 // weight log) seeds the weight unit so it defaults to whatever was last used.
 export function initialFormValues(checkType, { lastUnit } = {}) {
-  const schema = getWellnessSchema(checkType);
+  const schema = rawWellnessSchema(checkType);
   if (schema.kind === "weight") {
     return { value: "", unit: normalizeWeightUnit(lastUnit) || schema.defaultUnit, note: "" };
   }
@@ -135,33 +155,36 @@ export function initialFormValues(checkType, { lastUnit } = {}) {
 
 // Returns an error message string, or null when the form is valid.
 export function validateWellnessForm(checkType, form) {
-  const schema = getWellnessSchema(checkType);
+  const schema = rawWellnessSchema(checkType);
 
   if (schema.kind === "weight") {
     const n = Number(form?.value);
     if (form?.value == null || form.value === "" || Number.isNaN(n) || n <= 0) {
-      return "Please enter a valid weight";
+      return tr("healthDataUi.wellnessLog.errors.weight", "Please enter a valid weight");
     }
     return null;
   }
 
   if (schema.kind === "text") {
     if (!form?.value || !String(form.value).trim()) {
-      return "Please enter a value";
+      return tr("healthDataUi.wellnessLog.errors.value", "Please enter a value");
     }
     return null;
   }
 
   // options + general both require a selection.
   if (!form?.value) {
-    return "Please choose an option";
+    return tr("healthDataUi.wellnessLog.errors.option", "Please choose an option");
   }
   if (
     schema.kind === "general" &&
     form.value === "noticed_something" &&
     (!form.note || !form.note.trim())
   ) {
-    return "Please add a note about what you noticed";
+    return tr(
+      "healthDataUi.wellnessLog.errors.note",
+      "Please add a note about what you noticed",
+    );
   }
   return null;
 }
@@ -170,7 +193,7 @@ export function validateWellnessForm(checkType, form) {
 // keep it deterministic in tests.
 export function buildWellnessLogPayload(reminder, form, { now } = {}) {
   const checkType = reminder?.checkType;
-  const schema = getWellnessSchema(checkType);
+  const schema = rawWellnessSchema(checkType);
   const note = form?.note ? String(form.note).trim() : "";
   const loggedAt = (now ? new Date(now) : new Date()).toISOString();
   const scheduledDate = toDateStr(reminder?.scheduledAt);

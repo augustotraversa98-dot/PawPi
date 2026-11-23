@@ -349,12 +349,12 @@ export default function PhotoCheckRoutineModal({
   // Live summary for the collapsed Body-areas header: list labels up to two,
   // then collapse to a count; a sensible placeholder when nothing is selected.
   const bodyAreasSummary = (() => {
-    if (selectedBodyAreas.length === 0) return "Select areas";
+    if (selectedBodyAreas.length === 0) return t("healthDataUi.ui.selectAreas");
     const labels = selectedBodyAreas
-      .map((v) => BODY_AREAS.find((a) => a.value === v)?.label)
+      .map((v) => BODY_AREAS.find((a) => a.value === v) && t(`routineCard.areas.${v}`))
       .filter(Boolean);
     if (labels.length <= 2) return labels.join(", ");
-    return `${labels.length} selected`;
+    return t("healthDataUi.ui.areasSelected", { count: labels.length });
   })();
 
   return (

@@ -2,7 +2,11 @@
 // block (the "Share with vet" / "Export" payload) from the real aggregation + flags +
 // owner's questions. Empty-safe. Non-diagnostic — it's a tracking summary, not a diagnosis.
 import { normalizeWeightUnit } from "@/utils/weightUnitAlias";
-import { DISCLAIMER, quickCheckAreaLabel } from "./healthInsights";
+import { getDisclaimer, quickCheckAreaLabel } from "./healthInsights";
+import { tr } from "@/utils/healthText";
+
+// Localized phrase helper; the English text is the fallback (identical to the pre-i18n copy).
+const vt = (key, en, params) => tr(`healthDataUi.vetText.${key}`, en, params);
 
 function fmtRange(range) {
   if (!range?.from || !range?.to) return "";
@@ -11,64 +15,112 @@ function fmtRange(range) {
 
 export function summaryToText(summary, flags = [], questions = []) {
   if (!summary) return "";
-  const name = summary.pet?.name || "Pet";
+  const name = summary.pet?.name || vt("defaultName", "Pet");
   const L = [];
-  L.push(`PawPi Vet Summary — ${name}`);
+  L.push(vt("title", "PawPi Vet Summary — {{name}}", { name }));
   if (summary.pet?.breed) L.push(summary.pet.breed);
-  L.push(`Period: ${fmtRange(summary.range)}`);
+  L.push(vt("period", "Period: {{range}}", { range: fmtRange(summary.range) }));
   L.push("");
 
   const realFlags = (flags || []).filter(Boolean);
   if (realFlags.length > 0) {
-    L.push("Worth discussing with your vet:");
+    L.push(vt("worth", "Worth discussing with your vet:"));
     for (const f of realFlags) L.push(`• ${f.title}${f.detail ? ` — ${f.detail}` : ""}`);
     L.push("");
   }
 
-  L.push("Logs in this period:");
-  L.push(`• Food logs: ${summary.food?.count || 0}${summary.food?.lowAppetiteCount ? ` (${summary.food.lowAppetiteCount} low appetite)` : ""}`);
-  L.push(`• Stool: ${summary.poo?.count || 0}${summary.poo?.abnormalCount ? ` (${summary.poo.abnormalCount} abnormal)` : ""}`);
-  L.push(`• Urination: ${summary.pee?.count || 0}${summary.pee?.concernCount ? ` (${summary.pee.concernCount} with concerns)` : ""}`);
-  L.push(`• Vomiting episodes: ${summary.vomit?.episodes || 0}`);
+  L.push(vt("logsHeader", "Logs in this period:"));
+  L.push(
+    `• ${vt("food", "Food logs: {{count}}", { count: summary.food?.count || 0 })}${
+      summary.food?.lowAppetiteCount
+        ? ` (${vt("lowAppetite", "{{count}} low appetite", { count: summary.food.lowAppetiteCount })})`
+        : ""
+    }`,
+  );
+  L.push(
+    `• ${vt("stool", "Stool: {{count}}", { count: summary.poo?.count || 0 })}${
+      summary.poo?.abnormalCount
+        ? ` (${vt("abnormal", "{{count}} abnormal", { count: summary.poo.abnormalCount })})`
+        : ""
+    }`,
+  );
+  L.push(
+    `• ${vt("urination", "Urination: {{count}}", { count: summary.pee?.count || 0 })}${
+      summary.pee?.concernCount
+        ? ` (${vt("withConcerns", "{{count}} with concerns", { count: summary.pee.concernCount })})`
+        : ""
+    }`,
+  );
+  L.push(`• ${vt("vomiting", "Vomiting episodes: {{count}}", { count: summary.vomit?.episodes || 0 })}`);
   if (summary.weight?.series?.length) {
     const s = summary.weight.series;
-    L.push(`• Weight: ${s[0].weight}${normalizeWeightUnit(s[0].unit)} → ${s[s.length - 1].weight}${normalizeWeightUnit(s[s.length - 1].unit)} (${s.length} weigh-in${s.length > 1 ? "s" : ""})`);
+    L.push(
+      `• ${vt(
+        "weight",
+        s.length > 1
+          ? "Weight: {{first}} → {{last}} ({{count}} weigh-ins)"
+          : "Weight: {{first}} → {{last}} ({{count}} weigh-in)",
+        {
+          first: `${s[0].weight}${normalizeWeightUnit(s[0].unit)}`,
+          last: `${s[s.length - 1].weight}${normalizeWeightUnit(s[s.length - 1].unit)}`,
+          count: s.length,
+        },
+      )}`,
+    );
   }
-  L.push(`• Walks: ${summary.walks?.count || 0} (${summary.walks?.totalMinutes || 0} min)`);
-  L.push(`• Photo checks: ${summary.photoChecks?.count || 0}`);
+  L.push(
+    `• ${vt("walks", "Walks: {{count}} ({{minutes}} min)", {
+      count: summary.walks?.count || 0,
+      minutes: summary.walks?.totalMinutes || 0,
+    })}`,
+  );
+  L.push(`• ${vt("photoChecks", "Photo checks: {{count}}", { count: summary.photoChecks?.count || 0 })}`);
   const gcAreas = summary.generalChecks?.areasChanged || [];
   L.push(
-    `• Quick checks: ${summary.generalChecks?.count || 0}${
-      gcAreas.length ? ` (changed: ${gcAreas.map(quickCheckAreaLabel).join(", ")})` : ""
+    `• ${
+      gcAreas.length
+        ? vt("quickChecksChanged", "Quick checks: {{count}} (changed: {{areas}})", {
+            count: summary.generalChecks?.count || 0,
+            areas: gcAreas.map(quickCheckAreaLabel).join(", "),
+          })
+        : vt("quickChecks", "Quick checks: {{count}}", { count: summary.generalChecks?.count || 0 })
     }`,
   );
 
   if ((summary.meds || []).length) {
     L.push("");
-    L.push("Medications:");
+    L.push(vt("medsHeader", "Medications:"));
     for (const m of summary.meds) {
-      L.push(`• ${m.name}${m.dose ? ` (${m.dose})` : ""}: ${m.given}/${m.total} doses given`);
+      L.push(
+        `• ${m.name}${m.dose ? ` (${m.dose})` : ""}: ${vt(
+          "dosesGiven",
+          "{{given}}/{{total}} doses given",
+          { given: m.given, total: m.total },
+        )}`,
+      );
     }
   }
 
   const cur = [
     ...(summary.conditions || []).map((c) => c.condition),
-    ...(summary.allergies || []).map((a) => `Allergy: ${a.allergen}`),
+    ...(summary.allergies || []).map((a) =>
+      tr("health.vetSummary.allergyLine", "Allergy: {{allergen}}", { allergen: a.allergen }),
+    ),
   ].filter(Boolean);
   if (cur.length) {
     L.push("");
-    L.push("Conditions & allergies:");
+    L.push(vt("conditionsHeader", "Conditions & allergies:"));
     for (const c of cur) L.push(`• ${c}`);
   }
 
   const qs = (questions || []).map((q) => (q || "").trim()).filter(Boolean);
   if (qs.length) {
     L.push("");
-    L.push("Questions for the vet:");
+    L.push(vt("questionsHeader", "Questions for the vet:"));
     for (const q of qs) L.push(`• ${q}`);
   }
 
   L.push("");
-  L.push(DISCLAIMER);
+  L.push(getDisclaimer());
   return L.join("\n");
 }

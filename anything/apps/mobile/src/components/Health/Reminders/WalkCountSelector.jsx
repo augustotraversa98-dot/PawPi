@@ -9,9 +9,10 @@ export default function WalkCountSelector({
   visible,
   onClose,
   onSelectCount,
-  petName = "your pet",
+  petName,
 }) {
   const { t } = useTranslation();
+  const petLabel = petName || t("healthDataUi.yourPetLower");
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <View
@@ -51,7 +52,7 @@ export default function WalkCountSelector({
                 {t("routinesUi.walkCountSelector.walkRoutine")}
               </Text>
               <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-                {t("routinesUi.walkCountSelector.howOften", { name: petName })}
+                {t("routinesUi.walkCountSelector.howOften", { name: petLabel })}
               </Text>
             </View>
             <TouchableOpacity

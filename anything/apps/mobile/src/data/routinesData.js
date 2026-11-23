@@ -6,6 +6,7 @@
 import { formatDisplayDate, formatDisplayTime } from "@/utils/canonicalDateTime";
 import { COLORS } from "@/constants/theme";
 import { formatLocalDate, formatLocalTime } from "@/utils/localeDateTime";
+import { tr } from "@/utils/healthText";
 
 export const ROUTINE_TYPES = {
   FEEDING: "feeding",
@@ -63,23 +64,48 @@ export const ROUTINE_FREQUENCY = {
   HOURLY: "hourly",
 };
 
-// Lowercase, human cadence labels for routine-card schedule summaries. Covers the
+// Lowercase, human cadence labels for routine-card schedule summaries (localized getters: they resolve
+// through i18n at read time and fall back to the English text). Covers the
 // full ROUTINE_FREQUENCY set; the humanizing fallback (underscores → spaces) means
 // no raw enum (e.g. "every_3_months") can ever surface in a summary, even for a
 // future cadence not yet listed here.
 export const CADENCE_LABELS = {
-  [ROUTINE_FREQUENCY.DAILY]: "daily",
-  [ROUTINE_FREQUENCY.WEEKDAYS]: "weekdays",
-  [ROUTINE_FREQUENCY.WEEKENDS]: "weekends",
-  [ROUTINE_FREQUENCY.WEEKLY]: "weekly",
-  [ROUTINE_FREQUENCY.BIWEEKLY]: "every 2 weeks",
-  [ROUTINE_FREQUENCY.MONTHLY]: "monthly",
-  [ROUTINE_FREQUENCY.EVERY_3_MONTHS]: "every 3 months",
-  [ROUTINE_FREQUENCY.EVERY_6_MONTHS]: "every 6 months",
-  [ROUTINE_FREQUENCY.YEARLY]: "yearly",
-  [ROUTINE_FREQUENCY.CUSTOM]: "custom",
-  [ROUTINE_FREQUENCY.ONCE]: "once",
-  [ROUTINE_FREQUENCY.HOURLY]: "hourly",
+  get [ROUTINE_FREQUENCY.DAILY]() {
+    return tr("healthDataUi.cadence.daily", "daily");
+  },
+  get [ROUTINE_FREQUENCY.WEEKDAYS]() {
+    return tr("healthDataUi.cadence.weekdays", "weekdays");
+  },
+  get [ROUTINE_FREQUENCY.WEEKENDS]() {
+    return tr("healthDataUi.cadence.weekends", "weekends");
+  },
+  get [ROUTINE_FREQUENCY.WEEKLY]() {
+    return tr("healthDataUi.cadence.weekly", "weekly");
+  },
+  get [ROUTINE_FREQUENCY.BIWEEKLY]() {
+    return tr("healthDataUi.cadence.biweekly", "every 2 weeks");
+  },
+  get [ROUTINE_FREQUENCY.MONTHLY]() {
+    return tr("healthDataUi.cadence.monthly", "monthly");
+  },
+  get [ROUTINE_FREQUENCY.EVERY_3_MONTHS]() {
+    return tr("healthDataUi.cadence.every_3_months", "every 3 months");
+  },
+  get [ROUTINE_FREQUENCY.EVERY_6_MONTHS]() {
+    return tr("healthDataUi.cadence.every_6_months", "every 6 months");
+  },
+  get [ROUTINE_FREQUENCY.YEARLY]() {
+    return tr("healthDataUi.cadence.yearly", "yearly");
+  },
+  get [ROUTINE_FREQUENCY.CUSTOM]() {
+    return tr("healthDataUi.cadence.custom", "custom");
+  },
+  get [ROUTINE_FREQUENCY.ONCE]() {
+    return tr("healthDataUi.cadence.once", "once");
+  },
+  get [ROUTINE_FREQUENCY.HOURLY]() {
+    return tr("healthDataUi.cadence.hourly", "hourly");
+  },
 };
 
 // Resolve a cadence enum to its human label. Falsy → "" (nothing to render);
@@ -156,88 +182,174 @@ export const BODY_AREA_CONFIG = {
 export const ROUTINE_TYPE_CONFIG = {
   [ROUTINE_TYPES.FEEDING]: {
     icon: "🍽️",
-    label: "Feeding",
+    get label() {
+      return tr("healthDataUi.routineType.feeding.label", "Feeding");
+    },
     color: COLORS.coral,
-    description: "Meal times, snacks, and food reminders",
+    get description() {
+      return tr("healthDataUi.routineType.feeding.description", "Meal times, snacks, and food reminders");
+    },
   },
   [ROUTINE_TYPES.WALK]: {
     icon: "🚶",
-    label: "Walks",
+    get label() {
+      return tr("healthDataUi.routineType.walk.label", "Walks");
+    },
     color: COLORS.sage,
-    description: "Walk schedule, social walks, and activity tracking",
+    get description() {
+      return tr("healthDataUi.routineType.walk.description", "Walk schedule, social walks, and activity tracking");
+    },
   },
   [ROUTINE_TYPES.PHOTO_CHECK]: {
     icon: "📸",
-    label: "Photo Check",
+    get label() {
+      return tr("healthDataUi.routineType.photo_check.label", "Photo Check");
+    },
     color: "#4DB8E8",
-    description: "Recurring photos of paws, ears, teeth, eyes, and more",
+    get description() {
+      return tr("healthDataUi.routineType.photo_check.description", "Recurring photos of paws, ears, teeth, eyes, and more");
+    },
   },
   [ROUTINE_TYPES.MEDICAL_CARE]: {
     icon: "💊",
-    label: "Medical Care",
+    get label() {
+      return tr("healthDataUi.routineType.medical_care.label", "Medical Care");
+    },
     color: COLORS.terracotta,
-    description: "Medication, vaccines, flea/tick prevention, and supplements",
+    get description() {
+      return tr("healthDataUi.routineType.medical_care.description", "Medication, vaccines, flea/tick prevention, and supplements");
+    },
   },
   [ROUTINE_TYPES.WELLNESS_CHECK]: {
     icon: "⚖️",
-    label: "Wellness Check",
+    get label() {
+      return tr("healthDataUi.routineType.wellness_check.label", "Wellness Check");
+    },
     color: "#F4A460",
-    description: "Weight, body condition, mood, and quick health checks",
+    get description() {
+      return tr("healthDataUi.routineType.wellness_check.description", "Weight, body condition, mood, and quick health checks");
+    },
   },
   [ROUTINE_TYPES.VET_APPOINTMENT]: {
     icon: "🩺",
-    label: "Vet Appointment",
+    get label() {
+      return tr("healthDataUi.routineType.vet_appointment.label", "Vet Appointment");
+    },
     color: "#4DB8E8",
-    description: "Scheduled vet visits and follow-ups",
+    get description() {
+      return tr("healthDataUi.routineType.vet_appointment.description", "Scheduled vet visits and follow-ups");
+    },
   },
   // Legacy types (kept for backward compatibility)
   [ROUTINE_TYPES.MEDICATION]: {
     icon: "💊",
-    label: "Medication",
+    get label() {
+      return tr("healthDataUi.routineType.medication.label", "Medication");
+    },
     color: COLORS.terracotta,
-    description: "Medication schedule",
+    get description() {
+      return tr("healthDataUi.routineType.medication.description", "Medication schedule");
+    },
     legacy: true,
     newType: ROUTINE_TYPES.MEDICAL_CARE,
   },
   [ROUTINE_TYPES.GENERAL_CHECK]: {
     icon: "✅",
-    label: "General Check",
+    get label() {
+      return tr("healthDataUi.routineType.general_check.label", "General Check");
+    },
     color: "#F4A460",
-    description: "Daily health check",
+    get description() {
+      return tr("healthDataUi.routineType.general_check.description", "Daily health check");
+    },
     legacy: true,
     newType: ROUTINE_TYPES.WELLNESS_CHECK,
   },
   [ROUTINE_TYPES.WEIGHT_CHECK]: {
     icon: "⚖️",
-    label: "Weight Check",
+    get label() {
+      return tr("healthDataUi.routineType.weight_check.label", "Weight Check");
+    },
     color: COLORS.terracotta,
-    description: "Weight monitoring",
+    get description() {
+      return tr("healthDataUi.routineType.weight_check.description", "Weight monitoring");
+    },
     legacy: true,
     newType: ROUTINE_TYPES.WELLNESS_CHECK,
   },
   [ROUTINE_TYPES.PREVENTIVE]: {
     icon: "🛡️",
-    label: "Preventive Care",
+    get label() {
+      return tr("healthDataUi.routineType.preventive.label", "Preventive Care");
+    },
     color: COLORS.sage,
-    description: "Flea, tick, heartworm prevention",
+    get description() {
+      return tr("healthDataUi.routineType.preventive.description", "Flea, tick, heartworm prevention");
+    },
     legacy: true,
     newType: ROUTINE_TYPES.MEDICAL_CARE,
   },
   [ROUTINE_TYPES.VACCINE]: {
     icon: "💉",
-    label: "Vaccine",
+    get label() {
+      return tr("healthDataUi.routineType.vaccine.label", "Vaccine");
+    },
     color: COLORS.coral,
-    description: "Vaccination schedule",
+    get description() {
+      return tr("healthDataUi.routineType.vaccine.description", "Vaccination schedule");
+    },
     legacy: true,
     newType: ROUTINE_TYPES.MEDICAL_CARE,
   },
 };
 
+// Localized phrase helpers for the schedule / next-reminder summaries below. English is the
+// fallback (identical to the pre-i18n text), so English output and English tests are unchanged.
+const sched = (key, en, params) => tr(`healthDataUi.sched.${key}`, en, params);
+const nextText = (key, en, params) => tr(`healthDataUi.next.${key}`, en, params);
+const DAY_IDS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+const DAY_EN = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const dayLongName = (i) =>
+  DAY_IDS[i] ? tr(`healthDataUi.days.${DAY_IDS[i]}`, DAY_EN[i]) : "";
+// "Every Monday" -> es "Todos los lunes": the day needs its own (plural, with article) form.
+const dayEveryName = (i) =>
+  DAY_IDS[i] ? tr(`healthDataUi.daysEvery.${DAY_IDS[i]}`, DAY_EN[i]) : "";
+const DAY_ABBR_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAY_ABBR_IDS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+const dayAbbrName = (i) =>
+  DAY_ABBR_IDS[i] ? tr(`walkItem.days.${DAY_ABBR_IDS[i]}`, DAY_ABBR_EN[i]) : undefined;
+const joinAnd = (parts) => parts.join(sched("and", " and "));
+const AREA_ID_EN = {
+  paws: "Paws",
+  ears: "Ears",
+  eyes: "Eyes",
+  teeth: "Teeth",
+  skin_fur: "Skin/Fur",
+  face: "Face",
+  full_body: "Full Body",
+  other: "Other",
+};
+const areaLabelText = (bodyArea) =>
+  AREA_ID_EN[bodyArea] ? tr(`routineCard.areas.${bodyArea}`, AREA_ID_EN[bodyArea]) : bodyArea;
+const WELLNESS_ITEM_EN = {
+  general: "General",
+  weight: "Weight",
+  body_condition: "Body condition",
+  mobility: "Mobility",
+  mood_energy: "Mood/Energy",
+  skin_coat: "Skin/Coat",
+  appetite_hydration: "Appetite/Hydration",
+};
+const wellnessItemText = (checkType) =>
+  WELLNESS_ITEM_EN[checkType]
+    ? sched(`wellnessItems.${checkType}`, WELLNESS_ITEM_EN[checkType])
+    : checkType;
+
 /**
  * Get human-readable schedule summary
  */
 export function getScheduleSummary(routine) {
-  if (!routine.isActive) return "Inactive";
+  if (!routine.isActive) return sched("inactive", "Inactive");
 
   // Handle Medical Care routine with items array
   if (
@@ -256,16 +368,24 @@ export function getScheduleSummary(routine) {
       other: "Other",
     };
     const summaries = items.map((it) => {
-      const label = it.name || itemTypeLabels[it.type] || "Item";
+      const label =
+        it.name ||
+        (itemTypeLabels[it.type]
+          ? sched(`itemTypes.${it.type}`, itemTypeLabels[it.type])
+          : sched("itemTypes.item", "Item"));
       let detail = "";
       if (
         it.type === MEDICAL_CARE_SUBTYPES.MEDICATION ||
         it.type === MEDICAL_CARE_SUBTYPES.SUPPLEMENT
       ) {
         const times = (it.times || []).join(" · ");
-        detail = times ? `daily at ${times}` : "daily";
+        detail = times
+          ? sched("dailyAt", "daily at {{times}}", { times })
+          : sched("daily", "daily");
       } else if (it.type === MEDICAL_CARE_SUBTYPES.VACCINE) {
-        detail = it.nextDue ? `next due ${it.nextDue}` : "";
+        detail = it.nextDue
+          ? sched("nextDue", "next due {{date}}", { date: it.nextDue })
+          : "";
       } else if (it.repeatInterval) {
         detail = getCadenceLabel(it.repeatInterval);
       }
@@ -279,7 +399,8 @@ export function getScheduleSummary(routine) {
     const activeMeals = routine.meals.filter(
       (m) => m.reminderEnabled !== false,
     );
-    if (activeMeals.length === 0) return "No active meal reminders";
+    if (activeMeals.length === 0)
+      return sched("noMealReminders", "No active meal reminders");
 
     // If all meals have the same frequency, show consolidated
     const frequencies = [...new Set(activeMeals.map((m) => m.frequency))];
@@ -291,13 +412,19 @@ export function getScheduleSummary(routine) {
       const timeStrings = times.map((time) => {
         return formatDisplayTime(time);
       });
-      return `Every day at ${timeStrings.join(" and ")}`;
+      return sched("everyDayAt", "Every day at {{times}}", {
+        times: joinAnd(timeStrings),
+      });
     }
 
     // Otherwise show meal count with varied schedules
-    return `${activeMeals.length} meal${
-      activeMeals.length > 1 ? "s" : ""
-    } with custom schedules`;
+    return sched(
+      "mealsCustom",
+      activeMeals.length > 1
+        ? "{{count}} meals with custom schedules"
+        : "{{count}} meal with custom schedules",
+      { count: activeMeals.length },
+    );
   }
 
   // Handle Walk routine with walk-specific schedules
@@ -305,7 +432,8 @@ export function getScheduleSummary(routine) {
     const activeWalks = routine.walks.filter(
       (w) => w.reminderEnabled !== false,
     );
-    if (activeWalks.length === 0) return "No active walk reminders";
+    if (activeWalks.length === 0)
+      return sched("noWalkReminders", "No active walk reminders");
 
     // Check if all walks have same frequency
     const frequencies = [...new Set(activeWalks.map((w) => w.frequency))];
@@ -317,7 +445,9 @@ export function getScheduleSummary(routine) {
       const timeStrings = activeWalks.map((w) => {
         return formatDisplayTime(w.time);
       });
-      return `Daily at ${timeStrings.join(" · ")}`;
+      return sched("dailyAtWalks", "Daily at {{times}}", {
+        times: timeStrings.join(" · "),
+      });
     }
 
     // Different schedules - show individual walk summaries
@@ -327,28 +457,31 @@ export function getScheduleSummary(routine) {
       let freqStr = "";
       switch (w.frequency) {
         case ROUTINE_FREQUENCY.DAILY:
-          freqStr = "daily";
+          freqStr = sched("walkFreq.daily", "daily");
           break;
         case ROUTINE_FREQUENCY.WEEKDAYS:
-          freqStr = "weekdays";
+          freqStr = sched("walkFreq.weekdays", "weekdays");
           break;
         case ROUTINE_FREQUENCY.WEEKENDS:
-          freqStr = "weekends";
+          freqStr = sched("walkFreq.weekends", "weekends");
           break;
         case ROUTINE_FREQUENCY.CUSTOM:
           if (w.days && w.days.length > 0) {
-            const dayAbbr = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-            const dayStrs = w.days.map((d) => dayAbbr[d]);
+            const dayStrs = w.days.map((d) => dayAbbrName(d));
             freqStr = dayStrs.join("/");
           } else {
-            freqStr = "custom";
+            freqStr = sched("walkFreq.custom", "custom");
           }
           break;
         default:
-          freqStr = "custom";
+          freqStr = sched("walkFreq.custom", "custom");
       }
 
-      return `${w.name} ${freqStr} at ${timeStr}`;
+      return sched("walkSummary", "{{name}} {{freq}} at {{time}}", {
+        name: w.name,
+        freq: freqStr,
+        time: timeStr,
+      });
     });
 
     return summaries.join(" · ");
@@ -376,22 +509,11 @@ export function getScheduleSummary(routine) {
       (s) => s.reminderEnabled !== false,
     );
 
-    if (activeSchedules.length === 0) return "No active photo check reminders";
+    if (activeSchedules.length === 0)
+      return sched("noPhotoReminders", "No active photo check reminders");
 
     // Helper to format area label
-    const getAreaLabel = (bodyArea) => {
-      const areaLabels = {
-        paws: "Paws",
-        ears: "Ears",
-        eyes: "Eyes",
-        teeth: "Teeth",
-        skin_fur: "Skin/Fur",
-        face: "Face",
-        full_body: "Full Body",
-        other: "Other",
-      };
-      return areaLabels[bodyArea] || bodyArea;
-    };
+    const getAreaLabel = areaLabelText;
 
     // Helper to format frequency (shared full-cadence label map)
     const getFreqLabel = getCadenceLabel;
@@ -402,18 +524,7 @@ export function getScheduleSummary(routine) {
     };
 
     // Helper to get day name
-    const getDayName = (dayIndex) => {
-      const dayNames = [
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-        "Sunday",
-      ];
-      return dayNames[dayIndex] || "";
-    };
+    const getDayName = dayLongName;
 
     // Check if all schedules are the same
     const first = activeSchedules[0];
@@ -432,7 +543,11 @@ export function getScheduleSummary(routine) {
       const freqLabel = getFreqLabel(first.frequency);
       const dayLabel = getDayName(first.preferredDay);
       const timeLabel = formatTime(first.preferredTime);
-      return `${areaList}\n${freqLabel} ${dayLabel} at ${timeLabel}`;
+      return `${areaList}\n${sched("cadenceDayAt", "{{cadence}} {{day}} at {{time}}", {
+        cadence: freqLabel,
+        day: dayLabel,
+        time: timeLabel,
+      })}`;
     } else {
       // Different schedules - show each area's schedule
       const summaries = activeSchedules.map((s) => {
@@ -440,7 +555,12 @@ export function getScheduleSummary(routine) {
         const freqLabel = getFreqLabel(s.frequency);
         const dayLabel = getDayName(s.preferredDay);
         const timeLabel = formatTime(s.preferredTime);
-        return `${areaLabel} ${freqLabel} ${dayLabel} ${timeLabel}`;
+        return sched("areaCadenceDay", "{{item}} {{cadence}} {{day}} {{time}}", {
+          item: areaLabel,
+          cadence: freqLabel,
+          day: dayLabel,
+          time: timeLabel,
+        });
       });
       return summaries.join("\n");
     }
@@ -458,23 +578,15 @@ export function getScheduleSummary(routine) {
       (item) => item.reminderEnabled !== false,
     );
 
-    if (activeItems.length === 0) return "No active wellness check reminders";
+    if (activeItems.length === 0)
+      return sched("noWellnessReminders", "No active wellness check reminders");
 
     // Helper to format item label
     const getItemLabel = (checkType, customName) => {
       if (checkType === WELLNESS_CHECK_ITEMS.CUSTOM && customName) {
         return customName;
       }
-      const itemLabels = {
-        general: "General",
-        weight: "Weight",
-        body_condition: "Body condition",
-        mobility: "Mobility",
-        mood_energy: "Mood/Energy",
-        skin_coat: "Skin/Coat",
-        appetite_hydration: "Appetite/Hydration",
-      };
-      return itemLabels[checkType] || checkType;
+      return wellnessItemText(checkType);
     };
 
     // Helper to format frequency (shared full-cadence label map)
@@ -486,18 +598,7 @@ export function getScheduleSummary(routine) {
     };
 
     // Helper to get day name
-    const getDayName = (dayIndex) => {
-      const dayNames = [
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-        "Sunday",
-      ];
-      return dayNames[dayIndex] || "";
-    };
+    const getDayName = dayLongName;
 
     // Check if all items have the same schedule
     const first = activeItems[0];
@@ -521,8 +622,15 @@ export function getScheduleSummary(routine) {
           : "";
       const timeLabel = formatTime(first.preferredTime);
       return dayLabel
-        ? `${itemList}\n${freqLabel} ${dayLabel} at ${timeLabel}`
-        : `${itemList}\n${freqLabel} at ${timeLabel}`;
+        ? `${itemList}\n${sched("cadenceDayAt", "{{cadence}} {{day}} at {{time}}", {
+            cadence: freqLabel,
+            day: dayLabel,
+            time: timeLabel,
+          })}`
+        : `${itemList}\n${sched("cadenceAt", "{{cadence}} at {{time}}", {
+            cadence: freqLabel,
+            time: timeLabel,
+          })}`;
     } else {
       // Different schedules - show each item's schedule
       const summaries = activeItems.map((item) => {
@@ -535,8 +643,17 @@ export function getScheduleSummary(routine) {
             : "";
         const timeLabel = formatTime(item.preferredTime);
         return dayLabel
-          ? `${itemLabel} ${freqLabel} ${dayLabel} ${timeLabel}`
-          : `${itemLabel} ${freqLabel} ${timeLabel}`;
+          ? sched("areaCadenceDay", "{{item}} {{cadence}} {{day}} {{time}}", {
+              item: itemLabel,
+              cadence: freqLabel,
+              day: dayLabel,
+              time: timeLabel,
+            })
+          : sched("itemCadence", "{{item}} {{cadence}} {{time}}", {
+              item: itemLabel,
+              cadence: freqLabel,
+              time: timeLabel,
+            });
       });
       return summaries.join("\n");
     }
@@ -566,7 +683,7 @@ export function getScheduleSummary(routine) {
     );
 
     if (activeAppointments.length === 0)
-      return "No active vet appointment reminders";
+      return sched("noVetReminders", "No active vet appointment reminders");
 
     // Helper to format time
     const formatTime = (time) => {
@@ -576,10 +693,15 @@ export function getScheduleSummary(routine) {
 
     // Build summary for each appointment
     const summaries = activeAppointments.map((appt) => {
-      const title = appt.title || "Vet Appointment";
-      const dateStr = formatDisplayDate(appt.date) || "Date TBD";
+      const title = appt.title || sched("vetAppointment", "Vet Appointment");
+      const dateStr =
+        formatDisplayDate(appt.date) || sched("dateTbd", "Date TBD");
       const timeStr = formatTime(appt.time);
-      return `${title} • ${dateStr} at ${timeStr}`;
+      return sched("vetLine", "{{title}} • {{date}} at {{time}}", {
+        title,
+        date: dateStr,
+        time: timeStr,
+      });
     });
 
     return summaries.join("\n");
@@ -594,41 +716,34 @@ export function getScheduleSummary(routine) {
   // Frequency
   switch (frequency) {
     case ROUTINE_FREQUENCY.DAILY:
-      scheduleText = "Every day";
+      scheduleText = sched("everyDay", "Every day");
       break;
     case ROUTINE_FREQUENCY.WEEKDAYS:
-      scheduleText = "Weekdays";
+      scheduleText = sched("weekdays", "Weekdays");
       break;
     case ROUTINE_FREQUENCY.WEEKENDS:
-      scheduleText = "Weekends";
+      scheduleText = sched("weekends", "Weekends");
       break;
     case ROUTINE_FREQUENCY.WEEKLY:
       if (days.length === 1) {
-        const dayNames = [
-          "Monday",
-          "Tuesday",
-          "Wednesday",
-          "Thursday",
-          "Friday",
-          "Saturday",
-          "Sunday",
-        ];
-        scheduleText = `Every ${dayNames[days[0]]}`;
+        scheduleText = sched("everyDayName", "Every {{day}}", {
+          day: dayEveryName(days[0]),
+        });
       } else {
-        scheduleText = "Weekly";
+        scheduleText = sched("weekly", "Weekly");
       }
       break;
     case ROUTINE_FREQUENCY.BIWEEKLY:
-      scheduleText = "Every 2 weeks";
+      scheduleText = sched("biweekly", "Every 2 weeks");
       break;
     case ROUTINE_FREQUENCY.MONTHLY:
-      scheduleText = "Monthly";
+      scheduleText = sched("monthly", "Monthly");
       break;
     case ROUTINE_FREQUENCY.CUSTOM:
-      scheduleText = "Custom schedule";
+      scheduleText = sched("customSchedule", "Custom schedule");
       break;
     default:
-      scheduleText = "Custom";
+      scheduleText = sched("custom", "Custom");
   }
 
   // Times
@@ -636,16 +751,50 @@ export function getScheduleSummary(routine) {
     const timeStrings = times.map((time) => {
       return formatDisplayTime(time);
     });
-    scheduleText += ` at ${timeStrings.join(" and ")}`;
+    scheduleText += sched("atTimes", " at {{times}}", {
+      times: joinAnd(timeStrings),
+    });
   }
 
   // End date
   if (routine.endDate) {
-    scheduleText += ` until ${formatDisplayDate(routine.endDate)}`;
+    scheduleText += sched("untilDate", " until {{date}}", {
+      date: formatDisplayDate(routine.endDate),
+    });
   }
 
   return scheduleText;
 }
+
+const NOT_SCHEDULED = () => nextText("notScheduled", "Not scheduled");
+const NEXT_WELLNESS_EN = {
+  general: "General check",
+  weight: "Weight check",
+  body_condition: "Body condition check",
+  mobility: "Mobility check",
+  mood_energy: "Mood / Energy check",
+  skin_coat: "Skin / Coat check",
+  appetite_hydration: "Appetite / Hydration check",
+  custom: "Wellness check",
+};
+const nextWellnessLabel = (checkType) =>
+  NEXT_WELLNESS_EN[checkType]
+    ? nextText(`wellness.${checkType}`, NEXT_WELLNESS_EN[checkType])
+    : undefined;
+const NEXT_PHOTO_EN = {
+  paws: "Paws photo",
+  ears: "Ears photo",
+  eyes: "Eyes photo",
+  teeth: "Teeth photo",
+  skin_fur: "Skin/Fur photo",
+  face: "Face photo",
+  full_body: "Full body photo",
+  other: "Photo check",
+};
+const nextPhotoLabel = (bodyArea) =>
+  NEXT_PHOTO_EN[bodyArea]
+    ? nextText(`photo.${bodyArea}`, NEXT_PHOTO_EN[bodyArea])
+    : undefined;
 
 /**
  * Get next reminder preview
@@ -678,7 +827,7 @@ export function getNextReminderPreview(routine) {
       }
     }
 
-    if (!nextMeal || !nextOccurrence) return "Not scheduled";
+    if (!nextMeal || !nextOccurrence) return NOT_SCHEDULED();
 
     return formatReminderPreview(nextMeal.name, nextOccurrence, now);
   }
@@ -708,7 +857,7 @@ export function getNextReminderPreview(routine) {
       }
     }
 
-    if (!nextWalk || !nextOccurrence) return "Not scheduled";
+    if (!nextWalk || !nextOccurrence) return NOT_SCHEDULED();
 
     return formatReminderPreview(nextWalk.name, nextOccurrence, now);
   }
@@ -721,17 +870,6 @@ export function getNextReminderPreview(routine) {
     const now = new Date();
     let nextItem = null;
     let nextOccurrence = null;
-
-    const itemLabels = {
-      general: "General check",
-      weight: "Weight check",
-      body_condition: "Body condition check",
-      mobility: "Mobility check",
-      mood_energy: "Mood / Energy check",
-      skin_coat: "Skin / Coat check",
-      appetite_hydration: "Appetite / Hydration check",
-      custom: "Wellness check",
-    };
 
     for (const item of routine.wellnessCheckItems) {
       if (item.reminderEnabled === false) continue;
@@ -752,10 +890,12 @@ export function getNextReminderPreview(routine) {
       }
     }
 
-    if (!nextItem || !nextOccurrence) return "Not scheduled";
+    if (!nextItem || !nextOccurrence) return NOT_SCHEDULED();
 
     const label =
-      nextItem.customName || itemLabels[nextItem.checkType] || "Wellness check";
+      nextItem.customName ||
+      nextWellnessLabel(nextItem.checkType) ||
+      nextText("wellness.custom", "Wellness check");
     return formatReminderPreview(label, nextOccurrence, now);
   }
 
@@ -780,17 +920,6 @@ export function getNextReminderPreview(routine) {
             ]
           : [];
 
-    const areaLabels = {
-      paws: "Paws photo",
-      ears: "Ears photo",
-      eyes: "Eyes photo",
-      teeth: "Teeth photo",
-      skin_fur: "Skin/Fur photo",
-      face: "Face photo",
-      full_body: "Full body photo",
-      other: "Photo check",
-    };
-
     for (const schedule of photoCheckSchedules) {
       if (schedule.reminderEnabled === false) continue;
 
@@ -810,9 +939,11 @@ export function getNextReminderPreview(routine) {
       }
     }
 
-    if (!nextSchedule || !nextOccurrence) return "Not scheduled";
+    if (!nextSchedule || !nextOccurrence) return NOT_SCHEDULED();
 
-    const label = areaLabels[nextSchedule.bodyArea] || "Photo check";
+    const label =
+      nextPhotoLabel(nextSchedule.bodyArea) ||
+      nextText("photo.other", "Photo check");
     return formatReminderPreview(label, nextOccurrence, now);
   }
 
@@ -820,7 +951,7 @@ export function getNextReminderPreview(routine) {
   const times = routine.times || [];
   const frequency = routine.frequency;
 
-  if (times.length === 0) return "Not scheduled";
+  if (times.length === 0) return NOT_SCHEDULED();
 
   // Calculate next occurrence
   let nextOccurrence = null;
@@ -839,23 +970,14 @@ export function getNextReminderPreview(routine) {
     }
   }
 
-  if (!nextOccurrence) return "Not scheduled";
+  if (!nextOccurrence) return NOT_SCHEDULED();
 
   const config = ROUTINE_TYPE_CONFIG[routine.type];
-  let label = config?.label || "Reminder";
+  let label = config?.label || nextText("reminder", "Reminder");
 
   // Add body area for photo checks
-  if (routine.bodyArea) {
-    const areaLabels = {
-      paws: "Paws photo",
-      ears: "Ears photo",
-      eyes: "Eyes photo",
-      teeth: "Teeth photo",
-      skin_fur: "Skin/Fur photo",
-      face: "Face photo",
-      full_body: "Full body photo",
-    };
-    label = areaLabels[routine.bodyArea];
+  if (routine.bodyArea && routine.bodyArea !== BODY_AREAS.OTHER) {
+    label = nextPhotoLabel(routine.bodyArea) || label;
   }
 
   return formatReminderPreview(label, nextOccurrence, now);
@@ -939,26 +1061,37 @@ function formatReminderPreview(label, nextOccurrence, now) {
 
   if (isToday) {
     const timeOfDay = getTimeOfDay(nextOccurrence);
-    return `${label} ${timeOfDay} at ${timeStr}`;
+    return nextText("todayAt", "{{label}} {{timeOfDay}} at {{time}}", {
+      label,
+      timeOfDay,
+      time: timeStr,
+    });
   } else if (isTomorrow) {
-    return `${label} tomorrow at ${timeStr}`;
+    return nextText("tomorrowAt", "{{label}} tomorrow at {{time}}", {
+      label,
+      time: timeStr,
+    });
   } else {
     const dayStr = formatLocalDate(nextOccurrence, {
       weekday: "long",
       month: "short",
       day: "numeric",
     });
-    return `${label} ${dayStr} at ${timeStr}`;
+    return nextText("dayAt", "{{label}} {{day}} at {{time}}", {
+      label,
+      day: dayStr,
+      time: timeStr,
+    });
   }
 }
 
 function getTimeOfDay(date) {
   const hour = date.getHours();
-  if (hour < 5) return "tonight";
-  if (hour < 12) return "this morning";
-  if (hour < 17) return "this afternoon";
-  if (hour < 21) return "this evening";
-  return "tonight";
+  if (hour < 5) return nextText("tonight", "tonight");
+  if (hour < 12) return nextText("thisMorning", "this morning");
+  if (hour < 17) return nextText("thisAfternoon", "this afternoon");
+  if (hour < 21) return nextText("thisEvening", "this evening");
+  return nextText("tonight", "tonight");
 }
 
 /**

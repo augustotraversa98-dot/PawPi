@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { X } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
+import { SPAY_NEUTER_OPTIONS, SPAY_NEUTER_KEYS } from "@/utils/healthText";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
@@ -135,23 +136,23 @@ export default function EditMedicalProfileModal({
     const newErrors = {};
 
     if (vetEmail && !validateEmail(vetEmail)) {
-      newErrors.vetEmail = "Please enter a valid email";
+      newErrors.vetEmail = t("healthDataUi.editMedicalProfileModal.validEmail");
     }
 
     if (currentWeight && !validateWeight(currentWeight)) {
-      newErrors.currentWeight = "Please enter a valid weight";
+      newErrors.currentWeight = t("healthDataUi.editMedicalProfileModal.validWeight");
     }
 
     if (birthday && !validateDate(birthday)) {
-      newErrors.birthday = "Please enter a valid date";
+      newErrors.birthday = t("healthDataUi.editMedicalProfileModal.validDate");
     }
 
     if (adoptionDate && !validateDate(adoptionDate)) {
-      newErrors.adoptionDate = "Please enter a valid date";
+      newErrors.adoptionDate = t("healthDataUi.editMedicalProfileModal.validDate");
     }
 
     if (spayedNeuteredDate && !validateDate(spayedNeuteredDate)) {
-      newErrors.spayedNeuteredDate = "Please enter a valid date";
+      newErrors.spayedNeuteredDate = t("healthDataUi.editMedicalProfileModal.validDate");
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -379,7 +380,7 @@ export default function EditMedicalProfileModal({
                 { fontWeight: "600", color: gender === option ? "#FFF" : COLORS.warmBrown },
               ]}
             >
-              {option.charAt(0).toUpperCase() + option.slice(1)}
+              {t(`healthDataUi.editMedicalProfileModal.${option}`)}
             </Text>
           </PressableScale>
         ))}
@@ -441,7 +442,7 @@ export default function EditMedicalProfileModal({
         {t("editMedicalProfile.fieldSpayNeuter")}
       </Text>
       <View style={{ flexDirection: "row", gap: 10 }}>
-        {["Spayed", "Neutered", "Not spayed/neutered", "Unknown"].map(
+        {SPAY_NEUTER_OPTIONS.map(
           (option) => (
             <PressableScale
               key={option}
@@ -469,7 +470,7 @@ export default function EditMedicalProfileModal({
                   },
                 ]}
               >
-                {option}
+                {t(SPAY_NEUTER_KEYS[option])}
               </Text>
             </PressableScale>
           ),

@@ -62,6 +62,7 @@ import {
 } from "@/constants/theme";
 import { Card, PressableScale } from "@/components/ui";
 import { breedLabel } from "@/data/dogBreeds";
+import { spayNeuterLabel } from "@/utils/healthText";
 
 // Ordered sub-tabs of the "Medical history" group. Each key drives its own
 // list/query/modal below; the parent chip sub-nav renders in this order and the
@@ -2011,7 +2012,7 @@ export default function HealthVetRecord() {
                         label: t("health.vetRecord.fieldSpayNeuter"),
                         value: medicalProfileData.medicalProfile
                           .spayed_neutered_status
-                          ? `${medicalProfileData.medicalProfile.spayed_neutered_status}${
+                          ? `${spayNeuterLabel(medicalProfileData.medicalProfile.spayed_neutered_status)}${
                               medicalProfileData.medicalProfile
                                 .spayed_neutered_date
                                 ? ` (${formatDisplayDate(medicalProfileData.medicalProfile.spayed_neutered_date)})`

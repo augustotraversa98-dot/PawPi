@@ -35,9 +35,10 @@ export default function MedicationRoutineModal({
   onClose,
   onSave,
   editingRoutine,
-  petName = "your pet",
+  petName,
 }) {
   const { t } = useTranslation();
+  const petLabel = petName || t("healthDataUi.yourPetLower");
   const [medicationName, setMedicationName] = useState("");
   const [dose, setDose] = useState("");
   const [frequency, setFrequency] = useState(ROUTINE_FREQUENCY.DAILY);
@@ -141,7 +142,7 @@ export default function MedicationRoutineModal({
                   : t("routinesUi.medication.titleCreate")}
               </Text>
               <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-                {t("routinesUi.medication.trackSchedule", { name: petName })}
+                {t("routinesUi.medication.trackSchedule", { name: petLabel })}
               </Text>
             </View>
             <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}

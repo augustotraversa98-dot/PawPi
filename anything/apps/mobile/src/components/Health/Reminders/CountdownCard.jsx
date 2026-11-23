@@ -70,7 +70,7 @@ export default function CountdownCard({
         >
           <Zap size={12} color="#FFF" />
           <Text style={{ fontSize: 10, fontWeight: "800", color: "#FFF" }}>
-            TIME-SENSITIVE
+            {t("healthDataUi.ui.timeSensitive")}
           </Text>
         </View>
       )}
@@ -130,18 +130,18 @@ export default function CountdownCard({
 
           // Primary label: prefer the reminder's own primaryAction, then config
           const primaryLabel =
-            reminder.primaryAction || config?.actionLabel || "Done";
+            reminder.primaryAction || config?.actionLabel || t("common.done");
 
           // Secondary button shown for Medical Care reminders only
           let secondaryLabel = null;
           let secondaryHandler = null;
           if (isMedicalCare) {
             if (isVaccine) {
-              secondaryLabel = "Mark completed";
+              secondaryLabel = t("healthDataUi.ui.markCompleted");
               secondaryHandler = () =>
                 onComplete(reminder, { action: "completed" });
             } else if (onSomethingOff) {
-              secondaryLabel = "Something was off";
+              secondaryLabel = t("healthDataUi.ui.somethingWasOff");
               secondaryHandler = () => onSomethingOff(reminder);
             }
           }

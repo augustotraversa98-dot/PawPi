@@ -5,11 +5,16 @@
 // Thresholds are deliberately conservative defaults; tune later. All inputs come from the
 // /api/vet-record/full-summary aggregation shape.
 
+import { tr } from "@/utils/healthText";
+
 const SEVERITY = { INFO: "info", NOTABLE: "notable" };
 
+// Localized phrase helper: English text is the fallback (identical to the pre-i18n copy).
+const ins = (key, en, params) => tr(`healthDataUi.insights.${key}`, en, params);
+
 // Human labels for the Quick Check area keys stored in the `areas` jsonb (eyes, ears, teeth,
-// skin, paws, face, mood, energy). This surface is English-only (the whole Vet Summary feature
-// is), so these stay inline rather than in i18n; the modal itself localizes its own copy.
+// skin, paws, face, mood, energy). QUICK_CHECK_AREA_LABELS is the English fallback table;
+// quickCheckAreaLabel() resolves the localized label by key.
 export const QUICK_CHECK_AREA_LABELS = {
   eyes: "Eyes",
   ears: "Ears",
@@ -20,7 +25,12 @@ export const QUICK_CHECK_AREA_LABELS = {
   mood: "Mood",
   energy: "Energy",
 };
-export const quickCheckAreaLabel = (key) => QUICK_CHECK_AREA_LABELS[key] || key;
+export const quickCheckAreaLabel = (key) =>
+  QUICK_CHECK_AREA_LABELS[key]
+    ? ins(`areas.${key}`, QUICK_CHECK_AREA_LABELS[key])
+    : key;
+
+const petFallback = () => tr("routineCard.yourPet", "Your pet");
 
 // How much data counts as "enough" to bother surfacing trends at all.
 export function hasEnoughData(summary) {
@@ -54,7 +64,7 @@ export function weightChangePct(series) {
 export function detectHealthFlags(summary) {
   if (!summary) return [];
   const flags = [];
-  const name = summary.pet?.name || "Your pet";
+  const name = summary.pet?.name || petFallback();
 
   // Quick Check ("general check") changes are DIRECT owner-reported observations, not
   // statistical trends — surface them even when there isn't otherwise much data yet.
@@ -66,9 +76,24 @@ export function detectHealthFlags(summary) {
       severity: SEVERITY.NOTABLE,
       title:
         labels.length === 1
-          ? `Quick Check: ${labels[0].toLowerCase()} looked different`
-          : `Quick Check flagged ${labels.length} areas`,
-      detail: `${labels.join(", ")} ${labels.length > 1 ? "were" : "was"} marked "changed" during a Quick Check this period.`,
+          ? ins("quickCheckOneTitle", "Quick Check: {{area}} looked different", {
+              area: labels[0].toLowerCase(),
+            })
+          : ins("quickCheckManyTitle", "Quick Check flagged {{count}} areas", {
+              count: labels.length,
+            }),
+      detail:
+        labels.length > 1
+          ? ins(
+              "quickCheckDetail",
+              '{{labels}} were marked "changed" during a Quick Check this period.',
+              { count: labels.length, labels: labels.join(", ") },
+            )
+          : ins(
+              "quickCheckDetail",
+              '{{labels}} was marked "changed" during a Quick Check this period.',
+              { count: labels.length, labels: labels.join(", ") },
+            ),
     });
   }
 
@@ -82,15 +107,23 @@ export function detectHealthFlags(summary) {
       flags.push({
         key: "weight-loss",
         severity: SEVERITY.NOTABLE,
-        title: "Weight is trending down",
-        detail: `${name}'s logged weight dropped about ${Math.abs(pct).toFixed(0)}% over this period.`,
+        title: ins("weightLossTitle", "Weight is trending down"),
+        detail: ins(
+          "weightLossDetail",
+          "{{name}}'s logged weight dropped about {{pct}}% over this period.",
+          { name, pct: Math.abs(pct).toFixed(0) },
+        ),
       });
     } else if (pct >= 10) {
       flags.push({
         key: "weight-gain",
         severity: SEVERITY.INFO,
-        title: "Weight is trending up",
-        detail: `${name}'s logged weight rose about ${pct.toFixed(0)}% over this period.`,
+        title: ins("weightGainTitle", "Weight is trending up"),
+        detail: ins(
+          "weightGainDetail",
+          "{{name}}'s logged weight rose about {{pct}}% over this period.",
+          { name, pct: pct.toFixed(0) },
+        ),
       });
     }
   }
@@ -101,8 +134,12 @@ export function detectHealthFlags(summary) {
     flags.push({
       key: "vomiting",
       severity: SEVERITY.NOTABLE,
-      title: "Repeated vomiting logged",
-      detail: `${episodes} vomiting episodes were recorded in this period.`,
+      title: ins("vomitingTitle", "Repeated vomiting logged"),
+      detail: ins(
+        "vomitingDetail",
+        "{{count}} vomiting episodes were recorded in this period.",
+        { count: episodes },
+      ),
     });
   }
 
@@ -112,8 +149,12 @@ export function detectHealthFlags(summary) {
     flags.push({
       key: "stool",
       severity: SEVERITY.NOTABLE,
-      title: "Several abnormal stool entries",
-      detail: `${abnormalPoo} stool logs noted blood, mucus, or straining.`,
+      title: ins("stoolTitle", "Several abnormal stool entries"),
+      detail: ins(
+        "stoolDetail",
+        "{{count}} stool logs noted blood, mucus, or straining.",
+        { count: abnormalPoo },
+      ),
     });
   }
 
@@ -123,8 +164,12 @@ export function detectHealthFlags(summary) {
     flags.push({
       key: "urinary",
       severity: SEVERITY.NOTABLE,
-      title: "Urinary changes logged",
-      detail: `${peeConcern} urination logs noted difficulty, pain, blood, or increased thirst.`,
+      title: ins("urinaryTitle", "Urinary changes logged"),
+      detail: ins(
+        "urinaryDetail",
+        "{{count}} urination logs noted difficulty, pain, blood, or increased thirst.",
+        { count: peeConcern },
+      ),
     });
   }
 
@@ -134,8 +179,12 @@ export function detectHealthFlags(summary) {
     flags.push({
       key: "appetite",
       severity: SEVERITY.INFO,
-      title: "Reduced appetite noted",
-      detail: `${lowAppetite} feeding logs noted low or reduced appetite.`,
+      title: ins("appetiteTitle", "Reduced appetite noted"),
+      detail: ins(
+        "appetiteDetail",
+        "{{count}} feeding logs noted low or reduced appetite.",
+        { count: lowAppetite },
+      ),
     });
   }
 
@@ -146,8 +195,18 @@ export function detectHealthFlags(summary) {
       flags.push({
         key: `med-${m.name}`,
         severity: SEVERITY.INFO,
-        title: `${m.name}: ${m.missed} missed dose${m.missed > 1 ? "s" : ""}`,
-        detail: `${pctGiven}% adherence (${m.given}/${m.total} doses given).`,
+        title: ins(
+          "medMissedTitle",
+          m.missed > 1
+            ? "{{name}}: {{count}} missed doses"
+            : "{{name}}: {{count}} missed dose",
+          { name: m.name, count: m.missed },
+        ),
+        detail: ins(
+          "medAdherenceDetail",
+          "{{pct}}% adherence ({{given}}/{{total}} doses given).",
+          { pct: pctGiven, given: m.given, total: m.total },
+        ),
       });
     }
   }
@@ -160,18 +219,30 @@ export function detectHealthFlags(summary) {
  * can replace this server-side without changing the UI). Empty-safe + never diagnostic.
  */
 export function buildRecap(summary, flags) {
-  const name = summary?.pet?.name || "Your pet";
+  const name = summary?.pet?.name || petFallback();
   if (!hasEnoughData(summary)) {
-    return `There isn't quite enough logged yet to spot trends for ${name}. Keep logging daily and the insights will sharpen over time.`;
+    return ins(
+      "recapNotEnough",
+      "There isn't quite enough logged yet to spot trends for {{name}}. Keep logging daily and the insights will sharpen over time.",
+      { name },
+    );
   }
   if (!flags || flags.length === 0) {
-    return `Nothing notable stood out in ${name}'s logs for this period — a good baseline to share with your vet. Keep up the daily tracking.`;
+    return ins(
+      "recapNothing",
+      "Nothing notable stood out in {{name}}'s logs for this period — a good baseline to share with your vet. Keep up the daily tracking.",
+      { name },
+    );
   }
   const titles = flags.map((f) => f.title.toLowerCase());
-  return `A few things in ${name}'s logs may be worth mentioning at your next visit: ${titles.join(
-    "; ",
-  )}. This is a tracking aid, not a diagnosis — your vet can interpret what it means.`;
+  return ins(
+    "recapSome",
+    "A few things in {{name}}'s logs may be worth mentioning at your next visit: {{titles}}. This is a tracking aid, not a diagnosis — your vet can interpret what it means.",
+    { name, titles: titles.join("; ") },
+  );
 }
 
+// English text (kept as an export for back-compat); render with getDisclaimer() so it localizes.
 export const DISCLAIMER =
   "PawPi helps you track changes and prepare better conversations with your veterinarian. It does not diagnose or replace professional veterinary care.";
+export const getDisclaimer = () => tr("health.disclaimer", DISCLAIMER);

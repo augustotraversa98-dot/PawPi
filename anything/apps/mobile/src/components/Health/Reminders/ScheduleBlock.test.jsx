@@ -1,5 +1,9 @@
 import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
+
+// The frequency header resolves through t() (cadenceSelector.labels.*) — English catalog here.
+jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
+
 import ScheduleBlock, { scheduleFromItem } from "./ScheduleBlock";
 import { ROUTINE_FREQUENCY } from "@/data/routinesData";
 

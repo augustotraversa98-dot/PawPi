@@ -76,8 +76,6 @@
   ["src/components/Health/Reminders/WalkRoutineModal.jsx", "🔧 Debug:", "__DEV__-only debug banner"],
   ["src/components/Health/Reminders/WellnessCheckRoutineModal.jsx", "Wellness Check", "persisted routine data (stored in English by design; RoutineCard localizes by type)"],
   ["src/components/Health/Reminders/WellnessCheckRoutineModal.jsx", "{} check{}", "persisted routine data (stored in English by design; RoutineCard localizes by type)"],
-  ["src/components/Health/WalkActivity/WalkerLiveMap.jsx", "Location is off for this walk — the time still tracks, just no live map.", "baseline: translated in the health-data PR"],
-  ["src/components/Health/WalkActivity/WalkerLiveMap.jsx", "Waiting for the first GPS points…", "baseline: translated in the health-data PR"],
   ["src/components/Providers/StorefrontPanels/AboutPanel.jsx", "Facebook", "brand name"],
   ["src/components/Providers/StorefrontPanels/AboutPanel.jsx", "Google Maps", "brand name"],
   ["src/components/Providers/StorefrontPanels/AboutPanel.jsx", "Instagram", "brand name"],

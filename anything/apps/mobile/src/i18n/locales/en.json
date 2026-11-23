@@ -5573,5 +5573,343 @@
       "trackedManual": "Tracked manually",
       "steps": "{{steps}} steps"
     }
+  },
+  "healthDataUi": {
+    "yourPetLower": "your pet",
+    "routineType": {
+      "feeding": {
+        "label": "Feeding",
+        "description": "Meal times, snacks, and food reminders"
+      },
+      "walk": {
+        "label": "Walks",
+        "description": "Walk schedule, social walks, and activity tracking"
+      },
+      "photo_check": {
+        "label": "Photo Check",
+        "description": "Recurring photos of paws, ears, teeth, eyes, and more"
+      },
+      "medical_care": {
+        "label": "Medical Care",
+        "description": "Medication, vaccines, flea/tick prevention, and supplements"
+      },
+      "wellness_check": {
+        "label": "Wellness Check",
+        "description": "Weight, body condition, mood, and quick health checks"
+      },
+      "vet_appointment": {
+        "label": "Vet Appointment",
+        "description": "Scheduled vet visits and follow-ups"
+      },
+      "medication": {
+        "label": "Medication",
+        "description": "Medication schedule"
+      },
+      "general_check": {
+        "label": "General Check",
+        "description": "Daily health check"
+      },
+      "weight_check": {
+        "label": "Weight Check",
+        "description": "Weight monitoring"
+      },
+      "preventive": {
+        "label": "Preventive Care",
+        "description": "Flea, tick, heartworm prevention"
+      },
+      "vaccine": {
+        "label": "Vaccine",
+        "description": "Vaccination schedule"
+      }
+    },
+    "cadence": {
+      "daily": "daily",
+      "weekdays": "weekdays",
+      "weekends": "weekends",
+      "weekly": "weekly",
+      "biweekly": "every 2 weeks",
+      "monthly": "monthly",
+      "every_3_months": "every 3 months",
+      "every_6_months": "every 6 months",
+      "yearly": "yearly",
+      "custom": "custom",
+      "once": "once",
+      "hourly": "hourly"
+    },
+    "days": {
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday",
+      "sunday": "Sunday"
+    },
+    "daysEvery": {
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday",
+      "sunday": "Sunday"
+    },
+    "sched": {
+      "inactive": "Inactive",
+      "itemTypes": {
+        "medication": "Medication",
+        "vaccine": "Vaccine",
+        "flea_tick": "Flea/tick",
+        "deworming": "Deworming",
+        "heartworm": "Heartworm",
+        "supplement": "Supplement",
+        "other": "Other",
+        "item": "Item"
+      },
+      "dailyAt": "daily at {{times}}",
+      "daily": "daily",
+      "nextDue": "next due {{date}}",
+      "noMealReminders": "No active meal reminders",
+      "everyDayAt": "Every day at {{times}}",
+      "and": " and ",
+      "mealsCustom_one": "{{count}} meal with custom schedules",
+      "mealsCustom_other": "{{count}} meals with custom schedules",
+      "noWalkReminders": "No active walk reminders",
+      "dailyAtWalks": "Daily at {{times}}",
+      "walkFreq": {
+        "daily": "daily",
+        "weekdays": "weekdays",
+        "weekends": "weekends",
+        "custom": "custom"
+      },
+      "walkSummary": "{{name}} {{freq}} at {{time}}",
+      "noPhotoReminders": "No active photo check reminders",
+      "cadenceDayAt": "{{cadence}} {{day}} at {{time}}",
+      "areaCadenceDay": "{{item}} {{cadence}} {{day}} {{time}}",
+      "cadenceAt": "{{cadence}} at {{time}}",
+      "itemCadence": "{{item}} {{cadence}} {{time}}",
+      "noWellnessReminders": "No active wellness check reminders",
+      "wellnessItems": {
+        "general": "General",
+        "weight": "Weight",
+        "body_condition": "Body condition",
+        "mobility": "Mobility",
+        "mood_energy": "Mood/Energy",
+        "skin_coat": "Skin/Coat",
+        "appetite_hydration": "Appetite/Hydration"
+      },
+      "noVetReminders": "No active vet appointment reminders",
+      "vetAppointment": "Vet Appointment",
+      "dateTbd": "Date TBD",
+      "vetLine": "{{title}} • {{date}} at {{time}}",
+      "everyDay": "Every day",
+      "weekdays": "Weekdays",
+      "weekends": "Weekends",
+      "weekly": "Weekly",
+      "everyDayName": "Every {{day}}",
+      "biweekly": "Every 2 weeks",
+      "monthly": "Monthly",
+      "customSchedule": "Custom schedule",
+      "custom": "Custom",
+      "atTimes": " at {{times}}",
+      "untilDate": " until {{date}}"
+    },
+    "next": {
+      "notScheduled": "Not scheduled",
+      "wellness": {
+        "general": "General check",
+        "weight": "Weight check",
+        "body_condition": "Body condition check",
+        "mobility": "Mobility check",
+        "mood_energy": "Mood / Energy check",
+        "skin_coat": "Skin / Coat check",
+        "appetite_hydration": "Appetite / Hydration check",
+        "custom": "Wellness check"
+      },
+      "photo": {
+        "paws": "Paws photo",
+        "ears": "Ears photo",
+        "eyes": "Eyes photo",
+        "teeth": "Teeth photo",
+        "skin_fur": "Skin/Fur photo",
+        "face": "Face photo",
+        "full_body": "Full body photo",
+        "other": "Photo check"
+      },
+      "reminder": "Reminder",
+      "todayAt": "{{label}} {{timeOfDay}} at {{time}}",
+      "tomorrowAt": "{{label}} tomorrow at {{time}}",
+      "dayAt": "{{label}} {{day}} at {{time}}",
+      "tonight": "tonight",
+      "thisMorning": "this morning",
+      "thisAfternoon": "this afternoon",
+      "thisEvening": "this evening"
+    },
+    "wellnessLog": {
+      "types": {
+        "weight": "Weight",
+        "body_condition": "Body condition",
+        "mobility": "Mobility",
+        "mood_energy": "Mood / Energy",
+        "skin_coat": "Skin / Coat",
+        "appetite_hydration": "Appetite / Hydration",
+        "general": "General check",
+        "custom": "Custom"
+      },
+      "options": {
+        "body_condition": {
+          "under": "Under",
+          "ideal": "Ideal",
+          "over": "Over"
+        },
+        "mobility": {
+          "normal": "Normal",
+          "slightly_stiff": "Slightly stiff",
+          "stiff": "Stiff",
+          "limping": "Limping",
+          "cant_bear_weight": "Can't bear weight"
+        },
+        "mood_energy": {
+          "low": "Low",
+          "normal": "Normal",
+          "high": "High"
+        },
+        "skin_coat": {
+          "healthy": "Healthy",
+          "dry": "Dry",
+          "itchy": "Itchy",
+          "redness": "Redness",
+          "hot_spots": "Hot spots",
+          "other": "Other"
+        },
+        "appetite_hydration": {
+          "normal": "Normal",
+          "reduced": "Reduced",
+          "increased": "Increased",
+          "not_consuming": "Not eating/drinking"
+        },
+        "general": {
+          "all_good": "All good",
+          "noticed_something": "Noticed something"
+        }
+      },
+      "errors": {
+        "weight": "Please enter a valid weight",
+        "value": "Please enter a value",
+        "option": "Please choose an option",
+        "note": "Please add a note about what you noticed"
+      }
+    },
+    "insights": {
+      "areas": {
+        "eyes": "Eyes",
+        "ears": "Ears",
+        "teeth": "Teeth & mouth",
+        "skin": "Skin & fur",
+        "paws": "Paws",
+        "face": "Face",
+        "mood": "Mood",
+        "energy": "Energy"
+      },
+      "quickCheckOneTitle": "Quick Check: {{area}} looked different",
+      "quickCheckManyTitle": "Quick Check flagged {{count}} areas",
+      "quickCheckDetail_one": "{{labels}} was marked \"changed\" during a Quick Check this period.",
+      "quickCheckDetail_other": "{{labels}} were marked \"changed\" during a Quick Check this period.",
+      "weightLossTitle": "Weight is trending down",
+      "weightLossDetail": "{{name}}'s logged weight dropped about {{pct}}% over this period.",
+      "weightGainTitle": "Weight is trending up",
+      "weightGainDetail": "{{name}}'s logged weight rose about {{pct}}% over this period.",
+      "vomitingTitle": "Repeated vomiting logged",
+      "vomitingDetail": "{{count}} vomiting episodes were recorded in this period.",
+      "stoolTitle": "Several abnormal stool entries",
+      "stoolDetail": "{{count}} stool logs noted blood, mucus, or straining.",
+      "urinaryTitle": "Urinary changes logged",
+      "urinaryDetail": "{{count}} urination logs noted difficulty, pain, blood, or increased thirst.",
+      "appetiteTitle": "Reduced appetite noted",
+      "appetiteDetail": "{{count}} feeding logs noted low or reduced appetite.",
+      "medMissedTitle_one": "{{name}}: {{count}} missed dose",
+      "medMissedTitle_other": "{{name}}: {{count}} missed doses",
+      "medAdherenceDetail": "{{pct}}% adherence ({{given}}/{{total}} doses given).",
+      "recapNotEnough": "There isn't quite enough logged yet to spot trends for {{name}}. Keep logging daily and the insights will sharpen over time.",
+      "recapNothing": "Nothing notable stood out in {{name}}'s logs for this period — a good baseline to share with your vet. Keep up the daily tracking.",
+      "recapSome": "A few things in {{name}}'s logs may be worth mentioning at your next visit: {{titles}}. This is a tracking aid, not a diagnosis — your vet can interpret what it means."
+    },
+    "vetText": {
+      "defaultName": "Pet",
+      "title": "PawPi Vet Summary — {{name}}",
+      "period": "Period: {{range}}",
+      "worth": "Worth discussing with your vet:",
+      "logsHeader": "Logs in this period:",
+      "food": "Food logs: {{count}}",
+      "lowAppetite": "{{count}} low appetite",
+      "stool": "Stool: {{count}}",
+      "abnormal": "{{count}} abnormal",
+      "urination": "Urination: {{count}}",
+      "withConcerns": "{{count}} with concerns",
+      "vomiting": "Vomiting episodes: {{count}}",
+      "weight_one": "Weight: {{first}} → {{last}} ({{count}} weigh-in)",
+      "weight_other": "Weight: {{first}} → {{last}} ({{count}} weigh-ins)",
+      "walks": "Walks: {{count}} ({{minutes}} min)",
+      "photoChecks": "Photo checks: {{count}}",
+      "quickChecks": "Quick checks: {{count}}",
+      "quickChecksChanged": "Quick checks: {{count}} (changed: {{areas}})",
+      "medsHeader": "Medications:",
+      "dosesGiven": "{{given}}/{{total}} doses given",
+      "conditionsHeader": "Conditions & allergies:",
+      "questionsHeader": "Questions for the vet:"
+    },
+    "wrapped": {
+      "months": {
+        "m1": "January",
+        "m2": "February",
+        "m3": "March",
+        "m4": "April",
+        "m5": "May",
+        "m6": "June",
+        "m7": "July",
+        "m8": "August",
+        "m9": "September",
+        "m10": "October",
+        "m11": "November",
+        "m12": "December"
+      },
+      "dateLabel": "{{month}} {{day}}, {{year}}",
+      "notEnough": "Keep posting daily moments — your Wrapped unlocks as the memories grow.",
+      "introHeadline": "{{name}}'s Wrapped",
+      "introSub": "A year of little moments",
+      "postsLabel": "daily moments captured",
+      "streakLabel": "longest posting streak",
+      "monthLabel": "your most-posted month",
+      "friendsLabel": "furry friends made",
+      "walksLabel": "walks logged",
+      "sinceHeadline": "Together since"
+    },
+    "ui": {
+      "nextDue": "Next due {{date}}",
+      "lastGiven": "Last given {{date}}",
+      "timeSensitive": "TIME-SENSITIVE",
+      "markCompleted": "Mark completed",
+      "somethingWasOff": "Something was off",
+      "selectAreas": "Select areas",
+      "areasSelected": "{{count}} selected",
+      "mealN": "Meal {{n}}"
+    },
+    "walkerLiveMap": {
+      "locationOff": "Location is off for this walk — the time still tracks, just no live map.",
+      "waitingGps": "Waiting for the first GPS points…"
+    },
+    "editMedicalProfileModal": {
+      "validEmail": "Please enter a valid email",
+      "validWeight": "Please enter a valid weight",
+      "validDate": "Please enter a valid date",
+      "male": "Male",
+      "female": "Female"
+    },
+    "spayNeuter": {
+      "spayed": "Spayed",
+      "neutered": "Neutered",
+      "notSpayedNeutered": "Not spayed/neutered",
+      "unknown": "Unknown"
+    }
   }
 }
