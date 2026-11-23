@@ -2,11 +2,13 @@ import * as Calendar from "expo-calendar";
 import { COLORS } from "@/constants/theme";
 import { Platform, Alert } from "react-native";
 import { translate } from "@/utils/appAlert";
+import { gt } from "@/utils/generatedCopy";
 import {
   getRecurrenceRule,
   parseWalkTime,
   formatFrequency,
   buildEventNotes,
+  yourPetLabel,
   buildBookingCalendarDetails,
   buildTelehealthCalendarDetails,
   buildTransportCalendarDetails,
@@ -204,7 +206,7 @@ export async function deleteCalendarEvent(eventId) {
 // ===== WALK CALENDAR (thin wrappers — unchanged return shape: boolean) =====
 
 // Add a (possibly recurring) walk block to the Walks calendar. Returns true on success.
-export async function addWalkToCalendar(walk, petName = "Your pet") {
+export async function addWalkToCalendar(walk, petName = yourPetLabel()) {
   try {
     const hasPermission = await requestCalendarPermission();
     if (!hasPermission) {
@@ -231,7 +233,8 @@ export async function addWalkToCalendar(walk, petName = "Your pet") {
     const recurrenceRule = getRecurrenceRule(walk);
 
     const details = {
-      title: "Busy", // Private title
+      // Private title shown on the owner's calendar (the walk's details stay private).
+      title: gt("generatedUi.calendar.busy", "Busy"),
       startDate,
       endDate,
       timeZone: "default",
@@ -303,7 +306,7 @@ export async function getWalkEvents() {
 // Returns { success, eventId } / { success: false, error }.
 export async function addVetAppointmentToCalendar(
   appointment,
-  petName = "Your pet",
+  petName = yourPetLabel(),
 ) {
   try {
     const hasPermission = await requestCalendarPermission();
@@ -323,7 +326,9 @@ export async function addVetAppointmentToCalendar(
     const endDate = new Date(appointmentDateTime.getTime() + 30 * 60 * 1000);
 
     const details = {
-      title: `Vet appointment for ${petName}`,
+      title: gt("generatedUi.calendar.vetTitle", "Vet appointment for {{name}}", {
+        name: petName,
+      }),
       startDate: appointmentDateTime,
       endDate,
       timeZone: "default",
@@ -354,7 +359,7 @@ export async function addVetAppointmentToCalendar(
 export async function updateVetAppointmentInCalendar(
   eventId,
   appointment,
-  petName = "Your pet",
+  petName = yourPetLabel(),
 ) {
   try {
     if (!eventId) {
@@ -372,7 +377,9 @@ export async function updateVetAppointmentInCalendar(
     const endDate = new Date(appointmentDateTime.getTime() + 30 * 60 * 1000);
 
     const details = {
-      title: `Vet appointment for ${petName}`,
+      title: gt("generatedUi.calendar.vetTitle", "Vet appointment for {{name}}", {
+        name: petName,
+      }),
       startDate: appointmentDateTime,
       endDate,
       location: appointment.clinic || undefined,
@@ -467,7 +474,7 @@ export async function addSurfaceEventToCalendar(calendar, details, existingEvent
 
 export async function addBookingToCalendar(
   booking,
-  petName = "Your pet",
+  petName = yourPetLabel(),
   existingEventId,
 ) {
   return addSurfaceEventToCalendar(
@@ -487,7 +494,7 @@ export async function addTransportToCalendar(trip, existingEventId) {
 
 export async function addTelehealthToCalendar(
   consult,
-  petName = "Your pet",
+  petName = yourPetLabel(),
   existingEventId,
 ) {
   return addSurfaceEventToCalendar(

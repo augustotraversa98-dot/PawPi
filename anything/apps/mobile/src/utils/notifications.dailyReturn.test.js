@@ -47,6 +47,29 @@ describe("ensureDailyReturnReminder", () => {
     expect(Notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
   });
 
+  it("re-schedules ONCE (same identifier, so it replaces) when the body changes - e.g. the owner switched language", async () => {
+    await ensureDailyReturnReminder("Your pup would love to see you today");
+    Notifications.scheduleNotificationAsync.mockClear();
+    Notifications.cancelScheduledNotificationAsync.mockClear();
+    const id = await ensureDailyReturnReminder("A tu mascota le encantaría verte hoy");
+    expect(id).toBe(ID);
+    expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(1);
+    const arg = Notifications.scheduleNotificationAsync.mock.calls[0][0];
+    expect(arg.identifier).toBe(ID);
+    expect(arg.content.body).toBe("A tu mascota le encantaría verte hoy");
+    // ...and the next call with the same (new) text is a no-op again
+    Notifications.scheduleNotificationAsync.mockClear();
+    await ensureDailyReturnReminder("A tu mascota le encantaría verte hoy");
+    expect(Notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the localized default body when the caller passes none", async () => {
+    await ensureDailyReturnReminder();
+    expect(Notifications.scheduleNotificationAsync.mock.calls[0][0].content.body).toBe(
+      "Your pup would love to see you today 🐾",
+    );
+  });
+
   it("does nothing (no schedule) when permission is not granted", async () => {
     Notifications.getPermissionsAsync.mockResolvedValue({ status: "denied" });
     const id = await ensureDailyReturnReminder("hola");

@@ -1,5 +1,6 @@
 import { formatLocalTime } from "@/utils/localeDateTime";
 import { COLORS } from "@/constants/theme";
+import { gt, actionLabel } from "@/utils/generatedCopy";
 
 // ─────────────────────────────────────────────
 // REMINDERS DATA MODEL & MOCK DATA
@@ -98,17 +99,24 @@ export function getTimeDisplay(reminder) {
   const diffMinutes = Math.round((triggerTime - now) / (1000 * 60));
 
   if (diffMinutes < -15) {
-    return `${Math.abs(diffMinutes)} min overdue`;
+    const count = Math.abs(diffMinutes);
+    return gt("generatedUi.timeDisplay.overdue", `${count} min overdue`, { count });
   }
   if (diffMinutes <= 0) {
-    return "now";
+    return gt("generatedUi.timeDisplay.now", "now");
   }
   if (diffMinutes < 60) {
-    return `in ${diffMinutes} min`;
+    return gt("generatedUi.timeDisplay.inMinutes", `in ${diffMinutes} min`, {
+      count: diffMinutes,
+    });
   }
   if (diffMinutes < 1440) {
     const hours = Math.floor(diffMinutes / 60);
-    return `in ${hours} ${hours === 1 ? "hour" : "hours"}`;
+    return gt(
+      "generatedUi.timeDisplay.inHours",
+      `in ${hours} ${hours === 1 ? "hour" : "hours"}`,
+      { count: hours },
+    );
   }
   return formatLocalTime(triggerTime, {
     hour: "numeric",
@@ -442,74 +450,147 @@ export const mockReminders = [
 ];
 
 // Snooze options
+// `label` is a getter so it resolves in the CURRENT language each time the picker renders (this is a
+// module-level constant; it cannot call a hook). `value`/`unit` are what the logic reads — never localized.
 export const SNOOZE_OPTIONS = [
-  { label: "10 minutes", value: 10, unit: "minutes" },
-  { label: "30 minutes", value: 30, unit: "minutes" },
-  { label: "1 hour", value: 60, unit: "minutes" },
-  { label: "Tonight", value: "tonight", unit: "special" },
-  { label: "Tomorrow", value: "tomorrow", unit: "special" },
+  {
+    get label() {
+      return gt("generatedUi.snooze.minutes10", "10 minutes");
+    },
+    value: 10,
+    unit: "minutes",
+  },
+  {
+    get label() {
+      return gt("generatedUi.snooze.minutes30", "30 minutes");
+    },
+    value: 30,
+    unit: "minutes",
+  },
+  {
+    get label() {
+      return gt("generatedUi.snooze.hour1", "1 hour");
+    },
+    value: 60,
+    unit: "minutes",
+  },
+  {
+    get label() {
+      return gt("generatedUi.snooze.tonight", "Tonight");
+    },
+    value: "tonight",
+    unit: "special",
+  },
+  {
+    get label() {
+      return gt("generatedUi.snooze.tomorrow", "Tomorrow");
+    },
+    value: "tomorrow",
+    unit: "special",
+  },
 ];
 
-// Reminder type labels and icons
+// Reminder type labels and icons. `label`/`actionLabel` are getters: this is a module-level constant
+// (no hooks), and a getter resolves the wording in the CURRENT language at each read.
 export const REMINDER_TYPE_CONFIG = {
   [REMINDER_TYPES.FEEDING]: {
-    label: "Feeding",
+    get label() {
+      return gt("generatedUi.reminderType.feeding", "Feeding");
+    },
     icon: "🍽️",
     color: "#FFB74D",
-    actionLabel: "Log food",
+    get actionLabel() {
+      return actionLabel("logFood");
+    },
   },
   [REMINDER_TYPES.WATER]: {
-    label: "Water",
+    get label() {
+      return gt("generatedUi.reminderType.water", "Water");
+    },
     icon: "💧",
     color: "#64B5F6",
-    actionLabel: "Log water",
+    get actionLabel() {
+      return actionLabel("logWater");
+    },
   },
   [REMINDER_TYPES.WALK]: {
-    label: "Walk",
+    get label() {
+      return gt("generatedUi.reminderType.walk", "Walk");
+    },
     icon: "🚶",
     color: "#81C784",
-    actionLabel: "Start walk",
+    get actionLabel() {
+      return actionLabel("startWalk");
+    },
   },
   [REMINDER_TYPES.MEDICATION]: {
-    label: "Medication",
+    get label() {
+      return gt("generatedUi.reminderType.medication", "Medication");
+    },
     icon: "💊",
     color: "#9575CD",
-    actionLabel: "Mark as given",
+    get actionLabel() {
+      return actionLabel("markGiven");
+    },
   },
   [REMINDER_TYPES.PREVENTIVE]: {
-    label: "Preventive Care",
+    get label() {
+      return gt("generatedUi.reminderType.preventive", "Preventive Care");
+    },
     icon: "🛡️",
     color: "#4DB6AC",
-    actionLabel: "Mark as done",
+    get actionLabel() {
+      return actionLabel("markDone");
+    },
   },
   [REMINDER_TYPES.VACCINE]: {
-    label: "Vaccine",
+    get label() {
+      return gt("generatedUi.reminderType.vaccine", "Vaccine");
+    },
     icon: "💉",
     color: "#4DD0E1",
-    actionLabel: "Mark as done",
+    get actionLabel() {
+      return actionLabel("markDone");
+    },
   },
   [REMINDER_TYPES.VET_APPOINTMENT]: {
-    label: "Vet Appointment",
+    get label() {
+      return gt("generatedUi.reminderType.vetAppointment", "Vet Appointment");
+    },
     icon: "🩺",
     color: COLORS.coral,
-    actionLabel: "View details",
+    get actionLabel() {
+      return actionLabel("viewDetails");
+    },
   },
   [REMINDER_TYPES.GENERAL_CHECK]: {
-    label: "General Check",
+    get label() {
+      return gt("generatedUi.reminderType.generalCheck", "General Check");
+    },
     icon: "✅",
     color: COLORS.sage,
-    actionLabel: "Start check",
+    get actionLabel() {
+      return actionLabel("startCheck");
+    },
   },
   [REMINDER_TYPES.WEIGHT_CHECK]: {
-    label: "Weight Check",
+    get label() {
+      return gt("generatedUi.reminderType.weightCheck", "Weight Check");
+    },
     icon: "⚖️",
     color: "#FFD54F",
-    actionLabel: "Log weight",
+    get actionLabel() {
+      return actionLabel("logWeight");
+    },
   },
   [REMINDER_TYPES.PHOTO_CHECK]: {
-    label: "Photo Check",
+    get label() {
+      return gt("generatedUi.reminderType.photoCheck", "Photo Check");
+    },
     icon: "📸",
     color: "#64B5F6",
-    actionLabel: "Take photo",
+    get actionLabel() {
+      return actionLabel("takePhoto");
+    },
   },
 };
