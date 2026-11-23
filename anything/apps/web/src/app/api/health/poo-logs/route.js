@@ -1,4 +1,5 @@
 import sql from "@/app/api/utils/sql";
+import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { recordBusinessEvent } from "@/lib/telemetry/business";
@@ -41,14 +42,13 @@ async function POST(request) {
       return Response.json({ error: "petId is required" }, { status: 400 });
     }
 
-    const pets = await sql`
-      SELECT id FROM pets WHERE id = ${petId} AND owner_user_id = ${ownerUserId}
-    `;
-
-    if (pets.length === 0) {
+    // Owner OR an active grantee may log (family: everything; caregiver: logs only — owner decision 2, 2026-11-23).
+    // The row is anchored to the pet's OWNER so it stays visible to the household.
+    const access = await resolvePetLogOwner(ownerUserId, petId, { allowCaregiver: true, logTable: "health_poo_logs" });
+    if (access.error) {
       return Response.json(
-        { error: "Pet not found or access denied" },
-        { status: 403 },
+        { error: access.error, ...(access.code ? { code: access.code } : {}) },
+        { status: access.status },
       );
     }
 
@@ -67,7 +67,7 @@ async function POST(request) {
         notes
       ) VALUES (
         ${petId},
-        ${ownerUserId},
+        ${access.ownerUserId},
         ${amount || null},
         ${shape || null},
         ${color || null},
@@ -120,7 +120,7 @@ async function GET(request) {
     if (petId) {
       logs = await sql`
         SELECT * FROM health_poo_logs
-        WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+        WHERE pet_id = ${petId} AND owner_user_id = (SELECT p.owner_user_id FROM pets p WHERE p.id = ${petId} AND (p.owner_user_id = ${ownerUserId} OR app_user_has_pet_access(p.id)))
         ORDER BY logged_at DESC
         LIMIT ${limit}
       `;

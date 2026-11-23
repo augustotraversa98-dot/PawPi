@@ -43,7 +43,10 @@ describe("GET /api/posts/owner-posted-today", () => {
     expect(sql).toHaveBeenCalledTimes(1);
     expect(sql.mock.calls[0].slice(1)).toEqual([42]);
     const text = sql.mock.calls[0][0].join(" ");
-    expect(text).toContain("pet.owner_user_id = up.id");
+    expect(text).toContain("owner_user_id = up.id");
+    // household (family-sharing PR3): pets shared with the viewer count too (active, unexpired grants)
+    expect(text).toContain("pet_caregivers");
+    expect(text).toContain("expires_at");
     expect(text).toContain("up.auth_user_id =");
   });
 

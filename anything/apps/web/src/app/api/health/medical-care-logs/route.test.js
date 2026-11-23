@@ -10,14 +10,16 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // ('given','completed')). pet_vaccinations is the vaccination-history SSOT.
 //
 // `auth` + `sql` are mocked at the module boundary (no live DB). Call order in the
-// POST: sql 1 = user_profiles lookup, sql 2 = pet-ownership check, sql 3 = the
+// POST: sql 1 = user_profiles lookup, then the access gate (utils/petLogAccess, mocked), then sql 2 = the
 // log(+vaccination) CTE insert.
 
 import { POST } from "./route";
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
+import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
+vi.mock("@/app/api/utils/petLogAccess", () => ({ resolvePetLogOwner: vi.fn() }));
 vi.mock("@/app/api/utils/sql", () => {
   const fn = vi.fn();
   // sql.json(value) binds the RAW value to a jsonb param (reaction_or_issue).
@@ -46,6 +48,8 @@ const lastValues = () => lastCall()?.slice(1) ?? [];
 beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, "error").mockImplementation(() => {});
+  // The ownership/grant gate is the shared helper (utils/petLogAccess); the default here is "the caller owns the pet".
+  resolvePetLogOwner.mockResolvedValue({ ownerUserId: 7, isOwner: true });
 });
 
 describe("POST /api/health/medical-care-logs — vaccination write-through", () => {
@@ -65,20 +69,19 @@ describe("POST /api/health/medical-care-logs — vaccination write-through", () 
 
   it("403 when the pet is not owned by the caller (scoping preserved)", async () => {
     auth.mockResolvedValue(SESSION);
-    sql
-      .mockResolvedValueOnce([PROFILE_ROW]) // profile lookup
-      .mockResolvedValueOnce([]); // pet ownership check → no row
+    sql.mockResolvedValueOnce([PROFILE_ROW]); // profile lookup
+    resolvePetLogOwner.mockResolvedValue({ error: "Pet not found or access denied", status: 403 }); // not owner, no grant
     const res = await POST(postReq({ petId: 55, status: "given" }));
     expect(res.status).toBe(403);
-    // Only profile + ownership ran; the insert never did.
-    expect(sql).toHaveBeenCalledTimes(2);
+    expect(resolvePetLogOwner).toHaveBeenCalledWith(7, 55, { allowCaregiver: true, logTable: "health_medical_care_logs" });
+    // Only the profile lookup ran; the insert never did.
+    expect(sql).toHaveBeenCalledTimes(1);
   });
 
   it("non-vaccine completion writes ONLY the medical-care log (no vaccination row)", async () => {
     auth.mockResolvedValue(SESSION);
     sql
       .mockResolvedValueOnce([PROFILE_ROW])
-      .mockResolvedValueOnce([PET_ROW])
       .mockResolvedValueOnce([LOG_ROW]);
 
     const res = await POST(
@@ -106,7 +109,6 @@ describe("POST /api/health/medical-care-logs — vaccination write-through", () 
     auth.mockResolvedValue(SESSION);
     sql
       .mockResolvedValueOnce([PROFILE_ROW])
-      .mockResolvedValueOnce([PET_ROW])
       .mockResolvedValueOnce([LOG_ROW]);
 
     const res = await POST(
@@ -145,7 +147,6 @@ describe("POST /api/health/medical-care-logs — vaccination write-through", () 
     auth.mockResolvedValue(SESSION);
     sql
       .mockResolvedValueOnce([PROFILE_ROW])
-      .mockResolvedValueOnce([PET_ROW])
       .mockResolvedValueOnce([LOG_ROW]);
 
     const res = await POST(
@@ -160,7 +161,6 @@ describe("POST /api/health/medical-care-logs — vaccination write-through", () 
     auth.mockResolvedValue(SESSION);
     sql
       .mockResolvedValueOnce([PROFILE_ROW])
-      .mockResolvedValueOnce([PET_ROW])
       .mockResolvedValueOnce([LOG_ROW]);
 
     const res = await POST(
@@ -185,7 +185,6 @@ describe("POST /api/health/medical-care-logs — vaccination write-through", () 
     auth.mockResolvedValue(SESSION);
     sql
       .mockResolvedValueOnce([PROFILE_ROW])
-      .mockResolvedValueOnce([PET_ROW])
       .mockResolvedValueOnce([LOG_ROW]);
 
     await POST(
@@ -196,5 +195,32 @@ describe("POST /api/health/medical-care-logs — vaccination write-through", () 
     expect(text).toContain("DO NOTHING");
     // Scoped to the partial unique index predicate.
     expect(text).toContain("source_medical_care_log_id IS NOT NULL");
+  });
+
+  it("a caregiver/family member logs a non-vaccine completion anchored to the pet's OWNER", async () => {
+    auth.mockResolvedValue(SESSION);
+    resolvePetLogOwner.mockResolvedValue({ ownerUserId: 3, isOwner: false });
+    sql.mockResolvedValueOnce([PROFILE_ROW]).mockResolvedValueOnce([LOG_ROW]);
+    const res = await POST(postReq({ petId: 55, careType: "medication", name: "Apoquel", status: "given" }));
+    expect(res.status).toBe(201);
+    expect(lastValues()).toContain(3); // owner_user_id of the row = the pet's owner (3), not the caller (7)
+  });
+
+  it("a NON-owner cannot record an administered vaccine (it writes pet_vaccinations, owner-only) → friendly 403, no insert", async () => {
+    auth.mockResolvedValue(SESSION);
+    resolvePetLogOwner.mockResolvedValue({ ownerUserId: 3, isOwner: false });
+    sql.mockResolvedValueOnce([PROFILE_ROW]);
+    const res = await POST(postReq({ petId: 55, careType: "vaccine", name: "Rabies", status: "completed" }));
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe("vaccine_owner_only");
+    expect(sql).toHaveBeenCalledTimes(1);
+  });
+
+  it("a non-owner logging a SKIPPED vaccine is fine (nothing is written to pet_vaccinations)", async () => {
+    auth.mockResolvedValue(SESSION);
+    resolvePetLogOwner.mockResolvedValue({ ownerUserId: 3, isOwner: false });
+    sql.mockResolvedValueOnce([PROFILE_ROW]).mockResolvedValueOnce([LOG_ROW]);
+    const res = await POST(postReq({ petId: 55, careType: "vaccine", name: "Rabies", status: "skipped" }));
+    expect(res.status).toBe(201);
   });
 });

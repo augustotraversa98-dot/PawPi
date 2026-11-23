@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // DB are mocked at the module boundary — no live DB. The point is the contract +
 // the SCOPING of the delete: owner + pet + routine, and ONLY `%::early` keys.
 
-import { DELETE } from "./route";
+import { DELETE, POST } from "./route";
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
 
@@ -79,5 +79,37 @@ describe("DELETE /api/health/reminder-dismissals — clear early acks", () => {
 
     const res = await DELETE(req("?petId=1&routineId=16"));
     expect(res.status).toBe(404);
+  });
+});
+
+describe("POST /api/health/reminder-dismissals — the pet must be the caller's own (family-sharing PR3 / 0140 API half)", () => {
+  const postReq = (body) =>
+    new Request("http://localhost/api/health/reminder-dismissals", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  const BODY = { petId: 5, reminderType: "feeding", instanceKey: "k1", scheduledDate: "2026-11-20" };
+
+  it("a pet the caller does not own -> 403 and NO insert (profile + pet check only)", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]).mockResolvedValueOnce([]); // profile, then the ownership lookup finds nothing
+    const res = await POST(postReq(BODY));
+    expect(res.status).toBe(403);
+    expect(sql).toHaveBeenCalledTimes(2);
+    const petCheck = sql.mock.calls[1][0].join(" ");
+    expect(petCheck).toContain("FROM pets");
+    expect(petCheck).toContain("owner_user_id");
+  });
+
+  it("the caller's own pet -> the dismissal is inserted", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([{ id: 5 }]) // pet is theirs
+      .mockResolvedValueOnce([{ id: 99 }]); // INSERT ... RETURNING
+    const res = await POST(postReq(BODY));
+    expect(res.status).toBeLessThan(300);
+    expect(sql.mock.calls[2][0].join(" ")).toContain("INSERT INTO reminder_dismissals");
   });
 });

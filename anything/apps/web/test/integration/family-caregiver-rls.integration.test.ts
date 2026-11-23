@@ -159,12 +159,28 @@ describe('RLS 2.47 — CAREGIVER scoped read-only', () => {
     });
   });
 
-  it('caregiver gets ZERO health logs (family-only) and CANNOT write routines/profile', async () => {
+  // CHANGED by PR3 / migration 0139 (owner decision 2, 2026-11-23): a caregiver now READS the health logs (they used to get zero)
+  // but is still read-only on everything they could not write before.
+  it('caregiver READS health logs (0139) but CANNOT write routines or the profile', async () => {
     await asApp(CARE.profileId, async (tx) => {
-      expect(await tx`select id from health_food_logs`).toHaveLength(0);
+      expect(ids(await tx`select id from health_food_logs`)).toEqual([FOODLOG]);
       expect(await tx`update routines set title = 'care-edit' returning id`).toHaveLength(0);
       expect(await tx`update pets set name = 'X' where id = ${PET} returning id`).toHaveLength(0);
     });
+  });
+
+  it('caregiver can APPEND a log anchored to the owner but cannot edit or delete one (0139: insert-only)', async () => {
+    await asApp(CARE.profileId, async (tx) => {
+      const ok = await tx`
+        insert into health_food_logs (id, pet_id, owner_user_id, logged_at)
+        values (70, ${PET}, ${OWNER.profileId}, now()) returning id`;
+      expect(ok).toHaveLength(1);
+      expect(await tx`update health_food_logs set notes = 'x' where id = ${FOODLOG} returning id`).toHaveLength(0);
+      expect(await tx`delete from health_food_logs where id = ${FOODLOG} returning id`).toHaveLength(0);
+    });
+    // NOTE (pre-existing, found while writing this): the 0022 owner policy lets ANY user insert a row stamped to THEMSELVES against any
+    // pet_id, so a policy-level refusal of a mis-anchored caregiver row is not what protects the household. The ROUTES do: every health read
+    // is anchored to the pet's owner_user_id, so such a row is never shown (proven in shared-pets-access.integration.test.ts).
   });
 });
 

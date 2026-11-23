@@ -44,14 +44,21 @@ async function GET(request) {
         p.birthday,
         p.adoption_date,
         p.avatar_url,
-        p.notes
+        p.notes,
+        p.owner_user_id AS _pet_owner
       FROM pets p
-      WHERE p.id = ${petId} AND p.owner_user_id = ${ownerUserId}
+      WHERE p.id = ${petId}
+        AND (p.owner_user_id = ${ownerUserId} OR app_user_has_pet_access(p.id))
     `;
 
     if (!pet || pet.length === 0) {
       return Response.json({ error: "Pet not found" }, { status: 404 });
     }
+    // Read access: the owner OR an active, unexpired grantee (family or caregiver — 0049 policies already allow the read).
+    // The medical profile and weight history are keyed on the pet's OWNER, so use that id (identical to the caller for an owner);
+    // the helper column is stripped so the response shape is unchanged.
+    const petOwnerId = pet[0]._pet_owner;
+    delete pet[0]._pet_owner;
 
     // Get medical profile
     const medicalProfile = await sql`
@@ -70,12 +77,12 @@ async function GET(request) {
         insurance_policy_number,
         medical_notes
       FROM pet_medical_profiles
-      WHERE pet_id = ${petId} AND owner_user_id = ${ownerUserId} AND deleted_at IS NULL
+      WHERE pet_id = ${petId} AND owner_user_id = ${petOwnerId} AND deleted_at IS NULL
     `;
 
     const currentWeight = await getCurrentWeight(
       petId,
-      ownerUserId,
+      petOwnerId,
       pet[0].weight,
       pet[0].weight_unit,
     );

@@ -343,7 +343,7 @@ describe('GET /api/pets/[id]/profile', () => {
       expect(queryText(4).toLowerCase()).toContain('auth_user_id');
       expect(queryValues(4)).toEqual([42]);
       // …and the posted-today check inside it is owner-scoped on the resolved user_profiles.id (up.id), never the auth id.
-      expect(queryText(4).toLowerCase()).toContain('pet.owner_user_id = up.id');
+      expect(queryText(4).toLowerCase()).toContain('owner_user_id = up.id');
     });
 
     it("another owner's pet + viewer HAS posted today: moments are returned", async () => {

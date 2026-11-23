@@ -25,6 +25,19 @@ async function POST(request, { params }) {
       return Response.json({ error: "Invalid grant" }, { status: 400 });
     }
 
+    // A pending invite whose access window has already passed cannot be accepted: it would become "active" with a gate that
+    // always denies. The grantee can read their own grant under RLS, so this is a plain lookup.
+    const pending = await sql`
+      SELECT expires_at FROM pet_caregivers
+      WHERE id = ${grantId} AND grantee_user_id = ${userId} AND status = 'pending'
+    `;
+    if (pending.length > 0 && pending[0].expires_at && new Date(pending[0].expires_at).getTime() <= Date.now()) {
+      return Response.json(
+        { error: "This invitation has expired.", code: "invite_expired" },
+        { status: 410 },
+      );
+    }
+
     try {
       const rows = await sql`SELECT respond_pet_caregiver(${grantId}, ${accept}) AS status`;
       return Response.json({ status: rows[0].status });

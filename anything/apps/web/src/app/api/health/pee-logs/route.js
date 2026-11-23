@@ -33,7 +33,7 @@ async function GET(request) {
 
     const logs = await sql`
       SELECT * FROM health_pee_logs
-      WHERE pet_id = ${parseInt(petId)} AND owner_user_id = ${userProfileId}
+      WHERE pet_id = ${parseInt(petId)} AND owner_user_id = (SELECT p.owner_user_id FROM pets p WHERE p.id = ${parseInt(petId)} AND (p.owner_user_id = ${userProfileId} OR app_user_has_pet_access(p.id)))
       ORDER BY logged_at DESC
       LIMIT ${limit}
     `;
@@ -88,9 +88,12 @@ async function POST(request) {
     // FF2: owner OR accepted FAMILY caregiver may log (0049); the write anchors to
     // the pet's OWNER. Also the ownership gate — a caller cannot write a log against
     // a pet they neither own nor were granted family access to.
-    const access = await resolvePetLogOwner(userProfileId, parseInt(petId));
+    const access = await resolvePetLogOwner(userProfileId, parseInt(petId), { allowCaregiver: true, logTable: "health_pee_logs" });
     if (access.error) {
-      return Response.json({ error: access.error }, { status: access.status });
+      return Response.json(
+        { error: access.error, ...(access.code ? { code: access.code } : {}) },
+        { status: access.status },
+      );
     }
     const ownerUserId = access.ownerUserId;
 

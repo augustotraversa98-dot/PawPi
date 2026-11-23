@@ -1,4 +1,5 @@
 import sql from "@/app/api/utils/sql";
+import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 import { jsonbWriteValue } from "@/app/api/utils/jsonb";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
@@ -44,12 +45,20 @@ async function POST(request) {
       return Response.json({ error: "status is required" }, { status: 400 });
     }
 
-    const pets = await sql`
-      SELECT id FROM pets WHERE id = ${petId} AND owner_user_id = ${ownerUserId}
-    `;
-    if (pets.length === 0) {
+    // Owner OR an active grantee may log (family: everything; caregiver: logs only — owner decision 2, 2026-11-23).
+    // The row is anchored to the pet's OWNER so it stays visible to the household.
+    const access = await resolvePetLogOwner(ownerUserId, petId, { allowCaregiver: true, logTable: "health_medical_care_logs" });
+    if (access.error) {
       return Response.json(
-        { error: "Pet not found or access denied" },
+        { error: access.error, ...(access.code ? { code: access.code } : {}) },
+        { status: access.status },
+      );
+    }
+    // A vaccine administered through a medical-care log is ALSO written to pet_vaccinations (below), a table only the OWNER may
+    // write today (family/caregiver vaccination access is a later step), so refuse it up front instead of failing mid-statement.
+    if (!access.isOwner && careType === "vaccine" && ["given", "completed"].includes(status)) {
+      return Response.json(
+        { error: "Only the pet's owner can record a vaccine.", code: "vaccine_owner_only" },
         { status: 403 },
       );
     }
@@ -88,7 +97,7 @@ async function POST(request) {
           reaction_or_issue
         ) VALUES (
           ${petId},
-          ${ownerUserId},
+          ${access.ownerUserId},
           ${routineId || null},
           ${medicalCareItemId || null},
           ${careType || null},
@@ -162,7 +171,7 @@ async function GET(request) {
     if (petId) {
       logs = await sql`
         SELECT * FROM health_medical_care_logs
-        WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+        WHERE pet_id = ${petId} AND owner_user_id = (SELECT p.owner_user_id FROM pets p WHERE p.id = ${petId} AND (p.owner_user_id = ${ownerUserId} OR app_user_has_pet_access(p.id)))
           ${sinceClause}
         ORDER BY given_at DESC
         LIMIT ${limit}

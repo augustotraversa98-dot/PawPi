@@ -39,52 +39,71 @@ async function GET(request) {
       return Response.json({ error: "User profile not found" }, { status: 404 });
     }
 
-    // Ownership check (RLS would also scope, but a clean 404 is friendlier).
+    // Access check (RLS would also scope, but a clean 404 is friendlier): the OWNER, or an active, unexpired grantee
+    // (family or caregiver may READ the emergency picture — owner decision 2, 2026-11-23). owner_user_id is selected only to
+    // tell the two apart and is stripped from the response so the owner's payload is unchanged.
     const pet = await sql`
-      SELECT id, name, species, breed, age_years, age_months, gender, avatar_url
-      FROM pets WHERE id = ${petId} AND owner_user_id = ${ownerUserId}
+      SELECT id, name, species, breed, age_years, age_months, gender, avatar_url, owner_user_id AS _pet_owner
+      FROM pets WHERE id = ${petId} AND (owner_user_id = ${ownerUserId} OR app_user_has_pet_access(id))
     `;
     if (pet.length === 0) {
       return Response.json({ error: "Pet not found" }, { status: 404 });
     }
+    const petOwnerId = pet[0]._pet_owner;
+    delete pet[0]._pet_owner;
+    const isOwner = petOwnerId === ownerUserId;
 
-    // Lazily create the card (one per pet) with a permanent tag token. ON CONFLICT keeps the
-    // existing row + its stable tag_token (a printed tag must never break).
-    const tagToken = crypto.randomUUID().replace(/-/g, "");
-    const cardRows = await sql`
-      INSERT INTO pet_emergency_cards (pet_id, owner_user_id, tag_token)
-      VALUES (${petId}, ${ownerUserId}, ${tagToken})
-      ON CONFLICT (pet_id) DO UPDATE SET updated_at = now()
-      RETURNING id, pet_id, tag_token, show_medical_on_tag, contact_mode, contact_value,
-                blood_type, extra_notes, active
-    `;
-    const card = cardRows[0];
+    let card;
+    if (isOwner) {
+      // Lazily create the card (one per pet) with a permanent tag token. ON CONFLICT keeps the
+      // existing row + its stable tag_token (a printed tag must never break).
+      const tagToken = crypto.randomUUID().replace(/-/g, "");
+      const cardRows = await sql`
+        INSERT INTO pet_emergency_cards (pet_id, owner_user_id, tag_token)
+        VALUES (${petId}, ${ownerUserId}, ${tagToken})
+        ON CONFLICT (pet_id) DO UPDATE SET updated_at = now()
+        RETURNING id, pet_id, tag_token, show_medical_on_tag, contact_mode, contact_value,
+                  blood_type, extra_notes, active
+      `;
+      card = cardRows[0];
+    } else {
+      // A grantee only READS: never create the card (that mints the permanent tag token — an owner act). The tag token and
+      // contact settings are the owner's to manage, so a grantee gets the card WITHOUT its token/contact fields.
+      const cardRows = await sql`
+        SELECT id, pet_id, show_medical_on_tag, blood_type, extra_notes, active
+        FROM pet_emergency_cards WHERE pet_id = ${petId}
+      `;
+      card = cardRows[0] ?? null;
+    }
 
     // Assemble the medical preview from the LIVE owner-scoped sources (owner can read them).
     const mp = await sql`
       SELECT microchip_id, spayed_neutered_status, primary_vet_name, primary_clinic_name,
              vet_phone, emergency_contact_name, emergency_contact_phone, medical_notes
       FROM pet_medical_profiles
-      WHERE pet_id = ${petId} AND owner_user_id = ${ownerUserId} AND deleted_at IS NULL
+      WHERE pet_id = ${petId} AND owner_user_id = ${petOwnerId} AND deleted_at IS NULL
     `;
     const allergies = await sql`
       SELECT allergen, severity, reaction FROM pet_allergies
-      WHERE pet_id = ${petId} AND owner_user_id = ${ownerUserId} ORDER BY id
+      WHERE pet_id = ${petId} AND owner_user_id = ${petOwnerId} ORDER BY id
     `;
     const conditions = await sql`
       SELECT condition, status FROM pet_conditions
-      WHERE pet_id = ${petId} AND owner_user_id = ${ownerUserId} ORDER BY id
+      WHERE pet_id = ${petId} AND owner_user_id = ${petOwnerId} ORDER BY id
     `;
     const lost = await sql`
       SELECT id, reward, last_seen_area FROM lost_reports
-      WHERE pet_id = ${petId} AND owner_user_id = ${ownerUserId} AND status = 'active'
+      WHERE pet_id = ${petId} AND owner_user_id = ${petOwnerId} AND status = 'active'
       ORDER BY created_at DESC LIMIT 1
     `;
-    const links = await sql`
-      SELECT id, token, scope, expires_at, created_at FROM pet_emergency_share_links
-      WHERE pet_id = ${petId} AND owner_user_id = ${ownerUserId} AND revoked_at IS NULL
-      ORDER BY created_at DESC
-    `;
+    // Vet share links (they carry bearer tokens) are an OWNER-only surface: a grantee never sees them.
+    const links = isOwner
+      ? await sql`
+          SELECT id, token, scope, expires_at, created_at FROM pet_emergency_share_links
+          WHERE pet_id = ${petId} AND owner_user_id = ${petOwnerId} AND revoked_at IS NULL
+          ORDER BY created_at DESC
+        `
+      : [];
 
     return Response.json({
       card,

@@ -183,21 +183,21 @@ describe("1. invite → accept / decline through the real routes", () => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────────────────────────
-describe("2. per-role access through the real routes (what is true TODAY)", () => {
+describe("2. per-role access through the real routes", () => {
   beforeEach(async () => {
     await grant(1, PARTNER, "family");
     await grant(2, SITTER, "caregiver");
   });
 
-  it("FAMILY writes health logs anchored to the OWNER; CAREGIVER and OUTSIDER cannot", async () => {
-    as(PARTNER);
-    expect((await apiReq("/health/food-logs", "POST", { petId: PET, mealType: "dinner", foodName: "kibble" })).status).toBe(201);
-    expect((await raw`select owner_user_id from health_food_logs where pet_id = ${PET} order by id desc limit 1`)[0].owner_user_id).toBe(OWNER.profileId);
-    for (const u of [SITTER, OUTSIDER]) {
+  it("FAMILY and CAREGIVER append health logs anchored to the OWNER (PR3: a caregiver can log); an OUTSIDER cannot", async () => {
+    for (const u of [PARTNER, SITTER]) {
       as(u);
-      expect((await apiReq("/health/food-logs", "POST", { petId: PET, mealType: "dinner", foodName: "x" })).status).toBe(403);
+      expect((await apiReq("/health/food-logs", "POST", { petId: PET, mealType: "dinner", foodName: "kibble" })).status).toBe(201);
     }
-    expect(Number((await raw`select count(*)::int n from health_food_logs where pet_id = ${PET}`)[0].n)).toBe(2); // seed + partner's
+    expect((await raw`select distinct owner_user_id from health_food_logs where pet_id = ${PET}`).map((r) => r.owner_user_id)).toEqual([OWNER.profileId]);
+    as(OUTSIDER);
+    expect((await apiReq("/health/food-logs", "POST", { petId: PET, mealType: "dinner", foodName: "x" })).status).toBe(403);
+    expect(Number((await raw`select count(*)::int n from health_food_logs where pet_id = ${PET}`)[0].n)).toBe(3); // seed + partner + sitter
   });
 
   it("FAMILY reads and adds vet-record rows (attributed 'editor'); CAREGIVER + OUTSIDER are 403", async () => {
@@ -246,39 +246,28 @@ describe("2. per-role access through the real routes (what is true TODAY)", () =
     expect((await raw`select name from pets where id = ${PET}`)[0].name).toBe(OWNER.petName);
   });
 
-  it("TODAY [B2]: FAMILY can write a log but reads back NOTHING; routines + medical profile + emergency card are owner-only", async () => {
-    as(PARTNER);
-    expect((await json(await apiReq(`/health/food-logs?petId=${PET}`))).logs ?? []).toHaveLength(0);
-    expect((await apiReq(`/routines?petId=${PET}`)).status).toBe(403);
-    expect((await apiReq(`/pet-medical-profiles?petId=${PET}`)).status).toBe(404);
-    expect((await apiReq(`/emergency-card?petId=${PET}`)).status).toBe(404);
-    as(SITTER);
-    expect((await apiReq(`/routines?petId=${PET}`)).status).toBe(403);
-    expect((await apiReq(`/pet-medical-profiles?petId=${PET}`)).status).toBe(404);
-    expect((await apiReq(`/emergency-card?petId=${PET}`)).status).toBe(404);
-  });
-
-  // DESIRED (owner decision 2): caregiver reads feeding/routines/meds/emergency/health logs and can LOG/complete tasks but
-  // not edit; family reads + writes everything except sharing + deleting the pet. Lands in PR3 (+ a policy migration for caregiver).
-  it.fails("DESIRED [PR3]: FAMILY reads the owner's food logs and routines", async () => {
+  // FLIPPED by PR3 (were "TODAY [B2]" + three "DESIRED [PR3]" pins): both grantee roles READ what the owner decision allows.
+  // The full per-role matrix, revoked/expired members and the default-response proof live in shared-pets-access.integration.test.ts.
+  it("FAMILY reads the owner's food logs, routines, medical profile and emergency card", async () => {
     as(PARTNER);
     expect(((await json(await apiReq(`/health/food-logs?petId=${PET}`))).logs ?? []).length).toBe(1);
     expect((await apiReq(`/routines?petId=${PET}`)).status).toBe(200);
+    expect((await apiReq(`/pet-medical-profiles?petId=${PET}`)).status).toBe(200);
+    expect((await apiReq(`/emergency-card?petId=${PET}`)).status).toBe(200);
   });
-  it.fails("DESIRED [PR3]: CAREGIVER reads routines, medical profile, emergency card and health logs", async () => {
+
+  it("CAREGIVER reads routines, medical profile, emergency card and health logs, and can log — but cannot edit routines or the vet record", async () => {
     as(SITTER);
     expect((await apiReq(`/routines?petId=${PET}`)).status).toBe(200);
     expect((await apiReq(`/pet-medical-profiles?petId=${PET}`)).status).toBe(200);
+    expect((await apiReq(`/emergency-card?petId=${PET}`)).status).toBe(200);
     expect(((await json(await apiReq(`/health/food-logs?petId=${PET}`))).logs ?? []).length).toBe(1);
-  });
-  it.fails("DESIRED [PR3]: CAREGIVER can log (feeding/walk) but still cannot edit routines or the vet record", async () => {
-    as(SITTER);
     expect((await apiReq("/health/food-logs", "POST", { petId: PET, mealType: "dinner", foodName: "kibble" })).status).toBe(201);
     expect((await apiReq("/vet-record/allergies", "POST", { petId: PET, allergen: "x" })).status).toBe(403);
+    expect((await apiReq("/routines", "POST", { petId: PET, type: "feeding", title: "x" })).status).toBeGreaterThanOrEqual(400);
   });
 });
 
-// ───────────────────────────────────────────────────────────────────────────────────────────────
 describe("3. a SHARED-ONLY user (owns no dog) and duplicate pets", () => {
   beforeEach(async () => { await grant(1, PARTNER, "family"); });
 
@@ -293,14 +282,14 @@ describe("3. a SHARED-ONLY user (owns no dog) and duplicate pets", () => {
     expect(await raw`select id from pets where owner_user_id = ${PARTNER.profileId}`).toHaveLength(0);
   });
 
-  it("TODAY [B1]: GET /api/pets for a shared-only user is EMPTY — the app routes this account to onboarding (duplicate-dog path)", async () => {
+  it("the DEFAULT GET /api/pets (what builds 30-32 call) stays EMPTY for a shared-only user — by design, the shared dog is opt-in", async () => {
     as(PARTNER);
     expect((await json(await apiReq("/pets"))).pets).toEqual([]);
   });
 
-  it.fails("DESIRED [PR3]: GET /api/pets also returns the shared dog with is_shared + access_role, only for active/unexpired grants", async () => {
+  it("FLIPPED by PR3: GET /api/pets?include_shared=1 also returns the shared dog with is_shared + access_role (active, unexpired grants only)", async () => {
     as(PARTNER);
-    const pets = (await json(await apiReq("/pets"))).pets;
+    const pets = (await json(await apiReq("/pets?include_shared=1"))).pets;
     expect(pets.map((p: any) => [p.id, p.is_shared, p.access_role])).toEqual([[PET, true, "family"]]);
   });
 
@@ -390,20 +379,17 @@ describe("5. expiry", () => {
     expect((await apiReq("/health/food-logs", "POST", { petId: PET, mealType: "dinner", foodName: "x" })).status).toBe(201);
   });
 
-  it("TODAY [B4]: GET ?mine=true still lists an expired grant as 'active' (and nothing ever flips it to 'expired') — PR3/PR5", async () => {
+  // FLIPPED by PR3 (were "TODAY [B4]" + "DESIRED [PR3]"): an expired grant is never presented as active.
+  it("GET ?mine=true no longer lists an expired grant; the owner's list shows it as 'expired' (never 'active')", async () => {
     await grant(1, PARTNER, "family", { expiresAt: PAST });
     as(PARTNER);
-    expect((await json(await apiReq("/pet-caregivers?mine=true"))).grants.map((g: any) => g.status)).toEqual(["active"]);
-  });
-
-  it.fails("DESIRED [PR3]: GET ?mine=true does not present an expired grant as active", async () => {
-    await grant(1, PARTNER, "family", { expiresAt: PAST });
-    as(PARTNER);
-    expect((await json(await apiReq("/pet-caregivers?mine=true"))).grants.map((g: any) => g.status)).not.toContain("active");
+    expect((await json(await apiReq("/pet-caregivers?mine=true"))).grants).toEqual([]);
+    as(OWNER);
+    const list = (await json(await apiReq(`/pet-caregivers?petId=${PET}`))).grants;
+    expect(list.map((g: any) => [g.status, g.is_expired])).toEqual([["expired", true]]);
   });
 });
 
-// ───────────────────────────────────────────────────────────────────────────────────────────────
 describe("6. a NON-member is denied everywhere", () => {
   beforeEach(async () => {
     await grant(1, PARTNER, "family");
@@ -445,7 +431,8 @@ describe("7. policy coverage on the family tables (catalog-level, all 18)", () =
     "pet_lab_results", "pet_surgeries", "vet_documents", "reminder_dismissals",
   ];
 
-  it("each carries FORCE RLS, an owner policy, and a *_family_all policy gated on app_user_has_pet_family — and NO grantee-any/caregiver write policy today", async () => {
+  it("each carries FORCE RLS, the 0049 *_family_all policy, and (0139) a read policy for any grantee — writes for a caregiver exist only as INSERT on the 12 log tables", async () => {
+    const LOG_TABLES = FAMILY_TABLES.filter((t) => t.startsWith("health_"));
     for (const t of FAMILY_TABLES) {
       const [cls] = await raw`select relrowsecurity as rls, relforcerowsecurity as forced from pg_class where oid = ${"public." + t}::regclass`;
       expect([t, cls.rls, cls.forced]).toEqual([t, true, true]);
@@ -454,12 +441,19 @@ describe("7. policy coverage on the family tables (catalog-level, all 18)", () =
       expect(fam, `${t}_family_all missing`).toBeTruthy();
       expect(String(fam!.qual)).toContain("app_user_has_pet_family");
       expect(String(fam!.with_check)).toContain("app_user_has_pet_family");
-      // No policy on these tables is keyed on app_user_has_pet_access (the any-grantee gate) yet — that arrives with PR3's caregiver read/log policies.
-      expect(pol.filter((p: any) => String(p.qual).includes("app_user_has_pet_access")).map((p: any) => p.policyname)).toEqual([]);
+      const anyGrantee = pol.filter((p: any) => String(p.qual).includes("app_user_has_pet_access") || String(p.with_check).includes("app_user_has_pet_access"));
+      if (LOG_TABLES.includes(t)) {
+        // log tables: SELECT + INSERT for any active grantee, nothing else (append-only for a caregiver)
+        expect(anyGrantee.map((p: any) => `${p.policyname}:${p.cmd}`).sort()).toEqual([`${t}_caregiver_insert:INSERT`, `${t}_grantee_read:SELECT`].sort());
+      } else if (t === "pet_allergies" || t === "pet_conditions") {
+        expect(anyGrantee.map((p: any) => `${p.policyname}:${p.cmd}`)).toEqual([`${t}_grantee_read:SELECT`]); // emergency picture: read only
+      } else {
+        expect(anyGrantee.map((p: any) => p.policyname), `${t} must stay closed to a caregiver`).toEqual([]); // vet documents/labs/surgeries, reminder dismissals
+      }
     }
   });
 
-  it("family WRITE through RLS works on the tables that have a row, and a CAREGIVER sees zero of them", async () => {
+  it("family WRITE through RLS works; a CAREGIVER READS the emergency picture (allergies) but cannot write the vet record", async () => {
     await grant(1, PARTNER, "family");
     await grant(2, SITTER, "caregiver");
     await asApp(PARTNER.profileId, async (tx) => {
@@ -468,7 +462,7 @@ describe("7. policy coverage on the family tables (catalog-level, all 18)", () =
       expect(await tx`select id from pet_allergies where pet_id = ${PET}`).toHaveLength(1);
     });
     await asApp(SITTER.profileId, async (tx) => {
-      expect(await tx`select id from pet_allergies where pet_id = ${PET}`).toHaveLength(0);
+      expect(await tx`select id from pet_allergies where pet_id = ${PET}`).toHaveLength(1); // emergency info: read
     });
     await expect(
       asApp(SITTER.profileId, (tx) => tx`insert into pet_allergies (pet_id, owner_user_id, allergen) values (${PET}, ${OWNER.profileId}, 'y')`),
@@ -476,7 +470,6 @@ describe("7. policy coverage on the family tables (catalog-level, all 18)", () =
   });
 });
 
-// ───────────────────────────────────────────────────────────────────────────────────────────────
 describe("8. app_pet_ring_segments authorises its caller (migration 0137, audit gap A2)", () => {
   const ring = (uid: number | null, petId = PET) =>
     asApp(uid, (tx) => tx`select * from app_pet_ring_segments(${petId}, 'UTC', ${DAY}::date)`);

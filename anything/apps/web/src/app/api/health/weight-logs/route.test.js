@@ -76,7 +76,7 @@ describe("POST /api/health/weight-logs — ownership gate", () => {
     });
     const res = await POST(post({ petId: 999, weight: 12.3 }));
     expect(res.status).toBe(403);
-    expect(resolvePetLogOwner).toHaveBeenCalledWith(7, 999);
+    expect(resolvePetLogOwner).toHaveBeenCalledWith(7, 999, { allowCaregiver: true, logTable: "health_weight_logs" });
     expect(sql).toHaveBeenCalledTimes(1);
   });
 
@@ -88,6 +88,6 @@ describe("POST /api/health/weight-logs — ownership gate", () => {
     resolvePetLogOwner.mockResolvedValue({ ownerUserId: 7, isOwner: true });
     const res = await POST(post({ petId: 5, weight: 12.3 }));
     expect(res.status).toBe(201);
-    expect(resolvePetLogOwner).toHaveBeenCalledWith(7, 5);
+    expect(resolvePetLogOwner).toHaveBeenCalledWith(7, 5, { allowCaregiver: true, logTable: "health_weight_logs" });
   });
 });
