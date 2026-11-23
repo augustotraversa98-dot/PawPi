@@ -25,6 +25,9 @@ const MIGRATION_0139 = read('migrations/0139_grantee_read_and_caregiver_log_rls.
 const MIGRATION_0140 = read('migrations/0140_owner_private_pet_ownership_check.sql');
 const VERIFY_0139 = read('verify_0139.sql');
 const VERIFY_0140 = read('verify_0140.sql');
+const ROLLBACK_0141 = read('rollback_0141.sql');
+const MIGRATION_0141 = read('migrations/0141_family_write_policies.sql');
+const VERIFY_0141 = read('verify_0141.sql');
 
 // OWNER(1) owns Rex(1); STRANGER(2) owns Duke(2); CARE(3) is an active caregiver on Rex.
 const SEED = [
@@ -143,6 +146,54 @@ describe('rollback_0139.sql', () => {
       expect(Object.values(await verifyStatuses(tx, VERIFY_0139)).every((s) => s === 'PASS')).toBe(true);
       await asApp(tx, 3, async () => {
         expect(await tx.unsafe('select id from health_food_logs where pet_id = 1')).toHaveLength(3); // seed + caregiver + owner
+      });
+    });
+  });
+});
+
+// ── PR 3b: rollback_0141.sql ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+// A FAMILY member (user 4) holds an active family grant on Rex; STRANGER(2) owns Duke.
+const FAMILY_SEED = [
+  "insert into auth_users (id, name, email) values (4,'f','f@example.com')",
+  "insert into user_profiles (id, auth_user_id, username) values (4,4,'f')",
+  "insert into pet_caregivers (pet_id, owner_user_id, grantee_user_id, role, status) values (1,1,4,'family','active')",
+];
+const FAMILY_MED = "insert into pet_medications (pet_id, owner_user_id, name) values (1, 1, 'm') returning id";
+const STRANGER_VACC_ON_REX = "insert into pet_vaccinations (pet_id, owner_user_id, name) values (1, 2, 'v') returning id";
+
+describe('rollback_0141.sql', () => {
+  it('a family member loses meds/vaccine/appointment writes, the owner own-row hardening on the 3 tables is undone, it is idempotent, and re-applying restores both', async () => {
+    await inTx(async (tx) => {
+      for (const s of FAMILY_SEED) await tx.unsafe(s);
+
+      // with 0141: family writes (owner-anchored) and a stranger's cross-pet insert is refused
+      await asApp(tx, 4, async () => {
+        expect(await tx.unsafe(FAMILY_MED)).toHaveLength(1);
+      });
+      let err = await asApp(tx, 2, () => refused(tx, () => tx.unsafe(STRANGER_VACC_ON_REX)));
+      expect(String(err?.message)).toMatch(/row-level security/i);
+
+      await tx.unsafe(ROLLBACK_0141);
+      await tx.unsafe(ROLLBACK_0141); // idempotent
+      const v = await verifyStatuses(tx, VERIFY_0141);
+      expect([v[1], v[2], v[8]]).toEqual(['FAIL', 'FAIL', 'FAIL']); // the family policies and the owner hardening are gone
+      expect([v[3], v[4], v[5], v[6], v[7], v[9]]).toEqual(['PASS', 'PASS', 'PASS', 'PASS', 'PASS', 'PASS']); // nothing else disturbed
+
+      err = await asApp(tx, 4, () => refused(tx, () => tx.unsafe(FAMILY_MED)));
+      expect(String(err?.message)).toMatch(/row-level security/i); // family writes gone
+      err = await asApp(tx, 2, () => refused(tx, () => tx.unsafe(STRANGER_VACC_ON_REX)));
+      expect(err).toBeNull(); // the old own-row behaviour is back on pet_vaccinations (the gap, restored on purpose)
+      await asApp(tx, 1, async () => {
+        // the owner is unaffected either way
+        expect(await tx.unsafe("insert into pet_medications (pet_id, owner_user_id, name) values (1, 1, 'own') returning id")).toHaveLength(1);
+      });
+
+      // the reopened gap let the stranger's row in; verify row 9 (the data check) would rightly flag it, so clear it before re-applying
+      await tx.unsafe('delete from pet_vaccinations where owner_user_id = 2');
+      await tx.unsafe(MIGRATION_0141); // re-apply
+      expect(Object.values(await verifyStatuses(tx, VERIFY_0141)).every((s) => s === 'PASS')).toBe(true);
+      await asApp(tx, 4, async () => {
+        expect(await tx.unsafe(FAMILY_MED)).toHaveLength(1);
       });
     });
   });

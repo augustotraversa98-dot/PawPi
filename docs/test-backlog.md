@@ -486,6 +486,15 @@ Procedure = [`storage-private-media-runbook-a04.md`](storage-private-media-runbo
 
 Nothing to tap yet: builds 30–32 never ask for shared pets. Server proof is in `shared-pets-access.integration.test.ts` (51 tests: default `GET /api/pets` byte-identical for old builds; per-role reads/logging; revoked/expired/pending/outsider denied; moment lock; expiry; migration-absent safety).
 
+## ⚙️ ACTION 14 — `0141` family write policies — ⏳ PENDING (hand-apply AFTER 0139 and 0140)
+
+`supabase/migrations/0141_family_write_policies.sql` — (a) additive family write policies on `pet_medications`, `pet_preventive_treatments`, `pet_vaccinations`, `vet_appointments` (+ first-time insert on `pet_medical_profiles`), each tying the row to the pet's owner; (b) the 0140 own-row hardening for `pet_vaccinations`, `vet_appointments` and `pet_medical_profiles`.
+
+- [ ] Order: **0139, 0140, 0141**. Run `supabase/verify_0141.sql` — **all 9 rows must read PASS** (row 9 is a read-only data check: `0 mismatched row(s)`; on 2026-11-23 it was 0 of 38 rows).
+- [ ] Smoke (a phone is fine, needs a second account holding a FAMILY grant on a dog — only possible once PR5 ships in build 33; until then the server proof is `family-write-paths.integration.test.ts`): as the **owner** add a medication, a vaccine, an appointment and save the medical profile → all still succeed (0141 must not block the owner).
+- **Rollback:** `supabase/rollback_0141.sql` (drops the family policies and restores the old owner policy on the 3 tables; reopens that gap, so only to get unblocked). Full procedure: [`db-migration-runbook-0139-0140.md`](db-migration-runbook-0139-0140.md) §0141.
+- Safe for builds 30–32 and safe to apply before or after the PR3b server deploy: without it a family member's write answers a friendly 403 (`family_write_unavailable`), owners are unaffected.
+
 ## ⚙️ ACTION 2 — Payments go-live (Tats, when ready)
 Exact, ordered steps — no research needed, just follow top to bottom. Until you do this, every checkout
 surface (shop, bookings, adoption fees, donations, subscriptions, insurance, Rx fulfillment) shows a

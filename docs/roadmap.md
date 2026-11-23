@@ -18,6 +18,50 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-23 — Family & caregivers series — PR3b: family / co-owner WRITE paths — OPEN, NOT merged (stacked on PR3 #751; retarget to `main` and rebase after #751 merges — migration order **0139, 0140, 0141**)
+
+Owner decision 2: **family/co-owner reads and writes everything except managing sharing and deleting the pet; caregiver stays read + log only.** PR3 delivered the reads; this delivers the writes, in the API **and** RLS.
+
+- ✅ **Routines** (create / edit / move / soft-delete), **pet profile** (`PATCH /api/pets/[id]`: name, breed, handle, avatar, notes, weight…), **medical profile** (update + first-time create), **medications**, **preventive treatments**, **vaccinations**, **vet appointments** (list / create / edit / cancel) — for the **owner and an active family grantee**. Every row a family member writes is **anchored to the pet's OWNER** (`owner_user_id` = the pet's owner; `created_by_user_id` / `created_by_role='editor'` record who actually wrote it where the table has them), so the household sees one history. A routine can only move between dogs of the SAME owner.
+- ✅ **"Recorded as given" vaccine path** (`POST /api/health/medical-care-logs` with `careType:'vaccine'`, status given/completed — it also writes `pet_vaccinations`): owner and **family** allowed; a **caregiver** gets a friendly `403 vaccine_family_only` (PR3's `vaccine_owner_only` is relaxed to family). A caregiver still logs/completes any non-vaccine care.
+- ✅ **Pet GET by id** now also serves any active grantee (read access), so a shared dog's profile loads for family AND caregiver.
+- ✅ **Still owner-only, unchanged:** managing sharing (invite / revoke) and deleting the pet (there is no delete-pet route at all). A caregiver cannot edit any of the above (404/403/refused by RLS).
+- ✅ **Migration 0141** (`family_write_policies`; `verify_0141.sql` **9 rows**, `rollback_0141.sql`) — written, **NOT applied, human-applied** after 0139 and 0140. (a) `<t>_family_all` FOR ALL on `pet_medications`, `pet_preventive_treatments`, `pet_vaccinations`, `vet_appointments` and `pet_medical_profiles_family_insert`, each with a WITH CHECK that ties the row to the pet's owner (stricter than the 0049 family policies); (b) **owner own-row hardening on 3 more tables** — the PR3 tests showed `pet_vaccinations`, `vet_appointments` and `pet_medical_profiles` (left out of 0140 because they carry provider policies) have the same "any user can write a row against any pet" gap, so their `<t>_owner_all` also gets `AND app_owns_pet(pet_id)` (production, read-only counts 2026-11-23: 0 of 38 rows authored by a non-owner). Provider policies are untouched.
+- ✅ **Safe without 0141:** a family member's first write to those tables answers a friendly `403 family_write_unavailable` (policy-presence probe), edits of existing rows match zero rows (404) — never a 500; owners, caregivers and providers are unaffected. Tested by dropping the policies (and restoring them).
+- ✅ **Old builds (30–32): unchanged.** They never reach a shared dog (it is opt-in, PR3); every owner path keeps its status codes, shapes and `created_by_role:'owner'`. A stranger POSTing for someone else's dog still gets the old `404 Pet not found`.
+- Tests: `family-write-paths.integration.test.ts` (26: every area × owner / family / caregiver / outsider / revoked / expired / pending, RLS directly as `pawpi_app`, migration-absent, old-build invariants — **13 fail without 0141**), `verify-scripts-0141`, `rollback-scripts` (+0141); PR1/PR3 pins that encoded "family cannot edit the pet profile / record a vaccine" flipped.
+
+| | |
+|---|---|
+| Needs build 33? | **No** (server + DB). The family editing UI is PR5 (build 33+). |
+| Server-only? | **Yes**, plus one hand-applied migration (0141). |
+| Safe for builds 30–32? | **Yes** (see above). |
+| Migration by hand? | **0141** — `verify_0141.sql` 9 PASS; rollback `rollback_0141.sql`. Order **0139, 0140, 0141**. |
+
+---
+
+## 2026-11-23 — FOLLOW-UP (before the next release): sweep migration for the ~30 other pet-linked tables with own-row-only policies
+
+Not in any PR yet. The pattern "`<t>_owner_all` checks WHO wrote a row, never WHICH PET it points at" (found in PR3, closed by 0140 for 21 tables and by 0141 for 3 more) still exists on about **30 other pet-linked tables** — `daycare_stays`, `groom_sessions`, `household_leaderboard_prefs`, `insurance_leads`, `insurance_policies`, `lost_reports`, `nutrition_plans`, `pet_care_days`, `pet_emergency_cards`, `pet_emergency_share_links`, `pet_food_recall_matches`, `pet_leaderboard_weeks`, `pet_streaks`, `reengagement_state`, `rx_fulfillment_orders`, `rx_refill_requests`, `sitting_visits`, `social_walks`, `telehealth_sessions`, `training_programs`, `training_progress`, `training_progress_self`, `transport_trips`, `walk_requests`, `walk_sessions`, `weekly_digest_state`, `provider_reviews` (own-row insert/update), and the update policies of a few more (production catalog query 2026-11-23: only `pet_caregivers_insert` and `care_access_grants_insert` check the pet today).
+- **Recommendation:** ONE sweep migration (`0142+`), but **each table checked against its own flow first** — several legitimately reference a pet the author does not own (a walker's session, a provider's booking, a review of a place, shared "social" rows), so a blanket `app_owns_pet(pet_id)` would break them. Method: for each table (1) list the writers (routes, DEFINER fns, crons), (2) pick `app_owns_pet` / `app_user_has_pet_family` / provider-grant as appropriate in WITH CHECK, (3) add a harness test like `non-member-pet-writes.integration.test.ts` (insert / re-point / update / delete refused for a non-member; legit paths still pass; fails without the migration), (4) `verify_NNNN.sql` with a read-only "0 mismatched rows" data check, (5) `rollback_NNNN.sql`. Apply before the next release; none is exploitable through the API today (the routes check pet ownership), so this is defence in depth, but the DB should not rely on every route remembering.
+
+---
+
+## 2026-11-23 — FOLLOW-UP (separate item, NOT fixed in PR3b): provider walk-report and groom-note writes into the owner's health tables look broken (RLS)
+
+**What I found (read-only, 2026-11-23).**
+- `PATCH /api/providers/[id]/walk-sessions/[sessionId]` (`action:'finish'`) writes the walk report as a `health_walk_logs` row (+ a `health_timeline_events` row) with `owner_user_id = the pet's owner`, **under the walker's (staff) identity**. `POST /api/providers/[id]/pets/[petId]/groom-sessions` does the same for a coat/skin note into `health_general_checks`.
+- Production `pg_policies` on `health_walk_logs`, `health_general_checks` and `health_timeline_events` contain ONLY `<t>_owner_all` (owner_user_id = me) and `<t>_family_all` (0049) — **there is no provider policy**. A walker is neither the owner nor a family grantee, so the INSERT is refused by RLS ("new row violates row-level security policy").
+- **Reproduced in the harness** (a walker with an active `health_logs_write` care grant finishing an in-progress walk): the response is **HTTP 500 `Internal server error`, the walk session stays `in_progress`, and no health log is written.** The cause is the `try { … } catch (healthError) { console.error(…) }` around the INSERT: the code comment says "the session is finished regardless … do NOT roll back the finish", but the INSERT is NOT in a savepoint, so the failed statement aborts the request transaction and the final COMMIT fails — `withRequestContext` turns that into a blanket 500 and **rolls back the finish UPDATE too**. (The inner timeline `try/catch` has the same flaw.) So the "best-effort" write is not best-effort: it takes the whole finish down.
+- **Production impact today: none visible — `walk_sessions` has 0 rows and `groom_sessions` has 0 rows in production** (and `health_walk_logs` holds only 3 `manual` rows), so the walker/groomer flows have never run there. It will fail the first time a real walker finishes a walk.
+
+**Recommendation (own PR, before any walker/groomer goes live):**
+1. Wrap each of the two health writes (and the timeline write) in `withSavepoint` so a failure can never roll back the finish, and test that the finish returns 200 with `healthLog: null` when the report write is refused.
+2. Decide the intended access model and implement it explicitly instead of through the owner policy: either (a) a **provider write policy** on the 3 tables gated on `app_provider_has_grant(pet_id, 'health_logs_write')` + staff membership (INSERT only, owner-anchored `owner_user_id = pets.owner_user_id`), or (b) a `SECURITY DEFINER` helper `app_write_walk_report(...)` (pinned search_path, REVOKE/GRANT pair) that does the insert after checking the grant — (b) is the smaller surface. Add `verify_NNNN.sql` + rollback + a harness test for walker/groomer × granted / ungranted / revoked / expired grant.
+3. Same review for any other provider route that writes into an owner-private table under staff identity (`sitting-visits`, `daycare-stays/report-cards`, `training-progress`, `transport-trips`): grep shows they write their own provider tables, but worth confirming none also writes owner health data.
+
+---
+
 ## 2026-11-23 — Family & caregivers series — PR3/7: shared pets (opt-in list) + grantee read paths + caregiver logging + moment lock + expiry — OPEN, NOT merged
 
 PR1 (#749) and PR2 (#750) are MERGED. This PR makes the shared dog **usable by the server for the partner who owns no dog**, with **zero behaviour change for builds 30–32**.

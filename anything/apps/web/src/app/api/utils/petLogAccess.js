@@ -11,7 +11,7 @@
 // with the same 403 the owner-only gate returned — the app never issues a write it knows RLS denies.
 //
 // callerId = the caller's already-resolved user_profiles.id.
-// Returns { ownerUserId, isOwner } on success, or { error, status } to return verbatim.
+// Returns { ownerUserId, isOwner, role } on success (role = 'owner' | 'family' | 'caregiver'), or { error, status, code? } to return verbatim.
 // Degrades cleanly pre-0049 (missing app_user_has_pet_family → the caller is simply not a caregiver).
 
 import sql from "./sql";
@@ -26,7 +26,11 @@ const MISSING_TABLE = "42P01";
 // options.logTable: the health_* table the caller is about to INSERT into. Used ONLY for a caregiver-only grantee: before
 // 0139 is applied the table has no <logTable>_caregiver_insert policy, so the INSERT would fail inside the request
 // transaction (a blanket 500). When that policy is absent we answer a friendly 403 up front instead.
-export async function resolvePetLogOwner(callerId, petId, { allowCaregiver = false, logTable = null } = {}) {
+// options.familyPolicy = { table, policy } (PR3b): the WRITE policy a FAMILY grantee relies on for the table the caller is about to
+// INSERT into (e.g. pet_vaccinations_family_all, added by 0141). When the caller is a family grantee (not the owner) and that policy is
+// absent — the migration is not applied yet — answer a friendly 403 `family_write_unavailable` up front instead of letting RLS abort the
+// request transaction (a blanket 500). Owners never pay for this probe.
+export async function resolvePetLogOwner(callerId, petId, { allowCaregiver = false, logTable = null, familyPolicy = null } = {}) {
   if (callerId == null) return { error: "User profile not found", status: 404 };
   if (!petId) return { error: "petId is required", status: 400 };
 
@@ -34,10 +38,11 @@ export async function resolvePetLogOwner(callerId, petId, { allowCaregiver = fal
   const owned = await sql`
     SELECT owner_user_id FROM pets WHERE id = ${petId} AND owner_user_id = ${callerId} LIMIT 1
   `;
-  if (owned.length > 0) return { ownerUserId: callerId, isOwner: true };
+  if (owned.length > 0) return { ownerUserId: callerId, isOwner: true, role: "owner" };
 
   // Otherwise: an ACTIVE, UNEXPIRED FAMILY grantee may write (0049); a caregiver only when allowCaregiver (log routes).
   let isFamily = false;
+  let isFamilyRole = false; // a FAMILY grantee specifically (isFamily is "any admitted grantee" on the allowCaregiver path)
   let caregiverOnly = false;
   try {
     await withSavepoint(async () => {
@@ -46,10 +51,12 @@ export async function resolvePetLogOwner(callerId, petId, { allowCaregiver = fal
           SELECT app_user_has_pet_access(${petId}) AS ok, app_user_has_pet_family(${petId}) AS fam
         `;
         isFamily = !!r?.ok;
+        isFamilyRole = !!r?.fam;
         caregiverOnly = !!r?.ok && !r?.fam;
       } else {
         const [r] = await sql`SELECT app_user_has_pet_family(${petId}) AS ok`;
         isFamily = !!r?.ok;
+        isFamilyRole = !!r?.ok;
       }
     });
   } catch (e) {
@@ -69,8 +76,22 @@ export async function resolvePetLogOwner(callerId, petId, { allowCaregiver = fal
     }
   }
 
+  // A FAMILY grantee writing to a table whose family policy comes from a later migration: refuse cleanly while it is absent.
+  if (isFamilyRole && familyPolicy && !(await policyExists(familyPolicy.table, familyPolicy.policy))) {
+    return { error: "Editing this isn't available for family members yet.", status: 403, code: "family_write_unavailable" };
+  }
+
   // Anchor the write to the pet's ACTUAL owner (grantee can read the pet via 0049 pets_grantee_read).
   const [p] = await sql`SELECT owner_user_id FROM pets WHERE id = ${petId} LIMIT 1`;
   if (!p) return { error: "Pet not found or access denied", status: 403 };
-  return { ownerUserId: p.owner_user_id, isOwner: false };
+  return { ownerUserId: p.owner_user_id, isOwner: false, role: caregiverOnly ? "caregiver" : "family" };
+}
+
+// Does policy `policy` exist on public.`table`? (pg_policies is readable by pawpi_app.) Used to degrade to a friendly 403 while a
+// migration that adds the policy has not been applied yet.
+export async function policyExists(table, policy) {
+  const rows = await sql`
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = ${table} AND policyname = ${policy} LIMIT 1
+  `;
+  return rows.length > 0;
 }

@@ -1,5 +1,5 @@
 import sql from "@/app/api/utils/sql";
-import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
+import { resolvePetLogOwner, policyExists } from "@/app/api/utils/petLogAccess";
 import { jsonbWriteValue } from "@/app/api/utils/jsonb";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
@@ -54,13 +54,22 @@ async function POST(request) {
         { status: access.status },
       );
     }
-    // A vaccine administered through a medical-care log is ALSO written to pet_vaccinations (below), a table only the OWNER may
-    // write today (family/caregiver vaccination access is a later step), so refuse it up front instead of failing mid-statement.
+    // A vaccine administered through a medical-care log is ALSO written to pet_vaccinations (below). That is the vaccine record, so it
+    // is OWNER or FAMILY (co-owner) only (owner decision 2, PR3b): a caregiver can log/complete other care but not record a vaccine.
+    // A family member additionally needs pet_vaccinations_family_all (0141) - absent => friendly 403, never a mid-statement RLS 500.
     if (!access.isOwner && careType === "vaccine" && ["given", "completed"].includes(status)) {
-      return Response.json(
-        { error: "Only the pet's owner can record a vaccine.", code: "vaccine_owner_only" },
-        { status: 403 },
-      );
+      if (access.role !== "family") {
+        return Response.json(
+          { error: "Only the pet's owner or family can record a vaccine.", code: "vaccine_family_only" },
+          { status: 403 },
+        );
+      }
+      if (!(await policyExists("pet_vaccinations", "pet_vaccinations_family_all"))) {
+        return Response.json(
+          { error: "Recording a vaccine isn't available for family members yet.", code: "family_write_unavailable" },
+          { status: 403 },
+        );
+      }
     }
 
     // Write-through to pet_vaccinations (the vaccination-history SSOT) is part of

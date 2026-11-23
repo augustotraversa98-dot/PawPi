@@ -16,10 +16,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST } from "./route";
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
-import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
+import { resolvePetLogOwner, policyExists } from "@/app/api/utils/petLogAccess";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
-vi.mock("@/app/api/utils/petLogAccess", () => ({ resolvePetLogOwner: vi.fn() }));
+vi.mock("@/app/api/utils/petLogAccess", () => ({ resolvePetLogOwner: vi.fn(), policyExists: vi.fn() }));
 vi.mock("@/app/api/utils/sql", () => {
   const fn = vi.fn();
   // sql.json(value) binds the RAW value to a jsonb param (reaction_or_issue).
@@ -199,26 +199,49 @@ describe("POST /api/health/medical-care-logs — vaccination write-through", () 
 
   it("a caregiver/family member logs a non-vaccine completion anchored to the pet's OWNER", async () => {
     auth.mockResolvedValue(SESSION);
-    resolvePetLogOwner.mockResolvedValue({ ownerUserId: 3, isOwner: false });
+    resolvePetLogOwner.mockResolvedValue({ ownerUserId: 3, isOwner: false, role: "caregiver" });
     sql.mockResolvedValueOnce([PROFILE_ROW]).mockResolvedValueOnce([LOG_ROW]);
     const res = await POST(postReq({ petId: 55, careType: "medication", name: "Apoquel", status: "given" }));
     expect(res.status).toBe(201);
     expect(lastValues()).toContain(3); // owner_user_id of the row = the pet's owner (3), not the caller (7)
   });
 
-  it("a NON-owner cannot record an administered vaccine (it writes pet_vaccinations, owner-only) → friendly 403, no insert", async () => {
+  it("a CAREGIVER cannot record an administered vaccine (the vaccine record is owner/family only) -> friendly 403 vaccine_family_only, no insert", async () => {
     auth.mockResolvedValue(SESSION);
-    resolvePetLogOwner.mockResolvedValue({ ownerUserId: 3, isOwner: false });
+    resolvePetLogOwner.mockResolvedValue({ ownerUserId: 3, isOwner: false, role: "caregiver" });
     sql.mockResolvedValueOnce([PROFILE_ROW]);
     const res = await POST(postReq({ petId: 55, careType: "vaccine", name: "Rabies", status: "completed" }));
     expect(res.status).toBe(403);
-    expect((await res.json()).code).toBe("vaccine_owner_only");
+    expect((await res.json()).code).toBe("vaccine_family_only");
+    expect(sql).toHaveBeenCalledTimes(1);
+  });
+
+  it("a FAMILY member records an administered vaccine when pet_vaccinations_family_all exists (0141); the row is anchored to the owner", async () => {
+    auth.mockResolvedValue(SESSION);
+    resolvePetLogOwner.mockResolvedValue({ ownerUserId: 3, isOwner: false, role: "family" });
+    policyExists.mockResolvedValue(true);
+    sql.mockResolvedValueOnce([PROFILE_ROW]).mockResolvedValueOnce([LOG_ROW]);
+    const res = await POST(postReq({ petId: 55, careType: "vaccine", name: "Rabies", status: "completed" }));
+    expect(res.status).toBe(201);
+    expect(policyExists).toHaveBeenCalledWith("pet_vaccinations", "pet_vaccinations_family_all");
+    expect(lastQueryText()).toContain("INSERT INTO pet_vaccinations");
+    expect(lastValues()).toContain(3); // owner_user_id = the pet's owner, not the caller
+  });
+
+  it("a FAMILY member WITHOUT 0141 applied gets a friendly 403 family_write_unavailable (never a mid-statement RLS 500)", async () => {
+    auth.mockResolvedValue(SESSION);
+    resolvePetLogOwner.mockResolvedValue({ ownerUserId: 3, isOwner: false, role: "family" });
+    policyExists.mockResolvedValue(false);
+    sql.mockResolvedValueOnce([PROFILE_ROW]);
+    const res = await POST(postReq({ petId: 55, careType: "vaccine", name: "Rabies", status: "completed" }));
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe("family_write_unavailable");
     expect(sql).toHaveBeenCalledTimes(1);
   });
 
   it("a non-owner logging a SKIPPED vaccine is fine (nothing is written to pet_vaccinations)", async () => {
     auth.mockResolvedValue(SESSION);
-    resolvePetLogOwner.mockResolvedValue({ ownerUserId: 3, isOwner: false });
+    resolvePetLogOwner.mockResolvedValue({ ownerUserId: 3, isOwner: false, role: "caregiver" });
     sql.mockResolvedValueOnce([PROFILE_ROW]).mockResolvedValueOnce([LOG_ROW]);
     const res = await POST(postReq({ petId: 55, careType: "vaccine", name: "Rabies", status: "skipped" }));
     expect(res.status).toBe(201);

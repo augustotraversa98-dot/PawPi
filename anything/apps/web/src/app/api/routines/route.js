@@ -1,4 +1,5 @@
 import sql from "@/app/api/utils/sql";
+import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 import { jsonbWriteValue } from "@/app/api/utils/jsonb";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
@@ -130,16 +131,11 @@ async function POST(request) {
       );
     }
 
-    // Verify pet ownership
-    const pets = await sql`
-      SELECT id FROM pets WHERE id = ${petId} AND owner_user_id = ${ownerUserId}
-    `;
-
-    if (pets.length === 0) {
-      return Response.json(
-        { error: "Pet not found or access denied" },
-        { status: 403 },
-      );
+    // The pet's OWNER or an active FAMILY grantee (co-owner) may create routines — owner decision 2 (PR3b); the row is
+    // anchored to the pet's owner so the whole household sees it. A caregiver is read-only here.
+    const access = await resolvePetLogOwner(ownerUserId, petId);
+    if (access.error) {
+      return Response.json({ error: "Pet not found or access denied" }, { status: 403 });
     }
 
     // Create routine
@@ -167,7 +163,7 @@ async function POST(request) {
         notes
       ) VALUES (
         ${petId},
-        ${ownerUserId},
+        ${access.ownerUserId},
         ${type},
         ${isActive ?? true},
         ${title || null},
@@ -256,8 +252,8 @@ async function PUT(request) {
 
     // Verify ownership
     const existingRoutines = await sql`
-      SELECT id FROM routines 
-      WHERE id = ${id} AND owner_user_id = ${ownerUserId}
+      SELECT id, owner_user_id FROM routines 
+      WHERE id = ${id} AND (owner_user_id = ${ownerUserId} OR app_user_has_pet_family(pet_id))
     `;
 
     if (existingRoutines.length === 0) {
@@ -270,9 +266,13 @@ async function PUT(request) {
     // Moving a routine to ANOTHER pet is only allowed onto a pet the caller owns. Without this check the own-row RLS policy
     // (owner_user_id = me) let an owner re-point their routine at someone else's dog (fixed at the DB level by 0140; this is the
     // API half, so the route is safe before 0140 is applied).
+    // (PR3b: a family co-owner may do this too, but only between dogs of the SAME owner, so the row stays anchored to it.)
+    const routineOwnerId = existingRoutines[0].owner_user_id;
     if (petId) {
       const target = await sql`
-        SELECT id FROM pets WHERE id = ${petId} AND owner_user_id = ${ownerUserId}
+        SELECT id FROM pets
+        WHERE id = ${petId} AND owner_user_id = ${routineOwnerId}
+          AND (owner_user_id = ${ownerUserId} OR app_user_has_pet_family(id))
       `;
       if (target.length === 0) {
         return Response.json(
@@ -321,7 +321,7 @@ async function PUT(request) {
         time_sensitive = COALESCE(${timeSensitive ?? null}, time_sensitive),
         notes = COALESCE(${notes || null}, notes),
         updated_at = NOW()
-      WHERE id = ${id} AND owner_user_id = ${ownerUserId}
+      WHERE id = ${id} AND owner_user_id = ${routineOwnerId}
       RETURNING *
     `;
 
@@ -376,7 +376,7 @@ async function DELETE(request) {
         is_active = false,
         updated_at = NOW()
       WHERE id = ${id} 
-        AND owner_user_id = ${ownerUserId}
+        AND (owner_user_id = ${ownerUserId} OR app_user_has_pet_family(pet_id))
         AND deleted_at IS NULL
       RETURNING id
     `;
