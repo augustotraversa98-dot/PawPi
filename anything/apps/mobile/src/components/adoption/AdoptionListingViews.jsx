@@ -32,6 +32,7 @@ import {
   useAdoptionCheckout,
 } from "@/hooks/useProviders";
 import { isValidCoord } from "@/utils/walkBuddies";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // SHARED adoption listing views (ticket 2.97). The adoptable-dog card + the full detail/apply
 // modal, extracted verbatim from the Adoption browse screen (app/service/adoption.jsx) so the
@@ -236,7 +237,7 @@ export function ListingDetailModal({ data, onClose, router }) {
         t("adoption.listing.applicationSentBody", { name: listing.name }),
       );
     } catch (e) {
-      Alert.alert(t("adoption.listing.applyErrorTitle"), e.message || t("common.pleaseTryAgain"));
+      Alert.alert(t("adoption.listing.applyErrorTitle"), friendlyErrorMessage(e, "common.pleaseTryAgain"));
     }
   };
 
@@ -258,7 +259,7 @@ export function ListingDetailModal({ data, onClose, router }) {
             },
           });
         },
-        onError: (e) => Alert.alert(t("adoption.listing.chatErrorTitle"), e.message || t("adoption.listing.pleaseTryAgain")),
+        onError: (e) => Alert.alert(t("adoption.listing.chatErrorTitle"), friendlyErrorMessage(e, "adoption.listing.pleaseTryAgain")),
       },
     );
   };
@@ -279,7 +280,7 @@ export function ListingDetailModal({ data, onClose, router }) {
       }
     } catch (e) {
       // Surfaces the backend's 503 "payments not configured" message verbatim.
-      Alert.alert(t("adoption.listing.paymentsUnavailableTitle"), e.message || t("adoption.listing.pleaseTryAgainLater"));
+      Alert.alert(t("adoption.listing.paymentsUnavailableTitle"), friendlyErrorMessage(e, "adoption.listing.pleaseTryAgainLater"));
     }
   };
 

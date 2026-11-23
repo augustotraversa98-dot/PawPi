@@ -38,6 +38,7 @@ import HandleAvailabilityHint from "@/components/HandleAvailabilityHint";
 import { sanitizeHandleInput } from "@/utils/validateHandle";
 import { trackFeature } from "@/telemetry/track";
 import { useFormTelemetry } from "@/telemetry/useFormTelemetry";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // Shared form field styling (Liquid Glass, ticket 2.77): sunken well + hairline
 // edge + body type. Behavior of each input (value/onChange/keyboard) is unchanged.
@@ -118,7 +119,7 @@ export default function ProfileEditScreen() {
         setFormData((prev) => ({ ...prev, photo: result.assets[0].uri }));
       }
     } catch (e) {
-      Alert.alert(t("profileEdit.couldNotPickPhoto"), e?.message || t("common.pleaseTryAgain"));
+      Alert.alert(t("profileEdit.couldNotPickPhoto"), friendlyErrorMessage(e, "common.pleaseTryAgain"));
     }
   };
 
@@ -277,7 +278,7 @@ export default function ProfileEditScreen() {
       formTelemetry.error();
       Alert.alert(
         t("common.error"),
-        error.message || t("profileEdit.couldNotSave"),
+        friendlyErrorMessage(error, "profileEdit.couldNotSave"),
       );
     } finally {
       setIsSubmitting(false);

@@ -55,6 +55,7 @@ import {
   formatDisplayTime,
   toCanonicalTime,
 } from "@/utils/canonicalDateTime";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // Pending adoption-application statuses (the shelter's open queue) — counted for the Today glance.
 const PENDING_APP_STATUSES = ["submitted", "under_review", "pending"];
@@ -240,7 +241,7 @@ function AcceptingWalksCard({ providerId, t }) {
       try {
         await setLive.mutateAsync({ accepting: next, lat, lng });
       } catch (e) {
-        Alert.alert(t("business.available.error"), e?.message);
+        Alert.alert(t("business.available.error"), friendlyErrorMessage(e));
       }
     },
     [setLive, t],
@@ -443,7 +444,7 @@ export default function BusinessHome() {
         await createPost.mutateAsync(payload);
         await refetchPosts();
       } catch (error) {
-        Alert.alert(t("business.home.postError"), error?.message);
+        Alert.alert(t("business.home.postError"), friendlyErrorMessage(error));
       } finally {
         setPosting(false);
       }

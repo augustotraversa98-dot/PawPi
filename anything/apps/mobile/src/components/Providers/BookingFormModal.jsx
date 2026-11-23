@@ -27,6 +27,7 @@ import {
   IN_PERSON_SLOT_CAPABILITIES,
   slotZonedParts,
 } from "@/utils/providerSlots";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // Per-capability copy so the SAME modal serves vet / grooming / walking / daycare /
 // sitting / training (ticket 2.4 — generalize the book flow to any capability). Falls
@@ -35,11 +36,11 @@ import {
 const CAPABILITY_COPY = {
   vet: {
     icon: "🏥",
-    noun: "appointment",
+    nounKey: "leftoverUi.bookingNoun.appointment",
   },
   groomer: {
     icon: "✂️",
-    noun: "grooming",
+    nounKey: "leftoverUi.bookingNoun.grooming",
     // Grooming is naturally a recurring cycle (ticket 2.6). Offer "every 6 weeks" so the
     // booking carries a recurrence_rule (2.4) and the EXISTING reminder engine nudges the
     // owner to re-book — no new reminder path. iCal RRULE; INTERVAL=6 weeks.
@@ -47,18 +48,18 @@ const CAPABILITY_COPY = {
   },
   walker: {
     icon: "🐾",
-    noun: "walk",
+    nounKey: "leftoverUi.bookingNoun.walk",
     // Walking supports both on-demand (a one-off slot — leave Repeat off) and a RECURRING
     // weekly pack walk (ticket 2.7). Opting in carries a weekly recurrence_rule (2.4) so
     // the EXISTING reminder engine nudges the owner — no new reminder path. iCal RRULE.
     recurrence: { labelKey: "servicesUi.bookingFormModal.repeatWeeklyPackWalk", rule: "FREQ=WEEKLY;INTERVAL=1" },
   },
-  daycare: { icon: "🏠", noun: "daycare" },
-  sitter: { icon: "🧸", noun: "sitting" },
-  trainer: { icon: "🎓", noun: "training" },
+  daycare: { icon: "🏠", nounKey: "leftoverUi.bookingNoun.daycare" },
+  sitter: { icon: "🧸", nounKey: "leftoverUi.bookingNoun.sitting" },
+  trainer: { icon: "🎓", nounKey: "leftoverUi.bookingNoun.training" },
 };
 
-const DEFAULT_COPY = { icon: "📅", noun: "service" };
+const DEFAULT_COPY = { icon: "📅", nounKey: "leftoverUi.bookingNoun.service" };
 
 function copyForCapability(capability) {
   return CAPABILITY_COPY[capability] ?? DEFAULT_COPY;
@@ -145,6 +146,7 @@ export default function BookingFormModal({
   const activeCapability = showModalityTabs ? modality : baseCapability;
 
   const copy = copyForCapability(activeCapability);
+  const noun = t(copy.nounKey);
 
   const [serviceId, setServiceId] = useState(null); // null = "General"
   // Once the user taps any service chip (incl. "General") we stop auto-preselecting so we
@@ -261,7 +263,7 @@ export default function BookingFormModal({
       if (!date || !time) {
         Alert.alert(
           t("booking.pickDateTimeTitle"),
-          t("booking.pickDateTimeBody", { noun: copy.noun }),
+          t("booking.pickDateTimeBody", { noun }),
         );
         return;
       }
@@ -349,7 +351,7 @@ export default function BookingFormModal({
       } else if (takePayment && checkoutUrl) {
         Alert.alert(
           t("booking.completePaymentTitle"),
-          t("booking.completePaymentBody", { noun: copy.noun, provider: provider.name }),
+          t("booking.completePaymentBody", { noun, provider: provider.name }),
         );
         Linking.openURL(checkoutUrl).catch(() => {});
       } else if (takePayment) {
@@ -358,18 +360,18 @@ export default function BookingFormModal({
         // request. Be honest so the owner knows nothing was charged.
         Alert.alert(
           t("booking.paymentFailedTitle"),
-          t("booking.paymentFailedBody", { noun: copy.noun }),
+          t("booking.paymentFailedBody", { noun }),
         );
       } else {
         Alert.alert(
           t("booking.requestSentTitle"),
-          t("booking.requestSentBody", { noun: copy.noun, provider: provider.name }),
+          t("booking.requestSentBody", { noun, provider: provider.name }),
         );
       }
     } catch (err) {
       formTelemetry.error();
       // Surface backend 400/403/404 messages instead of swallowing them.
-      Alert.alert(t("booking.couldntBook"), err?.message || t("common.pleaseTryAgain"));
+      Alert.alert(t("booking.couldntBook"), friendlyErrorMessage(err, "common.pleaseTryAgain"));
     }
   };
 
@@ -377,16 +379,20 @@ export default function BookingFormModal({
     <KeyboardSafeFormModal
       visible={visible}
       onClose={resetAndClose}
-      title={provider ? `Book with ${provider.name}` : `Book ${copy.noun}`}
+      title={
+        provider
+          ? t("leftoverUi.booking.bookWith", { name: provider.name })
+          : t("leftoverUi.booking.bookNoun", { noun })
+      }
       subtitle={
         currentPet?.id
-          ? `For ${currentPet.name}`
-          : `Add a pet to book a ${copy.noun}`
+          ? t("leftoverUi.booking.forPet", { name: currentPet.name })
+          : t("leftoverUi.booking.addPetToBook", { noun })
       }
       icon={copy.icon}
       ctaLabel={(() => {
-        if (book.isPending) return "Sending…";
-        const base = slotBased ? t("booking.reserveSlot") : `Confirm ${copy.noun}`;
+        if (book.isPending) return t("leftoverUi.booking.sending");
+        const base = slotBased ? t("booking.reserveSlot") : t("leftoverUi.booking.confirmNoun", { noun });
         // Show the selected service's amount on the CTA (charge for deposit/full, price for
         // pay-later); no amount when no priced service is selected.
         return ctaAmountCents != null
@@ -484,7 +490,7 @@ export default function BookingFormModal({
               paymentPolicy === "deposit"
                 ? "booking.depositRequired"
                 : "booking.paymentRequired",
-              { amount: formatPrice(chargeCents), noun: copy.noun },
+              { amount: formatPrice(chargeCents), noun: noun },
             )}
           </Text>
         </View>

@@ -16,6 +16,7 @@ import { PressableScale } from "@/components/ui";
 import DateField from "@/components/DateField";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { getLocalPostDateString } from "@/utils/dateUtils";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // Owner adds a dated entry to the append-only clinical history log (ticket 2.42).
 // Owner-authored entries omit vetName → labelled "You". Vets append their own via
@@ -54,7 +55,7 @@ export function AddVetNoteModal({ visible, onClose, petId, onSaved }) {
       onSaved?.();
       close();
     } catch (error) {
-      Alert.alert(t("health.addNote.errorTitle"), error.message || t("health.addNote.errorBody"));
+      Alert.alert(t("health.addNote.errorTitle"), friendlyErrorMessage(error, "health.addNote.errorBody"));
     } finally {
       setSaving(false);
     }

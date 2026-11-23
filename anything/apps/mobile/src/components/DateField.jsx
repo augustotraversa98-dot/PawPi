@@ -8,6 +8,7 @@ import {
   toCanonicalDate,
 } from "../utils/canonicalDateTime";
 import { COLORS, MATERIALS, RADIUS, SPACING, TYPE } from "@/constants/theme";
+import { useTranslation } from "react-i18next";
 
 // 2.77: sourced from the design tokens (was a local hex map) — same hues, softer
 // radius + the shared input look.
@@ -34,7 +35,7 @@ const C = {
 export default function DateField({
   value,
   onChange,
-  placeholder = "Select date",
+  placeholder,
   fieldStyle,
   textStyle,
   minimumDate,
@@ -47,6 +48,7 @@ export default function DateField({
   open,
   onToggle,
 }) {
+  const { t } = useTranslation();
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = open !== undefined;
   const isOpen = isControlled ? open : internalOpen;
@@ -92,7 +94,7 @@ export default function DateField({
             textStyle,
           ]}
         >
-          {display || placeholder}
+          {display || placeholder || t("leftoverUi.selectDate")}
         </Text>
         <Calendar size={16} color={C.mutedBrown} />
       </Pressable>

@@ -8,6 +8,7 @@ import { AuthWebView } from "./AuthWebView";
 import { useAuthStore, useAuthModal } from "./store";
 import { trackFunnel } from "@/telemetry/track";
 import { useFormTelemetry } from "@/telemetry/useFormTelemetry";
+import { translate } from "@/utils/appAlert";
 
 /**
  * This component renders a modal for authentication purposes.
@@ -66,7 +67,7 @@ export const AuthModal = () => {
         <Pressable
           onPress={close}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={translate("common.back", "Back")}
           hitSlop={12}
           style={{
             position: "absolute",

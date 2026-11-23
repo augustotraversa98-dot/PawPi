@@ -30,6 +30,7 @@ import BookingStatusChip, {
 } from "@/components/Providers/BookingStatusChip";
 import { formatDisplayDate, formatDisplayTime } from "@/utils/canonicalDateTime";
 import { deriveOpenNow } from "@/utils/providerHours";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // BOOKING DETAIL (My Activity → a booking, upcoming OR past). Shows WHAT service, WHAT was done
 // (notes), status, when, provider, pet, the LOCATION (with directions + message provider), and
@@ -109,7 +110,7 @@ export default function BookingSummaryScreen() {
             pathname: "/provider-chat",
             params: {
               threadId: String(thread.id),
-              providerName: booking.provider_name || "Provider",
+              providerName: booking.provider_name || t("dataAccess.provider"),
               ownerUserId: String(thread.owner_user_id),
             },
           });
@@ -124,7 +125,7 @@ export default function BookingSummaryScreen() {
       { petId, providerId },
       {
         onError: (e) =>
-          Alert.alert(t("bookingSummary.shareErrorTitle"), e.message),
+          Alert.alert(t("bookingSummary.shareErrorTitle"), friendlyErrorMessage(e)),
       },
     );
   };

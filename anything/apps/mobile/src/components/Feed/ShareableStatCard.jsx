@@ -11,13 +11,14 @@ import { PawPrint } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import { petHandleLabel, petShareUrl } from "@/utils/shareLinks";
+import { translate } from "@/utils/appAlert";
 
 const ShareableStatCard = forwardRef(function ShareableStatCard(
   { card, pet, onReady, onError },
   ref,
 ) {
   const { t } = useTranslation();
-  const name = pet?.name || "My pup";
+  const name = pet?.name || translate("leftoverUi.myPup", "My pup");
   const avatar = pet?.avatar_url || null;
   const handleLabel = petHandleLabel(pet?.handle);
   const link = petShareUrl(pet?.handle);

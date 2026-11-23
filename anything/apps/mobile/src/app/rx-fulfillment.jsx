@@ -19,20 +19,21 @@ import {
   useRxFulfillmentOrders,
   useRequestFulfillment,
 } from "@/hooks/useRxFulfillment";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // Rx fulfillment request (ticket 2.71). From an active prescription, the owner picks a
 // `pharmacy`-capable provider, chooses delivery (address on the 2.68 map) or pickup, requests
 // fulfillment, then sees the price the provider sets and pays via the existing 2.3 rail. Real data
 // only — empty states when no pharmacy providers exist. The clinical Rx is never edited here.
 
-const STATUS_LABEL = {
-  requested: "Requested",
-  accepted: "Accepted",
-  preparing: "Preparing",
-  ready: "Ready",
-  out_for_delivery: "Out for delivery",
-  fulfilled: "Fulfilled",
-  cancelled: "Cancelled",
+const STATUS_KEY = {
+  requested: "leftoverUi.rxFulfillment.status.requested",
+  accepted: "leftoverUi.rxFulfillment.status.accepted",
+  preparing: "leftoverUi.rxFulfillment.status.preparing",
+  ready: "leftoverUi.rxFulfillment.status.ready",
+  out_for_delivery: "leftoverUi.rxFulfillment.status.outForDelivery",
+  fulfilled: "leftoverUi.rxFulfillment.status.fulfilled",
+  cancelled: "leftoverUi.rxFulfillment.status.cancelled",
 };
 
 function money(cents) {
@@ -86,7 +87,7 @@ export default function RxFulfillmentScreen() {
       setProvider(null);
       setLocation(null);
     } catch (e) {
-      Alert.alert(t("rxf.couldNotRequest"), e.message || "");
+      Alert.alert(t("rxf.couldNotRequest"), friendlyErrorMessage(e));
     }
   };
 
@@ -127,7 +128,7 @@ export default function RxFulfillmentScreen() {
       }
       if (data.checkoutUrl) Linking.openURL(data.checkoutUrl);
     } catch (e) {
-      Alert.alert(t("rxf.couldNotPay"), e.message || "");
+      Alert.alert(t("rxf.couldNotPay"), friendlyErrorMessage(e));
     }
   };
 
@@ -178,7 +179,7 @@ export default function RxFulfillmentScreen() {
                     {o.provider_name || t("rxf.pharmacy")}
                   </Text>
                   <Text style={{ fontWeight: "800", color: COLORS.coral }}>
-                    {STATUS_LABEL[o.status] || o.status}
+                    {STATUS_KEY[o.status] ? t(STATUS_KEY[o.status]) : o.status}
                   </Text>
                 </View>
                 <Text style={{ color: COLORS.mutedBrown, fontSize: 13, marginTop: 2 }}>

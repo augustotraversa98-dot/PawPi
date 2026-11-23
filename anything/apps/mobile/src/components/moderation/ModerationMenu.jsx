@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
 import { reportContent, blockUser } from "@/hooks/useModeration";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // Shared Report + Block overflow menu (Guideline 1.2, ticket T4). Drop ONE of these into any
 // UGC surface's header/row. It renders a "···" trigger that opens a sheet with:
@@ -80,7 +81,7 @@ export function ModerationMenu({
     } catch (e) {
       Alert.alert(
         t("moderation.reportFailedTitle"),
-        e?.message || t("moderation.pleaseTryAgain"),
+        friendlyErrorMessage(e, "moderation.pleaseTryAgain"),
       );
     }
   };
@@ -106,7 +107,7 @@ export function ModerationMenu({
             } catch (e) {
               Alert.alert(
                 t("moderation.blockFailedTitle"),
-                e?.message || t("moderation.pleaseTryAgain"),
+                friendlyErrorMessage(e, "moderation.pleaseTryAgain"),
               );
             }
           },

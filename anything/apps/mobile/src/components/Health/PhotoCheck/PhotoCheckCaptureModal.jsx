@@ -28,6 +28,7 @@ import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useQueryClient } from "@tanstack/react-query";
 import { invalidateHealthGraph } from "@/hooks/useHealthReinforcement";
 import { useTranslation } from "react-i18next";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 const C = {
   cream: COLORS.cream,
@@ -329,7 +330,7 @@ export default function PhotoCheckCaptureModal({
       console.error("[PhotoCheckCapture] Save error:", error);
       Alert.alert(
         t("health.photoCheck.errorTitle"),
-        error.message || t("health.photoCheck.saveError"),
+        friendlyErrorMessage(error, "health.photoCheck.saveError"),
       );
     } finally {
       setSaving(false);

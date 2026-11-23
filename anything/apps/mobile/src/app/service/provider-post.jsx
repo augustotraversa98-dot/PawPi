@@ -45,6 +45,7 @@ import {
 } from "@/hooks/useProviderPostPaw";
 import { PawablePhoto } from "@/components/Feed/PawablePhoto";
 import { FeedVideo } from "@/components/Feed/FeedVideo";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -154,7 +155,7 @@ export default function ProviderPostScreen() {
       await addComment.mutateAsync(trimmed);
       setText("");
     } catch (e) {
-      Alert.alert(t("storefront.comments.postError"), e?.message);
+      Alert.alert(t("storefront.comments.postError"), friendlyErrorMessage(e));
     }
   };
 
@@ -171,7 +172,7 @@ export default function ProviderPostScreen() {
             try {
               await deleteComment.mutateAsync(comment.id);
             } catch (e) {
-              Alert.alert(t("storefront.comments.deleteError"), e?.message);
+              Alert.alert(t("storefront.comments.deleteError"), friendlyErrorMessage(e));
             }
           },
         },

@@ -139,12 +139,12 @@ export default function VetScreen() {
           ) : isError ? (
             <EmptyState
               title={t("servicesUi.vet.couldnTLoadVets")}
-              body="Something went wrong. Pull down to try again."
+              body={t("leftoverUi.services.errorPullDown")}
             />
           ) : !hasProviders ? (
             <EmptyState
               title={t("servicesUi.vet.noVetsAvailableYet")}
-              body="Check back soon — vet clinics are joining PawPi."
+              body={t("leftoverUi.services.vetsJoining")}
             />
           ) : (
             <EmptyState

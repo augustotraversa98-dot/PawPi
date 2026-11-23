@@ -14,6 +14,7 @@ import { X, Star } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import { useWriteReview } from "@/hooks/useProviders";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // Write a review after a COMPLETED appointment (ticket 2.2). Reused from the vet
 // appointment detail surface — the backend gates on the caller having a completed
@@ -55,7 +56,7 @@ export default function WriteReviewModal({
           onClose();
         },
         onError: (error) => {
-          Alert.alert(t("writeReview.errorTitle"), error.message || t("common.retry"));
+          Alert.alert(t("writeReview.errorTitle"), friendlyErrorMessage(error, "common.retry"));
         },
       },
     );

@@ -66,7 +66,7 @@ export default function ChatScreen() {
   }, [threadParam, otherUserId]);
   const threadId = threadParam || resolvedThreadId;
   const resolvingThread = !threadId && !resolveFailed;
-  const otherName = params.otherName || "Pet parent";
+  const otherName = params.otherName || t("common.petParent");
   const otherAvatar = params.otherAvatar;
 
   const [text, setText] = useState("");

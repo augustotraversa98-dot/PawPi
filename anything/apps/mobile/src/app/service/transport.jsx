@@ -34,6 +34,7 @@ import {
   addTransportToCalendar,
   removeSurfaceEventFromCalendar,
 } from "@/utils/calendarIntegration";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 const statusLabel = (tr, status) =>
   ({
@@ -99,7 +100,7 @@ export default function TransportScreen() {
       const url = res.checkoutUrl || res.deeplink;
       if (url) Linking.openURL(url).catch(() => {});
     } catch (e) {
-      Alert.alert(tr("transport.couldNotStartPayment"), e.message || tr("common.pleaseTryAgain"));
+      Alert.alert(tr("transport.couldNotStartPayment"), friendlyErrorMessage(e, "common.pleaseTryAgain"));
     } finally {
       setPayingId(null);
     }
@@ -146,7 +147,7 @@ export default function TransportScreen() {
       setDropoffAddr("");
       setNotes("");
     } catch (e) {
-      Alert.alert(tr("transport.couldNotBook"), e.message || tr("common.pleaseTryAgain"));
+      Alert.alert(tr("transport.couldNotBook"), friendlyErrorMessage(e, "common.pleaseTryAgain"));
     }
   };
 
@@ -194,7 +195,7 @@ export default function TransportScreen() {
             pathname: "/provider-chat",
             params: {
               threadId: String(thread.id),
-              providerName: t.provider_name || "Provider",
+              providerName: t.provider_name || tr("dataAccess.provider"),
               ownerUserId: String(thread.owner_user_id),
             },
           });

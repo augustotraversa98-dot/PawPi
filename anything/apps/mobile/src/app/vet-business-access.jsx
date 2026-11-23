@@ -37,6 +37,7 @@ import {
 import useUpload from "@/utils/useUpload";
 import { isValidCoord } from "@/utils/walkBuddies";
 import { toServiceRows, rowToServiceBody } from "@/utils/enrichmentDraft";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // The capabilities (services) a business can offer. A provider has MANY capabilities
 // (the CORE MODEL — see docs/phase2-tickets/00-README.md), so onboarding is MULTI-select:
@@ -296,7 +297,7 @@ function ProviderOnboarding() {
       }
       setDoc({ url: up.url, filename: asset.name, mimeType: asset.mimeType });
     } catch (err) {
-      setErrorMessage(err?.message || t("vetBusinessAccess.pickFailed"));
+      setErrorMessage(friendlyErrorMessage(err, "vetBusinessAccess.pickFailed"));
     }
   };
 
@@ -382,7 +383,7 @@ function ProviderOnboarding() {
         setCreatedProvider(provider);
       }
     } catch (err) {
-      setErrorMessage(err?.message || t("common.somethingWrong"));
+      setErrorMessage(friendlyErrorMessage(err, "common.somethingWrong"));
     } finally {
       setBuilding(false);
     }

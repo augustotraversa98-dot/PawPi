@@ -89,7 +89,7 @@ export default function WalkLiveScreen() {
         ) : !session ? (
           <EmptyState
             title={t("screensUi.walkLive.walkNotFound")}
-            body="This walk is no longer available."
+            body={t("leftoverUi.walkLive.noLongerAvailable")}
           />
         ) : (
           <>

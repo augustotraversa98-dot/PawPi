@@ -44,6 +44,7 @@ import RatingBadge from "@/components/Providers/RatingBadge";
 import ProviderListControls, {
   useProviderListFilter,
 } from "@/components/Providers/ProviderListControls";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // PROVIDER Training discovery + progress (ticket 2.10) — HIRING a trainer. This is DISTINCT
 // from the consumer self-Training tab ((tabs)/training.jsx — static how-to content, no
@@ -439,7 +440,7 @@ function BookTrainingModal({ provider, petId, onClose }) {
       reset();
       onClose();
     } catch (e) {
-      Alert.alert(t("training.couldNotBook"), e.message || t("common.pleaseTryAgain"));
+      Alert.alert(t("training.couldNotBook"), friendlyErrorMessage(e, "common.pleaseTryAgain"));
     }
   };
 

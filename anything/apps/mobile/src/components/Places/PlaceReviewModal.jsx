@@ -16,6 +16,7 @@ import { COLORS } from "@/constants/colors";
 import { PET_WELCOME_LEVELS, PLACE_AMENITIES } from "@/constants/placeReviews";
 import { useSubmitPlaceReview } from "@/hooks/usePlaceReviews";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // Two-dimension PLACE review composer (drill-in from the place detail). Star picker mirrors the
 // provider WriteReviewModal; adds a single-select pet-welcome tier (icon + label) and multi-select
@@ -74,7 +75,7 @@ export default function PlaceReviewModal({
         onError: (error) =>
           Alert.alert(
             t("placeReviews.submitFailedTitle"),
-            error.message || t("placeReviews.submitFailedBody"),
+            friendlyErrorMessage(error, "placeReviews.submitFailedBody"),
           ),
       },
     );

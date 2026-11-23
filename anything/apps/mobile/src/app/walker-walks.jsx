@@ -28,6 +28,7 @@ import {
 import StartWalkModal from "@/components/Health/WalkActivity/StartWalkModal";
 import WalkerLiveMap from "@/components/Health/WalkActivity/WalkerLiveMap";
 import PickupScannerModal from "@/components/Providers/PickupScannerModal";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // WALKER workspace (ticket 2.7) — a provider's active walker-staff start, GPS-track, and
 // finish a booked walk. REUSES the existing walk-activity UI (StartWalkModal — the same
@@ -131,7 +132,7 @@ export default function WalkerWalksScreen() {
       setActive({ sessionId, booking });
       startTracking(sessionId);
     } catch (e) {
-      Alert.alert(t("walkerWalks.couldNotStart"), e?.message || t("common.pleaseTryAgain"));
+      Alert.alert(t("walkerWalks.couldNotStart"), friendlyErrorMessage(e, "common.pleaseTryAgain"));
     }
   };
 
@@ -174,7 +175,7 @@ export default function WalkerWalksScreen() {
           t("walkPickup.badCodeBody", "That QR isn't a valid pickup code for your business."),
         );
       } else {
-        Alert.alert(t("walkPickup.redeemErrorTitle", "Couldn't scan"), e?.message);
+        Alert.alert(t("walkPickup.redeemErrorTitle", "Couldn't scan"), friendlyErrorMessage(e));
       }
     }
   };
@@ -197,7 +198,7 @@ export default function WalkerWalksScreen() {
       );
       refetch();
     } catch (e) {
-      Alert.alert(t("walkerWalks.couldNotFinish"), e?.message || t("common.pleaseTryAgain"));
+      Alert.alert(t("walkerWalks.couldNotFinish"), friendlyErrorMessage(e, "common.pleaseTryAgain"));
     }
   };
 
@@ -227,7 +228,7 @@ export default function WalkerWalksScreen() {
           t("walkRequests.takenBody", "This request was cancelled or accepted by someone else."),
         );
       } else {
-        Alert.alert(t("walkRequests.acceptErrorTitle", "Couldn't accept"), e?.message);
+        Alert.alert(t("walkRequests.acceptErrorTitle", "Couldn't accept"), friendlyErrorMessage(e));
       }
     } finally {
       setAcceptingId(null);

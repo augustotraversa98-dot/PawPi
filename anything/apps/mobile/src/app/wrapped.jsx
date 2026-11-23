@@ -10,6 +10,7 @@ import { getLocalPostDateString } from "@/utils/dateUtils";
 import { buildWrapped, wrappedSlides } from "@/utils/memoriesWrapped";
 import { MemoryShareButton } from "@/components/Feed/MemoryShareButton";
 import { useTranslation } from "react-i18next";
+import { translate } from "@/utils/appAlert";
 
 const C = {
   cream: COLORS.cream,
@@ -84,7 +85,9 @@ export default function WrappedScreen() {
                     emoji: s.emoji,
                     stat: s.stat,
                     statLabel: s.label,
-                    headline: s.headline || `${petName || "My pup"}'s Wrapped`,
+                    headline:
+                      s.headline ||
+                      t("screensUi.wrapped.titleWithPet", { name: petName || translate("leftoverUi.myPup", "My pup") }),
                     subtitle: s.sub || s.label,
                   }}
                 />

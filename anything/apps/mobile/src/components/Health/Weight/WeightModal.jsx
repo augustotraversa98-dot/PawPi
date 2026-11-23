@@ -28,6 +28,7 @@ import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { defaultWeightUnit } from "@/utils/weightUnit";
 import { formatLocalDate } from "@/utils/localeDateTime";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 const C = {
   cream: COLORS.cream,
@@ -199,7 +200,7 @@ export default function WeightModal({ visible, onClose }) {
               queryKey: ["health", "weight-logs"],
             });
           } catch (e) {
-            Alert.alert(t("trackers.weight.modal.deleteError"), e.message || t("trackers.weight.modal.pleaseTryAgain"));
+            Alert.alert(t("trackers.weight.modal.deleteError"), friendlyErrorMessage(e, "trackers.weight.modal.pleaseTryAgain"));
           }
         },
       },

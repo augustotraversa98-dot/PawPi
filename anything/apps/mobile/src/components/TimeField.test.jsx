@@ -4,6 +4,9 @@ import { Text } from "react-native";
 import TimeField from "./TimeField";
 import { formatDisplayTime } from "../utils/canonicalDateTime";
 
+// Resolve t() against the real English catalog.
+jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
+
 jest.mock("@react-native-community/datetimepicker", () => {
   const React = require("react");
   return {

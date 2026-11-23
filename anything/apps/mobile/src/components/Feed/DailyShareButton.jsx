@@ -5,11 +5,17 @@ import { captureRef } from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
 import { COLORS } from "@/constants/colors";
 import ShareableDailyCard from "./ShareableDailyCard";
+import { translate } from "@/utils/appAlert";
+import { translateVars } from "@/utils/translateVars";
 
 // The enhanced default text for X / the share sheet (ticket 2.28).
 export function shareCaption(petName) {
-  const name = petName || "my pup";
-  return `Meet ${name} 🐾 today's daily on PawPi — one honest moment a day.`;
+  const name = petName || translate("leftoverUi.myPupLower", "my pup");
+  return translateVars(
+    "leftoverUi.dailyShareCaption",
+    { name },
+    "Meet {{name}} 🐾 today's daily on PawPi — one honest moment a day.",
+  );
 }
 
 // A Share affordance for a daily photo (ticket 2.28). Tapping mounts an off-screen

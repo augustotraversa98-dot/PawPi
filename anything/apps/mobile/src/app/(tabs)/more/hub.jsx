@@ -191,13 +191,13 @@ export default function MyHubScreen() {
             onPress={() => router.push("/(tabs)/more/data-access")}
           >
             {activeGrants.length === 0 ? (
-              <Empty text="No one has access to your pets." />
+              <Empty text={t("leftoverUi.hub.noAccess")} />
             ) : (
               activeGrants.slice(0, 4).map((g) => (
                 <Row
                   key={g.id}
-                  primary={g.provider_name || "Provider"}
-                  secondary={`Access to ${g.pet_name || "your pet"}`}
+                  primary={g.provider_name || t("dataAccess.provider")}
+                  secondary={t("leftoverUi.hub.accessTo", { name: g.pet_name || t("routineCard.yourPet") })}
                   badge="active"
                 />
               ))
@@ -212,12 +212,12 @@ export default function MyHubScreen() {
             onPress={() => router.push("/service/adoption")}
           >
             {favList.length === 0 ? (
-              <Empty text="No saved adoption listings." />
+              <Empty text={t("leftoverUi.hub.noSavedListings")} />
             ) : (
               favList.slice(0, 4).map((f) => (
                 <Row
                   key={f.id}
-                  primary={f.listing_name || "Dog"}
+                  primary={f.listing_name || t("leftoverUi.hub.dog")}
                   secondary={`${f.listing_breed || ""}${
                     f.provider_name ? ` · ${f.provider_name}` : ""
                   }`}

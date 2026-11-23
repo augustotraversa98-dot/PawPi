@@ -1,7 +1,8 @@
 import { Alert } from "react-native";
 
 const mockT = jest.fn();
-jest.mock("react-i18next", () => ({ getI18n: () => ({ t: mockT }) }));
+let mockLang;
+jest.mock("react-i18next", () => ({ getI18n: () => ({ t: mockT, language: mockLang }) }));
 
 import {
   isTechnicalMessage,
@@ -12,6 +13,7 @@ import {
 } from "./appAlert";
 
 beforeEach(() => {
+  mockLang = undefined;
   mockT.mockReset();
   mockT.mockImplementation((k) => `T(${k})`);
   jest.spyOn(Alert, "alert").mockImplementation(() => {});
@@ -61,5 +63,30 @@ describe("appAlert", () => {
       throw new Error("not init");
     });
     expect(translate("x.y", "Fallback")).toBe("Fallback");
+  });
+});
+
+// The API answers in English only. In a Spanish UI a raw server sentence under a Spanish alert title is a
+// half-translated screen: generic messages are mapped, unmapped English falls back to the localized text.
+describe("friendlyErrorMessage — Spanish UI", () => {
+  beforeEach(() => {
+    mockLang = "es-AR";
+  });
+  test("maps generic server messages to Spanish keys", () => {
+    expect(friendlyErrorMessage(new Error("Pet not found"), "appAlerts.x")).toBe("T(leftoverUi.serverErrors.notFound)");
+    expect(friendlyErrorMessage(new Error("Unauthorized"), "appAlerts.x")).toBe("T(leftoverUi.serverErrors.unauthorized)");
+    expect(friendlyErrorMessage(new Error("petId is required"), "appAlerts.x")).toBe("T(leftoverUi.serverErrors.invalid)");
+  });
+  test("an unmapped English sentence never leaks: the localized per-action fallback is used", () => {
+    expect(friendlyErrorMessage(new Error("Walk requests are coming soon for your zone"), "appAlerts.couldNotInvite")).toBe(
+      "T(appAlerts.couldNotInvite)",
+    );
+  });
+  test("a message that is already Spanish passes through", () => {
+    expect(friendlyErrorMessage(new Error("El usuario ya está registrado"), "appAlerts.x")).toBe("El usuario ya está registrado");
+  });
+  test("English UI keeps the server's own sentence", () => {
+    mockLang = "en";
+    expect(friendlyErrorMessage(new Error("Pet not found"), "appAlerts.x")).toBe("Pet not found");
   });
 });

@@ -26,6 +26,7 @@ import { PetAvatar } from "@/components/Pets/PetAvatar";
 import { ModerationMenu } from "@/components/moderation/ModerationMenu";
 import { useTranslation } from "react-i18next";
 import { ownerDisplayName } from "@/utils/ownerDisplayName";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 export const BarkModal = memo(function BarkModal({
   visible,
@@ -87,7 +88,7 @@ export const BarkModal = memo(function BarkModal({
       if (onBarkAdded) onBarkAdded(post.id, barks.length + 1);
     } catch (error) {
       console.error("Error creating bark:", error);
-      Alert.alert(t("feed.errorSaveTitle"), error?.message || t("feed.errorSaveBody"));
+      Alert.alert(t("feed.errorSaveTitle"), friendlyErrorMessage(error, "feed.errorSaveBody"));
     }
   }, [text, post, createBarkMutation, barks.length, onBarkAdded]);
 

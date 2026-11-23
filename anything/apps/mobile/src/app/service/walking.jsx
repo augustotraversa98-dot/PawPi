@@ -45,6 +45,7 @@ import ProviderListControls, {
   useProviderListFilter,
 } from "@/components/Providers/ProviderListControls";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // Dog Walking discovery + live (ticket 2.7) — browse PUBLISHED walker providers (real
 // data, no mocks) and watch the active pet's LIVE walk / read past reports. Discovery is
@@ -132,7 +133,7 @@ export default function WalkingScreen() {
         t("walkRequests.sentBody", "We let the walker know. You'll be notified when they accept."),
       );
     } catch (e) {
-      Alert.alert(t("walkRequests.errorTitle", "Couldn't send request"), e?.message);
+      Alert.alert(t("walkRequests.errorTitle", "Couldn't send request"), friendlyErrorMessage(e));
     }
   };
 
@@ -140,7 +141,7 @@ export default function WalkingScreen() {
     try {
       await cancelRequest.mutateAsync({ requestId: id });
     } catch (e) {
-      Alert.alert(t("walkRequests.errorTitle", "Couldn't send request"), e?.message);
+      Alert.alert(t("walkRequests.errorTitle", "Couldn't send request"), friendlyErrorMessage(e));
     }
   };
 
@@ -191,7 +192,7 @@ export default function WalkingScreen() {
         t("walkRequests.findingBody", "We're notifying nearby available walkers. You'll be notified when one accepts."),
       );
     } catch (e) {
-      Alert.alert(t("walkRequests.errorTitle", "Couldn't send request"), e?.message);
+      Alert.alert(t("walkRequests.errorTitle", "Couldn't send request"), friendlyErrorMessage(e));
     } finally {
       setFindingNow(false);
     }

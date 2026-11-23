@@ -21,6 +21,7 @@ import {
   useCareAccessGrants,
   useUpdateGrant,
 } from "@/hooks/useCareAccessGrants";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // Human-readable labels for each scope a provider may request. Unknown scopes
 // fall through to their raw string so a new backend scope never crashes the UI.
@@ -77,7 +78,7 @@ export default function DataAccessScreen() {
       { grantId, action },
       {
         onError: (err) =>
-          Alert.alert(t("dataAccess.errorTitle"), err.message || t("dataAccess.tryAgain")),
+          Alert.alert(t("dataAccess.errorTitle"), friendlyErrorMessage(err, "dataAccess.tryAgain")),
       },
     );
   };

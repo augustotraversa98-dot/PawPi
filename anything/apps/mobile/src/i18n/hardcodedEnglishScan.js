@@ -36,6 +36,18 @@ const USER_PROPS = new Set([
   "saveLabel",
   "subtitleText",
   "headerLeftLabel",
+  "text",
+  "body",
+  "primary",
+  "secondary",
+  "headline",
+  "caption",
+  "helperText",
+  "hint",
+  "errorText",
+  "emptyBody",
+  "footer",
+  "heading",
 ]);
 // Object-literal keys that hold user-facing copy (kept narrower than USER_PROPS: object keys are noisier).
 const USER_KEYS = new Set([

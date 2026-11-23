@@ -72,6 +72,7 @@ import { useStorefrontCart } from "@/hooks/useStorefrontCart";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { formatMoney } from "@/utils/money";
 import { LinearGradient } from "expo-linear-gradient";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // Storefront primary-action buckets (Services Hub P4a). A provider's capabilities[] (from
 // the public profile) decide the primary action: a SHOP (shop/pharmacy or any products)
@@ -197,7 +198,7 @@ export default function ProviderScreen() {
         const url = res?.checkoutUrl || res?.deeplink;
         if (url) Linking.openURL(url).catch(() => {});
       } catch (e) {
-        Alert.alert(t("walkPackages.buyErrorTitle"), e?.message);
+        Alert.alert(t("walkPackages.buyErrorTitle"), friendlyErrorMessage(e));
       }
     },
     [provider?.id, petId, buyWalkPackage, t],

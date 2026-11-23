@@ -145,7 +145,7 @@ export default function ProfileScreen() {
   }
 
   // Use database values instead of AsyncStorage
-  const petName = currentPet?.name || "My Dog";
+  const petName = currentPet?.name || t("leftoverUi.myDog");
   const petBreed =
     currentPet?.breed === MIXED_BREED_VALUE
       ? t("breedPicker.mixed")

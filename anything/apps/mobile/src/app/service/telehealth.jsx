@@ -33,6 +33,7 @@ import RatingBadge from "@/components/Providers/RatingBadge";
 import { isTelehealthJoinTooEarly } from "@/utils/telehealthJoinGate";
 import { formatDisplayDate, formatDisplayTime } from "@/utils/canonicalDateTime";
 import { useTranslation } from "react-i18next";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // Telehealth discovery + consults (ticket 2.18). A consult IS a normal booking — tapping a
 // vet opens the shared provider profile carrying capability='telehealth' (the generalized
@@ -194,7 +195,7 @@ function ConsultCard({ consult, petId }) {
         setNotReadyMessage(joinWaitMessage());
       } else {
         // Clean message (e.g. "Video consults aren't set up yet") — never a crash.
-        setError(e?.message || t("telehealth.joinFailed"));
+        setError(friendlyErrorMessage(e, "telehealth.joinFailed"));
       }
     }
   };
