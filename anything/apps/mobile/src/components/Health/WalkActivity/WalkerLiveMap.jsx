@@ -27,7 +27,7 @@ export default function WalkerLiveMap({ points = [], permissionDenied = false })
       <Note
         testID="walker-map-denied"
         icon={<MapPinOff size={22} color={C.mutedBrown} />}
-        text="Location is off for this walk — the time still tracks, just no live map."
+        text={t("healthDataUi.walkerLiveMap.locationOff")}
       />
     );
   }
@@ -37,7 +37,7 @@ export default function WalkerLiveMap({ points = [], permissionDenied = false })
       <Note
         testID="walker-map-waiting"
         icon={<MapPin size={22} color={C.mutedBrown} />}
-        text="Waiting for the first GPS points…"
+        text={t("healthDataUi.walkerLiveMap.waitingGps")}
       />
     );
   }

@@ -25,9 +25,10 @@ export default function WalkRoutineModal({
   onSave,
   onDelete,
   editingRoutine,
-  petName = "your pet",
+  petName,
 }) {
   const { t } = useTranslation();
+  const petLabel = petName || t("healthDataUi.yourPetLower");
   const {
     step,
     setStep,
@@ -256,7 +257,7 @@ export default function WalkRoutineModal({
         visible={visible}
         onClose={onClose}
         onSelectCount={handleCountSelect}
-        petName={petName}
+        petName={petLabel}
       />
     );
   }
@@ -292,7 +293,7 @@ export default function WalkRoutineModal({
                 🚶 {editingRoutine ? t("walkRoutine.edit") : t("walkRoutine.create")}
               </Text>
               <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-                {t("walkRoutine.subtitle", { pet: petName })}
+                {t("walkRoutine.subtitle", { pet: petLabel })}
               </Text>
             </View>
             <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}

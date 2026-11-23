@@ -74,7 +74,7 @@ export default function WalkItem({
   };
 
   const handleAddToCalendar = async () => {
-    const success = await addWalkToCalendar(walk, "your pet");
+    const success = await addWalkToCalendar(walk, t("routineCard.yourPet"));
     if (success) {
       console.log("[WalkRoutine] Walk added to calendar successfully");
     }

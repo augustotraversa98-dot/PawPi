@@ -25,7 +25,7 @@ import { PressableScale } from "@/components/ui";
 import {
   detectHealthFlags,
   buildRecap,
-  DISCLAIMER,
+  getDisclaimer,
 } from "@/utils/healthInsights";
 import { summaryToText } from "@/utils/vetSummaryText";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
@@ -80,8 +80,9 @@ export default function VetSummaryModal({ visible, onClose }) {
 
   const { data: summary, isLoading, error } = useVetSummary(petId, from, today, visible);
 
-  const flags = useMemo(() => (summary ? detectHealthFlags(summary) : []), [summary]);
-  const recap = useMemo(() => (summary ? buildRecap(summary, flags) : ""), [summary, flags]);
+  // `t` in the deps re-derives the flag/recap sentences when the app language changes.
+  const flags = useMemo(() => (summary ? detectHealthFlags(summary) : []), [summary, t]);
+  const recap = useMemo(() => (summary ? buildRecap(summary, flags) : ""), [summary, flags, t]);
 
   const onShare = async () => {
     if (!summary) return;
@@ -259,7 +260,7 @@ export default function VetSummaryModal({ visible, onClose }) {
 
               {/* Disclaimer */}
               <View style={styles.disclaimer}>
-                <Text style={{ fontSize: 12, color: C.mutedBrown, lineHeight: 17 }}>{DISCLAIMER}</Text>
+                <Text style={{ fontSize: 12, color: C.mutedBrown, lineHeight: 17 }}>{getDisclaimer()}</Text>
               </View>
 
               {/* Share */}

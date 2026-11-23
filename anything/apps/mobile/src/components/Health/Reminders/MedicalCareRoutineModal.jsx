@@ -23,7 +23,7 @@ import {
 } from "@/data/routinesData";
 import DateField from "@/components/DateField";
 import TimeField from "@/components/TimeField";
-import { canonicalizeDateValue } from "@/utils/canonicalDateTime";
+import { canonicalizeDateValue, formatDisplayDate } from "@/utils/canonicalDateTime";
 import { getLocalPostDateString } from "@/utils/dateUtils";
 import { CADENCE_OPTIONS_FULL } from "./CadenceFrequencySelector";
 import ScheduleBlock, { scheduleFromItem } from "./ScheduleBlock";
@@ -534,7 +534,7 @@ function Header({ title, subtitle, onClose, compact }) {
 // =========================================================================
 function ItemRow({ item, onEdit, onDelete }) {
   const { t } = useTranslation();
-  const subtitle = buildItemSubtitle(item);
+  const subtitle = buildItemSubtitle(item, t);
   return (
     <View
       style={{
@@ -608,7 +608,7 @@ function ItemRow({ item, onEdit, onDelete }) {
   );
 }
 
-function buildItemSubtitle(item) {
+function buildItemSubtitle(item, t) {
   if (
     item.type === MEDICAL_CARE_SUBTYPES.MEDICATION ||
     item.type === MEDICAL_CARE_SUBTYPES.SUPPLEMENT
@@ -619,17 +619,23 @@ function buildItemSubtitle(item) {
     return parts.join(" · ");
   }
   if (item.type === MEDICAL_CARE_SUBTYPES.VACCINE) {
-    if (item.nextDue) return `Next due ${item.nextDue}`;
-    if (item.lastGiven) return `Last given ${item.lastGiven}`;
+    if (item.nextDue)
+      return t("healthDataUi.ui.nextDue", {
+        date: formatDisplayDate(item.nextDue) || item.nextDue,
+      });
+    if (item.lastGiven)
+      return t("healthDataUi.ui.lastGiven", {
+        date: formatDisplayDate(item.lastGiven) || item.lastGiven,
+      });
     return "";
   }
   // preventives
   if (item.repeatInterval) {
     const map = {
-      monthly: "Monthly",
-      every_3_months: "Every 3 months",
-      every_6_months: "Every 6 months",
-      yearly: "Yearly",
+      monthly: t("cadenceSelector.labels.monthly"),
+      every_3_months: t("cadenceSelector.labels.every3Months"),
+      every_6_months: t("cadenceSelector.labels.every6Months"),
+      yearly: t("cadenceSelector.labels.yearly"),
     };
     return map[item.repeatInterval] || item.repeatInterval;
   }

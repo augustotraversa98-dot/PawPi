@@ -558,11 +558,14 @@ function HistoryList({ isWeight, schema, entries, isLoading, t }) {
 
 function describeWellnessEntry(schema, entry) {
   const v = entry.values_json || {};
-  if (v.label) return v.label;
   const raw = v[schema.valueKey];
-  if (raw == null || raw === "") return schema.label;
+  // The persisted `label` is English; resolve the option by its stored key first so history reads in the
+  // user's language, and only fall back to the stored label for an option that no longer exists.
   const opt = (schema.options || []).find((o) => o.key === raw);
-  return opt ? opt.label : String(raw);
+  if (opt) return opt.label;
+  if (v.label) return v.label;
+  if (raw == null || raw === "") return schema.label;
+  return String(raw);
 }
 
 const fieldLabel = {

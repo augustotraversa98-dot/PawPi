@@ -97,9 +97,10 @@ export default function FeedingRoutineModal({
   onClose,
   onSave,
   editingRoutine,
-  petName = "your pet",
+  petName,
 }) {
   const { t } = useTranslation();
+  const petLabel = petName || t("healthDataUi.yourPetLower");
   const [step, setStep] = useState("count"); // 'count' or 'details'
   const [mealCount, setMealCount] = useState(2);
   const [meals, setMeals] = useState(DEFAULT_MEALS[2]);
@@ -261,7 +262,7 @@ export default function FeedingRoutineModal({
                   {t("routinesUi.feeding.feedingRoutine")}
                 </Text>
                 <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-                  {t("routinesUi.feeding.howManyMeals", { name: petName })}
+                  {t("routinesUi.feeding.howManyMeals", { name: petLabel })}
                 </Text>
               </View>
               <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -448,7 +449,7 @@ export default function FeedingRoutineModal({
                         marginBottom: 2,
                       }}
                     >
-                      {meal.name || `Meal ${index + 1}`}
+                      {meal.name || t("healthDataUi.ui.mealN", { n: index + 1 })}
                     </Text>
                     <Text style={{ fontSize: 13, color: C.mutedBrown }}>
                       {meal.time} •{" "}
@@ -623,14 +624,14 @@ export default function FeedingRoutineModal({
                           }}
                         >
                           {[
-                            "Mon",
-                            "Tue",
-                            "Wed",
-                            "Thu",
-                            "Fri",
-                            "Sat",
-                            "Sun",
-                          ].map((day, dayIndex) => {
+                            "mon",
+                            "tue",
+                            "wed",
+                            "thu",
+                            "fri",
+                            "sat",
+                            "sun",
+                          ].map((dayId, dayIndex) => {
                             const isSelected = (meal.days || []).includes(
                               dayIndex,
                             );
@@ -656,7 +657,7 @@ export default function FeedingRoutineModal({
                                     color: isSelected ? "#FFF" : C.mutedBrown,
                                   }}
                                 >
-                                  {day}
+                                  {t(`walkItem.days.${dayId}`)}
                                 </Text>
                               </TouchableOpacity>
                             );
