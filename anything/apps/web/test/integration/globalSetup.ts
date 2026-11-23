@@ -49,6 +49,19 @@ export default async function setup({ provide }: GlobalSetupContext) {
     password: DB_PASSWORD,
     port,
     persistent: false,
+    // The suite TRUNCATEs ~130 tables before EVERY test. Postgres does not unlink a truncated relation's first segment
+    // until the next CHECKPOINT, so between checkpoints each reset leaves ~1000 zero-length files behind (measured:
+    // ~65,000 after 66 tests / 20 s). On the CI runner the data dir is on tmpfs (/dev/shm, see pgDataDir.ts), whose inode
+    // table is finite: with a few dozen more tests than before, the job died with "could not create file ... No space
+    // left on device" (SQLSTATE 53100) and 73 unrelated test files failed. Checkpointing often keeps the file count flat.
+    // fsync / full_page_writes off are safe: the cluster is throwaway and wiped on teardown.
+    postgresFlags: [
+      '-c', 'checkpoint_timeout=30s',
+      '-c', 'max_wal_size=64MB',
+      '-c', 'min_wal_size=32MB',
+      '-c', 'fsync=off',
+      '-c', 'full_page_writes=off',
+    ],
     // Keep test output readable — swallow the cluster's chatty stdout/stderr.
     onLog: () => {},
     onError: () => {},
