@@ -2660,7 +2660,9 @@
     "petsSharedWithMe": "PETS SHARED WITH ME",
     "noSharedYet": "No pets have been shared with you yet.",
     "sharedFrom": "from @{{username}} · {{roleLabel}} · {{status}}",
-    "activeChip": "active"
+    "activeChip": "active",
+    "noPetTitle": "Add your dog first",
+    "noPetBody": "Sharing with family and caregivers is set up for each dog. Create your dog's profile, then come back here to invite someone."
   },
   "insurance": {
     "title": "Insurance 🛡️",

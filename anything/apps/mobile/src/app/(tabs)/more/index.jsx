@@ -3,6 +3,7 @@ import { useNavigation } from "expo-router";
 import PetProfileScreen from "@/app/pet-profile";
 import { FirstFocusGate } from "@/components/FirstFocusGate";
 import { COLORS } from "@/constants/colors";
+import { popStackToRootOnTabLeave } from "@/utils/popStackOnTabLeave";
 
 // The bottom-right "Profile" tab (ticket 2.60) IS the active pet's social
 // profile. We reuse the pet-profile screen in `embedded` mode: it falls back to
@@ -31,14 +32,13 @@ export default function ProfileTab() {
   // reminders.jsx), so in-component state living there — like RoutinesTab's
   // routine-creation modal — resets instead of lingering. This doesn't touch
   // in-tab back navigation (Health → reminders origin), which never blurs "more".
+  //
+  // The reset must only ever touch THIS stack. A bare `navigation.popToTop()` here also fired when a
+  // root-stack screen was pushed over the tabs (OwnerMenu → Family & caregivers, Lost & found, …); the
+  // stack was already at its root, so the action bubbled up and popped the ROOT stack — for a user who had
+  // just finished onboarding, all the way back to the onboarding wizard. See utils/popStackOnTabLeave.js.
   const navigation = useNavigation();
-  useEffect(() => {
-    const parent = navigation.getParent();
-    if (!parent) return;
-    return parent.addListener("blur", () => {
-      navigation.popToTop();
-    });
-  }, [navigation]);
+  useEffect(() => popStackToRootOnTabLeave(navigation), [navigation]);
 
   // The profile (and the owner menu / share cards it hosts) mounts on first open of this tab, not at
   // launch — the nav wiring above stays mounted either way.

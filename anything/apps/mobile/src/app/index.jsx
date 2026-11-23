@@ -127,6 +127,10 @@ export default function EntryPoint() {
     let providers = [];
     // Set only when the launch read proved the stored token dead (see below).
     let deadReason = null;
+    // Pets this session already knows (cache is cleared on every identity change, so they are this
+    // account's). Read BEFORE the fetch: an empty answer must not undo what we already know.
+    const cachedPets = queryClient.getQueryData(PETS_QUERY_KEY);
+    const knownPets = Array.isArray(cachedPets) && cachedPets.length > 0 ? cachedPets : undefined;
     try {
       const pets = await queryClient.fetchQuery({
         queryKey: PETS_QUERY_KEY,
@@ -134,7 +138,12 @@ export default function EntryPoint() {
         staleTime: 0,
         retry: false,
       });
-      if (!pets || pets.length === 0) {
+      if (knownPets && (!pets || pets.length === 0)) {
+        // fetchQuery just overwrote the cache with the empty answer; put back what we know so the
+        // tabs (useCurrentPet) keep showing the owner's dog while the next refetch settles it.
+        queryClient.setQueryData(PETS_QUERY_KEY, knownPets);
+      }
+      if ((!pets || pets.length === 0) && !knownPets) {
         providers = await queryClient
           .fetchQuery({
             queryKey: MY_PROVIDERS_QUERY_KEY,
@@ -144,7 +153,7 @@ export default function EntryPoint() {
           })
           .catch(() => []);
       }
-      outcome = { ok: true, status: 200, pets, providers };
+      outcome = { ok: true, status: 200, pets, providers, knownPets };
     } catch (apiError) {
       if (typeof apiError?.status === "number") {
         // The server answered with a non-OK status (401/403 → login, 5xx → retry screen).

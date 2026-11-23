@@ -151,3 +151,31 @@ test("logout still drops the session when storage fails", async () => {
   expect(mockSetAuth).toHaveBeenCalledWith(null);
   spy.mockRestore();
 });
+
+// Regression (More menu → "Familia y cuidadores" → onboarding): every menu item pushes ITS OWN screen — exactly one
+// push, to the documented path, never to onboarding or the launch route "/" — whatever the account state. (The jump
+// to onboarding itself was a navigation-stack bug, covered with real routers in utils/popStackOnTabLeave.test.jsx.)
+describe("every menu item opens its own screen", () => {
+  const ITEMS = [
+    ["Community", "/(tabs)/more/community"],
+    ["My Hub", "/(tabs)/more/hub"],
+    ["Dog Profile", "/(tabs)/more/profile"],
+    ["Family & Caregivers", "/pet-sharing"],
+    ["Lost & Found", "/lost-found"],
+    ["Memories & Wrapped", "/memories"],
+    ["Reminders & Routines", "/(tabs)/more/reminders"],
+    ["Settings", "/(tabs)/more/settings"],
+  ];
+
+  test.each(ITEMS)("%s → %s", (label, path) => {
+    const { getByLabelText, getByText } = render(<OwnerMenu />);
+    fireEvent.press(getByLabelText("Open menu"));
+    fireEvent.press(getByText(label));
+
+    expect(mockPush).toHaveBeenCalledTimes(1);
+    expect(mockPush).toHaveBeenCalledWith(path);
+    expect(path).not.toMatch(/onboarding/);
+    expect(path).not.toBe("/");
+    expect(mockReplace).not.toHaveBeenCalled(); // no navigation other than the one push
+  });
+});

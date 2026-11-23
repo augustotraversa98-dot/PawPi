@@ -36,6 +36,14 @@
  * @param {Array}   [outcome.pets]         - parsed pets array on a 200 response.
  * @param {Array}   [outcome.providers]    - providers the account is active staff
  *                                            of (best-effort; [] when none/unknown).
+ * @param {Array}   [outcome.knownPets]    - pets this SESSION already had cached before this read
+ *                                            (the React Query cache is cleared on every identity change,
+ *                                            so they belong to the signed-in account). A 200 that comes
+ *                                            back EMPTY while pets are known is a transient/empty read
+ *                                            (identity not resolved, replica lag…), not "a new user":
+ *                                            it must not throw an existing owner into the onboarding
+ *                                            wizard (incident Oct 2026). A genuinely new account has no
+ *                                            known pets and still reaches onboarding.
  * @returns {{ action: 'login' | 'home' | 'business' | 'onboarding' | 'error',
  *             destination?: string, clearSession?: boolean }}
  */
@@ -45,6 +53,7 @@ export function determinePetsRoute({
   ok,
   pets,
   providers,
+  knownPets,
 } = {}) {
   if (networkError) {
     return { action: 'error' };
@@ -59,6 +68,11 @@ export function determinePetsRoute({
   }
 
   if (pets && pets.length > 0) {
+    return { action: 'home', destination: '/(tabs)' };
+  }
+
+  // Empty list, but this session already knows the account has pets → a blip, not a new user.
+  if (Array.isArray(knownPets) && knownPets.length > 0) {
     return { action: 'home', destination: '/(tabs)' };
   }
 
