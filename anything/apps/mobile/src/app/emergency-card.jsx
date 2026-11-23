@@ -29,6 +29,7 @@ import {
   cardUrl,
 } from "@/hooks/useEmergencyCard";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import { spayNeuterLabel } from "@/utils/healthText";
 
 const contactModes = (t) => [
   { key: "relay", label: t("emergencyCard.contactRelay") },
@@ -202,7 +203,7 @@ export default function EmergencyCardScreen() {
                 <Row label={t("emergencyCard.breed")} value={breedLabel(t, pet?.breed)} />
                 <Row label={t("emergencyCard.microchip")} value={medical?.microchip_id} />
                 <Row label={t("emergencyCard.bloodType")} value={card?.blood_type} />
-                <Row label={t("emergencyCard.spayNeuter")} value={medical?.spayed_neutered_status} />
+                <Row label={t("emergencyCard.spayNeuter")} value={spayNeuterLabel(medical?.spayed_neutered_status)} />
                 <Row label={t("emergencyCard.allergies")} value={allergies.map((a) => a.allergen).join(", ")} />
                 <Row label={t("emergencyCard.conditions")} value={conditions.map((c) => c.condition).join(", ")} />
                 <Row label={t("emergencyCard.primaryVet")} value={medical?.primary_vet_name} />

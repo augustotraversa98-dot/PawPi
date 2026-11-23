@@ -263,7 +263,7 @@ export default function RoutinesTab({ editRoutineId } = {}) {
   };
 
   const hasAnyRoutines = validRoutines.length > 0;
-  const petName = currentPet?.name || t("routineCard.yourPet");
+  const petName = currentPet?.name || t("healthDataUi.yourPetLower");
 
   // Show loading spinner while loading routines
   if (
