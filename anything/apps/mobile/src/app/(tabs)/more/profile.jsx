@@ -35,6 +35,7 @@ import {
 } from "@/constants/theme";
 import { Card, PressableScale } from "@/components/ui";
 import { formatLocalDate } from "@/utils/localeDateTime";
+import { breedLabel } from "@/data/dogBreeds";
 
 // The canonical value BreedPicker persists for its pinned "Mixed breed" option
 // (BreedPicker.jsx's own MIXED_VALUE) — real breed names stay canonical English
@@ -149,7 +150,7 @@ export default function ProfileScreen() {
   const petBreed =
     currentPet?.breed === MIXED_BREED_VALUE
       ? t("breedPicker.mixed")
-      : currentPet?.breed;
+      : breedLabel(t, currentPet?.breed);
   const petAge = formatAge(currentPet ? getDisplayAgeParts(currentPet) : null);
   const petGender = formatGender(currentPet?.gender);
   const petWeight = formatWeight(currentPet?.weight, currentPet?.weight_unit);

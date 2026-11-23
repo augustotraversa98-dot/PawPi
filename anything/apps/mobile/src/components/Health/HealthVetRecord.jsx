@@ -61,6 +61,7 @@ import {
   ELEVATION,
 } from "@/constants/theme";
 import { Card, PressableScale } from "@/components/ui";
+import { breedLabel } from "@/data/dogBreeds";
 
 // Ordered sub-tabs of the "Medical history" group. Each key drives its own
 // list/query/modal below; the parent chip sub-nav renders in this order and the
@@ -1923,7 +1924,7 @@ export default function HealthVetRecord() {
                     {[
                       {
                         label: t("health.vetRecord.fieldBreed"),
-                        value: medicalProfileData?.pet?.breed,
+                        value: breedLabel(t, medicalProfileData?.pet?.breed),
                       },
                       {
                         label: t("health.vetRecord.fieldAge"),

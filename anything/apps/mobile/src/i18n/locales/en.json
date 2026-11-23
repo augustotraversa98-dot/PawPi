@@ -4666,5 +4666,707 @@
       "alreadyDone": "That was already done.",
       "notAvailable": "That isn't available yet."
     }
+  },
+  "trainingUi": {
+    "difficulty": {
+      "Beginner": "Beginner",
+      "Intermediate": "Intermediate",
+      "Advanced": "Advanced"
+    },
+    "programs": {
+      "puppy-essentials": {
+        "title": "Puppy Essentials",
+        "summary": "The first month with a new puppy: name recognition, handling, potty routine, crate comfort, and gentle bite inhibition — the foundation everything else builds on.",
+        "sessions": {
+          "name-recognition": {
+            "title": "Name recognition & the marker",
+            "objective": "Teach your puppy that their name means 'look at me, good things follow', and introduce a marker word ('yes') or clicker.",
+            "steps": {
+              "1": "In a quiet room, say your puppy's name once in a bright tone.",
+              "2": "The instant they look toward you, mark with 'yes!' and give a small treat.",
+              "3": "Repeat 8–10 times, then take a break. Never repeat the name over and over.",
+              "4": "Practice in 2–3 short sessions a day, gradually adding mild distractions."
+            },
+            "tips": {
+              "1": "Keep treats tiny (pea-sized) so you can do many reps.",
+              "2": "If they don't respond, you're too far or too distracting — make it easier."
+            }
+          },
+          "handling-touch": {
+            "title": "Gentle handling & body touch",
+            "objective": "Build positive associations with being touched on paws, ears, mouth, and collar — essential for vet visits and grooming.",
+            "steps": {
+              "1": "Touch a paw briefly, mark, and treat. Repeat for ears, then gently lift a lip.",
+              "2": "Pair every touch with a treat so handling predicts good things.",
+              "3": "Slowly increase how long you hold each touch.",
+              "4": "Practice a quick collar-grab + treat so being held is never scary."
+            },
+            "tips": {
+              "1": "Stop before your puppy gets squirmy — end on a calm note."
+            }
+          },
+          "potty-routine": {
+            "title": "Potty-training routine",
+            "objective": "Establish a predictable schedule and reward system so your puppy learns where to go.",
+            "steps": {
+              "1": "Take your puppy out after waking, eating, playing, and every 1–2 hours.",
+              "2": "Go to the same spot; wait quietly and let them sniff.",
+              "3": "The moment they finish, mark and reward warmly right there.",
+              "4": "Supervise indoors; clean accidents with an enzymatic cleaner (no scolding)."
+            },
+            "tips": {
+              "1": "A young puppy can hold it roughly one hour per month of age.",
+              "2": "Reward OUTSIDE, not after coming back in — timing teaches the location."
+            }
+          },
+          "crate-comfort": {
+            "title": "Crate as a safe den",
+            "objective": "Make the crate a cozy, voluntary resting place — never a punishment.",
+            "steps": {
+              "1": "Toss treats inside and let your puppy go in and out freely.",
+              "2": "Feed meals in the crate with the door open.",
+              "3": "Close the door for a few seconds, then build up while you stay nearby.",
+              "4": "Add a chew toy and a soft bed; keep first closed sessions short."
+            },
+            "tips": {
+              "1": "If they whine, you increased duration too fast — back up a step."
+            }
+          },
+          "bite-inhibition": {
+            "title": "Bite inhibition & mouthing",
+            "objective": "Teach your puppy to use a soft mouth and redirect nipping onto toys.",
+            "steps": {
+              "1": "When teeth touch skin, calmly say 'ouch' and stop play for a moment.",
+              "2": "Redirect immediately to an appropriate chew toy.",
+              "3": "Reward gentle play and chewing on toys.",
+              "4": "Keep play sessions short to avoid over-arousal nipping."
+            },
+            "tips": {
+              "1": "Never wrestle with hands — it teaches hands are toys."
+            }
+          },
+          "settle-on-mat": {
+            "title": "Settle on a mat",
+            "objective": "Teach a 'go relax here' spot for calmness at home.",
+            "steps": {
+              "1": "Place a mat down; reward any interaction with it.",
+              "2": "Reward lying down on the mat with calm, slow treats.",
+              "3": "Add a cue like 'place' as they step on reliably.",
+              "4": "Gradually reward longer settles and add a release word."
+            },
+            "tips": {
+              "1": "Deliver treats low and slow to encourage a relaxed body."
+            }
+          }
+        }
+      },
+      "basic-obedience": {
+        "title": "Basic Obedience",
+        "summary": "The core cues every dog needs: sit, down, stay, come, leave-it, and a reliable release. Lure-then-fade with positive reinforcement.",
+        "sessions": {
+          "sit": {
+            "title": "Sit",
+            "objective": "A reliable sit on a single verbal cue.",
+            "steps": {
+              "1": "Hold a treat at your dog's nose, slowly raise it back over their head.",
+              "2": "As the head goes up, the rear goes down — mark and reward the sit.",
+              "3": "After a few lures, try the hand motion with no treat, then reward.",
+              "4": "Add the word 'sit' just before the hand motion; fade the lure."
+            },
+            "tips": {
+              "1": "If they back up instead, practice with their rear near a wall."
+            }
+          },
+          "down": {
+            "title": "Down",
+            "objective": "A calm down from sit or stand.",
+            "steps": {
+              "1": "From a sit, move a treat from the nose straight down to the floor.",
+              "2": "Slide it slightly forward so they follow into a down; mark and reward.",
+              "3": "Repeat, then add the cue 'down' as they begin to lie down.",
+              "4": "Reward generously on the floor to build duration."
+            },
+            "tips": {
+              "1": "On slick floors, use a rug — comfort makes downs faster."
+            }
+          },
+          "stay": {
+            "title": "Stay (duration)",
+            "objective": "Hold position until released, building the 3 Ds: duration, distance, distraction.",
+            "steps": {
+              "1": "Ask for a sit; say 'stay' with a flat-hand signal.",
+              "2": "Wait 1 second, mark, reward, then release with 'okay'.",
+              "3": "Increase time first, THEN take a step back, THEN add distractions.",
+              "4": "If they break, calmly reset and make the last step easier."
+            },
+            "tips": {
+              "1": "Reward IN position, release with a separate word — don't confuse them."
+            }
+          },
+          "recall-intro": {
+            "title": "Come (foundation)",
+            "objective": "Build a happy, fast response to 'come' indoors.",
+            "steps": {
+              "1": "Back away a few steps and call 'come!' in a happy voice.",
+              "2": "Reward lavishly when they reach you — party every time.",
+              "3": "Practice short distances first, then between two people.",
+              "4": "Never call 'come' for something unpleasant (baths, nail trims)."
+            },
+            "tips": {
+              "1": "Make coming to you the best thing that happens all day."
+            }
+          },
+          "leave-it": {
+            "title": "Leave it",
+            "objective": "Disengage from something on cue — a safety essential.",
+            "steps": {
+              "1": "Place a treat in a closed fist; let them sniff and lick.",
+              "2": "Wait; the instant they pull back, mark and reward from the OTHER hand.",
+              "3": "Add the cue 'leave it'; progress to a treat on the floor, covered.",
+              "4": "Build to walking past food on the ground."
+            },
+            "tips": {
+              "1": "Always reward from a different source than the forbidden item."
+            }
+          },
+          "release-word": {
+            "title": "Release word & default sit",
+            "objective": "A clear 'you're free' word and a polite default sit.",
+            "steps": {
+              "1": "Pick a release word ('okay', 'free') and use it after every stay.",
+              "2": "Reward your dog for offering a sit when they want something.",
+              "3": "Use the default sit before meals, doors, and greetings.",
+              "4": "Keep the release word consistent across the household."
+            },
+            "tips": {
+              "1": "A default sit replaces jumping and pushy behavior."
+            }
+          }
+        }
+      },
+      "leash-manners": {
+        "title": "Leash Manners",
+        "summary": "Loose-leash walking without pulling: attention, the 'be a tree' method, turns, and passing distractions calmly.",
+        "sessions": {
+          "engagement": {
+            "title": "Attention & engagement",
+            "objective": "Reward your dog for checking in with you on leash.",
+            "steps": {
+              "1": "Stand still with the leash; mark and reward any glance at you.",
+              "2": "Take one step; reward attention. Build to a few steps.",
+              "3": "Use a 'watch me' cue with a treat at your eyes.",
+              "4": "Practice in the quiet of your home before heading outside."
+            },
+            "tips": {
+              "1": "Reward at your pant seam to encourage walking by your side."
+            }
+          },
+          "be-a-tree": {
+            "title": "The 'be a tree' method",
+            "objective": "Teach that pulling stops forward progress.",
+            "steps": {
+              "1": "Walk forward; the moment the leash goes tight, stop and stand still.",
+              "2": "Wait for slack (a step back or a check-in), then mark and move on.",
+              "3": "Reward heavily whenever the leash is loose.",
+              "4": "Be patient and consistent — every stop teaches the lesson."
+            },
+            "tips": {
+              "1": "A front-clip harness reduces pulling while you train."
+            }
+          },
+          "turns": {
+            "title": "Direction changes",
+            "objective": "Keep your dog attentive by changing direction.",
+            "steps": {
+              "1": "Walk a few steps, then turn the opposite way with a cheerful cue.",
+              "2": "Reward your dog for catching up to your side.",
+              "3": "Mix left, right, and about-turns unpredictably.",
+              "4": "Keep it like a game, not a correction."
+            },
+            "tips": {
+              "1": "Smooth, predictable rewards keep them choosing to stay close."
+            }
+          },
+          "passing-distractions": {
+            "title": "Passing dogs & people",
+            "objective": "Walk calmly past triggers using distance and rewards.",
+            "steps": {
+              "1": "Start far enough that your dog notices but can still focus.",
+              "2": "Reward attention as you pass at a distance.",
+              "3": "Gradually decrease distance over many sessions.",
+              "4": "If they fixate or pull, add distance — don't force closeness."
+            },
+            "tips": {
+              "1": "Calm passing is built over weeks, not in one walk."
+            }
+          },
+          "auto-check-in": {
+            "title": "Automatic check-ins",
+            "objective": "Your dog voluntarily looks at you during walks.",
+            "steps": {
+              "1": "Reward unprompted glances during the walk.",
+              "2": "Stop cueing 'watch me' and let them offer it.",
+              "3": "Vary the reward timing so they keep checking.",
+              "4": "Phase to praise + occasional treats."
+            },
+            "tips": {
+              "1": "Surprise rewards keep attention strong long-term."
+            }
+          }
+        }
+      },
+      "reliable-recall": {
+        "title": "Reliable Recall",
+        "summary": "A rock-solid 'come' you can trust — building from indoors to long-line work outdoors, with games that make recall irresistible.",
+        "sessions": {
+          "recall-game": {
+            "title": "The recall party game",
+            "objective": "Charge up the recall cue with high value.",
+            "steps": {
+              "1": "Say 'come!' and run backwards a few steps.",
+              "2": "When your dog catches you, throw a treat party and play.",
+              "3": "Keep every recall a celebration.",
+              "4": "End while they still want more."
+            },
+            "tips": {
+              "1": "Use your dog's favorite reward — recall earns the best stuff."
+            }
+          },
+          "ping-pong": {
+            "title": "Two-person ping-pong recall",
+            "objective": "Build speed and reliability with a partner.",
+            "steps": {
+              "1": "Two people sit a short distance apart.",
+              "2": "Take turns calling the dog; reward each arrival.",
+              "3": "Gradually increase the distance between you.",
+              "4": "Add the dog's name before 'come' for focus."
+            },
+            "tips": {
+              "1": "Keep it fast and fun — speed comes from excitement."
+            }
+          },
+          "long-line": {
+            "title": "Long-line outdoor recall",
+            "objective": "Practice recall safely in open spaces.",
+            "steps": {
+              "1": "Attach a 5–10m long line to a harness in a safe area.",
+              "2": "Let your dog explore, then call 'come' and reward big.",
+              "3": "Use the line only to prevent escapes, never to reel them in.",
+              "4": "Build up to mild distractions like a quiet park."
+            },
+            "tips": {
+              "1": "A long line gives freedom while keeping safety."
+            }
+          },
+          "proofing-distractions": {
+            "title": "Proofing against distractions",
+            "objective": "Recall even when something interesting is happening.",
+            "steps": {
+              "1": "Practice recall near mild distractions (a sniff spot, a person).",
+              "2": "Reward extra well for hard recalls.",
+              "3": "If they don't come, decrease the distraction next time.",
+              "4": "Never punish a slow recall — it poisons the cue."
+            },
+            "tips": {
+              "1": "Jackpot the hardest recalls with several treats in a row."
+            }
+          },
+          "emergency-recall": {
+            "title": "Emergency recall word",
+            "objective": "A special word reserved for true emergencies.",
+            "steps": {
+              "1": "Choose a unique word you never use casually.",
+              "2": "Pair it with an amazing reward (steak, chicken) — no command needed.",
+              "3": "Repeat the pairing until the word alone brings instant joy.",
+              "4": "Test rarely and always reward enormously."
+            },
+            "tips": {
+              "1": "Protect this word — only use it when it truly matters."
+            }
+          }
+        }
+      },
+      "impulse-control": {
+        "title": "Impulse Control",
+        "summary": "Self-control skills: wait at doors, leave food alone, settle on cue, and a polite greeting instead of jumping.",
+        "sessions": {
+          "wait-at-door": {
+            "title": "Wait at doors",
+            "objective": "No bolting through open doors.",
+            "steps": {
+              "1": "Reach for the door; if your dog surges, your hand comes off the handle.",
+              "2": "Open a crack only while they hold position.",
+              "3": "Reward calm waiting, then release to go through.",
+              "4": "Build to a fully open door with a solid wait."
+            },
+            "tips": {
+              "1": "Safety skill — practice at every door, every time."
+            }
+          },
+          "food-manners": {
+            "title": "Food-bowl manners",
+            "objective": "Sit politely while the bowl is placed down.",
+            "steps": {
+              "1": "Ask for a sit; begin lowering the bowl.",
+              "2": "If they break, the bowl goes back up.",
+              "3": "Bowl reaches the floor only while they hold the sit.",
+              "4": "Release with 'okay' to eat."
+            },
+            "tips": {
+              "1": "Calm before meals carries over to calm elsewhere."
+            }
+          },
+          "its-yer-choice": {
+            "title": "Leave-it impulse game",
+            "objective": "Choosing to ignore food earns the reward.",
+            "steps": {
+              "1": "Offer a treat in an open palm; close it if they dive in.",
+              "2": "Open again; reward the moment they hesitate or look away.",
+              "3": "Build to treats on the floor you can cover quickly.",
+              "4": "Add the 'leave it' cue once they reliably wait."
+            },
+            "tips": {
+              "1": "The dog learns self-control pays better than grabbing."
+            }
+          },
+          "polite-greeting": {
+            "title": "Polite greetings (no jumping)",
+            "objective": "Four-on-the-floor greetings instead of jumping.",
+            "steps": {
+              "1": "Approach calmly; if your dog jumps, turn away and ignore.",
+              "2": "Reward all four paws on the floor with attention.",
+              "3": "Ask for a sit to greet; reward heavily.",
+              "4": "Coach visitors to only greet a sitting dog."
+            },
+            "tips": {
+              "1": "Consistency from everyone is the secret to no-jumping."
+            }
+          },
+          "relax-on-cue": {
+            "title": "Relax on cue",
+            "objective": "Switch from excited to calm with a settle cue.",
+            "steps": {
+              "1": "After light play, cue 'settle' on a mat.",
+              "2": "Reward slow breathing and a relaxed body, treats low and slow.",
+              "3": "Gradually extend the calm time.",
+              "4": "Use before guests arrive or in busy settings."
+            },
+            "tips": {
+              "1": "Capturing calm is as important as training cues."
+            }
+          }
+        }
+      },
+      "socialization": {
+        "title": "Socialization & Confidence",
+        "summary": "Positive exposure to the world — sounds, surfaces, people, and other dogs — at the dog's pace, to build a confident, resilient companion.",
+        "sessions": {
+          "novel-sounds": {
+            "title": "Novel sounds",
+            "objective": "Build comfort with everyday noises.",
+            "steps": {
+              "1": "Play recordings (traffic, vacuum, thunder) at a low volume.",
+              "2": "Pair each sound with treats and calm praise.",
+              "3": "Slowly raise the volume across sessions.",
+              "4": "Watch body language; back off if worried."
+            },
+            "tips": {
+              "1": "Counter-conditioning turns scary sounds into treat predictors."
+            }
+          },
+          "surfaces": {
+            "title": "New surfaces & objects",
+            "objective": "Confidence walking on different textures.",
+            "steps": {
+              "1": "Lay out surfaces: a towel, plastic, grates, wobble board.",
+              "2": "Reward any sniff or step toward them.",
+              "3": "Let your dog choose to explore — never drag.",
+              "4": "Build to walking fully across each."
+            },
+            "tips": {
+              "1": "Confident paws help with vet scales, stairs, and grooming tables."
+            }
+          },
+          "meeting-people": {
+            "title": "Meeting new people",
+            "objective": "Calm, friendly greetings with strangers.",
+            "steps": {
+              "1": "Let people toss treats rather than reaching over the head.",
+              "2": "Allow your dog to approach in their own time.",
+              "3": "Reward calm, curious behavior.",
+              "4": "Keep first meetings short and positive."
+            },
+            "tips": {
+              "1": "Choice reduces fear — never force an interaction."
+            }
+          },
+          "dog-introductions": {
+            "title": "Polite dog introductions",
+            "objective": "Calm greetings with other dogs.",
+            "steps": {
+              "1": "Start with a parallel walk at a distance.",
+              "2": "Reward calm attention and loose body language.",
+              "3": "Allow a brief sniff, then move on — keep it short.",
+              "4": "Avoid head-on, on-leash face-offs."
+            },
+            "tips": {
+              "1": "Good greetings are brief; long stares can escalate."
+            }
+          },
+          "handling-confidence": {
+            "title": "Vet & grooming confidence",
+            "objective": "Cooperative-care basics for stress-free handling.",
+            "steps": {
+              "1": "Practice paw holds, ear checks, and a 'chin rest' on your hand.",
+              "2": "Reward stillness; let your dog opt in.",
+              "3": "Mimic vet motions (gentle restraint) paired with treats.",
+              "4": "Introduce a brush, nail file, and toothbrush gradually."
+            },
+            "tips": {
+              "1": "A chin rest gives your dog a way to say 'I'm ready'."
+            }
+          }
+        }
+      },
+      "tricks": {
+        "title": "Fun Tricks",
+        "summary": "Bonding games and impressive tricks — shake, spin, roll over, touch, and 'go to bed' — that build focus while having fun.",
+        "sessions": {
+          "shake": {
+            "title": "Shake / paw",
+            "objective": "Offer a paw on cue.",
+            "steps": {
+              "1": "With your dog in a sit, hold a treat near a paw.",
+              "2": "Mark and reward any paw lift.",
+              "3": "Add the cue 'shake' as the paw rises.",
+              "4": "Build to placing the paw in your open hand."
+            },
+            "tips": {
+              "1": "Most dogs are naturally pawsy — capture it!"
+            }
+          },
+          "spin": {
+            "title": "Spin",
+            "objective": "A full circle following a lure.",
+            "steps": {
+              "1": "Lure your dog's nose in a circle with a treat.",
+              "2": "Mark and reward the full turn.",
+              "3": "Add the cue 'spin', then shrink the hand motion.",
+              "4": "Try the other direction with a different word."
+            },
+            "tips": {
+              "1": "Keep the lure slow so they don't lose the scent."
+            }
+          },
+          "touch": {
+            "title": "Touch (hand target)",
+            "objective": "Boop your hand with their nose — a versatile cue.",
+            "steps": {
+              "1": "Present a flat hand near your dog's nose.",
+              "2": "Mark and reward any nose touch.",
+              "3": "Add the cue 'touch'; move your hand to new positions.",
+              "4": "Use touch to guide movement and build confidence."
+            },
+            "tips": {
+              "1": "Hand targeting helps with recall, positioning, and shy dogs."
+            }
+          },
+          "roll-over": {
+            "title": "Roll over",
+            "objective": "A full roll from a down.",
+            "steps": {
+              "1": "From a down, lure the nose toward the shoulder.",
+              "2": "Continue the lure so they roll onto their side, then over.",
+              "3": "Mark and reward the full roll.",
+              "4": "Add the cue and fade the lure gradually."
+            },
+            "tips": {
+              "1": "Use a soft surface so rolling is comfortable."
+            }
+          },
+          "go-to-bed": {
+            "title": "Go to bed",
+            "objective": "Send your dog to a bed or mat from a distance.",
+            "steps": {
+              "1": "Reward your dog for going to their bed.",
+              "2": "Add the cue 'go to bed' as they step on.",
+              "3": "Increase the distance you send them from.",
+              "4": "Reward a settled down on the bed."
+            },
+            "tips": {
+              "1": "Great for mealtimes, doorbells, and guests."
+            }
+          }
+        }
+      },
+      "senior-enrichment": {
+        "title": "Senior Dog Enrichment",
+        "summary": "Gentle mental and physical enrichment for older dogs — sniff games, easy nose work, soft stretches, and refreshers that keep aging minds sharp.",
+        "sessions": {
+          "snuffle-search": {
+            "title": "Snuffle & scatter feeding",
+            "objective": "Low-impact mental work through scent.",
+            "steps": {
+              "1": "Scatter kibble in grass or a snuffle mat.",
+              "2": "Encourage your dog to sniff and find each piece.",
+              "3": "Keep it easy and rewarding.",
+              "4": "Use part of a meal so it isn't extra calories."
+            },
+            "tips": {
+              "1": "Sniffing is calming and tires the brain gently."
+            }
+          },
+          "find-it": {
+            "title": "Find-it nose work",
+            "objective": "A simple search game for confidence and focus.",
+            "steps": {
+              "1": "Show a treat, then hide it nearby in easy view.",
+              "2": "Cue 'find it' and reward the discovery.",
+              "3": "Gradually make hides slightly harder.",
+              "4": "Keep sessions short to avoid fatigue."
+            },
+            "tips": {
+              "1": "Nose work suits dogs with limited mobility or vision."
+            }
+          },
+          "gentle-stretches": {
+            "title": "Gentle movement & stretches",
+            "objective": "Maintain mobility with easy, vet-safe movement.",
+            "steps": {
+              "1": "Lure slow figure-eights between your legs at a walk.",
+              "2": "Encourage gentle sit-to-stand reps for strength.",
+              "3": "Keep everything slow and reward calm effort.",
+              "4": "Stop at any sign of discomfort."
+            },
+            "tips": {
+              "1": "Check with your vet before new exercise for senior dogs."
+            }
+          },
+          "cue-refreshers": {
+            "title": "Cue refreshers",
+            "objective": "Keep familiar cues sharp and rewarding.",
+            "steps": {
+              "1": "Run through known cues (sit, touch, settle) at an easy pace.",
+              "2": "Reward generously — success keeps senior minds engaged.",
+              "3": "Mix in a favorite trick for fun.",
+              "4": "End every session on a win."
+            },
+            "tips": {
+              "1": "Short, frequent sessions beat long ones for older dogs."
+            }
+          }
+        }
+      }
+    },
+    "breeds": {
+      "Afghan Hound": "Afghan Hound",
+      "Alaskan Malamute": "Alaskan Malamute",
+      "American Bulldog": "American Bulldog",
+      "American Cocker Spaniel": "American Cocker Spaniel",
+      "American Eskimo Dog": "American Eskimo Dog",
+      "American Foxhound": "American Foxhound",
+      "American Hairless Terrier": "American Hairless Terrier",
+      "American Pit Bull Terrier": "American Pit Bull Terrier",
+      "American Staffordshire Terrier": "American Staffordshire Terrier",
+      "American Water Spaniel": "American Water Spaniel",
+      "Anatolian Shepherd Dog": "Anatolian Shepherd Dog",
+      "Australian Cattle Dog": "Australian Cattle Dog",
+      "Australian Shepherd": "Australian Shepherd",
+      "Australian Terrier": "Australian Terrier",
+      "Bearded Collie": "Bearded Collie",
+      "Belgian Malinois": "Belgian Malinois",
+      "Belgian Sheepdog": "Belgian Sheepdog",
+      "Belgian Tervuren": "Belgian Tervuren",
+      "Bernese Mountain Dog": "Bernese Mountain Dog",
+      "Bichon Frise": "Bichon Frise",
+      "Black and Tan Coonhound": "Black and Tan Coonhound",
+      "Black Russian Terrier": "Black Russian Terrier",
+      "Borzoi": "Borzoi",
+      "Bouvier des Flandres": "Bouvier des Flandres",
+      "Bracco Italiano": "Bracco Italiano",
+      "Brittany": "Brittany",
+      "Brussels Griffon": "Brussels Griffon",
+      "Cardigan Welsh Corgi": "Cardigan Welsh Corgi",
+      "Catahoula Leopard Dog": "Catahoula Leopard Dog",
+      "Chinese Crested": "Chinese Crested",
+      "Chinese Shar-Pei": "Chinese Shar-Pei",
+      "Curly-Coated Retriever": "Curly-Coated Retriever",
+      "Dachshund": "Dachshund",
+      "Dalmatian": "Dalmatian",
+      "Doberman Pinscher": "Doberman Pinscher",
+      "Dogue de Bordeaux": "Dogue de Bordeaux",
+      "English Cocker Spaniel": "English Cocker Spaniel",
+      "English Foxhound": "English Foxhound",
+      "English Setter": "English Setter",
+      "English Springer Spaniel": "English Springer Spaniel",
+      "English Toy Spaniel": "English Toy Spaniel",
+      "Entlebucher Mountain Dog": "Entlebucher Mountain Dog",
+      "Finnish Lapphund": "Finnish Lapphund",
+      "Finnish Spitz": "Finnish Spitz",
+      "Flat-Coated Retriever": "Flat-Coated Retriever",
+      "French Bulldog": "French Bulldog",
+      "German Pinscher": "German Pinscher",
+      "German Shepherd Dog": "German Shepherd Dog",
+      "German Shorthaired Pointer": "German Shorthaired Pointer",
+      "German Wirehaired Pointer": "German Wirehaired Pointer",
+      "Giant Schnauzer": "Giant Schnauzer",
+      "Great Dane": "Great Dane",
+      "Great Pyrenees": "Great Pyrenees",
+      "Greater Swiss Mountain Dog": "Greater Swiss Mountain Dog",
+      "Greyhound": "Greyhound",
+      "Havanese": "Havanese",
+      "Ibizan Hound": "Ibizan Hound",
+      "Icelandic Sheepdog": "Icelandic Sheepdog",
+      "Irish Setter": "Irish Setter",
+      "Irish Terrier": "Irish Terrier",
+      "Irish Water Spaniel": "Irish Water Spaniel",
+      "Irish Wolfhound": "Irish Wolfhound",
+      "Italian Greyhound": "Italian Greyhound",
+      "Japanese Chin": "Japanese Chin",
+      "Japanese Spitz": "Japanese Spitz",
+      "Maltese": "Maltese",
+      "Mastiff": "Mastiff",
+      "Miniature American Shepherd": "Miniature American Shepherd",
+      "Miniature Bull Terrier": "Miniature Bull Terrier",
+      "Miniature Pinscher": "Miniature Pinscher",
+      "Miniature Schnauzer": "Miniature Schnauzer",
+      "Neapolitan Mastiff": "Neapolitan Mastiff",
+      "Newfoundland": "Newfoundland",
+      "Norwegian Elkhound": "Norwegian Elkhound",
+      "Norwegian Lundehund": "Norwegian Lundehund",
+      "Nova Scotia Duck Tolling Retriever": "Nova Scotia Duck Tolling Retriever",
+      "Old English Sheepdog": "Old English Sheepdog",
+      "Pekingese": "Pekingese",
+      "Pembroke Welsh Corgi": "Pembroke Welsh Corgi",
+      "Petit Basset Griffon Vendeen": "Petit Basset Griffon Vendeen",
+      "Pharaoh Hound": "Pharaoh Hound",
+      "Polish Lowland Sheepdog": "Polish Lowland Sheepdog",
+      "Pomeranian": "Pomeranian",
+      "Poodle": "Poodle",
+      "Poodle (Miniature)": "Poodle (Miniature)",
+      "Poodle (Standard)": "Poodle (Standard)",
+      "Poodle (Toy)": "Poodle (Toy)",
+      "Portuguese Water Dog": "Portuguese Water Dog",
+      "Rhodesian Ridgeback": "Rhodesian Ridgeback",
+      "Saint Bernard": "Saint Bernard",
+      "Samoyed": "Samoyed",
+      "Scottish Deerhound": "Scottish Deerhound",
+      "Scottish Terrier": "Scottish Terrier",
+      "Shetland Sheepdog": "Shetland Sheepdog",
+      "Siberian Husky": "Siberian Husky",
+      "Small Munsterlander Pointer": "Small Munsterlander Pointer",
+      "Soft Coated Wheaten Terrier": "Soft Coated Wheaten Terrier",
+      "Spanish Water Dog": "Spanish Water Dog",
+      "Standard Schnauzer": "Standard Schnauzer",
+      "Swedish Vallhund": "Swedish Vallhund",
+      "Tibetan Mastiff": "Tibetan Mastiff",
+      "Tibetan Spaniel": "Tibetan Spaniel",
+      "Tibetan Terrier": "Tibetan Terrier",
+      "Welsh Springer Spaniel": "Welsh Springer Spaniel",
+      "Welsh Terrier": "Welsh Terrier",
+      "Wire Fox Terrier": "Wire Fox Terrier",
+      "Wirehaired Pointing Griffon": "Wirehaired Pointing Griffon",
+      "Xoloitzcuintli": "Xoloitzcuintli"
+    }
   }
 }

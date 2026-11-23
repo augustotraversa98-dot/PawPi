@@ -52,6 +52,7 @@ import {
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { trackFunnel, trackTap } from "@/telemetry/track";
 import { useFormTelemetry } from "@/telemetry/useFormTelemetry";
+import { breedLabel } from "@/data/dogBreeds";
 
 const TOTAL_STEPS = 9;
 
@@ -1616,7 +1617,7 @@ const StepReview = ({ formData, goToStep }) => {
         />
         <ReviewRow
           label={t("onboarding.reviewBreed")}
-          value={formData.breed || t("onboarding.reviewNotSpecified")}
+          value={breedLabel(t, formData.breed) || t("onboarding.reviewNotSpecified")}
           onEdit={() => goToStep(2)}
         />
         <ReviewRow

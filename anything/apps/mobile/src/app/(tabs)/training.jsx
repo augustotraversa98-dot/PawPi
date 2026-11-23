@@ -29,6 +29,13 @@ import {
   TRAINING_PROGRAMS,
   completionId,
   programDoneCount,
+  difficultyLabel,
+  programTitle,
+  programSummary,
+  sessionTitle,
+  sessionObjective,
+  sessionSteps,
+  sessionTips,
 } from "@/data/trainingCurriculum";
 
 // The CARE hub (ticket D2) — a segmented [Learn | Hire] shell (mirrors the Services tab).
@@ -137,7 +144,7 @@ function TrainingScreenContent() {
           <Text style={{ fontSize: 26, marginRight: 10 }}>{program.emoji}</Text>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 18, fontWeight: "800", color: C.warmBrown }}>
-              {program.title}
+              {programTitle(t, program)}
             </Text>
             <View
               style={{
@@ -150,7 +157,7 @@ function TrainingScreenContent() {
               }}
             >
               <Text style={{ fontSize: 11, color: diff.text, fontWeight: "700" }}>
-                {program.difficulty}
+                {difficultyLabel(t, program.difficulty)}
               </Text>
             </View>
           </View>
@@ -161,7 +168,7 @@ function TrainingScreenContent() {
           )}
         </View>
         <Text style={{ fontSize: 13, color: C.mutedBrown, lineHeight: 19, marginBottom: 12 }}>
-          {program.summary}
+          {programSummary(t, program)}
         </Text>
         <View
           style={{
@@ -399,7 +406,7 @@ function TrainingScreenContent() {
               <ArrowLeft size={22} color={C.warmBrown} />
             </TouchableOpacity>
             <Text style={{ fontSize: 19, fontWeight: "800", color: C.warmBrown, flex: 1 }}>
-              {openProgram?.emoji} {openProgram?.title}
+              {openProgram?.emoji} {openProgram ? programTitle(t, openProgram) : ""}
             </Text>
           </View>
 
@@ -408,7 +415,7 @@ function TrainingScreenContent() {
             contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
           >
             <Text style={{ fontSize: 14, color: C.mutedBrown, lineHeight: 21, marginBottom: 16 }}>
-              {openProgram?.summary}
+              {openProgram ? programSummary(t, openProgram) : ""}
             </Text>
 
             {openProgram?.sessions.map((session, index) => {
@@ -440,14 +447,14 @@ function TrainingScreenContent() {
                   )}
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 15, fontWeight: "700", color: C.warmBrown }}>
-                      {index + 1}. {session.title}
+                      {index + 1}. {sessionTitle(t, openProgram.key, session)}
                     </Text>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 }}>
                       <Clock size={12} color={C.mutedBrown} />
                       <Text style={{ fontSize: 12, color: C.mutedBrown }}>
                         {t("screensUi.training.sessionMeta", {
                           minutes: session.durationMin,
-                          difficulty: session.difficulty,
+                          difficulty: difficultyLabel(t, session.difficulty),
                         })}
                       </Text>
                     </View>
@@ -485,7 +492,9 @@ function TrainingScreenContent() {
               <X size={20} color={C.warmBrown} />
             </TouchableOpacity>
             <Text style={{ fontSize: 18, fontWeight: "800", color: C.warmBrown, flex: 1 }}>
-              {openSession?.title}
+              {openSession && openProgram
+                ? sessionTitle(t, openProgram.key, openSession)
+                : ""}
             </Text>
           </View>
 
@@ -496,13 +505,13 @@ function TrainingScreenContent() {
             {openSession && openProgram && (
               <>
                 <Text style={{ fontSize: 14, color: C.warmBrown, lineHeight: 22, marginBottom: 18 }}>
-                  🎯 {openSession.objective}
+                  🎯 {sessionObjective(t, openProgram.key, openSession)}
                 </Text>
 
                 <Text style={{ fontSize: 17, fontWeight: "800", color: C.warmBrown, marginBottom: 14 }}>
                   {t("screensUi.training.stepByStep")}
                 </Text>
-                {openSession.steps.map((step, i) => (
+                {sessionSteps(t, openProgram.key, openSession).map((step, i) => (
                   <View key={i} style={{ flexDirection: "row", marginBottom: 14, alignItems: "flex-start" }}>
                     <View
                       style={{
@@ -525,7 +534,7 @@ function TrainingScreenContent() {
                   </View>
                 ))}
 
-                {openSession.tips?.length > 0 && (
+                {sessionTips(t, openProgram.key, openSession).length > 0 && (
                   <View
                     style={{
                       backgroundColor: C.sand,
@@ -535,7 +544,7 @@ function TrainingScreenContent() {
                       marginBottom: 8,
                     }}
                   >
-                    {openSession.tips.map((tip, i) => (
+                    {sessionTips(t, openProgram.key, openSession).map((tip, i) => (
                       <View key={i} style={{ flexDirection: "row", gap: 8, marginBottom: 4 }}>
                         <Lightbulb size={15} color={C.terracotta} />
                         <Text style={{ flex: 1, fontSize: 13, color: C.mutedBrown, lineHeight: 19 }}>

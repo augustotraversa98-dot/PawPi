@@ -4,7 +4,13 @@ import {
   normalizeBreed,
   filterBreeds,
   hasExactBreedMatch,
+  breedLabel,
 } from "./dogBreeds";
+
+const esT = (() => {
+  const catalog = require("@/i18n/locales/es.json");
+  return (key) => key.split(".").reduce((o, p) => (o == null ? o : o[p]), catalog) ?? key;
+})();
 
 const cmp = (a, b) => {
   const x = a.toLowerCase();
@@ -117,5 +123,36 @@ describe("filterBreeds ranking + COMMON_BREEDS", () => {
 
   test("every COMMON_BREEDS entry is a real catalog breed", () => {
     COMMON_BREEDS.forEach((b) => expect(DOG_BREEDS).toContain(b));
+  });
+});
+
+describe("Spanish breed names (display only)", () => {
+  test("every translated breed key is a real canonical breed", () => {
+    const names = Object.keys(require("@/i18n/locales/es.json").trainingUi.breeds);
+    for (const n of names) expect(DOG_BREEDS).toContain(n);
+  });
+
+  test("breedLabel resolves established Spanish names, else the stored name", () => {
+    expect(breedLabel(esT, "German Shepherd Dog")).toBe("Pastor Alemán");
+    expect(breedLabel(esT, "Poodle")).toBe("Caniche");
+    expect(breedLabel(esT, "Portuguese Water Dog")).toBe("Perro de Agua Portugués");
+    expect(breedLabel(esT, "Dalmatian")).toBe("Dálmata");
+    expect(breedLabel(esT, "Beagle")).toBe("Beagle");
+    expect(breedLabel(esT, "Mixed Breed")).toBe("Mestizo");
+    expect(breedLabel(esT, "Cimarron")).toBe("Cimarron");
+    expect(breedLabel(undefined, "Poodle")).toBe("Poodle");
+    expect(breedLabel((k) => k, "Poodle")).toBe("Poodle");
+    expect(breedLabel(esT, "")).toBe("");
+  });
+
+  test("filterBreeds with t also matches the Spanish name; without t it is unchanged", () => {
+    expect(filterBreeds("caniche", undefined, esT)).toContain("Poodle");
+    expect(filterBreeds("caniche")).toEqual([]);
+    expect(filterBreeds("poodle", undefined, esT)).toContain("Poodle (Toy)");
+  });
+
+  test("hasExactBreedMatch with t accepts the Spanish display name", () => {
+    expect(hasExactBreedMatch("Pastor Aleman", esT)).toBe(true);
+    expect(hasExactBreedMatch("Pastor Aleman")).toBe(false);
   });
 });
