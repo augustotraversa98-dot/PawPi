@@ -14,6 +14,7 @@
 // the instance stays in place.
 
 import { REMINDER_TYPES } from "@/data/remindersData";
+import { actionLabel } from "@/utils/generatedCopy";
 
 export const LOG_FLOWS = {
   VET_APPOINTMENT: "vet_appointment",
@@ -57,16 +58,16 @@ export function routeReminderLog(reminder, extra) {
             ? [
                 {
                   action: "add_vet_record",
-                  label: reminder.primaryAction || "Add vet record",
+                  label: reminder.primaryAction || actionLabel("addVetRecord"),
                 },
-                { action: "completed", label: "Mark completed" },
+                { action: "completed", label: actionLabel("markCompleted") },
               ]
             : [
                 {
                   action: "given",
-                  label: reminder.primaryAction || "Mark as given",
+                  label: reminder.primaryAction || actionLabel("markGiven"),
                 },
-                { action: "issue", label: "Something was off" },
+                { action: "issue", label: actionLabel("somethingOff") },
               ];
         return { flow: LOG_FLOWS.MEDICAL_CHOICE, options };
       }
@@ -86,8 +87,8 @@ export function routeReminderLog(reminder, extra) {
       return {
         flow: LOG_FLOWS.FEEDING_CHOICE,
         options: [
-          { action: "log_as_usual", label: "Log as usual" },
-          { action: "issue", label: "Something was off" },
+          { action: "log_as_usual", label: actionLabel("logAsUsual") },
+          { action: "issue", label: actionLabel("somethingOff") },
         ],
       };
     }

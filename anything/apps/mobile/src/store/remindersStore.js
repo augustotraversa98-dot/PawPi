@@ -447,19 +447,19 @@ const useRemindersStore = create(
   createReminderNotification: (reminder) => {
     const socialStore = useSocialPetStore.getState();
     const config = {
-      feeding: { actionLabel: "Log food" },
-      water: { actionLabel: "Log water" },
-      walk: { actionLabel: "Start walk" },
-      medication: { actionLabel: "Mark as given" },
-      preventive: { actionLabel: "Mark as done" },
-      vaccine: { actionLabel: "Mark as done" },
-      vet_appointment: { actionLabel: "View details" },
-      general_check: { actionLabel: "Start check" },
-      weight_check: { actionLabel: "Log weight" },
-      photo_check: { actionLabel: "Take photo" },
+      feeding: { actionLabel: actionLabel("logFood") },
+      water: { actionLabel: actionLabel("logWater") },
+      walk: { actionLabel: actionLabel("startWalk") },
+      medication: { actionLabel: actionLabel("markGiven") },
+      preventive: { actionLabel: actionLabel("markDone") },
+      vaccine: { actionLabel: actionLabel("markDone") },
+      vet_appointment: { actionLabel: actionLabel("viewDetails") },
+      general_check: { actionLabel: actionLabel("startCheck") },
+      weight_check: { actionLabel: actionLabel("logWeight") },
+      photo_check: { actionLabel: actionLabel("takePhoto") },
     };
 
-    const typeConfig = config[reminder.type] || { actionLabel: "Done" };
+    const typeConfig = config[reminder.type] || { actionLabel: actionLabel("done") };
 
     socialStore.addNotification({
       id: `notif_${reminder.id}`,

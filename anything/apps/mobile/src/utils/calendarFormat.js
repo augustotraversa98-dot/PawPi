@@ -12,6 +12,13 @@
 // `recurrenceRule` field unchanged — byte-identical to the previous inline mapping.
 
 import { ROUTINE_FREQUENCY } from "@/data/routinesData";
+import { gt } from "@/utils/generatedCopy";
+
+// "Your pet" placeholder when a caller has no pet name (display text only).
+export const yourPetLabel = () => gt("generatedUi.calendar.yourPet", "Your pet");
+
+// Footer line of every PawPi-created calendar event.
+const managedByPawPi = () => gt("generatedUi.calendar.managedBy", "Managed by PawPi");
 
 // Mirror of expo-calendar's Calendar.Frequency string values (kept decoupled so this
 // module is import-free of the native package).
@@ -64,20 +71,29 @@ export function parseWalkTime(timeString) {
 // Human-readable frequency label for a walk/routine (display only).
 export function formatFrequency(walk) {
   if (walk.frequency === ROUTINE_FREQUENCY.DAILY) {
-    return "daily";
+    return gt("generatedUi.calendar.freqDaily", "daily");
   }
 
   if (walk.frequency === ROUTINE_FREQUENCY.WEEKLY && walk.days?.length > 0) {
     const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const selectedDays = walk.days.map((d) => dayNames[d]).join(", ");
-    return `every ${selectedDays}`;
+    const dayKeys = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+    const selectedDays = walk.days
+      .map((d) => gt(`walkItem.days.${dayKeys[d]}`, dayNames[d]))
+      .join(", ");
+    return gt("generatedUi.calendar.freqEvery", `every ${selectedDays}`, {
+      days: selectedDays,
+    });
   }
 
   if (walk.frequency === ROUTINE_FREQUENCY.MONTHLY && walk.preferredDay) {
-    return `monthly on day ${walk.preferredDay}`;
+    return gt(
+      "generatedUi.calendar.freqMonthly",
+      `monthly on day ${walk.preferredDay}`,
+      { day: walk.preferredDay },
+    );
   }
 
-  return "one time";
+  return gt("generatedUi.calendar.freqOnce", "one time");
 }
 
 // Build the event "notes" body for a calendar event. `kind` selects the template:
@@ -86,17 +102,21 @@ export function formatFrequency(walk) {
 // Matches the previous inline strings exactly so existing calendar events are unchanged.
 export function buildEventNotes(kind, data = {}) {
   if (kind === "walk") {
-    return "Dog walk scheduled in PawPi";
+    return gt("generatedUi.calendar.walkNotes", "Dog walk scheduled in PawPi");
   }
 
   if (kind === "vet") {
-    const petName = data.petName || "Your pet";
-    let notes = `Vet appointment for ${petName}\n\n`;
-    if (data.title) notes += `Appointment: ${data.title}\n`;
-    if (data.reasonForVisit) notes += `Reason: ${data.reasonForVisit}\n`;
-    if (data.veterinarian) notes += `Veterinarian: ${data.veterinarian}\n`;
-    if (data.notes) notes += `\nNotes: ${data.notes}\n`;
-    notes += `\nManaged by PawPi`;
+    const petName = data.petName || yourPetLabel();
+    let notes = `${gt("generatedUi.calendar.vetTitle", "Vet appointment for {{name}}", { name: petName })}\n\n`;
+    if (data.title)
+      notes += `${gt("generatedUi.calendar.labelAppointment", "Appointment:")} ${data.title}\n`;
+    if (data.reasonForVisit)
+      notes += `${gt("generatedUi.calendar.labelReason", "Reason:")} ${data.reasonForVisit}\n`;
+    if (data.veterinarian)
+      notes += `${gt("generatedUi.calendar.labelVeterinarian", "Veterinarian:")} ${data.veterinarian}\n`;
+    if (data.notes)
+      notes += `\n${gt("generatedUi.calendar.labelNotes", "Notes:")} ${data.notes}\n`;
+    notes += `\n${managedByPawPi()}`;
     return notes;
   }
 
@@ -133,25 +153,34 @@ function resolveStartEnd(item, defaultMinutes) {
 }
 
 // Generalized service booking (grooming / walking / daycare / sitting). 30-min default.
-export function buildBookingCalendarDetails(booking, petName = "Your pet") {
+export function buildBookingCalendarDetails(booking, petName = yourPetLabel()) {
   const { startDate, endDate } = resolveStartEnd(booking, 30);
   const summary =
-    booking.title || booking.service_name || `Appointment for ${petName}`;
+    booking.title ||
+    booking.service_name ||
+    gt("generatedUi.calendar.bookingTitle", "Appointment for {{name}}", { name: petName });
   const location = booking.clinic || booking.provider_name || "";
   const parts = [];
   if (booking.reason_for_visit) parts.push(booking.reason_for_visit);
   if (booking.notes) parts.push(booking.notes);
-  parts.push("Managed by PawPi");
+  parts.push(managedByPawPi());
   return { summary, startDate, endDate, location, notes: parts.join("\n") };
 }
 
 // Telehealth video consult — no physical location. 30-min default.
-export function buildTelehealthCalendarDetails(consult, petName = "Your pet") {
+export function buildTelehealthCalendarDetails(consult, petName = yourPetLabel()) {
   const { startDate, endDate } = resolveStartEnd(consult, 30);
-  const summary = consult.title || `Telehealth consult for ${petName}`;
-  const parts = ["Video consult — no physical location."];
-  if (consult.provider_name) parts.push(`Provider: ${consult.provider_name}`);
-  parts.push("Managed by PawPi");
+  const summary =
+    consult.title ||
+    gt("generatedUi.calendar.telehealthTitle", "Telehealth consult for {{name}}", { name: petName });
+  const parts = [
+    gt("generatedUi.calendar.telehealthNotes", "Video consult — no physical location."),
+  ];
+  if (consult.provider_name)
+    parts.push(
+      `${gt("generatedUi.calendar.labelProvider", "Provider:")} ${consult.provider_name}`,
+    );
+  parts.push(managedByPawPi());
   return { summary, startDate, endDate, location: "", notes: parts.join("\n") };
 }
 
@@ -159,20 +188,28 @@ export function buildTelehealthCalendarDetails(consult, petName = "Your pet") {
 export function buildTransportCalendarDetails(trip) {
   const { startDate, endDate } = resolveStartEnd({ starts_at: trip.scheduled_at }, 60);
   const summary = trip.provider_name
-    ? `Pet transport — ${trip.provider_name}`
-    : "Pet transport";
+    ? gt("generatedUi.calendar.transportTitleNamed", "Pet transport — {{name}}", {
+        name: trip.provider_name,
+      })
+    : gt("generatedUi.calendar.transportTitle", "Pet transport");
   const location = trip.pickup_address || "";
   const parts = [];
-  if (trip.pickup_address) parts.push(`Pickup: ${trip.pickup_address}`);
-  if (trip.dropoff_address) parts.push(`Dropoff: ${trip.dropoff_address}`);
-  parts.push("Managed by PawPi");
+  if (trip.pickup_address)
+    parts.push(
+      `${gt("generatedUi.calendar.labelPickup", "Pickup:")} ${trip.pickup_address}`,
+    );
+  if (trip.dropoff_address)
+    parts.push(
+      `${gt("generatedUi.calendar.labelDropoff", "Dropoff:")} ${trip.dropoff_address}`,
+    );
+  parts.push(managedByPawPi());
   return { summary, startDate, endDate, location, notes: parts.join("\n") };
 }
 
 // Community event / meetup. 60-min default.
 export function buildEventCalendarDetails(event) {
   const { startDate, endDate } = resolveStartEnd(event, 60);
-  const summary = event.title || "Event";
+  const summary = event.title || gt("generatedUi.calendar.eventTitle", "Event");
   const location = event.location_name || event.address || "";
   const notes = event.description || "";
   return { summary, startDate, endDate, location, notes };

@@ -1,5 +1,6 @@
 import { ROUTINE_TYPES } from "@/data/routinesData";
 import { REMINDER_STATUS, getReminderStatus } from "@/data/remindersData";
+import { gt, actionLabel, photoAreaPhrase } from "@/utils/generatedCopy";
 
 /**
  * Generate notification from reminder
@@ -62,140 +63,221 @@ function getNotificationConfig(reminder) {
 // E5 reframe: care reminders are WANTED, so they stay — but the copy is warm and
 // forward-looking, never guilt/shame ("overdue", "you forgot"). "Due soon" keeps the helpful
 // countdown; the past-due case becomes a gentle "whenever you're ready", celebrating the care.
+//
+// All wording goes through gt() at generation time, so it is in the language that is current when the
+// notification row is created (stable ids/types/relatedTracker are never localized).
 function getFeedingNotification(reminder) {
   const status = getReminderStatus(reminder);
-  const mealName = reminder.title || "Meal";
+  const mealName =
+    reminder.title || gt("generatedUi.notif.feeding.defaultName", "Meal");
 
-  let title = "Mealtime 🍽️";
-  let message = `Time for ${mealName.toLowerCase()}.`;
+  let title = gt("generatedUi.notif.feeding.title", "Mealtime 🍽️");
+  let message = gt("generatedUi.notif.feeding.message", "Time for {{name}}.", {
+    name: mealName.toLowerCase(),
+  });
 
   if (status === REMINDER_STATUS.DUE_SOON) {
-    const timeToGo = getTimeToGo(reminder);
-    message = `${mealName} starts in ${timeToGo}.`;
+    message = gt("generatedUi.notif.feeding.soon", "{{name}} starts in {{time}}.", {
+      name: mealName,
+      time: getTimeToGo(reminder),
+    });
   } else if (status === REMINDER_STATUS.OVERDUE) {
-    message = `Whenever you're ready — ${mealName.toLowerCase()} 🍽️`;
+    message = gt(
+      "generatedUi.notif.feeding.late",
+      "Whenever you're ready — {{name}} 🍽️",
+      { name: mealName.toLowerCase() },
+    );
   }
 
   return {
     title,
     message,
-    actionLabel: "Log food",
+    actionLabel: actionLabel("logFood"),
   };
 }
 
 function getWalkNotification(reminder) {
   const status = getReminderStatus(reminder);
-  const walkName = reminder.title || "Walk";
+  const walkName =
+    reminder.title || gt("generatedUi.notif.walk.defaultName", "Walk");
 
-  let title = "Walk time 🚶";
-  let message = `Time for a ${walkName.toLowerCase()}.`;
+  let title = gt("generatedUi.notif.walk.title", "Walk time 🚶");
+  let message = gt("generatedUi.notif.walk.message", "Time for a {{name}}.", {
+    name: walkName.toLowerCase(),
+  });
 
   if (status === REMINDER_STATUS.DUE_SOON) {
-    const timeToGo = getTimeToGo(reminder);
-    message = `${walkName} starts in ${timeToGo}.`;
+    message = gt("generatedUi.notif.walk.soon", "{{name}} starts in {{time}}.", {
+      name: walkName,
+      time: getTimeToGo(reminder),
+    });
   } else if (status === REMINDER_STATUS.OVERDUE) {
-    message = `Whenever you're ready — time for a ${walkName.toLowerCase()} 🚶`;
+    message = gt(
+      "generatedUi.notif.walk.late",
+      "Whenever you're ready — time for a {{name}} 🚶",
+      { name: walkName.toLowerCase() },
+    );
   }
 
   return {
     title,
     message,
-    actionLabel: "Start walk",
+    actionLabel: actionLabel("startWalk"),
   };
 }
 
 function getMedicationNotification(reminder) {
   const status = getReminderStatus(reminder);
-  const medName = reminder.title || "medication";
+  const medName =
+    reminder.title || gt("generatedUi.notif.medication.defaultName", "medication");
 
-  let title = "Medication time 💊";
-  let message = `Time for ${medName}.`;
+  let title = gt("generatedUi.notif.medication.title", "Medication time 💊");
+  let message = gt("generatedUi.notif.medication.message", "Time for {{name}}.", {
+    name: medName,
+  });
 
   if (status === REMINDER_STATUS.DUE_SOON) {
-    const timeToGo = getTimeToGo(reminder);
-    message = `${medName} is coming up in ${timeToGo}.`;
+    message = gt(
+      "generatedUi.notif.medication.soon",
+      "{{name}} is coming up in {{time}}.",
+      { name: medName, time: getTimeToGo(reminder) },
+    );
   } else if (status === REMINDER_STATUS.OVERDUE) {
-    message = `Whenever you're ready — ${medName} 💊`;
+    message = gt(
+      "generatedUi.notif.medication.late",
+      "Whenever you're ready — {{name}} 💊",
+      { name: medName },
+    );
   }
 
   return {
     title,
     message,
-    actionLabel: "Mark as given",
+    actionLabel: actionLabel("markGiven"),
   };
 }
 
 function getPhotoCheckNotification(reminder) {
   const bodyArea = reminder.relatedBodyArea || "body";
+  const known = [
+    "paws",
+    "ears",
+    "eyes",
+    "teeth",
+    "skin_fur",
+    "face",
+    "full_body",
+    "other",
+  ];
   const bodyAreaLabel =
     bodyArea.charAt(0).toUpperCase() + bodyArea.slice(1).replace("_", "/");
 
   return {
-    title: `${bodyAreaLabel} photo due 📸`,
-    message: `Upload your pet's weekly ${bodyArea.replace("_", "/")} photo to compare visible changes over time.`,
-    actionLabel: "Take photo",
+    title: known.includes(bodyArea)
+      ? gt(`generatedUi.notif.photoCheck.title.${bodyArea}`, `${bodyAreaLabel} photo due 📸`)
+      : gt("generatedUi.notif.photoCheck.title.generic", "{{area}} photo due 📸", {
+          area: bodyAreaLabel,
+        }),
+    message: gt(
+      "generatedUi.notif.photoCheck.message",
+      "Upload your pet's weekly {{area}} photo to compare visible changes over time.",
+      {
+        area: known.includes(bodyArea)
+          ? photoAreaPhrase(bodyArea)
+          : bodyArea.replace("_", "/"),
+      },
+    ),
+    actionLabel: actionLabel("takePhoto"),
   };
 }
 
 function getGeneralCheckNotification(reminder) {
   return {
-    title: "General check due ✅",
-    message: "Time for your pet's weekly general health check.",
-    actionLabel: "Start check",
+    title: gt("generatedUi.notif.generalCheck.title", "General check due ✅"),
+    message: gt(
+      "generatedUi.notif.generalCheck.message",
+      "Time for your pet's weekly general health check.",
+    ),
+    actionLabel: actionLabel("startCheck"),
   };
 }
 
 function getWeightCheckNotification(reminder) {
   return {
-    title: "Weight check due ⚖️",
-    message: "Time to log your pet's weight for this week.",
-    actionLabel: "Log weight",
+    title: gt("generatedUi.notif.weightCheck.title", "Weight check due ⚖️"),
+    message: gt(
+      "generatedUi.notif.weightCheck.message",
+      "Time to log your pet's weight for this week.",
+    ),
+    actionLabel: actionLabel("logWeight"),
   };
 }
 
 function getPreventiveNotification(reminder) {
-  const treatment = reminder.title || "preventive care";
+  const treatment =
+    reminder.title ||
+    gt("generatedUi.notif.preventive.defaultName", "preventive care");
 
   return {
-    title: "Preventive care due 🛡️",
-    message: `Time for your pet's ${treatment}.`,
-    actionLabel: "Mark as given",
+    title: gt("generatedUi.notif.preventive.title", "Preventive care due 🛡️"),
+    message: gt(
+      "generatedUi.notif.preventive.message",
+      "Time for your pet's {{name}}.",
+      { name: treatment },
+    ),
+    actionLabel: actionLabel("markGiven"),
   };
 }
 
 function getVaccineNotification(reminder) {
-  const vaccine = reminder.title || "vaccine";
+  const vaccine =
+    reminder.title || gt("generatedUi.notif.vaccine.defaultName", "vaccine");
 
   return {
-    title: "Vaccine due 💉",
-    message: `Your pet's ${vaccine} is due.`,
-    actionLabel: "View vaccine record",
+    title: gt("generatedUi.notif.vaccine.title", "Vaccine due 💉"),
+    message: gt(
+      "generatedUi.notif.vaccine.message",
+      "Your pet's {{name}} is due.",
+      { name: vaccine },
+    ),
+    actionLabel: actionLabel("viewVaccineRecord"),
   };
 }
 
 function getVetAppointmentNotification(reminder) {
-  const appointment = reminder.title || "vet appointment";
+  const appointment =
+    reminder.title ||
+    gt("generatedUi.notif.vetAppointment.defaultName", "vet appointment");
   const status = getReminderStatus(reminder);
 
-  let message = `Your pet has a ${appointment} today.`;
+  let message = gt(
+    "generatedUi.notif.vetAppointment.message",
+    "Your pet has a {{name}} today.",
+    { name: appointment },
+  );
 
   if (status === REMINDER_STATUS.DUE_SOON) {
-    const timeToGo = getTimeToGo(reminder);
-    message = `Your pet's ${appointment} is in ${timeToGo}.`;
+    message = gt(
+      "generatedUi.notif.vetAppointment.soon",
+      "Your pet's {{name}} is in {{time}}.",
+      { name: appointment, time: getTimeToGo(reminder) },
+    );
   }
 
   return {
-    title: "Vet appointment 🩺",
+    title: gt("generatedUi.notif.vetAppointment.title", "Vet appointment 🩺"),
     message,
-    actionLabel: "Prepare vet summary",
+    actionLabel: actionLabel("prepareVetSummary"),
   };
 }
 
 function getDefaultNotification(reminder) {
   return {
-    title: reminder.title || "Reminder",
-    message: reminder.description || "You have a reminder.",
-    actionLabel: "Done",
+    title: reminder.title || gt("generatedUi.notif.default.title", "Reminder"),
+    message:
+      reminder.description ||
+      gt("generatedUi.notif.default.message", "You have a reminder."),
+    actionLabel: actionLabel("done"),
   };
 }
 
@@ -207,17 +289,31 @@ function getTimeToGo(reminder) {
   const triggerTime = new Date(reminder.scheduledAt || reminder.nextTriggerAt);
   const diffMinutes = Math.round((triggerTime - now) / (1000 * 60));
 
-  if (diffMinutes < 1) return "less than a minute";
-  if (diffMinutes === 1) return "1 minute";
-  if (diffMinutes < 60) return `${diffMinutes} minutes`;
+  if (diffMinutes < 1)
+    return gt("generatedUi.timeToGo.lessThanMinute", "less than a minute");
+  if (diffMinutes < 60) {
+    return gt(
+      "generatedUi.timeToGo.minutes",
+      diffMinutes === 1 ? "1 minute" : `${diffMinutes} minutes`,
+      { count: diffMinutes },
+    );
+  }
 
   const hours = Math.floor(diffMinutes / 60);
   const mins = diffMinutes % 60;
 
-  if (hours === 1 && mins === 0) return "1 hour";
-  if (hours === 1) return `1 hour ${mins} min`;
-  if (mins === 0) return `${hours} hours`;
-  return `${hours} hours ${mins} min`;
+  if (mins === 0) {
+    return gt(
+      "generatedUi.timeToGo.hours",
+      hours === 1 ? "1 hour" : `${hours} hours`,
+      { count: hours },
+    );
+  }
+  return gt(
+    "generatedUi.timeToGo.hoursMinutes",
+    hours === 1 ? `1 hour ${mins} min` : `${hours} hours ${mins} min`,
+    { count: hours, mins },
+  );
 }
 
 /**

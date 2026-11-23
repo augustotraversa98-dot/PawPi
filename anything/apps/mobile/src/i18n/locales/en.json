@@ -5368,5 +5368,279 @@
       "Wirehaired Pointing Griffon": "Wirehaired Pointing Griffon",
       "Xoloitzcuintli": "Xoloitzcuintli"
     }
+  },
+  "generatedUi": {
+    "action": {
+      "logFood": "Log food",
+      "startWalk": "Start walk",
+      "markGiven": "Mark as given",
+      "takePhoto": "Take photo",
+      "startCheck": "Start check",
+      "logWeight": "Log weight",
+      "logCheck": "Log check",
+      "viewVaccineRecord": "View vaccine record",
+      "prepareVetSummary": "Prepare vet summary",
+      "addVetRecord": "Add vet record",
+      "markCompleted": "Mark completed",
+      "markDone": "Mark as done",
+      "logWater": "Log water",
+      "viewDetails": "View details",
+      "joinCall": "Join call",
+      "done": "Done",
+      "somethingOff": "Something was off",
+      "logAsUsual": "Log as usual"
+    },
+    "timeFor": "Time for {{name}}",
+    "dailyReturnBody": "Your pup would love to see you today 🐾",
+    "meal": {
+      "defaultTitle": "Meal",
+      "defaultName": "meal"
+    },
+    "medication": {
+      "defaultTitle": "Medication",
+      "dose": "Dose",
+      "instructions": "Take medication"
+    },
+    "generalCheck": {
+      "title": "General Check",
+      "description": "Check your pet's overall health"
+    },
+    "weightCheck": {
+      "title": "Weight Check",
+      "description": "Log your pet's weight"
+    },
+    "areas": {
+      "paws": "paws",
+      "ears": "ears",
+      "eyes": "eyes",
+      "teeth": "teeth",
+      "skin_fur": "skin/fur",
+      "face": "face",
+      "full_body": "full body",
+      "other": "other area",
+      "body": "body area"
+    },
+    "photoCheckTitle": {
+      "paws": "PAWS Check",
+      "ears": "EARS Check",
+      "eyes": "EYES Check",
+      "teeth": "TEETH Check",
+      "skin_fur": "SKIN_FUR Check",
+      "face": "FACE Check",
+      "full_body": "FULL_BODY Check",
+      "other": "OTHER Check",
+      "body": "BODY Check",
+      "generic": "{{area}} Check"
+    },
+    "photoCheckDesc": "Take photo of {{area}}",
+    "preventive": {
+      "defaultTitle": "Preventive Care",
+      "description": {
+        "flea": "Flea prevention due",
+        "tick": "Tick prevention due",
+        "worm": "Worm prevention due",
+        "heartworm": "Heartworm prevention due",
+        "other": "Other prevention due",
+        "generic": "{{type}} prevention due"
+      }
+    },
+    "vaccine": {
+      "title": "{{name}} Due",
+      "defaultTitleName": "Vaccine",
+      "defaultName": "vaccine"
+    },
+    "vetAppointment": {
+      "defaultTitle": "Vet Appointment",
+      "defaultClinic": "Vet visit",
+      "defaultReason": "Appointment"
+    },
+    "wellness": {
+      "label": {
+        "general": "General Check",
+        "weight": "Weight Check",
+        "body_condition": "Body Condition Check",
+        "mobility": "Mobility Check",
+        "mood_energy": "Mood/Energy Check",
+        "skin_coat": "Skin/Coat Check",
+        "appetite_hydration": "Appetite/Hydration Check",
+        "fallback": "Wellness Check"
+      },
+      "description": {
+        "general": "Check your pet's overall health",
+        "weight": "Log your pet's weight",
+        "body_condition": "Assess your pet's body condition",
+        "mobility": "Check your pet's mobility and movement",
+        "mood_energy": "Check your pet's mood and energy level",
+        "skin_coat": "Inspect your pet's skin and coat",
+        "appetite_hydration": "Check your pet's appetite and water intake",
+        "fallback": "Complete wellness check"
+      }
+    },
+    "care": {
+      "title": {
+        "medication": "Medication",
+        "supplement": "Supplement",
+        "vaccineNamed": "{{name}} vaccine due",
+        "vaccine": "Vaccine due",
+        "named": "{{name}} due",
+        "fleaTick": "Flea/tick prevention due",
+        "deworming": "Deworming due",
+        "heartworm": "Heartworm prevention due",
+        "other": "Medical care"
+      },
+      "description": {
+        "medication": "Medication due",
+        "withBreakfast": "With breakfast",
+        "withDinner": "With dinner",
+        "withMeal": "With meal",
+        "supplement": "Supplement due",
+        "dueDate": "Due {{date}}",
+        "vaccine": "Vaccine due",
+        "fleaTick": "Flea/tick prevention",
+        "deworming": "Deworming",
+        "heartworm": "Heartworm prevention",
+        "other": "Care due",
+        "default": "Medical care due"
+      }
+    },
+    "timeToGo": {
+      "lessThanMinute": "less than a minute",
+      "minutes_one": "{{count}} minute",
+      "minutes_other": "{{count}} minutes",
+      "hours_one": "{{count}} hour",
+      "hours_other": "{{count}} hours",
+      "hoursMinutes_one": "{{count}} hour {{mins}} min",
+      "hoursMinutes_other": "{{count}} hours {{mins}} min"
+    },
+    "timeDisplay": {
+      "overdue": "{{count}} min overdue",
+      "now": "now",
+      "inMinutes": "in {{count}} min",
+      "inHours_one": "in {{count}} hour",
+      "inHours_other": "in {{count}} hours"
+    },
+    "snooze": {
+      "minutes10": "10 minutes",
+      "minutes30": "30 minutes",
+      "hour1": "1 hour",
+      "tonight": "Tonight",
+      "tomorrow": "Tomorrow"
+    },
+    "reminderType": {
+      "feeding": "Feeding",
+      "water": "Water",
+      "walk": "Walk",
+      "medication": "Medication",
+      "preventive": "Preventive Care",
+      "vaccine": "Vaccine",
+      "vetAppointment": "Vet Appointment",
+      "generalCheck": "General Check",
+      "weightCheck": "Weight Check",
+      "photoCheck": "Photo Check"
+    },
+    "notif": {
+      "feeding": {
+        "defaultName": "Meal",
+        "title": "Mealtime 🍽️",
+        "message": "Time for {{name}}.",
+        "soon": "{{name}} starts in {{time}}.",
+        "late": "Whenever you're ready — {{name}} 🍽️"
+      },
+      "walk": {
+        "defaultName": "Walk",
+        "title": "Walk time 🚶",
+        "message": "Time for a {{name}}.",
+        "soon": "{{name}} starts in {{time}}.",
+        "late": "Whenever you're ready — time for a {{name}} 🚶"
+      },
+      "medication": {
+        "defaultName": "medication",
+        "title": "Medication time 💊",
+        "message": "Time for {{name}}.",
+        "soon": "{{name}} is coming up in {{time}}.",
+        "late": "Whenever you're ready — {{name}} 💊"
+      },
+      "photoCheck": {
+        "title": {
+          "paws": "Paws photo due 📸",
+          "ears": "Ears photo due 📸",
+          "eyes": "Eyes photo due 📸",
+          "teeth": "Teeth photo due 📸",
+          "skin_fur": "Skin/fur photo due 📸",
+          "face": "Face photo due 📸",
+          "full_body": "Full/body photo due 📸",
+          "other": "Other photo due 📸",
+          "generic": "{{area}} photo due 📸"
+        },
+        "message": "Upload your pet's weekly {{area}} photo to compare visible changes over time."
+      },
+      "generalCheck": {
+        "title": "General check due ✅",
+        "message": "Time for your pet's weekly general health check."
+      },
+      "weightCheck": {
+        "title": "Weight check due ⚖️",
+        "message": "Time to log your pet's weight for this week."
+      },
+      "preventive": {
+        "defaultName": "preventive care",
+        "title": "Preventive care due 🛡️",
+        "message": "Time for your pet's {{name}}."
+      },
+      "vaccine": {
+        "defaultName": "vaccine",
+        "title": "Vaccine due 💉",
+        "message": "Your pet's {{name}} is due."
+      },
+      "vetAppointment": {
+        "defaultName": "vet appointment",
+        "title": "Vet appointment 🩺",
+        "message": "Your pet has a {{name}} today.",
+        "soon": "Your pet's {{name}} is in {{time}}."
+      },
+      "default": {
+        "title": "Reminder",
+        "message": "You have a reminder."
+      }
+    },
+    "calendar": {
+      "yourPet": "Your pet",
+      "busy": "Busy",
+      "managedBy": "Managed by PawPi",
+      "walkNotes": "Dog walk scheduled in PawPi",
+      "vetTitle": "Vet appointment for {{name}}",
+      "labelAppointment": "Appointment:",
+      "labelReason": "Reason:",
+      "labelVeterinarian": "Veterinarian:",
+      "labelNotes": "Notes:",
+      "bookingTitle": "Appointment for {{name}}",
+      "telehealthTitle": "Telehealth consult for {{name}}",
+      "telehealthNotes": "Video consult — no physical location.",
+      "labelProvider": "Provider:",
+      "transportTitleNamed": "Pet transport — {{name}}",
+      "transportTitle": "Pet transport",
+      "labelPickup": "Pickup:",
+      "labelDropoff": "Dropoff:",
+      "eventTitle": "Event",
+      "freqDaily": "daily",
+      "freqEvery": "every {{days}}",
+      "freqMonthly": "monthly on day {{day}}",
+      "freqOnce": "one time"
+    },
+    "healthKit": {
+      "notAvailableTitle": "Not Available",
+      "notAvailableBody": "Apple Health is only available on iOS devices.",
+      "accessTitle": "Apple Health Access",
+      "accessBody": "PawPi can use walk distance and activity data to help keep your pet's walk history accurate.",
+      "notNow": "Not now",
+      "allow": "Allow",
+      "comingSoonTitle": "Coming Soon",
+      "comingSoonBody": "Apple Health integration is coming soon. For now, use manual tracking.",
+      "trackedAppleHealth": "Tracked with Apple Health",
+      "trackedAppleWatch": "Tracked with Apple Watch",
+      "trackedGps": "Tracked with GPS",
+      "trackedManual": "Tracked manually",
+      "steps": "{{steps}} steps"
+    }
   }
 }

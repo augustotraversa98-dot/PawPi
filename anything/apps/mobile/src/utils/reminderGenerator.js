@@ -1,6 +1,12 @@
 import { ROUTINE_TYPES, ROUTINE_FREQUENCY } from "@/data/routinesData";
 import { REMINDER_STATUS } from "@/data/remindersData";
 import { formatDisplayDate } from "@/utils/canonicalDateTime";
+import {
+  gt,
+  actionLabel,
+  photoCheckTitle,
+  photoCheckDescription,
+} from "@/utils/generatedCopy";
 
 // A soft-deleted routine must generate NO reminders — neither forward nor overdue —
 // independent of its is_active flag (delete also flips is_active off, but pausing
@@ -235,9 +241,14 @@ function generateFeedingReminders(
         mealId: mealId,
         petId: routine.petId,
         type: "feeding",
-        title: meal.name || "Meal",
+        title: meal.name || gt("generatedUi.meal.defaultTitle", "Meal"),
         description:
-          meal.notes || `Time for ${(meal.name || "meal").toLowerCase()}`,
+          meal.notes ||
+          gt("generatedUi.timeFor", "Time for {{name}}", {
+            name: (
+              meal.name || gt("generatedUi.meal.defaultName", "meal")
+            ).toLowerCase(),
+          }),
         scheduledAt: scheduledTime.toISOString(),
         nextTriggerAt: scheduledTime.toISOString(),
         status: REMINDER_STATUS.UPCOMING,
@@ -357,7 +368,9 @@ function generateWalkReminders(
         petId: routine.petId,
         type: "walk",
         title: walk.name,
-        description: `Time for ${walk.name.toLowerCase()}`,
+        description: gt("generatedUi.timeFor", "Time for {{name}}", {
+          name: walk.name.toLowerCase(),
+        }),
         scheduledAt: scheduledTime.toISOString(),
         nextTriggerAt: scheduledTime.toISOString(),
         status: REMINDER_STATUS.UPCOMING,
@@ -499,9 +512,14 @@ function generateMedicationReminders(
           routineId: routine.id,
           petId: routine.petId,
           type: "medication",
-          title: routine.medicationName || "Medication",
-          description: `${routine.dose || "Dose"} - ${
-            routine.instructions || "Take medication"
+          title:
+            routine.medicationName ||
+            gt("generatedUi.medication.defaultTitle", "Medication"),
+          description: `${
+            routine.dose || gt("generatedUi.medication.dose", "Dose")
+          } - ${
+            routine.instructions ||
+            gt("generatedUi.medication.instructions", "Take medication")
           }`,
           scheduledAt: scheduledTime.toISOString(),
           nextTriggerAt: scheduledTime.toISOString(),
@@ -572,7 +590,6 @@ function generatePhotoCheckReminders(
         parseInt(minutes),
         now,
       );
-      const bodyAreaLabel = schedule.bodyArea?.toUpperCase() || "BODY";
       hourlyOccurrences(anchor, intervalHours, now, endDate, {
         includeEnd: true,
       }).forEach((occ) => {
@@ -584,10 +601,8 @@ function generatePhotoCheckReminders(
           photoCheckScheduleIndex: scheduleIndex,
           petId: routine.petId,
           type: "photo_check",
-          title: `${bodyAreaLabel} Check`,
-          description: `Take photo of ${
-            schedule.bodyArea?.replace("_", " ") || "body area"
-          }`,
+          title: photoCheckTitle(schedule.bodyArea),
+          description: photoCheckDescription(schedule.bodyArea),
           scheduledAt: occ.toISOString(),
           nextTriggerAt: occ.toISOString(),
           status: REMINDER_STATUS.UPCOMING,
@@ -651,8 +666,7 @@ function generatePhotoCheckReminders(
         scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
         if (scheduledTime >= forwardStart) {
-          const bodyAreaLabel = schedule.bodyArea?.toUpperCase() || "BODY";
-
+    
           reminders.push({
             id: `reminder_${routine.id}_${schedule.bodyArea}_${
               currentDate.toISOString().split("T")[0]
@@ -661,10 +675,8 @@ function generatePhotoCheckReminders(
             photoCheckScheduleIndex: scheduleIndex,
             petId: routine.petId,
             type: "photo_check",
-            title: `${bodyAreaLabel} Check`,
-            description: `Take photo of ${
-              schedule.bodyArea?.replace("_", " ") || "body area"
-            }`,
+            title: photoCheckTitle(schedule.bodyArea),
+            description: photoCheckDescription(schedule.bodyArea),
             scheduledAt: scheduledTime.toISOString(),
             nextTriggerAt: scheduledTime.toISOString(),
             status: REMINDER_STATUS.UPCOMING,
@@ -727,8 +739,11 @@ function generateGeneralCheckReminders(
           routineId: routine.id,
           petId: routine.petId,
           type: "general_check",
-          title: "General Check",
-          description: "Check your pet's overall health",
+          title: gt("generatedUi.generalCheck.title", "General Check"),
+          description: gt(
+            "generatedUi.generalCheck.description",
+            "Check your pet's overall health",
+          ),
           scheduledAt: scheduledTime.toISOString(),
           nextTriggerAt: scheduledTime.toISOString(),
           status: REMINDER_STATUS.UPCOMING,
@@ -776,8 +791,11 @@ function generateGeneralCheckReminders(
             routineId: routine.id,
             petId: routine.petId,
             type: "general_check",
-            title: "General Check",
-            description: "Check your pet's overall health",
+            title: gt("generatedUi.generalCheck.title", "General Check"),
+            description: gt(
+              "generatedUi.generalCheck.description",
+              "Check your pet's overall health",
+            ),
             scheduledAt: scheduledTime.toISOString(),
             nextTriggerAt: scheduledTime.toISOString(),
             status: REMINDER_STATUS.UPCOMING,
@@ -847,8 +865,11 @@ function generateWeightCheckReminders(
           routineId: routine.id,
           petId: routine.petId,
           type: "weight_check",
-          title: "Weight Check",
-          description: "Log your pet's weight",
+          title: gt("generatedUi.weightCheck.title", "Weight Check"),
+          description: gt(
+            "generatedUi.weightCheck.description",
+            "Log your pet's weight",
+          ),
           scheduledAt: scheduledTime.toISOString(),
           nextTriggerAt: scheduledTime.toISOString(),
           status: REMINDER_STATUS.UPCOMING,
@@ -894,11 +915,10 @@ function generatePreventiveReminders(
       routineId: routine.id,
       petId: routine.petId,
       type: "preventive",
-      title: routine.productName || "Preventive Care",
-      description: `${
-        routine.treatmentType?.charAt(0).toUpperCase() +
-          routine.treatmentType?.slice(1) || "Treatment"
-      } prevention due`,
+      title:
+        routine.productName ||
+        gt("generatedUi.preventive.defaultTitle", "Preventive Care"),
+      description: preventiveDueDescription(routine.treatmentType),
       scheduledAt: nextDue.toISOString(),
       nextTriggerAt: nextDue.toISOString(),
       status: REMINDER_STATUS.UPCOMING,
@@ -931,8 +951,12 @@ function generateVaccineReminders(
       routineId: routine.id,
       petId: routine.petId,
       type: "vaccine",
-      title: `${routine.vaccineName || "Vaccine"} Due`,
-      description: `Time for ${routine.vaccineName || "vaccine"}`,
+      title: gt("generatedUi.vaccine.title", "{{name}} Due", {
+        name: routine.vaccineName || gt("generatedUi.vaccine.defaultTitleName", "Vaccine"),
+      }),
+      description: gt("generatedUi.timeFor", "Time for {{name}}", {
+        name: routine.vaccineName || gt("generatedUi.vaccine.defaultName", "vaccine"),
+      }),
       scheduledAt: nextDue.toISOString(),
       nextTriggerAt: nextDue.toISOString(),
       status: REMINDER_STATUS.UPCOMING,
@@ -974,9 +998,14 @@ function generateVetAppointmentReminders(
         routineId: routine.id,
         petId: routine.petId,
         type: "vet_appointment",
-        title: routine.appointmentTitle || "Vet Appointment",
-        description: `${routine.clinic || "Vet visit"} - ${
-          routine.reason || "Appointment"
+        title:
+          routine.appointmentTitle ||
+          gt("generatedUi.vetAppointment.defaultTitle", "Vet Appointment"),
+        description: `${
+          routine.clinic || gt("generatedUi.vetAppointment.defaultClinic", "Vet visit")
+        } - ${
+          routine.reason ||
+          gt("generatedUi.vetAppointment.defaultReason", "Appointment")
         }`,
         scheduledAt: scheduledTime.toISOString(),
         nextTriggerAt: scheduledTime.toISOString(),
@@ -1375,7 +1404,10 @@ function getWellnessCheckLabel(item) {
     skin_coat: "Skin/Coat Check",
     appetite_hydration: "Appetite/Hydration Check",
   };
-  return labels[item.checkType] || "Wellness Check";
+  const english = labels[item.checkType];
+  return english
+    ? gt(`generatedUi.wellness.label.${item.checkType}`, english)
+    : gt("generatedUi.wellness.label.fallback", "Wellness Check");
 }
 
 function getWellnessCheckDescription(item) {
@@ -1390,20 +1422,23 @@ function getWellnessCheckDescription(item) {
     skin_coat: "Inspect your pet's skin and coat",
     appetite_hydration: "Check your pet's appetite and water intake",
   };
-  return descriptions[item.checkType] || "Complete wellness check";
+  const english = descriptions[item.checkType];
+  return english
+    ? gt(`generatedUi.wellness.description.${item.checkType}`, english)
+    : gt("generatedUi.wellness.description.fallback", "Complete wellness check");
 }
 
 function getWellnessCheckAction(checkType) {
   const actions = {
-    weight: "Log weight",
-    general: "Start check",
-    body_condition: "Start check",
-    mobility: "Start check",
-    mood_energy: "Log check",
-    skin_coat: "Start check",
-    appetite_hydration: "Log check",
+    weight: "logWeight",
+    general: "startCheck",
+    body_condition: "startCheck",
+    mobility: "startCheck",
+    mood_energy: "logCheck",
+    skin_coat: "startCheck",
+    appetite_hydration: "logCheck",
   };
-  return actions[checkType] || "Start check";
+  return actionLabel(actions[checkType] || "startCheck");
 }
 
 function getWellnessCheckTracker(checkType) {
@@ -1423,21 +1458,29 @@ function buildMedicalCareTitle(item) {
   const name = item.name || "";
   switch (item.type) {
     case "medication":
-      return name || "Medication";
+      return name || gt("generatedUi.care.title.medication", "Medication");
     case "supplement":
-      return name || "Supplement";
+      return name || gt("generatedUi.care.title.supplement", "Supplement");
     case "vaccine":
-      return name ? `${name} vaccine due` : "Vaccine due";
+      return name
+        ? gt("generatedUi.care.title.vaccineNamed", "{{name}} vaccine due", { name })
+        : gt("generatedUi.care.title.vaccine", "Vaccine due");
     case "flea_tick":
-      return name ? `${name} due` : "Flea/tick prevention due";
+      return name
+        ? gt("generatedUi.care.title.named", "{{name}} due", { name })
+        : gt("generatedUi.care.title.fleaTick", "Flea/tick prevention due");
     case "deworming":
-      return name ? `${name} due` : "Deworming due";
+      return name
+        ? gt("generatedUi.care.title.named", "{{name}} due", { name })
+        : gt("generatedUi.care.title.deworming", "Deworming due");
     case "heartworm":
-      return name ? `${name} due` : "Heartworm prevention due";
+      return name
+        ? gt("generatedUi.care.title.named", "{{name}} due", { name })
+        : gt("generatedUi.care.title.heartworm", "Heartworm prevention due");
     case "other":
-      return name || "Medical care";
+      return name || gt("generatedUi.care.title.other", "Medical care");
     default:
-      return name || "Medical care";
+      return name || gt("generatedUi.care.title.other", "Medical care");
   }
 }
 
@@ -1447,36 +1490,42 @@ function buildMedicalCareDescription(item) {
       const parts = [];
       if (item.dose) parts.push(item.dose);
       if (item.instructions) parts.push(item.instructions);
-      return parts.join(" · ") || "Medication due";
+      return (
+        parts.join(" · ") || gt("generatedUi.care.description.medication", "Medication due")
+      );
     }
     case "supplement": {
       const parts = [];
       if (item.dose) parts.push(item.dose);
       if (item.timingMode === "linked" && item.linkedMeal) {
         const map = {
-          breakfast: "With breakfast",
-          dinner: "With dinner",
-          meal: "With meal",
+          breakfast: gt("generatedUi.care.description.withBreakfast", "With breakfast"),
+          dinner: gt("generatedUi.care.description.withDinner", "With dinner"),
+          meal: gt("generatedUi.care.description.withMeal", "With meal"),
         };
-        parts.push(map[item.linkedMeal] || "With meal");
+        parts.push(map[item.linkedMeal] || map.meal);
       }
       if (item.instructions) parts.push(item.instructions);
-      return parts.join(" · ") || "Supplement due";
+      return (
+        parts.join(" · ") || gt("generatedUi.care.description.supplement", "Supplement due")
+      );
     }
     case "vaccine":
       return item.nextDue
-        ? `Due ${formatShortDate(item.nextDue)}`
-        : "Vaccine due";
+        ? gt("generatedUi.care.description.dueDate", "Due {{date}}", {
+            date: formatShortDate(item.nextDue),
+          })
+        : gt("generatedUi.care.description.vaccine", "Vaccine due");
     case "flea_tick":
-      return "Flea/tick prevention";
+      return gt("generatedUi.care.description.fleaTick", "Flea/tick prevention");
     case "deworming":
-      return "Deworming";
+      return gt("generatedUi.care.description.deworming", "Deworming");
     case "heartworm":
-      return "Heartworm prevention";
+      return gt("generatedUi.care.description.heartworm", "Heartworm prevention");
     case "other":
-      return item.description || "Care due";
+      return item.description || gt("generatedUi.care.description.other", "Care due");
     default:
-      return "Medical care due";
+      return gt("generatedUi.care.description.default", "Medical care due");
   }
 }
 
@@ -1487,13 +1536,13 @@ function getMedicalCarePrimaryAction(careType) {
     case "flea_tick":
     case "deworming":
     case "heartworm":
-      return "Mark as given";
+      return actionLabel("markGiven");
     case "vaccine":
-      return "Add vet record";
+      return actionLabel("addVetRecord");
     case "other":
-      return "Mark completed";
+      return actionLabel("markCompleted");
     default:
-      return "Done";
+      return actionLabel("done");
   }
 }
 
@@ -1906,19 +1955,36 @@ function getWalkActiveDays(walk) {
 // Helper: Get primary action for routine type
 function getPrimaryActionForRoutineType(type) {
   const actions = {
-    [ROUTINE_TYPES.FEEDING]: "Log food",
-    [ROUTINE_TYPES.WALK]: "Start walk",
-    [ROUTINE_TYPES.MEDICATION]: "Mark as given",
-    [ROUTINE_TYPES.PHOTO_CHECK]: "Take photo",
-    [ROUTINE_TYPES.GENERAL_CHECK]: "Start check",
-    [ROUTINE_TYPES.WEIGHT_CHECK]: "Log weight",
-    [ROUTINE_TYPES.WELLNESS_CHECK]: "Start check",
-    [ROUTINE_TYPES.PREVENTIVE]: "Mark as given",
-    [ROUTINE_TYPES.VACCINE]: "View vaccine record",
-    [ROUTINE_TYPES.VET_APPOINTMENT]: "Prepare vet summary",
-    [ROUTINE_TYPES.MEDICAL_CARE]: "Mark as given",
+    [ROUTINE_TYPES.FEEDING]: "logFood",
+    [ROUTINE_TYPES.WALK]: "startWalk",
+    [ROUTINE_TYPES.MEDICATION]: "markGiven",
+    [ROUTINE_TYPES.PHOTO_CHECK]: "takePhoto",
+    [ROUTINE_TYPES.GENERAL_CHECK]: "startCheck",
+    [ROUTINE_TYPES.WEIGHT_CHECK]: "logWeight",
+    [ROUTINE_TYPES.WELLNESS_CHECK]: "startCheck",
+    [ROUTINE_TYPES.PREVENTIVE]: "markGiven",
+    [ROUTINE_TYPES.VACCINE]: "viewVaccineRecord",
+    [ROUTINE_TYPES.VET_APPOINTMENT]: "prepareVetSummary",
+    [ROUTINE_TYPES.MEDICAL_CARE]: "markGiven",
   };
-  return actions[type] || "Done";
+  return actionLabel(actions[type] || "done");
+}
+
+// Preventive-care reminder description ("Flea prevention due"). The treatment-type id comes from
+// the routine; only the wording is localized.
+const PREVENTIVE_TYPES = ["flea", "tick", "worm", "heartworm", "other"];
+function preventiveDueDescription(treatmentType) {
+  const raw = typeof treatmentType === "string" ? treatmentType : "";
+  const english = `${raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : "Treatment"} prevention due`;
+  if (PREVENTIVE_TYPES.includes(raw)) {
+    return gt(`generatedUi.preventive.description.${raw}`, english);
+  }
+  if (!raw) {
+    return gt("generatedUi.preventive.description.other", english);
+  }
+  return gt("generatedUi.preventive.description.generic", "{{type}} prevention due", {
+    type: raw.charAt(0).toUpperCase() + raw.slice(1),
+  });
 }
 
 // Helper: Get related tracker for routine type
@@ -2408,7 +2474,6 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
         now,
       );
       const hourlyStart = clampOverdueStart(startOfDay(now), routine, schedule);
-      const bodyAreaLabel = schedule.bodyArea?.toUpperCase() || "BODY";
       hourlyOccurrences(anchor, intervalHours, hourlyStart, now, {
         includeEnd: false,
       }).forEach((occ) => {
@@ -2420,10 +2485,8 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
           photoCheckScheduleIndex: scheduleIndex,
           petId: routine.petId,
           type: "photo_check",
-          title: `${bodyAreaLabel} Check`,
-          description: `Take photo of ${
-            schedule.bodyArea?.replace("_", " ") || "body area"
-          }`,
+          title: photoCheckTitle(schedule.bodyArea),
+          description: photoCheckDescription(schedule.bodyArea),
           scheduledAt: occ.toISOString(),
           nextTriggerAt: occ.toISOString(),
           status: REMINDER_STATUS.OVERDUE,
@@ -2432,7 +2495,7 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
           notificationEnabled: schedule.reminderEnabled ?? true,
           relatedTracker: "photo_check",
           relatedBodyArea: schedule.bodyArea,
-          primaryAction: "Take photo",
+          primaryAction: actionLabel("takePhoto"),
           notes: schedule.notes || "",
           completedAt: null,
           snoozedUntil: null,
@@ -2481,8 +2544,7 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
         scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
         if (scheduledTime < now && scheduledTime >= effectiveStart) {
-          const bodyAreaLabel = schedule.bodyArea?.toUpperCase() || "BODY";
-          reminders.push({
+              reminders.push({
             id: `reminder_${routine.id}_${schedule.bodyArea}_${
               currentDate.toISOString().split("T")[0]
             }`,
@@ -2490,10 +2552,8 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
             photoCheckScheduleIndex: scheduleIndex,
             petId: routine.petId,
             type: "photo_check",
-            title: `${bodyAreaLabel} Check`,
-            description: `Take photo of ${
-              schedule.bodyArea?.replace("_", " ") || "body area"
-            }`,
+            title: photoCheckTitle(schedule.bodyArea),
+            description: photoCheckDescription(schedule.bodyArea),
             scheduledAt: scheduledTime.toISOString(),
             nextTriggerAt: scheduledTime.toISOString(),
             status: REMINDER_STATUS.OVERDUE,
@@ -2502,7 +2562,7 @@ function generateOverduePhotoChecks(routine, now, windowStart) {
             notificationEnabled: schedule.reminderEnabled ?? true,
             relatedTracker: "photo_check",
             relatedBodyArea: schedule.bodyArea,
-            primaryAction: "Take photo",
+            primaryAction: actionLabel("takePhoto"),
             notes: schedule.notes || "",
             completedAt: null,
             snoozedUntil: null,

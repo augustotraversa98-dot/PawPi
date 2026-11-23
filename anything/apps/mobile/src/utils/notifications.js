@@ -6,6 +6,7 @@
 import * as Notifications from "expo-notifications";
 import { Platform, Alert } from "react-native";
 import { translate } from "@/utils/appAlert";
+import { gt, actionLabel } from "@/utils/generatedCopy";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ROUTINE_TYPES } from "@/data/routinesData";
 import { formatScheduledTime } from "./scheduledTimeFormat";
@@ -407,6 +408,10 @@ export async function getScheduledNotifications() {
 // double-schedules. Cancel + forget cleanly when permission is revoked.
 // =========================================================================
 const DAILY_RETURN_KEY = "pawpi.dailyReturnReminderId";
+// The body text the scheduled daily-return notification was created with. The OS bakes the text in at
+// schedule time, so we compare against it to RE-schedule (same deterministic id => replace, never
+// duplicate) when the language or the pet name changes.
+const DAILY_RETURN_BODY_KEY = "pawpi.dailyReturnReminderBody";
 const DAILY_RETURN_HOUR = 10; // mid-morning, local device time
 const DAILY_RETURN_MINUTE = 0;
 
@@ -472,11 +477,21 @@ async function doEnsureDailyReturnReminder(body) {
     const permissions = await Notifications.getPermissionsAsync();
     if (!isNotificationPermissionGranted(permissions)) return null;
 
+    const resolvedBody =
+      body ||
+      gt("generatedUi.dailyReturnBody", "Your pup would love to see you today 🐾");
+
     const existing = await AsyncStorage.getItem(DAILY_RETURN_KEY);
     if (existing === DAILY_RETURN_IDENTIFIER) {
-      // Already on the deterministic id; just make sure no legacy duplicate is still pending.
-      await cancelStrayDailyReturns(DAILY_RETURN_IDENTIFIER);
-      return existing;
+      const scheduledBody = await AsyncStorage.getItem(DAILY_RETURN_BODY_KEY);
+      if (scheduledBody === resolvedBody) {
+        // Already on the deterministic id with the right text; just make sure no legacy duplicate
+        // is still pending.
+        await cancelStrayDailyReturns(DAILY_RETURN_IDENTIFIER);
+        return existing;
+      }
+      // The text changed (the owner switched language, or renamed the pet) -> fall through and
+      // re-schedule under the same identifier so the notification speaks the current language.
     }
 
     // First run (or migrating from a legacy random id): drop EVERY daily-return request, including
@@ -494,7 +509,7 @@ async function doEnsureDailyReturnReminder(body) {
       identifier: DAILY_RETURN_IDENTIFIER,
       content: {
         title: "PawPi",
-        body: body || "Your pup would love to see you today 🐾",
+        body: resolvedBody,
         sound: true,
         data: DAILY_RETURN_DATA,
       },
@@ -508,6 +523,7 @@ async function doEnsureDailyReturnReminder(body) {
       },
     });
     await AsyncStorage.setItem(DAILY_RETURN_KEY, id);
+    await AsyncStorage.setItem(DAILY_RETURN_BODY_KEY, resolvedBody);
     return id;
   } catch (error) {
     console.error("Error scheduling daily return reminder:", error);
@@ -545,6 +561,7 @@ export async function cancelDailyReturnReminder() {
     if (existing) {
       await Notifications.cancelScheduledNotificationAsync(existing);
       await AsyncStorage.removeItem(DAILY_RETURN_KEY);
+      await AsyncStorage.removeItem(DAILY_RETURN_BODY_KEY);
     }
     await cancelStrayDailyReturns(null);
   } catch (error) {
@@ -557,19 +574,19 @@ export async function cancelDailyReturnReminder() {
  */
 function getReminderConfig(type) {
   const configs = {
-    feeding: { icon: "🍽️", actionLabel: "Log food" },
-    water: { icon: "💧", actionLabel: "Log water" },
-    walk: { icon: "🚶", actionLabel: "Start walk" },
-    medication: { icon: "💊", actionLabel: "Mark as given" },
-    preventive: { icon: "🛡️", actionLabel: "Mark as done" },
-    vaccine: { icon: "💉", actionLabel: "Mark as done" },
-    vet_appointment: { icon: "🩺", actionLabel: "View details" },
-    general_check: { icon: "✅", actionLabel: "Start check" },
-    weight_check: { icon: "⚖️", actionLabel: "Log weight" },
-    photo_check: { icon: "📸", actionLabel: "Take photo" },
-    telehealth: { icon: "📹", actionLabel: "Join call" },
+    feeding: { icon: "🍽️", actionLabel: actionLabel("logFood") },
+    water: { icon: "💧", actionLabel: actionLabel("logWater") },
+    walk: { icon: "🚶", actionLabel: actionLabel("startWalk") },
+    medication: { icon: "💊", actionLabel: actionLabel("markGiven") },
+    preventive: { icon: "🛡️", actionLabel: actionLabel("markDone") },
+    vaccine: { icon: "💉", actionLabel: actionLabel("markDone") },
+    vet_appointment: { icon: "🩺", actionLabel: actionLabel("viewDetails") },
+    general_check: { icon: "✅", actionLabel: actionLabel("startCheck") },
+    weight_check: { icon: "⚖️", actionLabel: actionLabel("logWeight") },
+    photo_check: { icon: "📸", actionLabel: actionLabel("takePhoto") },
+    telehealth: { icon: "📹", actionLabel: actionLabel("joinCall") },
   };
-  return configs[type] || { icon: "📌", actionLabel: "Done" };
+  return configs[type] || { icon: "📌", actionLabel: actionLabel("done") };
 }
 
 /**

@@ -5368,5 +5368,279 @@
       "Wirehaired Pointing Griffon": "Grifón de Muestra de Pelo Duro",
       "Xoloitzcuintli": "Xoloitzcuintle"
     }
+  },
+  "generatedUi": {
+    "action": {
+      "logFood": "Registrar comida",
+      "startWalk": "Empezar paseo",
+      "markGiven": "Marcar aplicada",
+      "takePhoto": "Tomar foto",
+      "startCheck": "Empezar chequeo",
+      "logWeight": "Registrar peso",
+      "logCheck": "Registrar chequeo",
+      "viewVaccineRecord": "Ver registro de vacunas",
+      "prepareVetSummary": "Preparar resumen para el vet",
+      "addVetRecord": "Agregar a la historia clínica",
+      "markCompleted": "Marcar como completado",
+      "markDone": "Marcar como hecho",
+      "logWater": "Registrar agua",
+      "viewDetails": "Ver detalles",
+      "joinCall": "Unirse a la llamada",
+      "done": "Listo",
+      "somethingOff": "Algo estuvo raro",
+      "logAsUsual": "Registrar como siempre"
+    },
+    "timeFor": "Es hora de {{name}}",
+    "dailyReturnBody": "A tu mascota le encantaría verte hoy 🐾",
+    "meal": {
+      "defaultTitle": "Comida",
+      "defaultName": "comida"
+    },
+    "medication": {
+      "defaultTitle": "Medicación",
+      "dose": "Dosis",
+      "instructions": "Dar la medicación"
+    },
+    "generalCheck": {
+      "title": "Chequeo general",
+      "description": "Revisá cómo está tu mascota en general"
+    },
+    "weightCheck": {
+      "title": "Chequeo de peso",
+      "description": "Registrá el peso de tu mascota"
+    },
+    "areas": {
+      "paws": "las patas",
+      "ears": "las orejas",
+      "eyes": "los ojos",
+      "teeth": "los dientes",
+      "skin_fur": "la piel y el pelaje",
+      "face": "la cara",
+      "full_body": "todo el cuerpo",
+      "other": "otra zona",
+      "body": "la zona del cuerpo"
+    },
+    "photoCheckTitle": {
+      "paws": "Foto de las patas",
+      "ears": "Foto de las orejas",
+      "eyes": "Foto de los ojos",
+      "teeth": "Foto de los dientes",
+      "skin_fur": "Foto de la piel y el pelaje",
+      "face": "Foto de la cara",
+      "full_body": "Foto de todo el cuerpo",
+      "other": "Foto de otra zona",
+      "body": "Foto del cuerpo",
+      "generic": "Chequeo de {{area}}"
+    },
+    "photoCheckDesc": "Sacá una foto de {{area}}",
+    "preventive": {
+      "defaultTitle": "Cuidado preventivo",
+      "description": {
+        "flea": "Prevención de pulgas pendiente",
+        "tick": "Prevención de garrapatas pendiente",
+        "worm": "Prevención de parásitos internos pendiente",
+        "heartworm": "Prevención del gusano del corazón pendiente",
+        "other": "Cuidado preventivo pendiente",
+        "generic": "Prevención pendiente: {{type}}"
+      }
+    },
+    "vaccine": {
+      "title": "Vence {{name}}",
+      "defaultTitleName": "Vacuna",
+      "defaultName": "la vacuna"
+    },
+    "vetAppointment": {
+      "defaultTitle": "Turno veterinario",
+      "defaultClinic": "Visita al veterinario",
+      "defaultReason": "Turno"
+    },
+    "wellness": {
+      "label": {
+        "general": "Chequeo general",
+        "weight": "Chequeo de peso",
+        "body_condition": "Chequeo de condición corporal",
+        "mobility": "Chequeo de movilidad",
+        "mood_energy": "Chequeo de ánimo y energía",
+        "skin_coat": "Chequeo de piel y pelaje",
+        "appetite_hydration": "Chequeo de apetito e hidratación",
+        "fallback": "Chequeo de bienestar"
+      },
+      "description": {
+        "general": "Revisá cómo está tu mascota en general",
+        "weight": "Registrá el peso de tu mascota",
+        "body_condition": "Evaluá la condición corporal de tu mascota",
+        "mobility": "Fijate cómo se mueve tu mascota",
+        "mood_energy": "Fijate cómo están el ánimo y la energía de tu mascota",
+        "skin_coat": "Revisá la piel y el pelaje de tu mascota",
+        "appetite_hydration": "Fijate cuánto come y cuánta agua toma tu mascota",
+        "fallback": "Completá el chequeo de bienestar"
+      }
+    },
+    "care": {
+      "title": {
+        "medication": "Medicación",
+        "supplement": "Suplemento",
+        "vaccineNamed": "Vacuna {{name}} pendiente",
+        "vaccine": "Vacuna pendiente",
+        "named": "{{name}} pendiente",
+        "fleaTick": "Prevención de pulgas y garrapatas pendiente",
+        "deworming": "Desparasitación pendiente",
+        "heartworm": "Prevención del gusano del corazón pendiente",
+        "other": "Atención médica"
+      },
+      "description": {
+        "medication": "Medicación pendiente",
+        "withBreakfast": "Con el desayuno",
+        "withDinner": "Con la cena",
+        "withMeal": "Con la comida",
+        "supplement": "Suplemento pendiente",
+        "dueDate": "Vence el {{date}}",
+        "vaccine": "Vacuna pendiente",
+        "fleaTick": "Prevención de pulgas y garrapatas",
+        "deworming": "Desparasitación",
+        "heartworm": "Prevención del gusano del corazón",
+        "other": "Cuidado pendiente",
+        "default": "Atención médica pendiente"
+      }
+    },
+    "timeToGo": {
+      "lessThanMinute": "menos de un minuto",
+      "minutes_one": "{{count}} minuto",
+      "minutes_other": "{{count}} minutos",
+      "hours_one": "{{count}} hora",
+      "hours_other": "{{count}} horas",
+      "hoursMinutes_one": "{{count}} hora {{mins}} min",
+      "hoursMinutes_other": "{{count}} horas {{mins}} min"
+    },
+    "timeDisplay": {
+      "overdue": "vencido hace {{count}} min",
+      "now": "ahora",
+      "inMinutes": "en {{count}} min",
+      "inHours_one": "en {{count}} hora",
+      "inHours_other": "en {{count}} horas"
+    },
+    "snooze": {
+      "minutes10": "10 minutos",
+      "minutes30": "30 minutos",
+      "hour1": "1 hora",
+      "tonight": "Esta noche",
+      "tomorrow": "Mañana"
+    },
+    "reminderType": {
+      "feeding": "Comida",
+      "water": "Agua",
+      "walk": "Paseo",
+      "medication": "Medicación",
+      "preventive": "Cuidado preventivo",
+      "vaccine": "Vacuna",
+      "vetAppointment": "Turno veterinario",
+      "generalCheck": "Chequeo general",
+      "weightCheck": "Chequeo de peso",
+      "photoCheck": "Chequeo con foto"
+    },
+    "notif": {
+      "feeding": {
+        "defaultName": "Comida",
+        "title": "Hora de comer 🍽️",
+        "message": "Es hora de {{name}}.",
+        "soon": "{{name}} empieza en {{time}}.",
+        "late": "Cuando quieras — {{name}} 🍽️"
+      },
+      "walk": {
+        "defaultName": "Paseo",
+        "title": "Hora del paseo 🚶",
+        "message": "Es hora de {{name}}.",
+        "soon": "{{name}} empieza en {{time}}.",
+        "late": "Cuando quieras — es hora de {{name}} 🚶"
+      },
+      "medication": {
+        "defaultName": "la medicación",
+        "title": "Hora de la medicación 💊",
+        "message": "Es hora de {{name}}.",
+        "soon": "{{name}} es en {{time}}.",
+        "late": "Cuando quieras — {{name}} 💊"
+      },
+      "photoCheck": {
+        "title": {
+          "paws": "Foto de las patas pendiente 📸",
+          "ears": "Foto de las orejas pendiente 📸",
+          "eyes": "Foto de los ojos pendiente 📸",
+          "teeth": "Foto de los dientes pendiente 📸",
+          "skin_fur": "Foto de la piel y el pelaje pendiente 📸",
+          "face": "Foto de la cara pendiente 📸",
+          "full_body": "Foto de todo el cuerpo pendiente 📸",
+          "other": "Foto de otra zona pendiente 📸",
+          "generic": "Foto pendiente: {{area}} 📸"
+        },
+        "message": "Subí la foto semanal de {{area}} de tu mascota para comparar los cambios visibles con el tiempo."
+      },
+      "generalCheck": {
+        "title": "Chequeo general pendiente ✅",
+        "message": "Es hora del chequeo de salud semanal de tu mascota."
+      },
+      "weightCheck": {
+        "title": "Chequeo de peso pendiente ⚖️",
+        "message": "Es hora de registrar el peso de tu mascota de esta semana."
+      },
+      "preventive": {
+        "defaultName": "el cuidado preventivo",
+        "title": "Cuidado preventivo pendiente 🛡️",
+        "message": "Es hora de {{name}} para tu mascota."
+      },
+      "vaccine": {
+        "defaultName": "la vacuna",
+        "title": "Vacuna pendiente 💉",
+        "message": "Vence {{name}} de tu mascota."
+      },
+      "vetAppointment": {
+        "defaultName": "el turno veterinario",
+        "title": "Turno veterinario 🩺",
+        "message": "Tu mascota tiene {{name}} hoy.",
+        "soon": "{{name}} de tu mascota es en {{time}}."
+      },
+      "default": {
+        "title": "Recordatorio",
+        "message": "Tenés un recordatorio."
+      }
+    },
+    "calendar": {
+      "yourPet": "Tu mascota",
+      "busy": "Ocupado",
+      "managedBy": "Gestionado con PawPi",
+      "walkNotes": "Paseo agendado en PawPi",
+      "vetTitle": "Turno veterinario de {{name}}",
+      "labelAppointment": "Turno:",
+      "labelReason": "Motivo:",
+      "labelVeterinarian": "Veterinario:",
+      "labelNotes": "Notas:",
+      "bookingTitle": "Turno de {{name}}",
+      "telehealthTitle": "Consulta de telemedicina de {{name}}",
+      "telehealthNotes": "Videoconsulta — sin lugar físico.",
+      "labelProvider": "Prestador:",
+      "transportTitleNamed": "Transporte de mascotas — {{name}}",
+      "transportTitle": "Transporte de mascotas",
+      "labelPickup": "Retiro:",
+      "labelDropoff": "Entrega:",
+      "eventTitle": "Evento",
+      "freqDaily": "todos los días",
+      "freqEvery": "cada {{days}}",
+      "freqMonthly": "mensual, el día {{day}}",
+      "freqOnce": "una sola vez"
+    },
+    "healthKit": {
+      "notAvailableTitle": "No disponible",
+      "notAvailableBody": "Apple Health solo está disponible en dispositivos iOS.",
+      "accessTitle": "Acceso a Apple Health",
+      "accessBody": "PawPi puede usar la distancia y la actividad de los paseos para que el historial de paseos de tu mascota sea más preciso.",
+      "notNow": "Ahora no",
+      "allow": "Permitir",
+      "comingSoonTitle": "Próximamente",
+      "comingSoonBody": "La integración con Apple Health llega pronto. Por ahora, usá el registro manual.",
+      "trackedAppleHealth": "Registrado con Apple Health",
+      "trackedAppleWatch": "Registrado con Apple Watch",
+      "trackedGps": "Registrado con GPS",
+      "trackedManual": "Registrado a mano",
+      "steps": "{{steps}} pasos"
+    }
   }
 }

@@ -8,6 +8,7 @@
  */
 
 import { Platform, Alert } from "react-native";
+import { gt } from "@/utils/generatedCopy";
 
 // Check if HealthKit is available on this device
 export async function isHealthKitAvailable() {
@@ -35,8 +36,11 @@ export async function isAppleWatchConnected() {
 export async function requestHealthKitPermission() {
   if (Platform.OS !== "ios") {
     Alert.alert(
-      "Not Available",
-      "Apple Health is only available on iOS devices.",
+      gt("generatedUi.healthKit.notAvailableTitle", "Not Available"),
+      gt(
+        "generatedUi.healthKit.notAvailableBody",
+        "Apple Health is only available on iOS devices.",
+      ),
     );
     return false;
   }
@@ -44,22 +48,28 @@ export async function requestHealthKitPermission() {
   // Show rationale
   return new Promise((resolve) => {
     Alert.alert(
-      "Apple Health Access",
-      "PawPi can use walk distance and activity data to help keep your pet's walk history accurate.",
+      gt("generatedUi.healthKit.accessTitle", "Apple Health Access"),
+      gt(
+        "generatedUi.healthKit.accessBody",
+        "PawPi can use walk distance and activity data to help keep your pet's walk history accurate.",
+      ),
       [
         {
-          text: "Not now",
+          text: gt("generatedUi.healthKit.notNow", "Not now"),
           style: "cancel",
           onPress: () => resolve(false),
         },
         {
-          text: "Allow",
+          text: gt("generatedUi.healthKit.allow", "Allow"),
           onPress: () => {
             // TODO: Request actual HealthKit permissions
             // For now, show placeholder message
             Alert.alert(
-              "Coming Soon",
-              "Apple Health integration is coming soon. For now, use manual tracking.",
+              gt("generatedUi.healthKit.comingSoonTitle", "Coming Soon"),
+              gt(
+                "generatedUi.healthKit.comingSoonBody",
+                "Apple Health integration is coming soon. For now, use manual tracking.",
+              ),
             );
             resolve(false);
           },
@@ -118,14 +128,14 @@ export async function setTrackingPreference(preference) {
 export function getTrackingSourceDisplay(source) {
   switch (source) {
     case "apple_health":
-      return "Tracked with Apple Health";
+      return gt("generatedUi.healthKit.trackedAppleHealth", "Tracked with Apple Health");
     case "apple_watch":
-      return "Tracked with Apple Watch";
+      return gt("generatedUi.healthKit.trackedAppleWatch", "Tracked with Apple Watch");
     case "gps":
-      return "Tracked with GPS";
+      return gt("generatedUi.healthKit.trackedGps", "Tracked with GPS");
     case "manual":
     default:
-      return "Tracked manually";
+      return gt("generatedUi.healthKit.trackedManual", "Tracked manually");
   }
 }
 
@@ -160,7 +170,9 @@ export function formatDistance(distance, unit = "miles") {
 // Format steps for display
 export function formatSteps(steps) {
   if (!steps) return null;
-  return `${steps.toLocaleString()} steps`;
+  return gt("generatedUi.healthKit.steps", `${steps.toLocaleString()} steps`, {
+    steps: steps.toLocaleString(),
+  });
 }
 
 // Format pace for display
