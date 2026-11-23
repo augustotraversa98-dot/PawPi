@@ -446,6 +446,23 @@ The full two-account iPhone checklist (owner + partner, incl. Apple Hide My Emai
 
 ---
 
+## ⚙️ ACTION 10 — `0138` `request_idempotency_keys` — ⏳ OPTIONAL (hand-apply after PR2 merges; nothing breaks without it)
+
+`supabase/migrations/0138_request_idempotency_keys.sql` (one new table, own-row FORCE RLS, no function, no grants to anon/authenticated/PUBLIC). It only powers the **explicit** `Idempotency-Key` header on `POST /api/pets` for future clients. The duplicate-dog protection for builds 30–32 (same owner + same name within 5 min) is route logic + an advisory lock and works **without** it; until it is applied the key is silently ignored.
+
+- [ ] Paste the migration into the SQL editor, then run `supabase/verify_0138.sql` — **all 7 rows must read PASS**.
+- No app change, no build. Safe for builds 30–32 before and after.
+
+## ⚙️ ACTION 11 — Privatize the LEGACY public-bucket medical files — ⏳ HUMAN-RUN, do not script blindly (go-live list item; blocked on the A-04 build-20 rule)
+
+Production check 2026-11-23 (read-only, counts only): **2 of 3** `vet_documents.file_url` and **3 of 4** `health_photo_checks.image_url` rows still hold a legacy PUBLIC URL (`/storage/v1/object/public/media/…`); 6 objects already live in the private `media-private` bucket; `health_general_checks.areas` photos on the public bucket: 0. Tiny today, but a public URL is a permanent bearer link: **it survives revoking a family/caregiver, removing a vet grant and account changes** (audit gap A4, `docs/family-sharing-audit-2026-11.md`).
+
+Procedure = [`storage-private-media-runbook-a04.md`](storage-private-media-runbook-a04.md) → "Build-20 go-live checklist" step 2 (copy each object `media/uploads/<x>` → `media-private/pets/<petId>/<uuid>.<ext>`, rewrite the column to the key, then delete the public object; the dual-mode renderer keeps a partially migrated set working). Also check `health_poo_logs.photo_url` and `health_vomit_logs.photo_url` (not counted in the 2026-11-23 check).
+- [ ] Confirm a build with the streamer client is live and adopted (the runbook's precondition; builds 30–32 contain it per the runbook's "build 20" wiring — verify before running).
+- [ ] Migrate the rows above (human-run, with the owner watching; keep a list of the old public URLs until the public objects are deleted).
+- [ ] Re-run the read-only count (public-URL rows should be 0) and open one migrated document on a phone as the owner, and confirm a non-member account gets 403 on the streamer URL.
+- Do **not** make the `media` bucket itself private (avatars/post photos are public by design); chat attachments are still public until the thread-scoped streamer exists (runbook "DEFERRED" §1).
+
 ## ⚙️ ACTION 2 — Payments go-live (Tats, when ready)
 Exact, ordered steps — no research needed, just follow top to bottom. Until you do this, every checkout
 surface (shop, bookings, adoption fees, donations, subscriptions, insurance, Rx fulfillment) shows a
