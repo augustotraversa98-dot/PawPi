@@ -432,6 +432,20 @@ could be taken and the order never marked paid (flow matrix F3-01; F3-03 monoton
 - [ ] Decide **F3-06** (`payment_policy` / reused order) before announcing payments — runbook §6.
 - Until applied: **do not enable real charges** (`MP_*` keys already on Railway; no `PAYMENTS_LIVE` switch exists by design, F3-25).
 
+## ⚙️ ACTION 9 — `0137` `app_pet_ring_segments` caller check — ⏳ PENDING (hand-apply after the PR merges; safe any time)
+
+`supabase/migrations/0137_ring_segments_caller_check.sql` (CREATE OR REPLACE of one DEFINER function + its revoke/grant pair; no table or RLS change). Closes audit gap A2 of [`family-sharing-audit-2026-11.md`](family-sharing-audit-2026-11.md): any signed-in session could ask the ring function about any pet id. Callers (care-ring, household) pass only owned/co-cared ids, so nothing user-visible changes.
+
+- [ ] Paste the migration into the Supabase SQL editor, then run `supabase/verify_0137.sql` — **all 7 rows must read PASS** (row 4 proves the SQL editor, which has no identity, now gets zero rows).
+- [ ] `verify_0119.sql` was amended to set its throwaway owner as the identity (it would otherwise return nothing after 0137); re-run it if you ever need to re-verify 0119.
+- No app change, no build: safe for builds 30–32 both before and after applying.
+
+## 📱 To test — Family & caregivers series (PR1 = tests only; nothing to test on a phone yet)
+
+The full two-account iPhone checklist (owner + partner, incl. Apple Hide My Email) is written when the series ends (PR7). Until PR5 ships in build 33, a partner who owns no dog cannot use a shared dog in the app — that is the known gap the series fixes.
+
+---
+
 ## ⚙️ ACTION 2 — Payments go-live (Tats, when ready)
 Exact, ordered steps — no research needed, just follow top to bottom. Until you do this, every checkout
 surface (shop, bookings, adoption fees, donations, subscriptions, insurance, Rx fulfillment) shows a

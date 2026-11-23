@@ -13,6 +13,10 @@ insert into user_profiles (id, auth_user_id, username, onboarding_completed)
 insert into pets (id, owner_user_id, name, handle)
   values (990001, 990001, 'RingDog', 'qc-c-verify-ringdog');
 
+-- Since 0137 app_pet_ring_segments authorises its caller (owner or active grantee), so the throwaway owner must be the
+-- identity in scope or every call below would return zero rows. (Transaction-local; ROLLBACK at the end discards it.)
+select set_config('app.current_user_id', '990001', true);
+
 -- (a) an all-empty general check must NOT fill care.
 insert into health_general_checks (pet_id, owner_user_id, logged_at)
   values (990001, 990001, '2026-08-18 12:00:00+00');
