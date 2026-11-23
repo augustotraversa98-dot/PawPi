@@ -21,7 +21,11 @@ export default defineConfig({
     // sequentially in a single process — no cross-file races on the data.
     fileParallelism: false,
     pool: 'forks',
-    poolOptions: { forks: { singleFork: true } },
+    // ALL ~140 files run in this ONE forked process (see above), and each imports the whole route graph, so its heap only
+    // grows over the run. With the Node default (~4 GB on a 16 GB runner) the CI job died near the end with "FATAL ERROR:
+    // Ineffective mark-compacts near heap limit ... JavaScript heap out of memory" (PR #749, and main after #748). Give the
+    // fork explicit headroom; this is a ceiling, not a reservation.
+    poolOptions: { forks: { singleFork: true, execArgv: ['--max-old-space-size=6144'] } },
     // First run may extract the Postgres binary; give boot + migrations room.
     testTimeout: 30_000,
     // The process-wide auth->profile id cache (utils/requestIdentity) is off here: these tests reseed the same

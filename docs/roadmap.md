@@ -18,6 +18,25 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-23 — Family & caregivers (couples sharing ONE dog) — audit + fix series PR1/7 (tests + ring caller check) — OPEN, NOT merged
+
+Audit: [`family-sharing-audit-2026-11.md`](family-sharing-audit-2026-11.md) (verdict table, permission matrix, release map, lifecycle, UI-vs-RLS, ranked gaps). Owner decisions 2026-11-23: members' posts/logs are **anonymized** (not deleted) when a member deletes their account; an owner deleting theirs takes the pet with it **after notifying members**; **caregiver** reads feeding/routines/meds/emergency/health logs and can LOG/complete but not edit; **family** reads+writes everything except managing sharing and deleting the pet (API **and** RLS, UI to match); a nullable `logged_by` on health logs + routine completions; a hashed one-time **invite link/code** table (migration written, hand-applied by the owner).
+
+| PR | What | Build 33? | Server-only? | Safe for builds 30–32? |
+|---|---|---|---|---|
+| **1 (this)** | Journey integration tests (owner / family partner who owns no dog / caregiver / outsider, real router as `pawpi_app`) incl. `it.fails` pins for every desired behaviour + **migration 0137** (`app_pet_ring_segments` authorises its caller) + `verify_0137.sql` | no | yes (tests + one DB function; **0137 hand-applied**) | yes — legitimate callers unchanged, denied callers get zero rows and the care-ring route already falls back |
+| 2 | Duplicate-pet guard on `POST /api/pets` (idempotency/retry) | no | yes | yes (additive) |
+| 3 | `GET /api/pets` returns shared pets additively (`is_shared`, `access_role`); family/caregiver READ paths; daily-moment lock; expiry display | no | server (+ a policy migration for the caregiver read/log tables) | yes — old builds ignore the new fields; shared rows must not expose edit controls on old clients |
+| 4 | Leave / resend / revoke, notifications, instant cache invalidation, account-deletion behaviour | partly (UI buttons) | server first | yes |
+| 5 | Mobile: shared-only launch routing, selector/Feed/Health/My Dog with a shared pet, reminders shared completion, EN+ES, "Editor · Editor" | **yes (build 33+)** | no | n/a |
+| 6 | Invite link/code (migration + API + UI), Apple Hide My Email path | yes for the UI | API + migration first | yes |
+| 7 | `logged_by` | UI part yes | server + migration first | yes |
+
+- Findings pinned by PR1 as `TODAY` tests (they flip on purpose when fixed): B1 shared-only `GET /api/pets` is empty; B2 family writes but cannot read health logs / routines / medical profile / emergency card; B4 no leave, expired grants shown "active"; B8 no duplicate-pet guard; B9 a non-grantee answering an invite gets a **500** instead of the intended 404 (the RAISE aborts the request transaction; needs a savepoint — fixed in PR4); C6 revoking twice is a 404.
+- Production (read-only, counts only, 2026-11-23): `pet_caregivers` 1 grant total (0 active/pending). Older medical files still on the PUBLIC bucket: **2 of 3** `vet_documents` and **3 of 4** `health_photo_checks` rows are legacy public URLs (6 objects already in `media-private`); `areas` photos in general checks: 0. Tiny, but a revoked member keeps any URL they saw — the A-04 "privatize/expire existing public URLs" step is still the fix.
+
+---
+
 ## 2026-11-23 — Family & caregivers no longer throws a new owner back into onboarding — #747 MERGED (squash `bac6e176`), NOT device-tested, NOT in any build yet
 
 - ✅ **Bug:** after finishing onboarding, tapping a ROOT-level More-menu item (**Family & caregivers** `/pet-sharing`, **Lost & found**, **Memories**) landed on `/onboarding-photo` (after a relaunch it silently bounced back to Profile). Reproduced on the iOS Simulator; Grafana shows 2 real `nav_unexpected_redirect` events (`/pet-sharing` → `/onboarding-photo`, `onboarding_guard`) from build 1.0.4 and no `onboarding_wizard_for_existing_owner` in 90 days (that guard only runs on mount, and the wizard screen was already mounted underneath).
