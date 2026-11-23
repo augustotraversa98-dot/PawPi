@@ -463,6 +463,29 @@ Procedure = [`storage-private-media-runbook-a04.md`](storage-private-media-runbo
 - [ ] Re-run the read-only count (public-URL rows should be 0) and open one migrated document on a phone as the owner, and confirm a non-member account gets 403 on the streamer URL.
 - Do **not** make the `media` bucket itself private (avatars/post photos are public by design); chat attachments are still public until the thread-scoped streamer exists (runbook "DEFERRED" §1).
 
+## ⚙️ ACTION 12 — `0139` grantee read + caregiver append-only logging — ⏳ PENDING (hand-apply after PR3 merges)
+
+`supabase/migrations/0139_grantee_read_and_caregiver_log_rls.sql` — additive permissive policies only (no function, no table): any ACTIVE, UNEXPIRED grantee can **read** the 12 `health_*` log tables, `pet_medications`, `pet_preventive_treatments`, `pet_allergies`, `pet_conditions`, `pet_emergency_cards`; and **insert** (never update/delete) log rows anchored to the pet's owner. Vet documents/labs/surgeries/notes/vaccinations stay closed to caregivers.
+
+- [ ] Paste the migration into the SQL editor, then run `supabase/verify_0139.sql` — **all 8 rows must read PASS**.
+- Safe order: **apply 0139 before (or right after) the PR3 server deploy.** Without it everything still works for owners and family; a caregiver reads nothing and logging answers a friendly 403 (`caregiver_logging_unavailable`).
+- Full procedure, smoke test and **rollback** (`supabase/rollback_0139.sql`): [`db-migration-runbook-0139-0140.md`](db-migration-runbook-0139-0140.md).
+- No app change, no build; builds 30–32 unaffected either way.
+- Production check before applying (read-only, counts only): `select count(*) from pet_caregivers where status='active'` — on 2026-11-23 there was 1 grant in total, 0 active.
+
+## ⚙️ ACTION 13 — `0140` own-row policies also require the pet to be the caller's — ⏳ PENDING (hand-apply after 0139)
+
+`supabase/migrations/0140_owner_private_pet_ownership_check.sql` — re-creates the `<t>_owner_all` policy on 21 tables with `WITH CHECK (owner_user_id = me AND app_owns_pet(pet_id))`; USING is unchanged (reads/deletes of your own rows behave exactly as before). Closes "any user can write a row against any pet" (see the PR3 entry in `roadmap.md`).
+
+- [ ] Run `supabase/verify_0140.sql` first if you like (row 6 is a read-only data check — before applying, rows 1–5 will FAIL by design and row 6 must already say `0 mismatched row(s)`; on 2026-11-23 it was 0). Apply the migration, then re-run: **all 6 rows must read PASS**.
+- [ ] Smoke on the owner path after applying (a phone is fine): log a walk, add an allergy, edit a routine, dismiss a reminder as the OWNER of the dog → all succeed. (Family/caregiver writes are anchored to the owner and are not affected.)
+- **Rollback:** `supabase/rollback_0140.sql` (restores the 0022/0117 policy shape; reopens the gap, so only to get unblocked) — see [`db-migration-runbook-0139-0140.md`](db-migration-runbook-0139-0140.md).
+- Safe for builds 30–32: they only write to pets their user owns, which is exactly what the check allows. If anything unexpected is refused, `drop policy … ; create policy … (the 0022 shape)` restores the old behaviour per table (the migration is idempotent).
+
+## 📱 To test — shared dog, server side (PR3; the phone UI arrives with PR5 / build 33)
+
+Nothing to tap yet: builds 30–32 never ask for shared pets. Server proof is in `shared-pets-access.integration.test.ts` (51 tests: default `GET /api/pets` byte-identical for old builds; per-role reads/logging; revoked/expired/pending/outsider denied; moment lock; expiry; migration-absent safety).
+
 ## ⚙️ ACTION 2 — Payments go-live (Tats, when ready)
 Exact, ordered steps — no research needed, just follow top to bottom. Until you do this, every checkout
 surface (shop, bookings, adoption fees, donations, subscriptions, insurance, Rx fulfillment) shows a

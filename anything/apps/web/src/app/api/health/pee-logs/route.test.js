@@ -42,7 +42,7 @@ describe("POST /api/health/pee-logs — ownership gate", () => {
     });
     const res = await POST(post({ petId: 999, frequency: "normal" }));
     expect(res.status).toBe(403);
-    expect(resolvePetLogOwner).toHaveBeenCalledWith(7, 999);
+    expect(resolvePetLogOwner).toHaveBeenCalledWith(7, 999, { allowCaregiver: true, logTable: "health_pee_logs" });
     expect(sql).toHaveBeenCalledTimes(1); // profile lookup only — the write was blocked
   });
 
@@ -54,6 +54,6 @@ describe("POST /api/health/pee-logs — ownership gate", () => {
     resolvePetLogOwner.mockResolvedValue({ ownerUserId: 7, isOwner: true });
     const res = await POST(post({ petId: 5, frequency: "normal" }));
     expect(res.status).toBe(201);
-    expect(resolvePetLogOwner).toHaveBeenCalledWith(7, 5);
+    expect(resolvePetLogOwner).toHaveBeenCalledWith(7, 5, { allowCaregiver: true, logTable: "health_pee_logs" });
   });
 });

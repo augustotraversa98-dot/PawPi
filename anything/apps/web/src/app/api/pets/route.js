@@ -19,6 +19,7 @@ import {
 } from "@/app/api/utils/petHandle";
 import { moderationResponse } from "@/app/api/utils/moderateText";
 import { recordBusinessEvent } from "@/lib/telemetry/business";
+import { loadSharedPets, asOwnedPet } from "@/app/api/utils/sharedPets";
 import {
   parseIdempotencyKey,
   lockOwnerForPetCreate,
@@ -117,7 +118,16 @@ async function GET(request) {
       };
     });
 
-    return Response.json({ pets: petsWithCurrentWeight });
+    // OPT-IN shared pets (family-sharing series PR 3/7). Builds 30-32 do not know what a shared pet is — they would list it
+    // in the selector with the owner's edit controls — so the DEFAULT response below is byte-for-byte what it always was and
+    // shared pets appear ONLY when the client asks with `?include_shared=1`. The opt-in response lists the caller's own pets
+    // first (unchanged rows + is_shared:false / access_role:'owner'), then pets they hold an active, unexpired grant on
+    // (see utils/sharedPets.js), never a duplicate.
+    if (new URL(request.url).searchParams.get("include_shared") !== "1") {
+      return Response.json({ pets: petsWithCurrentWeight });
+    }
+    const shared = await loadSharedPets(userId, { excludePetIds: petsWithCurrentWeight.map((p) => p.id) });
+    return Response.json({ pets: [...petsWithCurrentWeight.map(asOwnedPet), ...shared] });
   } catch (error) {
     console.error("[GET /api/pets] Error:", error.message);
     return Response.json({ error: "Failed to fetch pets" }, { status: 500 });

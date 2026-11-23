@@ -43,9 +43,12 @@ async function POST(request) {
     }
 
     // FF2: owner OR accepted FAMILY caregiver may log (0049); the write anchors to the pet's OWNER.
-    const access = await resolvePetLogOwner(callerId, petId);
+    const access = await resolvePetLogOwner(callerId, petId, { allowCaregiver: true, logTable: "health_food_logs" });
     if (access.error) {
-      return Response.json({ error: access.error }, { status: access.status });
+      return Response.json(
+        { error: access.error, ...(access.code ? { code: access.code } : {}) },
+        { status: access.status },
+      );
     }
     const ownerUserId = access.ownerUserId;
 
@@ -115,7 +118,7 @@ async function GET(request) {
     if (petId) {
       logs = await sql`
         SELECT * FROM health_food_logs
-        WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+        WHERE pet_id = ${petId} AND owner_user_id = (SELECT p.owner_user_id FROM pets p WHERE p.id = ${petId} AND (p.owner_user_id = ${ownerUserId} OR app_user_has_pet_access(p.id)))
         ORDER BY logged_at DESC
         LIMIT ${limit}
       `;

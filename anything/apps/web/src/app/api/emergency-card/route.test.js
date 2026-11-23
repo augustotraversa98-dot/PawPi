@@ -35,7 +35,7 @@ describe('GET /api/emergency-card', () => {
     auth.mockResolvedValue(SESSION);
     sql
       .mockResolvedValueOnce([{ id: 1 }]) // resolveOwner
-      .mockResolvedValueOnce([{ id: 5, name: 'Rex' }]) // pet ownership
+      .mockResolvedValueOnce([{ id: 5, name: 'Rex', _pet_owner: 1 }]) // pet access (owner_user_id is selected as _pet_owner, stripped from the response)
       .mockResolvedValueOnce([{ id: 9, pet_id: 5, tag_token: 'tok', show_medical_on_tag: false, contact_mode: 'relay', active: true }]) // upsert card
       .mockResolvedValueOnce([{ microchip_id: 'chip', medical_notes: null }]) // medical profile
       .mockResolvedValueOnce([{ allergen: 'Penicillin' }]) // allergies

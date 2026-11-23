@@ -30,7 +30,7 @@ async function GET(request) {
       FROM pet_medications m
       LEFT JOIN user_profiles up ON up.id = m.created_by_user_id
       WHERE m.pet_id = ${parseInt(petId)}
-        AND m.owner_user_id = ${ownerUserId}
+        AND m.owner_user_id = (SELECT p.owner_user_id FROM pets p WHERE p.id = ${parseInt(petId)} AND (p.owner_user_id = ${ownerUserId} OR app_user_has_pet_access(p.id)))
         AND m.deleted_at IS NULL
       ORDER BY (m.status = 'active') DESC, m.created_at DESC
     `;

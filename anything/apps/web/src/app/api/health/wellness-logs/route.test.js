@@ -40,7 +40,7 @@ describe("POST /api/health/wellness-logs — ownership gate", () => {
     });
     const res = await POST(post({ petId: 999, checkType: "general" }));
     expect(res.status).toBe(403);
-    expect(resolvePetLogOwner).toHaveBeenCalledWith(7, 999);
+    expect(resolvePetLogOwner).toHaveBeenCalledWith(7, 999, { allowCaregiver: true, logTable: "health_wellness_logs" });
     expect(sql).toHaveBeenCalledTimes(1);
   });
 
@@ -52,7 +52,7 @@ describe("POST /api/health/wellness-logs — ownership gate", () => {
     resolvePetLogOwner.mockResolvedValue({ ownerUserId: 7, isOwner: true });
     const res = await POST(post({ petId: 5, checkType: "general" }));
     expect(res.status).toBe(200);
-    expect(resolvePetLogOwner).toHaveBeenCalledWith(7, 5);
+    expect(resolvePetLogOwner).toHaveBeenCalledWith(7, 5, { allowCaregiver: true, logTable: "health_wellness_logs" });
   });
 });
 

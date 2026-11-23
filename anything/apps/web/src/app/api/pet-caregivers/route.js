@@ -42,6 +42,9 @@ async function GET(request) {
         JOIN user_profiles owner ON owner.id = pc.owner_user_id
         WHERE pc.grantee_user_id = ${userId}
           AND pc.status IN ('pending', 'active')
+          -- An EXPIRED grant (active or still-pending) is not shown as "active" any more: access is already denied by the DB
+          -- gates, and nothing flips status to 'expired', so filter on the clock here (audit gap B4).
+          AND (pc.expires_at IS NULL OR pc.expires_at > now())
         ORDER BY pc.created_at DESC
       `;
       return Response.json({ grants });
@@ -55,7 +58,12 @@ async function GET(request) {
     // the pet-ownership filter keeps it to the owner's view.
     const grants = await sql`
       SELECT
-        pc.id, pc.pet_id, pc.role, pc.scopes, pc.status, pc.expires_at, pc.created_at,
+        pc.id, pc.pet_id, pc.role, pc.scopes,
+        -- The owner sees the EFFECTIVE status: a grant whose expiry has passed is 'expired', never "active".
+        CASE WHEN pc.status IN ('pending', 'active') AND pc.expires_at IS NOT NULL AND pc.expires_at <= now()
+             THEN 'expired' ELSE pc.status END AS status,
+        pc.expires_at, pc.created_at,
+        (pc.status IN ('pending', 'active') AND pc.expires_at IS NOT NULL AND pc.expires_at <= now()) AS is_expired,
         grantee.username AS grantee_username, grantee.avatar_url AS grantee_avatar
       FROM pet_caregivers pc
       JOIN pets p ON p.id = pc.pet_id AND p.owner_user_id = ${userId}
@@ -91,6 +99,17 @@ async function POST(request) {
 
     if (!Number.isInteger(petId) || !["family", "caregiver"].includes(role)) {
       return Response.json({ error: "petId and a valid role are required" }, { status: 400 });
+    }
+    // An expiry, when given, must be a real moment in the future (a past or garbled date used to create a grant that never
+    // worked, or a 500). Old builds never send one.
+    if (expiresAt != null) {
+      const when = new Date(expiresAt);
+      if (Number.isNaN(when.getTime()) || when.getTime() <= Date.now()) {
+        return Response.json(
+          { error: "Pick an expiry date in the future.", code: "invalid_expiry" },
+          { status: 400 },
+        );
+      }
     }
 
     // Verify the caller owns the pet (RLS also enforces this on the insert).

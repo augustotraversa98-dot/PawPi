@@ -71,7 +71,7 @@ async function GET(request) {
         ? sql`
           SELECT 'food' as event_type, id, logged_at as event_time, meal_type, food_name, notes
           FROM health_food_logs
-          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+          WHERE pet_id = ${petId} AND owner_user_id = (SELECT p.owner_user_id FROM pets p WHERE p.id = ${petId} AND (p.owner_user_id = ${ownerUserId} OR app_user_has_pet_access(p.id)))
             AND logged_at >= ${startOfDay} AND logged_at < ${endOfDay}
         `
         : sql`
@@ -85,7 +85,7 @@ async function GET(request) {
         ? sql`
           SELECT 'poo' as event_type, id, logged_at as event_time, amount, shape, color, notes
           FROM health_poo_logs
-          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+          WHERE pet_id = ${petId} AND owner_user_id = (SELECT p.owner_user_id FROM pets p WHERE p.id = ${petId} AND (p.owner_user_id = ${ownerUserId} OR app_user_has_pet_access(p.id)))
             AND logged_at >= ${startOfDay} AND logged_at < ${endOfDay}
         `
         : sql`
@@ -99,7 +99,7 @@ async function GET(request) {
         ? sql`
           SELECT 'walk' as event_type, id, start_time as event_time, duration_minutes, distance, notes
           FROM health_walk_logs
-          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+          WHERE pet_id = ${petId} AND owner_user_id = (SELECT p.owner_user_id FROM pets p WHERE p.id = ${petId} AND (p.owner_user_id = ${ownerUserId} OR app_user_has_pet_access(p.id)))
             AND start_time >= ${startOfDay} AND start_time < ${endOfDay}
         `
         : sql`
@@ -113,7 +113,7 @@ async function GET(request) {
         ? sql`
           SELECT 'general_check' as event_type, id, logged_at as event_time, mood, energy, notes
           FROM health_general_checks
-          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+          WHERE pet_id = ${petId} AND owner_user_id = (SELECT p.owner_user_id FROM pets p WHERE p.id = ${petId} AND (p.owner_user_id = ${ownerUserId} OR app_user_has_pet_access(p.id)))
             AND logged_at >= ${startOfDay} AND logged_at < ${endOfDay}
         `
         : sql`
@@ -127,7 +127,7 @@ async function GET(request) {
         ? sql`
           SELECT 'photo_check' as event_type, id, created_at as event_time, body_area, notes
           FROM health_photo_checks
-          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+          WHERE pet_id = ${petId} AND owner_user_id = (SELECT p.owner_user_id FROM pets p WHERE p.id = ${petId} AND (p.owner_user_id = ${ownerUserId} OR app_user_has_pet_access(p.id)))
             AND created_at >= ${startOfDay} AND created_at < ${endOfDay}
         `
         : sql`
@@ -141,7 +141,7 @@ async function GET(request) {
         ? sql`
           SELECT 'pee' as event_type, id, logged_at as event_time, frequency, volume, color, notes
           FROM health_pee_logs
-          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+          WHERE pet_id = ${petId} AND owner_user_id = (SELECT p.owner_user_id FROM pets p WHERE p.id = ${petId} AND (p.owner_user_id = ${ownerUserId} OR app_user_has_pet_access(p.id)))
             AND logged_at >= ${startOfDay} AND logged_at < ${endOfDay}
         `
         : sql`
@@ -155,7 +155,7 @@ async function GET(request) {
         ? sql`
           SELECT 'vomit' as event_type, id, logged_at as event_time, number_of_episodes, appearance, notes
           FROM health_vomit_logs
-          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+          WHERE pet_id = ${petId} AND owner_user_id = (SELECT p.owner_user_id FROM pets p WHERE p.id = ${petId} AND (p.owner_user_id = ${ownerUserId} OR app_user_has_pet_access(p.id)))
             AND logged_at >= ${startOfDay} AND logged_at < ${endOfDay}
         `
         : sql`
@@ -169,7 +169,7 @@ async function GET(request) {
         ? sql`
           SELECT 'mobility' as event_type, id, logged_at as event_time, limping, stiffness, difficulty_standing, notes
           FROM health_mobility_logs
-          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+          WHERE pet_id = ${petId} AND owner_user_id = (SELECT p.owner_user_id FROM pets p WHERE p.id = ${petId} AND (p.owner_user_id = ${ownerUserId} OR app_user_has_pet_access(p.id)))
             AND logged_at >= ${startOfDay} AND logged_at < ${endOfDay}
         `
         : sql`
@@ -183,7 +183,7 @@ async function GET(request) {
         ? sql`
           SELECT 'weight' as event_type, id, logged_at as event_time, weight, weight_unit, body_shape_estimate, notes
           FROM health_weight_logs
-          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+          WHERE pet_id = ${petId} AND owner_user_id = (SELECT p.owner_user_id FROM pets p WHERE p.id = ${petId} AND (p.owner_user_id = ${ownerUserId} OR app_user_has_pet_access(p.id)))
             AND logged_at >= ${startOfDay} AND logged_at < ${endOfDay}
         `
         : sql`
@@ -198,7 +198,7 @@ async function GET(request) {
           SELECT 'medical_care' as event_type, id, given_at as event_time,
                  care_type, name, dose, status, notes, reaction_or_issue
           FROM health_medical_care_logs
-          WHERE owner_user_id = ${ownerUserId} AND pet_id = ${petId}
+          WHERE pet_id = ${petId} AND owner_user_id = (SELECT p.owner_user_id FROM pets p WHERE p.id = ${petId} AND (p.owner_user_id = ${ownerUserId} OR app_user_has_pet_access(p.id)))
             AND given_at >= ${startOfDay} AND given_at < ${endOfDay}
         `
         : sql`

@@ -28,7 +28,7 @@ async function GET(request) {
     const treatments = await sql`
       SELECT * FROM pet_preventive_treatments
       WHERE pet_id = ${parseInt(petId)}
-        AND owner_user_id = ${ownerUserId}
+        AND owner_user_id = (SELECT p.owner_user_id FROM pets p WHERE p.id = ${parseInt(petId)} AND (p.owner_user_id = ${ownerUserId} OR app_user_has_pet_access(p.id)))
         AND deleted_at IS NULL
       ORDER BY next_due ASC NULLS LAST, created_at DESC
     `;

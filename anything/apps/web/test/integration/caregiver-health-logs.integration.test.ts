@@ -5,7 +5,7 @@
 //   • the OWNER can log (unchanged);
 //   • an accepted 'family' caregiver (E13 "Caregiver") CAN log a walk / food / general check, and the
 //     row is anchored to the pet's OWNER (owner_user_id = owner) so it stays visible to the household;
-//   • a 'caregiver' grant (E13 "Viewer") CANNOT write health logs (0049 grants family-only) → 403;
+//   • a 'caregiver' grant (E13 "Viewer") CAN append logs since PR3 (it could not before), anchored to the owner;
 //   • a non-grantee stranger → 403.
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -92,11 +92,14 @@ describe("FF2 — caregiver health/walk logging", () => {
     expect(c.owner_user_id).toBe(OWNER.profileId);
   });
 
-  it("a 'caregiver' grant (Viewer) CANNOT write health logs (family-only) → 403", async () => {
+  // CHANGED by PR3 (owner decision 2, 2026-11-23): a CAREGIVER can LOG / complete tasks (append-only, anchored to the owner);
+  // what they still cannot do is edit/delete a log, routines, the vet record or the pet profile (see shared-pets-access.integration).
+  it("a 'caregiver' grant (Viewer) CAN log walks/food, anchored to the pet's OWNER", async () => {
     authState.session = sessionFor(VIEWER.authUserId);
-    expect((await logWalk(OWNER.petId)).status).toBe(403);
-    expect((await logFood(OWNER.petId)).status).toBe(403);
-    expect(await raw`select 1 from health_walk_logs where pet_id = ${OWNER.petId}`).toHaveLength(0);
+    expect((await logWalk(OWNER.petId)).status).toBe(201);
+    expect((await logFood(OWNER.petId)).status).toBe(201);
+    const rows = await raw`select owner_user_id from health_walk_logs where pet_id = ${OWNER.petId}`;
+    expect(rows.map((r) => r.owner_user_id)).toEqual([OWNER.profileId]); // never the caregiver
   });
 
   it("a non-grantee stranger → 403", async () => {

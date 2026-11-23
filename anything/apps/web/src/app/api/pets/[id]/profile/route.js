@@ -131,6 +131,8 @@ async function GET(request, { params }) {
     // existing public `stats` above.
     const viewer = await getViewerDailyStatus(session.user.id, {
       targetOwnerId: owner_user_id,
+      // A family/caregiver on THIS dog is part of its household, not a stranger: never lock them out of it.
+      targetPetId: pet.id,
     });
     const momentsLocked = !viewer?.isOwner && !viewer?.hasPostedToday;
     if (momentsLocked) {

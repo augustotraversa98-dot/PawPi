@@ -32,9 +32,12 @@ async function GET(request) {
 
     let routines;
     if (petId) {
-      // Verify pet ownership and get routines for specific pet (excluding deleted)
+      // Read access: the pet's owner OR an active, unexpired grantee (family AND caregiver can read feeding / meds
+      // instructions — owner decision 2, 2026-11-23; 0049's routines_grantee_read already allows it). Editing stays
+      // owner-only here (family routine editing is a later step). Routines of a pet are anchored to its owner.
       const pets = await sql`
-        SELECT id FROM pets WHERE id = ${petId} AND owner_user_id = ${ownerUserId}
+        SELECT id, owner_user_id FROM pets
+        WHERE id = ${petId} AND (owner_user_id = ${ownerUserId} OR app_user_has_pet_access(id))
       `;
 
       if (pets.length === 0) {
@@ -46,7 +49,7 @@ async function GET(request) {
 
       routines = await sql`
         SELECT * FROM routines 
-        WHERE owner_user_id = ${ownerUserId} 
+        WHERE owner_user_id = ${pets[0].owner_user_id} 
           AND pet_id = ${petId}
           AND deleted_at IS NULL
         ORDER BY created_at DESC
@@ -262,6 +265,21 @@ async function PUT(request) {
         { error: "Routine not found or access denied" },
         { status: 403 },
       );
+    }
+
+    // Moving a routine to ANOTHER pet is only allowed onto a pet the caller owns. Without this check the own-row RLS policy
+    // (owner_user_id = me) let an owner re-point their routine at someone else's dog (fixed at the DB level by 0140; this is the
+    // API half, so the route is safe before 0140 is applied).
+    if (petId) {
+      const target = await sql`
+        SELECT id FROM pets WHERE id = ${petId} AND owner_user_id = ${ownerUserId}
+      `;
+      if (target.length === 0) {
+        return Response.json(
+          { error: "Pet not found or access denied" },
+          { status: 403 },
+        );
+      }
     }
 
     // Update routine

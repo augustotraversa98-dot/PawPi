@@ -71,6 +71,15 @@ async function POST(request) {
     }
     const userProfileId = userProfiles[0].id;
 
+    // The pet must be the caller's own: a dismissal is the OWNER's personal skip state. (The own-row RLS policy alone let anyone
+    // write a dismissal against any pet id; 0140 closes that in the DB, this is the API half.)
+    const ownPet = await sql`
+      SELECT id FROM pets WHERE id = ${parseInt(petId)} AND owner_user_id = ${userProfileId}
+    `;
+    if (ownPet.length === 0) {
+      return Response.json({ error: "Pet not found or access denied" }, { status: 403 });
+    }
+
     // Idempotent: a repeat dismissal of the same instance is a no-op.
     const result = await sql`
       INSERT INTO reminder_dismissals (
