@@ -23,18 +23,28 @@ import React from "react";
 import { render } from "@testing-library/react-native";
 
 let lastProps;
-const mockPopToTop = jest.fn();
+const mockDispatch = jest.fn();
+let mockStackState;
+let mockTabState;
 let capturedBlurListener = null;
+let capturedFocusListener = null;
 const mockAddListener = jest.fn((event, cb) => {
   if (event === "blur") capturedBlurListener = cb;
+  if (event === "focus") capturedFocusListener = cb;
   return jest.fn(); // unsubscribe
 });
-const mockGetParent = jest.fn(() => ({ addListener: mockAddListener }));
+// The Profile ("more") tab is the selected tab when the screen subscribes.
+const mockGetParent = jest.fn(() => ({
+  addListener: mockAddListener,
+  getState: () => mockTabState,
+  isFocused: () => true,
+}));
 
 jest.mock("expo-router", () => ({
   useNavigation: () => ({
     getParent: mockGetParent,
-    popToTop: mockPopToTop,
+    getState: () => mockStackState,
+    dispatch: mockDispatch,
   }),
 }));
 jest.mock("@/app/pet-profile", () => {
@@ -52,10 +62,14 @@ import ProfileTab from "./index";
 
 beforeEach(() => {
   lastProps = undefined;
-  mockPopToTop.mockClear();
+  mockDispatch.mockClear();
   mockGetParent.mockClear();
   mockAddListener.mockClear();
   capturedBlurListener = null;
+  capturedFocusListener = null;
+  // The More stack has a pushed screen on top of its root; the Profile tab is the selected tab (index 1).
+  mockStackState = { key: "more-stack", index: 1 };
+  mockTabState = { index: 1, routes: [{ key: "feed" }, { key: "more" }] };
 });
 
 test("the Profile tab renders the pet social profile in embedded mode", () => {
@@ -70,13 +84,34 @@ test("subscribes to the parent (Tab) screen's blur event", () => {
   expect(mockAddListener).toHaveBeenCalledWith("blur", expect.any(Function));
 });
 
-test("pops the More stack to its root when the tab loses focus", () => {
+test("pops the More stack to its root when the user switches to another tab", () => {
   render(<ProfileTab />);
-  expect(mockPopToTop).not.toHaveBeenCalled();
+  expect(mockDispatch).not.toHaveBeenCalled();
 
+  mockTabState = { ...mockTabState, index: 0 }; // the user tapped the Feed tab
   capturedBlurListener();
 
-  expect(mockPopToTop).toHaveBeenCalledTimes(1);
+  // Targeted at THIS stack's key: the action can never bubble up and pop the root stack.
+  expect(mockDispatch).toHaveBeenCalledTimes(1);
+  expect(mockDispatch).toHaveBeenCalledWith(expect.objectContaining({ type: "POP_TO_TOP", target: "more-stack" }));
+});
+
+// The regression: a root-stack screen pushed OVER the tabs (OwnerMenu → Family & caregivers, ...) also blurs the
+// tab, but the tab is still the selected one. The old bare popToTop() bubbled and popped the ROOT stack — back to
+// the onboarding wizard for a user who had just signed up. See utils/popStackOnTabLeave.test.jsx for the real
+// navigator proof.
+test("does NOT pop anything when the blur comes from a screen pushed over the tabs (tab still selected)", () => {
+  render(<ProfileTab />);
+  capturedBlurListener(); // Profile is still the selected tab: a root screen opened over the tabs
+  expect(mockDispatch).not.toHaveBeenCalled();
+});
+
+test("does NOT dispatch when the More stack is already at its root (nothing to pop, so nothing to bubble)", () => {
+  mockStackState = { key: "more-stack", index: 0 };
+  render(<ProfileTab />);
+  mockTabState = { ...mockTabState, index: 0 };
+  capturedBlurListener();
+  expect(mockDispatch).not.toHaveBeenCalled();
 });
 
 test("does nothing if there is no parent navigator (e.g. not yet mounted in a tab)", () => {

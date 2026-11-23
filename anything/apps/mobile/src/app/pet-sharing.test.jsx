@@ -13,9 +13,14 @@ let mockInvite;
 let mockRespond;
 let mockRevoke;
 let mockSearch;
+let mockCurrentPet;
+const mockRouter = { back: jest.fn(), push: jest.fn(), replace: jest.fn(), navigate: jest.fn() };
 
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ back: jest.fn(), push: jest.fn() }),
+  useRouter: () => mockRouter,
+  Redirect: () => {
+    throw new Error("pet-sharing must never render a <Redirect>");
+  },
 }));
 jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),
@@ -27,7 +32,7 @@ jest.mock("react-i18next", () => ({ useTranslation: () => ({ t: (k) => k }) }));
 // The caregiver log-walk sheet pulls in react-query; stub it (its own test covers it).
 jest.mock("@/components/Pets/CaregiverLogWalkModal", () => () => null);
 jest.mock("@/hooks/usePetProfile", () => ({
-  useCurrentPet: () => ({ data: { id: 1, name: "Rex" } }),
+  useCurrentPet: () => mockCurrentPet,
 }));
 jest.mock("@/hooks/useSearch", () => ({
   useDebouncedValue: (v) => v,
@@ -44,6 +49,8 @@ jest.mock("@/hooks/usePetSharing", () => ({
 import PetSharingScreen from "./pet-sharing";
 
 beforeEach(() => {
+  jest.clearAllMocks();
+  mockCurrentPet = { data: { id: 1, name: "Rex" }, isLoading: false };
   mockGrants = {
     data: [{ id: 10, grantee_username: "jane", role: "family", status: "active" }],
     isLoading: false,
@@ -101,4 +108,67 @@ test("FF2: an ACTIVE FAMILY grant shows a 'Log a walk' action; a Viewer/pending 
   expect(getByTestId("log-walk-30")).toBeTruthy(); // family + active
   expect(queryByTestId("log-walk-31")).toBeNull(); // Viewer (caregiver role) → no write
   expect(queryByTestId("log-walk-32")).toBeNull(); // pending → not yet
+});
+
+
+// Regression (More menu → "Familia y cuidadores" → onboarding): the screen must behave sensibly for ANY account state
+// and never navigate anywhere on its own — in particular never to onboarding.
+describe("pet-sharing never navigates away, whatever the pet state", () => {
+  const noNavigation = () => {
+    expect(mockRouter.push).not.toHaveBeenCalled();
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
+    expect(mockRouter.back).not.toHaveBeenCalled();
+  };
+
+  test("an account WITH a dog renders the screen and stays put", () => {
+    const { getByText, queryByTestId } = render(<PetSharingScreen />);
+    expect(getByText("petSharing.screenTitle")).toBeTruthy();
+    expect(queryByTestId("pet-sharing-no-pet")).toBeNull();
+    noNavigation();
+  });
+
+  test("an account with NO dog shows an empty state (no redirect, no crash)", () => {
+    mockCurrentPet = { data: null, isLoading: false };
+    mockGrants = { data: undefined, isLoading: false };
+    const { getByText, getByTestId, queryByTestId } = render(<PetSharingScreen />);
+
+    expect(getByText("petSharing.screenTitle")).toBeTruthy();
+    expect(getByTestId("pet-sharing-no-pet")).toBeTruthy();
+    expect(getByText("petSharing.noPetTitle")).toBeTruthy();
+    expect(getByText("petSharing.noPetBody")).toBeTruthy();
+    expect(queryByTestId("role-family")).toBeNull(); // no invite UI without a dog to share
+    noNavigation();
+  });
+
+  test("while the pets read is still LOADING it shows a spinner — not the empty state, and no navigation", () => {
+    mockCurrentPet = { data: undefined, isLoading: true };
+    const { getByTestId, queryByTestId } = render(<PetSharingScreen />);
+
+    expect(getByTestId("pet-sharing-loading")).toBeTruthy();
+    expect(queryByTestId("pet-sharing-no-pet")).toBeNull();
+    noNavigation();
+  });
+
+  test("an account with no dog can still use 'Shared with me' (a caregiver for someone else's dog)", () => {
+    mockCurrentPet = { data: null, isLoading: false };
+    const { getByTestId, getByText } = render(<PetSharingScreen />);
+
+    fireEvent.press(getByTestId("tab-shared"));
+    expect(getByText("Bella")).toBeTruthy(); // the pet shared WITH this account is listed
+    noNavigation();
+  });
+});
+
+// EN + ES parity for the new empty-state copy.
+describe("pet-sharing empty-state copy exists in EN and ES", () => {
+  const en = require("@/i18n/locales/en.json");
+  const es = require("@/i18n/locales/es.json");
+  test.each(["noPetTitle", "noPetBody"])("%s", (key) => {
+    expect(typeof en.petSharing[key]).toBe("string");
+    expect(typeof es.petSharing[key]).toBe("string");
+    expect(en.petSharing[key].length).toBeGreaterThan(0);
+    expect(es.petSharing[key].length).toBeGreaterThan(0);
+    expect(es.petSharing[key]).not.toBe(en.petSharing[key]);
+  });
 });

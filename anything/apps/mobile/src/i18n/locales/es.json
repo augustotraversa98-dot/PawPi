@@ -2660,7 +2660,9 @@
     "petsSharedWithMe": "MASCOTAS COMPARTIDAS CONMIGO",
     "noSharedYet": "Todavía no te compartieron ninguna mascota.",
     "sharedFrom": "de @{{username}} · {{roleLabel}} · {{status}}",
-    "activeChip": "activo"
+    "activeChip": "activo",
+    "noPetTitle": "Primero sumá a tu perro",
+    "noPetBody": "Compartir con familia y cuidadores se hace por cada perro. Creá el perfil de tu perro y volvé acá para invitar a alguien."
   },
   "insurance": {
     "title": "Seguros 🛡️",

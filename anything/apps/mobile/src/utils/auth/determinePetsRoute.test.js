@@ -89,3 +89,38 @@ describe("determinePetsRoute — the EntryPoint gate's three outcomes", () => {
     );
   });
 });
+
+describe("determinePetsRoute — pets already known this session (launch hardening)", () => {
+  it("empty 200 but pets are KNOWN → home, never onboarding (a transient read must not eject an owner)", () => {
+    expect(
+      determinePetsRoute({ ok: true, status: 200, pets: [], knownPets: [{ id: 7 }] }),
+    ).toEqual({ action: "home", destination: "/(tabs)" });
+  });
+
+  it("empty 200 but pets are KNOWN beats the business branch too", () => {
+    expect(
+      determinePetsRoute({
+        ok: true,
+        status: 200,
+        pets: [],
+        providers: [{ id: 1 }],
+        knownPets: [{ id: 7 }],
+      }),
+    ).toEqual({ action: "home", destination: "/(tabs)" });
+  });
+
+  it("nothing known + empty 200 → a new user still reaches onboarding (fail-open for new accounts)", () => {
+    for (const knownPets of [undefined, null, []]) {
+      expect(determinePetsRoute({ ok: true, status: 200, pets: [], knownPets })).toEqual({
+        action: "onboarding",
+        destination: "/onboarding-photo",
+      });
+    }
+  });
+
+  it("known pets never mask a real failure: 401 still logs out, 5xx still retries", () => {
+    expect(determinePetsRoute({ ok: false, status: 401, knownPets: [{ id: 7 }] }).action).toBe("login");
+    expect(determinePetsRoute({ ok: false, status: 500, knownPets: [{ id: 7 }] }).action).toBe("error");
+    expect(determinePetsRoute({ networkError: true, knownPets: [{ id: 7 }] }).action).toBe("error");
+  });
+});

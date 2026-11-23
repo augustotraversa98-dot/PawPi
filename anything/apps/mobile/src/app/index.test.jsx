@@ -23,6 +23,7 @@ jest.mock("../../__create/boot-trace", () => ({ markBootStep: jest.fn(), markBoo
 jest.mock("@/utils/notificationDeepLink", () => ({ markNavigationReady: jest.fn() }));
 jest.mock("@/components/ui", () => ({ PawMark: () => null }));
 
+import { queryClient } from "@/utils/queryClient";
 import EntryPoint from "./index";
 
 const GOOD = "eyJhbGciOiJkaXIifQ..abc-_1.def.ghi";
@@ -87,6 +88,7 @@ describe("EntryPoint routes once per session", () => {
   beforeEach(() => {
     petsAnswer = [{ id: 1, name: "Mango" }];
     mockBackend();
+    queryClient.clear();
   });
 
   test("a new auth OBJECT for the same JWT does not re-run the gate (no refetch, no bounce to onboarding)", async () => {
@@ -152,6 +154,7 @@ describe("EntryPoint routes once per session", () => {
     await findByText("redirect:/welcome");
 
     petsAnswer = []; // fresh Google/Apple account
+    queryClient.clear(); // the real auth store clears the query cache on every identity change (store.js)
     mockAuth = { isReady: true, auth: { jwt: JWT_B }, setAuth: mockSetAuth };
     rerender(<EntryPoint />);
     await findByText("redirect:/onboarding-photo");
@@ -164,6 +167,7 @@ describe("EntryPoint routes once per session", () => {
     await findByText("redirect:/(tabs)");
 
     petsAnswer = [];
+    queryClient.clear(); // the real auth store clears the query cache on every identity change (store.js)
     mockAuth = { isReady: true, auth: { jwt: JWT_B }, setAuth: mockSetAuth };
     rerender(<EntryPoint />);
     await findByText("redirect:/onboarding-photo");

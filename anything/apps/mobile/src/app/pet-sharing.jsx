@@ -59,7 +59,7 @@ export default function PetSharingScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const ROLE_LABEL = useRoleLabel();
-  const { data: currentPet } = useCurrentPet();
+  const { data: currentPet, isLoading: petLoading } = useCurrentPet();
   const petId = currentPet?.id;
 
   // FF2: the shared pet a family caregiver is logging a walk for ({ id, name } | null).
@@ -136,7 +136,25 @@ export default function PetSharingScreen() {
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}
         keyboardShouldPersistTaps="handled"
       >
-        {tab === "manage" ? (
+        {tab === "manage" && !petId ? (
+          // No active dog (still loading, or the account has none). This screen must NEVER navigate away or
+          // route to onboarding from here — a loading/empty pets read is not a reason to leave. Loading shows a
+          // spinner; no dog shows a plain explanation (the "Shared with me" tab still works: a person with no
+          // dog of their own can be a caregiver for someone else's).
+          petLoading ? (
+            <ActivityIndicator color={C.sage} testID="pet-sharing-loading" />
+          ) : (
+            <View testID="pet-sharing-no-pet" style={{ alignItems: "center", paddingVertical: 40, paddingHorizontal: 12 }}>
+              <PawPrint size={36} color={C.sage} />
+              <Text style={{ fontSize: 17, fontWeight: "800", color: C.warmBrown, marginTop: 14, textAlign: "center" }}>
+                {t("petSharing.noPetTitle")}
+              </Text>
+              <Text style={{ fontSize: 14, color: C.mutedBrown, marginTop: 8, lineHeight: 20, textAlign: "center" }}>
+                {t("petSharing.noPetBody")}
+              </Text>
+            </View>
+          )
+        ) : tab === "manage" ? (
           <>
             <Text style={{ fontSize: 14, color: C.mutedBrown, marginBottom: 14, lineHeight: 20 }}>
               {t("petSharing.intro", { name: currentPet?.name || t("common.yourPet") })}
