@@ -55,6 +55,7 @@ import {
   useDeletePreventiveTreatment,
 } from "@/hooks/usePetPreventiveTreatments";
 import DateField from "@/components/DateField";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 const C = {
   cream: COLORS.cream,
@@ -311,7 +312,7 @@ export default function MedicationModal({
       else await createMed.mutateAsync(payload);
       closeForm();
     } catch (e) {
-      Alert.alert(tc("required"), e?.message || "Error");
+      Alert.alert(tc("required"), friendlyErrorMessage(e, "common.error"));
     }
   };
 
@@ -355,7 +356,7 @@ export default function MedicationModal({
       else await createVax.mutateAsync(payload);
       closeForm();
     } catch (e) {
-      Alert.alert(tc("required"), e?.message || "Error");
+      Alert.alert(tc("required"), friendlyErrorMessage(e, "common.error"));
     }
   };
 
@@ -391,7 +392,7 @@ export default function MedicationModal({
       else await createPrev.mutateAsync(payload);
       closeForm();
     } catch (e) {
-      Alert.alert(tc("required"), e?.message || "Error");
+      Alert.alert(tc("required"), friendlyErrorMessage(e, "common.error"));
     }
   };
 

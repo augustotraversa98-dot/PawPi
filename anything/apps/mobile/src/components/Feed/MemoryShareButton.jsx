@@ -5,6 +5,8 @@ import { captureRef } from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
 import { COLORS } from "@/constants/colors";
 import ShareableMemoryCard from "./ShareableMemoryCard";
+import { translate } from "@/utils/appAlert";
+import { translateVars } from "@/utils/translateVars";
 
 // Share a Memory / Wrapped slide to IG/X (ticket 2.49). REUSES the 2.28 capture+share flow:
 // mounts an off-screen ShareableMemoryCard, snapshots it, opens the system share sheet. Any
@@ -44,7 +46,11 @@ export function MemoryShareButton({ card, label = "Share", petName }) {
       if (available && uri) {
         await Sharing.shareAsync(uri, {
           mimeType: "image/png",
-          dialogTitle: `${petName || "My pup"} on PawPi 🐾`,
+          dialogTitle: translateVars(
+            "leftoverUi.onPawpi",
+            { name: petName || translate("leftoverUi.myPup", "My pup") },
+            "{{name}} on PawPi 🐾",
+          ),
           UTI: "public.png",
         });
       }

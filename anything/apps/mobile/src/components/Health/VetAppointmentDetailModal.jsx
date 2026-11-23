@@ -19,6 +19,7 @@ import { formatDisplayTime } from "@/utils/canonicalDateTime";
 import { combineDateAndTime } from "@/utils/calendarFormat";
 import { Card, PressableScale } from "@/components/ui";
 import { formatLocalDateTime } from "@/utils/localeDateTime";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 export default function VetAppointmentDetailModal({
   visible,
@@ -76,7 +77,7 @@ export default function VetAppointmentDetailModal({
     },
     onError: (error) => {
       console.error("[VetApptDetail] Complete error:", error);
-      Alert.alert(t("health.vetAppt.errorTitle"), error.message || t("health.vetAppt.couldNotComplete"));
+      Alert.alert(t("health.vetAppt.errorTitle"), friendlyErrorMessage(error, "health.vetAppt.couldNotComplete"));
     },
   });
 
@@ -106,7 +107,7 @@ export default function VetAppointmentDetailModal({
     },
     onError: (error) => {
       console.error("[VetApptDetail] Delete error:", error);
-      Alert.alert(t("health.vetAppt.errorTitle"), error.message || t("health.vetAppt.couldNotDelete"));
+      Alert.alert(t("health.vetAppt.errorTitle"), friendlyErrorMessage(error, "health.vetAppt.couldNotDelete"));
     },
   });
 

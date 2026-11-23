@@ -1382,7 +1382,7 @@
     "noActivePetTitle": "Sin mascota activa",
     "noActivePetBody": "Agregá o seleccioná una mascota antes de reservar un turno.",
     "pickDateTimeTitle": "Elegí fecha y hora",
-    "pickDateTimeBody": "Elegí cuándo querés {{noun}}.",
+    "pickDateTimeBody": "Elegí cuándo querés tu {{noun}}.",
     "noActivePetInline": "Todavía no tenés una mascota activa. Agregá o seleccioná una y volvé para reservar.",
     "sectionService": "Servicio",
     "sectionLocation": "Ubicación",
@@ -4595,6 +4595,76 @@
     },
     "shared": {
       "provider": "Prestador"
+    }
+  },
+  "leftoverUi": {
+    "hub": {
+      "noAccess": "Nadie tiene acceso a tus mascotas.",
+      "accessTo": "Acceso a {{name}}",
+      "noSavedListings": "No hay publicaciones de adopción guardadas.",
+      "dog": "Perro"
+    },
+    "services": {
+      "errorPullDown": "Algo salió mal. Deslizá hacia abajo para reintentar.",
+      "groomersJoining": "Volvé pronto: las peluquerías se están sumando a PawPi.",
+      "vetsJoining": "Volvé pronto: las veterinarias se están sumando a PawPi."
+    },
+    "walkLive": {
+      "noLongerAvailable": "Este paseo ya no está disponible."
+    },
+    "insurancePolicy": {
+      "status": {
+        "application": "En revisión",
+        "paymentPending": "Pendiente de pago",
+        "active": "Activa",
+        "lapsed": "Vencida",
+        "cancelled": "Cancelada"
+      }
+    },
+    "rxFulfillment": {
+      "status": {
+        "requested": "Solicitado",
+        "accepted": "Aceptado",
+        "preparing": "En preparación",
+        "ready": "Listo",
+        "outForDelivery": "En camino",
+        "fulfilled": "Entregado",
+        "cancelled": "Cancelado"
+      }
+    },
+    "selectDate": "Elegí una fecha",
+    "selectTime": "Elegí una hora",
+    "myPup": "Mi perro",
+    "myPupLower": "mi perro",
+    "myDog": "Mi perro",
+    "pet": "Mascota",
+    "dailyShareCaption": "Conocé a {{name}} 🐾 el momento diario de hoy en PawPi: un momento sincero por día.",
+    "onPawpi": "{{name}} en PawPi 🐾",
+    "bookingNoun": {
+      "appointment": "turno",
+      "grooming": "turno de peluquería",
+      "walk": "paseo",
+      "daycare": "servicio de guardería",
+      "sitting": "servicio de cuidado",
+      "training": "entrenamiento",
+      "service": "servicio"
+    },
+    "booking": {
+      "bookWith": "Reservar con {{name}}",
+      "bookNoun": "Reservar {{noun}}",
+      "forPet": "Para {{name}}",
+      "addPetToBook": "Agregá una mascota para reservar un {{noun}}",
+      "confirmNoun": "Confirmar {{noun}}",
+      "sending": "Enviando…",
+      "booking": "Reserva"
+    },
+    "serverErrors": {
+      "unauthorized": "Iniciá sesión de nuevo para continuar.",
+      "forbidden": "No tenés permiso para hacer eso.",
+      "notFound": "No encontramos lo que buscabas.",
+      "invalid": "Falta algún dato o no es válido. Revisalo y probá de nuevo.",
+      "alreadyDone": "Eso ya estaba hecho.",
+      "notAvailable": "Eso todavía no está disponible."
     }
   }
 }

@@ -3,6 +3,7 @@ import { View, Text } from "react-native";
 import { Image } from "expo-image";
 import { PawPrint } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
+import { translate } from "@/utils/appAlert";
 
 // A story-sized (9:16) branded frame for sharing a Memory or a Wrapped slide (ticket 2.49).
 // Reuses the 2.28 ShareableDailyCard look. Either shows a hero PHOTO (on-this-day memory) or
@@ -12,7 +13,7 @@ const ShareableMemoryCard = forwardRef(function ShareableMemoryCard(
   { petName, headline, subtitle, emoji, photoUri, stat, statLabel, onReady, onError },
   ref,
 ) {
-  const name = petName || "My pup";
+  const name = petName || translate("leftoverUi.myPup", "My pup");
   // Photo slides are "ready" only once the hero image decodes; stat/emoji slides
   // (no photo) are ready as soon as they lay out.
   return (

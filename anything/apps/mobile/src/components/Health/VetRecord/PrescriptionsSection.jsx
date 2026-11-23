@@ -6,6 +6,7 @@ import { Pill, Truck } from "lucide-react-native";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
 import { Card, PressableScale } from "@/components/ui";
 import { usePrescriptions, useRequestRefill } from "@/hooks/usePrescriptions";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // Prescriptions section in the Vet Record (ticket 2.53). OWNER read-only: a list of Rx a vet
 // issued (newest first) with full detail, clearly "Prescribed by {clinic}" and DISTINCT from
@@ -57,7 +58,7 @@ export function PrescriptionsSection({ petId }) {
               onError: (e) =>
                 Alert.alert(
                   t("health.prescriptions.errorTitle"),
-                  e.message || t("health.prescriptions.errorRetry"),
+                  friendlyErrorMessage(e, "health.prescriptions.errorRetry"),
                 ),
             }),
         },

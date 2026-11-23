@@ -21,6 +21,7 @@ import {
   useMySittingVisits,
   useLogSittingVisit,
 } from "@/hooks/useProviders";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // SITTER workspace (ticket 2.9) — a provider's active sitter-staff log per-visit UPDATES
 // for booked sitting jobs (notes + photos the owner reads). MIRRORS the walker workspace
@@ -207,7 +208,7 @@ function LogVisitModal({ booking, providerId, onClose, onLogged }) {
       onClose();
       onLogged?.();
     } catch (e) {
-      Alert.alert(t("sitterVisits.couldNotLog"), e.message || t("common.pleaseTryAgain"));
+      Alert.alert(t("sitterVisits.couldNotLog"), friendlyErrorMessage(e, "common.pleaseTryAgain"));
     }
   };
 

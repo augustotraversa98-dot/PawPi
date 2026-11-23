@@ -4596,5 +4596,75 @@
     "shared": {
       "provider": "Provider"
     }
+  },
+  "leftoverUi": {
+    "hub": {
+      "noAccess": "No one has access to your pets.",
+      "accessTo": "Access to {{name}}",
+      "noSavedListings": "No saved adoption listings.",
+      "dog": "Dog"
+    },
+    "services": {
+      "errorPullDown": "Something went wrong. Pull down to try again.",
+      "groomersJoining": "Check back soon — groomers are joining PawPi.",
+      "vetsJoining": "Check back soon — vet clinics are joining PawPi."
+    },
+    "walkLive": {
+      "noLongerAvailable": "This walk is no longer available."
+    },
+    "insurancePolicy": {
+      "status": {
+        "application": "Under review",
+        "paymentPending": "Awaiting payment",
+        "active": "Active",
+        "lapsed": "Lapsed",
+        "cancelled": "Cancelled"
+      }
+    },
+    "rxFulfillment": {
+      "status": {
+        "requested": "Requested",
+        "accepted": "Accepted",
+        "preparing": "Preparing",
+        "ready": "Ready",
+        "outForDelivery": "Out for delivery",
+        "fulfilled": "Fulfilled",
+        "cancelled": "Cancelled"
+      }
+    },
+    "selectDate": "Select date",
+    "selectTime": "Select time",
+    "myPup": "My pup",
+    "myPupLower": "my pup",
+    "myDog": "My Dog",
+    "pet": "Pet",
+    "dailyShareCaption": "Meet {{name}} 🐾 today's daily on PawPi — one honest moment a day.",
+    "onPawpi": "{{name}} on PawPi 🐾",
+    "bookingNoun": {
+      "appointment": "appointment",
+      "grooming": "grooming",
+      "walk": "walk",
+      "daycare": "daycare",
+      "sitting": "sitting",
+      "training": "training",
+      "service": "service"
+    },
+    "booking": {
+      "bookWith": "Book with {{name}}",
+      "bookNoun": "Book {{noun}}",
+      "forPet": "For {{name}}",
+      "addPetToBook": "Add a pet to book a {{noun}}",
+      "confirmNoun": "Confirm {{noun}}",
+      "sending": "Sending…",
+      "booking": "Booking"
+    },
+    "serverErrors": {
+      "unauthorized": "Please sign in again.",
+      "forbidden": "You don't have permission to do that.",
+      "notFound": "We couldn't find that.",
+      "invalid": "Some information is missing or not valid. Please check and try again.",
+      "alreadyDone": "That was already done.",
+      "notAvailable": "That isn't available yet."
+    }
   }
 }

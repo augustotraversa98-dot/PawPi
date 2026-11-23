@@ -327,13 +327,14 @@ export default function MyActivity() {
 // status chip (Pending / Confirmed / …) so its state is never ambiguous. Pulls router itself so
 // it's self-contained.
 export function UpcomingBookingRow({ booking }) {
+  const { t } = useTranslation();
   const router = useRouter();
   return (
     <HubRow
       testID={`activity-booking-${booking.id}`}
       Icon={Calendar}
-      title={`${booking.provider_name || "Provider"} · ${booking.pet_name || "Pet"}`}
-      subtitle={`${booking.service_name || booking.capability || "Booking"} · ${formatDisplayDate(
+      title={`${booking.provider_name || t("dataAccess.provider")} · ${booking.pet_name || t("leftoverUi.pet")}`}
+      subtitle={`${booking.service_name || booking.capability || t("leftoverUi.booking.booking")} · ${formatDisplayDate(
         booking.appointment_date,
       )}`}
       trailing={
@@ -362,7 +363,7 @@ export function PastBookingRow({ booking }) {
     <HubRow
       testID={`activity-past-${booking.id}`}
       Icon={Clock}
-      title={`${booking.provider_name || "Provider"} · ${booking.pet_name || "Pet"}`}
+      title={`${booking.provider_name || t("dataAccess.provider")} · ${booking.pet_name || t("leftoverUi.pet")}`}
       subtitle={subtitle}
       trailing={
         <BookingStatusChip

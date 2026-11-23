@@ -16,6 +16,7 @@ import {
   useInsurancePolicies,
   useApplyPolicy,
 } from "@/hooks/useInsurance";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // Insurance apply / policy hub (ticket 2.72, extends the 2.54 marketplace). LEAD-GEN ONLY for v1
 // (2026-08-21): from a plan, the owner READS + ACCEPTS the insurer's terms/disclaimer and applies
@@ -23,12 +24,12 @@ import {
 // payment: once the insurer issues a premium they arrange payment with the owner directly. PawPi
 // facilitates the lead; the insurer is the party-of-record (no underwriting, no binding, no charge).
 
-const STATUS_LABEL = {
-  application: "Under review",
-  payment_pending: "Awaiting payment",
-  active: "Active",
-  lapsed: "Lapsed",
-  cancelled: "Cancelled",
+const STATUS_KEY = {
+  application: "leftoverUi.insurancePolicy.status.application",
+  payment_pending: "leftoverUi.insurancePolicy.status.paymentPending",
+  active: "leftoverUi.insurancePolicy.status.active",
+  lapsed: "leftoverUi.insurancePolicy.status.lapsed",
+  cancelled: "leftoverUi.insurancePolicy.status.cancelled",
 };
 
 function money(cents) {
@@ -78,7 +79,7 @@ export default function InsurancePolicyScreen() {
       Alert.alert(t("ins.appliedTitle"), t("ins.appliedBody"));
       setAccepted(false);
     } catch (e) {
-      Alert.alert(t("ins.couldNotApply"), e.message || "");
+      Alert.alert(t("ins.couldNotApply"), friendlyErrorMessage(e));
     }
   };
 
@@ -129,7 +130,7 @@ export default function InsurancePolicyScreen() {
                     {p.plan_name || p.provider_name || t("ins.policy")}
                   </Text>
                   <Text style={{ fontWeight: "800", color: COLORS.coral }}>
-                    {STATUS_LABEL[p.status] || p.status}
+                    {STATUS_KEY[p.status] ? t(STATUS_KEY[p.status]) : p.status}
                   </Text>
                 </View>
                 {p.policy_number ? (

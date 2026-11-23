@@ -20,6 +20,7 @@ import {
   useDismissRecall,
 } from "@/hooks/useNutrition";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // Nutrition + food-recall alerts (ticket 2.75). Owner records a per-pet nutrition plan (brand/product/
 // portion/calories/notes) with a NON-DIAGNOSTIC disclaimer; food-recall alerts matching the pet's food
@@ -76,7 +77,7 @@ export default function NutritionScreen() {
       });
       Alert.alert(t("nutrition.savedTitle"), t("nutrition.savedBody"));
     } catch (e) {
-      Alert.alert(t("nutrition.couldNotSave"), e.message || "");
+      Alert.alert(t("nutrition.couldNotSave"), friendlyErrorMessage(e));
     }
   };
 

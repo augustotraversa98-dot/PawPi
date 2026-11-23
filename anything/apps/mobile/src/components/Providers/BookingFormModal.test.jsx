@@ -293,7 +293,7 @@ test("a non-slot capability (sitter) keeps the free-form DateField/TimeField flo
 
   fireEvent.press(view.getByTestId("booking-date"));
   fireEvent.press(view.getByTestId("booking-time"));
-  fireEvent.press(view.getByText("Confirm sitting"));
+  fireEvent.press(view.getByText("leftoverUi.booking.confirmNoun"));
 
   await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
   const arg = mockMutateAsync.mock.calls[0][0];

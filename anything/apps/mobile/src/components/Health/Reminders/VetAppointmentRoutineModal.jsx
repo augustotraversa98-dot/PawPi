@@ -25,6 +25,7 @@ import {
   deleteVetAppointmentFromCalendar,
 } from "@/utils/calendarIntegration";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 const C = {
   cream: COLORS.cream,
@@ -156,7 +157,7 @@ export default function VetAppointmentRoutineModal({
     },
     onError: (error) => {
       console.error("[VetAppt] Create error:", error);
-      Alert.alert(t("common.error"), error.message || t("health.reminders.vetAppt.createErrorBody"));
+      Alert.alert(t("common.error"), friendlyErrorMessage(error, "health.reminders.vetAppt.createErrorBody"));
     },
   });
 
@@ -228,7 +229,7 @@ export default function VetAppointmentRoutineModal({
     },
     onError: (error) => {
       console.error("[VetAppt] Update error:", error);
-      Alert.alert(t("common.error"), error.message || t("health.reminders.vetAppt.updateErrorBody"));
+      Alert.alert(t("common.error"), friendlyErrorMessage(error, "health.reminders.vetAppt.updateErrorBody"));
     },
   });
 
@@ -263,7 +264,7 @@ export default function VetAppointmentRoutineModal({
     },
     onError: (error) => {
       console.error("[VetAppt] Delete error:", error);
-      Alert.alert(t("common.error"), error.message || t("health.reminders.vetAppt.deleteErrorBody"));
+      Alert.alert(t("common.error"), friendlyErrorMessage(error, "health.reminders.vetAppt.deleteErrorBody"));
     },
   });
 

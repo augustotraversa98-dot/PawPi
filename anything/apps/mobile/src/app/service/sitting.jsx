@@ -42,6 +42,7 @@ import RatingBadge from "@/components/Providers/RatingBadge";
 import ProviderListControls, {
   useProviderListFilter,
 } from "@/components/Providers/ProviderListControls";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // Pet Sitting discovery + visit updates (ticket 2.9) — browse PUBLISHED sitter providers
 // (real data, no mocks) and manage the active pet's sitting: book a drop-in visit /
@@ -409,7 +410,7 @@ function BookSittingModal({ provider, petId, onClose }) {
       reset();
       onClose();
     } catch (e) {
-      Alert.alert(t("sitting.couldNotBook"), e.message || t("common.pleaseTryAgain"));
+      Alert.alert(t("sitting.couldNotBook"), friendlyErrorMessage(e, "common.pleaseTryAgain"));
     }
   };
 

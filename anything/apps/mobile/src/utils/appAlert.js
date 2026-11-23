@@ -32,9 +32,45 @@ export function isTechnicalMessage(message) {
 
 // The text to show for a failed action: the server's own friendly sentence when it has one,
 // otherwise the localized fallback for this action.
+// The API answers in English only. For a Spanish user a raw server sentence ("Pet not found", "petId is
+// required") under a Spanish alert title is a half-translated screen, so in Spanish the generic server
+// messages are mapped to Spanish and anything we cannot map falls back to the localized per-action
+// fallback instead of leaking English. English users keep the server's own sentence unchanged.
+function isSpanishUi() {
+  try {
+    return String(getI18n()?.language || "").toLowerCase().startsWith("es");
+  } catch {
+    return false;
+  }
+}
+
+const SERVER_MESSAGE_RULES = [
+  [/^(unauthorized|not authorized\b.*)$/i, "leftoverUi.serverErrors.unauthorized", "Please sign in again."],
+  [/^forbidden$|access denied|not owned|not yours|do not own|not a participant|not allowed/i, "leftoverUi.serverErrors.forbidden", "You don't have permission to do that."],
+  [/not found/i, "leftoverUi.serverErrors.notFound", "We couldn't find that."],
+  [/ is required$|^invalid |cannot be empty|must be |^missing /i, "leftoverUi.serverErrors.invalid", "Some information is missing or not valid. Please check and try again."],
+  [/already (have|exists|applied|processed|taken)|was just taken/i, "leftoverUi.serverErrors.alreadyDone", "That was already done."],
+  [/not available|aren't available|isn't available|not time to join/i, "leftoverUi.serverErrors.notAvailable", "That isn't available yet."],
+];
+
+// Spanish UI: a mapped Spanish sentence, the message itself when it is already Spanish, or null (use the
+// localized fallback). Non-Spanish UI: the message unchanged.
+export function localizeServerMessage(message) {
+  if (!isSpanishUi() || typeof message !== "string") return message;
+  const m = message.trim();
+  if (/[áéíóúñ¿¡]/i.test(m)) return m;
+  for (const [re, key, fallback] of SERVER_MESSAGE_RULES) {
+    if (re.test(m)) return translate(key, fallback);
+  }
+  return null;
+}
+
 export function friendlyErrorMessage(error, fallbackKey = "common.somethingWrong") {
   const message = error?.message;
-  if (!isTechnicalMessage(message)) return message;
+  if (!isTechnicalMessage(message)) {
+    const localized = localizeServerMessage(message);
+    if (localized) return localized;
+  }
   return translate(fallbackKey, translate("common.somethingWrong", "Something went wrong. Please try again."));
 }
 

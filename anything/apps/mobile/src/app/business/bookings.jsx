@@ -24,6 +24,7 @@ import {
   formatDisplayDate,
   formatDisplayTime,
 } from "@/utils/canonicalDateTime";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // Business mode v2 → Bookings tab. An agenda of UPCOMING reservations for the active provider,
 // chronological. Reuses the SAME provider-bookings read the web BookingsInbox uses
@@ -238,7 +239,7 @@ export default function BusinessBookings() {
         { appointmentId, action },
         {
           onError: (err) =>
-            Alert.alert(t("business.bookings.actionError"), err?.message),
+            Alert.alert(t("business.bookings.actionError"), friendlyErrorMessage(err)),
         },
       );
     },

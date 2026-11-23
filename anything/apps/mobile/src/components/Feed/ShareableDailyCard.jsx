@@ -4,6 +4,7 @@ import { Image } from "expo-image";
 import { PawPrint } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
 import { useTranslation } from "react-i18next";
+import { translate } from "@/utils/appAlert";
 
 // A story-sized (9:16) branded frame for sharing a pet's daily photo (ticket 2.28).
 // Rendered OFF-SCREEN and snapshotted with react-native-view-shot. Tasteful + on-brand;
@@ -15,7 +16,7 @@ const ShareableDailyCard = forwardRef(function ShareableDailyCard(
   ref,
 ) {
   const { t } = useTranslation();
-  const name = petName || "My pup";
+  const name = petName || translate("leftoverUi.myPup", "My pup");
   // The card is "ready" to capture only once the hero image has decoded. When
   // there's no photo, it's ready as soon as it lays out (nothing to wait for).
   return (

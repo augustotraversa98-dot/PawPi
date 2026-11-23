@@ -66,6 +66,7 @@ import {
 import { readTelemetryEnabled, setTelemetryEnabled } from "@/telemetry/telemetryControl";
 import { markExpectedNavigation } from "@/telemetry/navExpect";
 import { clearAccountStorage } from "@/utils/accountStorage";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 const C = {
   coral: COLORS.coral,
@@ -652,7 +653,7 @@ export default function AppSettings({ mode = "petOwner" }) {
       router.replace("/welcome");
     } catch (e) {
       setDeleting(false);
-      Alert.alert(t("settings.deleteErrorTitle"), e.message || t("common.pleaseTryAgain"));
+      Alert.alert(t("settings.deleteErrorTitle"), friendlyErrorMessage(e, "common.pleaseTryAgain"));
     }
   };
 

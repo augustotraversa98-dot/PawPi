@@ -8,6 +8,7 @@ import {
   toCanonicalTime,
 } from "../utils/canonicalDateTime";
 import { COLORS, MATERIALS, RADIUS, SPACING, TYPE } from "@/constants/theme";
+import { useTranslation } from "react-i18next";
 
 // 2.77: sourced from the design tokens (was a local hex map) — same hues, softer
 // radius + the shared input look.
@@ -33,11 +34,12 @@ const C = {
 export default function TimeField({
   value,
   onChange,
-  placeholder = "Select time",
+  placeholder,
   fieldStyle,
   textStyle,
   testID,
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const display = formatDisplayTime(value);
 
@@ -93,7 +95,7 @@ export default function TimeField({
             textStyle,
           ]}
         >
-          {display || placeholder}
+          {display || placeholder || t("leftoverUi.selectTime")}
         </Text>
         <Clock size={16} color={C.mutedBrown} />
       </Pressable>

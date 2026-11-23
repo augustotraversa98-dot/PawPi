@@ -158,12 +158,12 @@ export default function GroomingScreen() {
           ) : isError ? (
             <EmptyState
               title={t("servicesUi.grooming.couldnTLoadGroomers")}
-              body="Something went wrong. Pull down to try again."
+              body={t("leftoverUi.services.errorPullDown")}
             />
           ) : !hasProviders ? (
             <EmptyState
               title={t("servicesUi.grooming.noGroomersAvailableYet")}
-              body="Check back soon — groomers are joining PawPi."
+              body={t("leftoverUi.services.groomersJoining")}
             />
           ) : (
             <EmptyState

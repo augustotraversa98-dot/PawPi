@@ -23,6 +23,7 @@ import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useDiscoverProviders } from "@/hooks/useProviders";
 import { useInsurancePlans, useSubmitInsuranceLead } from "@/hooks/useInsurance";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 function priceRange(p) {
   const min = p.monthly_price_min;
@@ -74,7 +75,7 @@ export default function InsuranceScreen() {
       setPhone("");
       setNote("");
     } catch (e) {
-      Alert.alert(t("insurance.couldNotSend"), e.message || t("common.pleaseTryAgain"));
+      Alert.alert(t("insurance.couldNotSend"), friendlyErrorMessage(e, "common.pleaseTryAgain"));
     }
   };
 

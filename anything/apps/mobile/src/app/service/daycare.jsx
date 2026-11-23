@@ -44,6 +44,7 @@ import RatingBadge from "@/components/Providers/RatingBadge";
 import ProviderListControls, {
   useProviderListFilter,
 } from "@/components/Providers/ProviderListControls";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // Daycare & Boarding discovery + stays (ticket 2.8) — browse PUBLISHED daycare providers
 // (real data, no mocks) and manage the active pet's STAYS: book a multi-day stay with
@@ -503,7 +504,7 @@ function BookStayModal({ provider, petId, onClose }) {
         Alert.alert(t("daycare.bookedTitle"), t("daycare.bookedBody"));
       }
     } catch (e) {
-      Alert.alert(t("daycare.couldNotBook"), e.message || t("common.pleaseTryAgain"));
+      Alert.alert(t("daycare.couldNotBook"), friendlyErrorMessage(e, "common.pleaseTryAgain"));
     }
   };
 

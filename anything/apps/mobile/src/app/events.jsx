@@ -31,6 +31,7 @@ import {
   addEventToCalendar,
   removeSurfaceEventFromCalendar,
 } from "@/utils/calendarIntegration";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // Community Events / meetups (ticket 2.74). Upcoming published events on a 2.68 Apple map + a list;
 // RSVP toggle (going/not_going) with a live attendee count; "Directions" to Apple Maps; hosts can
@@ -97,13 +98,13 @@ export default function EventsScreen() {
       }
       rsvp.mutate(
         { eventId: e.id, status: next, calendar_event_id: null },
-        { onError: (err) => Alert.alert(t("events.couldNotRsvp"), err.message || "") },
+        { onError: (err) => Alert.alert(t("events.couldNotRsvp"), friendlyErrorMessage(err)) },
       );
       return;
     }
     rsvp.mutate(
       { eventId: e.id, status: next },
-      { onError: (err) => Alert.alert(t("events.couldNotRsvp"), err.message || "") },
+      { onError: (err) => Alert.alert(t("events.couldNotRsvp"), friendlyErrorMessage(err)) },
     );
   };
 

@@ -23,6 +23,7 @@ import TimeField from "@/components/TimeField";
 import LocationField from "@/components/Map/LocationField";
 import { useCreateEvent } from "@/hooks/useEvents";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // Create an event / meetup (ticket 2.74). Title + description + date/time (canonical DateField/
 // TimeField) + location via the 2.68 LocationField (Apple map) + optional capacity. The host is the
@@ -58,7 +59,7 @@ export default function EventCreateScreen() {
       });
       router.back();
     } catch (e) {
-      Alert.alert(t("events.couldNotCreate"), e.message || "");
+      Alert.alert(t("events.couldNotCreate"), friendlyErrorMessage(e));
     }
   };
 

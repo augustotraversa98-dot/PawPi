@@ -33,6 +33,7 @@ import {
 } from "@/hooks/useProviders";
 import { useMyProfileId } from "@/hooks/useUserProfile";
 import { formatDisplayDate } from "@/utils/canonicalDateTime";
+import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // Business hub → Adoption applications review (ticket A2, extended by A3). A root-level pushed
 // screen (mirrors walker-walks) — NOT a 5th business tab. Lists the active shelter's incoming
@@ -502,7 +503,7 @@ export default function BusinessAdoptionScreen() {
           },
         });
       } catch (e) {
-        Alert.alert(t("business.adoption.messageError"), e?.message);
+        Alert.alert(t("business.adoption.messageError"), friendlyErrorMessage(e));
       } finally {
         setMessagingId(null);
       }
