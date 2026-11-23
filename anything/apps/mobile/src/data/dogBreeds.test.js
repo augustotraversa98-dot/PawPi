@@ -138,6 +138,10 @@ describe("Spanish breed names (display only)", () => {
     expect(breedLabel(esT, "Portuguese Water Dog")).toBe("Perro de Agua Portugués");
     expect(breedLabel(esT, "Dalmatian")).toBe("Dálmata");
     expect(breedLabel(esT, "Beagle")).toBe("Beagle");
+    // International names stay as the original (product decision): never translated.
+    for (const b of ["Golden Retriever", "Labrador Retriever", "Border Collie", "English Cocker Spaniel", "Australian Shepherd", "Greyhound", "Irish Setter", "Miniature Schnauzer"]) {
+      expect(breedLabel(esT, b)).toBe(b);
+    }
     expect(breedLabel(esT, "Mixed Breed")).toBe("Mestizo");
     expect(breedLabel(esT, "Cimarron")).toBe("Cimarron");
     expect(breedLabel(undefined, "Poodle")).toBe("Poodle");
