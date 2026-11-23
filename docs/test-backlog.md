@@ -24,6 +24,21 @@ Reasoning, the exact expected residual (`supabase_admin:r|S|f` only) and when to
 
 ---
 
+## 📱 To test — #747 "Family & caregivers sent me to onboarding" fix (mobile JS only)
+
+**Needs a new EAS build** (merged + CI-green; **not device-verified** — only the iOS Simulator under Expo Go with a local server). Use a **brand-new account** for steps 1–3 (the bug needed the onboarding screen still underneath the app).
+
+- [ ] **1. Fresh sign-up:** create an account (Apple or email), finish onboarding with a dog → Profile tab → ☰ → **Family & caregivers**: it opens and **stays**; Back returns to Profile.
+- [ ] **2. Same for Lost & found and Memories & Wrapped.**
+- [ ] **3. Force-quit, reopen, repeat step 1** (before the fix this one silently bounced back to Profile).
+- [ ] **4. Profile tab reset still works:** Profile → ☰ → Reminders & Routines, tap the **Feed** tab, tap **Profile** again → you land on the Profile root, not on Reminders.
+- [ ] **5. An account with several dogs** behaves the same (and My Dogs still switches the active dog).
+- [ ] **6. (Optional) an account with no dog:** Family & caregivers shows "Add your dog first" (EN) / "Primero sumá a tu perro" (ES), no redirect; the "Shared with me" tab still works.
+- [ ] **7. Existing owner relaunch:** open the app signed in → lands on the feed, never on onboarding.
+- [ ] **After release (Grafana, Loki):** `{job="pawpi-client", event="nav_unexpected_redirect"} | json` should show **no new** `to="/onboarding-photo"`, `reason="onboarding_guard"` for the new `app_version`; the alert `pawpi-p2-nav-unexpected-redirect` covers it.
+
+---
+
 ## 📱 To test — v1.0.5 (auth refresh #733 + keyboard #734; server #732 already live)
 
 **Needs the 1.0.5 build** (next EAS build number: 31, iOS). Merged + CI-green, **not device-verified** — the keyboard fix in particular could not be exercised in the Simulator. Full checklist with the 12-screen table: [`release-1.0.5.md`](release-1.0.5.md) §5.

@@ -52,11 +52,12 @@ jest.mock("./../utils/auth/sessionCleanup", () => ({
 }));
 
 const mockFetchPets = jest.fn();
+const mockFetchProviders = jest.fn(async () => []);
 jest.mock("@/utils/launchQueries", () => ({
   PETS_QUERY_KEY: ["pets"],
   MY_PROVIDERS_QUERY_KEY: ["providers", "mine"],
   fetchPets: (...a) => mockFetchPets(...a),
-  fetchMyProviders: jest.fn(async () => []),
+  fetchMyProviders: (...a) => mockFetchProviders(...a),
 }));
 
 import { useAuthStore } from "@/utils/auth/store";
@@ -114,4 +115,94 @@ test("known pets + a normal answer with pets → home (unchanged)", async () => 
   const { findByText } = render(<EntryPoint />);
 
   await findByText("redirect:/(tabs)");
+});
+
+// ── Every case where "pets already known this session" changes the routing, and the cases that must NOT ───────────────
+// (strict: this is the area of the Oct 2026 duplicate-pet incident). The cache is in-memory only and is wiped by the real
+// auth store on EVERY identity change (store.js setAuth, non-refresh): login, logout, "Use a different account",
+// session expiry and account deletion all pass through it.
+
+const AUTH_B = { jwt: "eyJhbGciOiJkaXIifQ..bbb-_2.def.ghi", user: { id: 2 } };
+
+test("an EMPTY cache entry ([]) is not 'known pets': a new account still reaches onboarding", async () => {
+  queryClient.setQueryData(["pets"], []);
+  mockFetchPets.mockResolvedValue([]);
+  const { findByText } = render(<EntryPoint />);
+
+  await findByText("redirect:/onboarding-photo");
+});
+
+test("an unusable cache entry (null / not an array) is not 'known pets'", async () => {
+  for (const junk of [null, {}, "x"]) {
+    queryClient.clear();
+    queryClient.setQueryData(["pets"], junk);
+    mockFetchPets.mockResolvedValue([]);
+    const { findByText, unmount } = render(<EntryPoint />);
+    await findByText("redirect:/onboarding-photo");
+    unmount();
+  }
+});
+
+test("SWITCHING account through the real auth store drops the previous account's pets: the NEW account (no dog) reaches onboarding", async () => {
+  useAuthStore.getState().setAuth(AUTH); // account A signs in …
+  queryClient.setQueryData(["pets"], [DOG]); // … and the app reads A's dog
+  useAuthStore.getState().setAuth(AUTH_B); // "Use a different account" → B (a brand-new sign-up)
+  expect(queryClient.getQueryData(["pets"])).toBeUndefined(); // the identity change wiped the cache
+
+  mockFetchPets.mockResolvedValue([]);
+  const { findByText, queryByText } = render(<EntryPoint />);
+
+  await findByText("redirect:/onboarding-photo");
+  expect(queryByText("redirect:/(tabs)")).toBeNull();
+});
+
+test("logout / account DELETION (setAuth(null)) wipes known pets: the next sign-in of a new account reaches onboarding", async () => {
+  useAuthStore.getState().setAuth(AUTH);
+  queryClient.setQueryData(["pets"], [DOG]);
+  // Settings → Delete account: DELETE /api/account, then setAuth(null) (AppSettings.performDelete).
+  useAuthStore.getState().setAuth(null);
+  expect(queryClient.getQueryData(["pets"])).toBeUndefined();
+
+  useAuthStore.getState().setAuth(AUTH_B); // a new account signs up on the same phone
+  mockFetchPets.mockResolvedValue([]);
+  const { findByText } = render(<EntryPoint />);
+
+  await findByText("redirect:/onboarding-photo");
+});
+
+test("a same-user rolling token refresh KEEPS the known pets (it is not an identity change)", () => {
+  useAuthStore.getState().setAuth(AUTH);
+  queryClient.setQueryData(["pets"], [DOG]);
+  useAuthStore.getState().applyRefreshedToken(AUTH.jwt, "eyJhbGciOiJkaXIifQ..new-_9.def.ghi");
+  expect(queryClient.getQueryData(["pets"])).toEqual([DOG]);
+});
+
+test("known pets + a dead session (401 session_expired) → Welcome, never the app", async () => {
+  queryClient.setQueryData(["pets"], [DOG]);
+  mockFetchPets.mockRejectedValue(
+    Object.assign(new Error("Failed to fetch pets"), { status: 401, sessionExpired: true, bearerSent: true }),
+  );
+  const { findByText, queryByText } = render(<EntryPoint />);
+
+  await findByText("redirect:/welcome");
+  expect(queryByText("redirect:/(tabs)")).toBeNull();
+});
+
+test("known pets + an empty read does not even consult the business (providers) read — the owner keeps the pet app", async () => {
+  queryClient.setQueryData(["pets"], [DOG]);
+  mockFetchPets.mockResolvedValue([]);
+  mockFetchProviders.mockResolvedValue([{ id: 10, name: "Clinic" }]); // a both-roles account
+  const { findByText, queryByText } = render(<EntryPoint />);
+
+  await findByText("redirect:/(tabs)");
+  expect(mockFetchProviders).not.toHaveBeenCalled();
+  expect(queryByText("redirect:/business")).toBeNull();
+});
+
+test("a business-only account (staff, no pets, nothing known) still reaches Business home, not pet onboarding", async () => {
+  mockFetchPets.mockResolvedValue([]);
+  mockFetchProviders.mockResolvedValue([{ id: 10, name: "Clinic" }]);
+  const { findByText } = render(<EntryPoint />);
+
+  await findByText("redirect:/business");
 });
