@@ -469,6 +469,7 @@ Procedure = [`storage-private-media-runbook-a04.md`](storage-private-media-runbo
 
 - [ ] Paste the migration into the SQL editor, then run `supabase/verify_0139.sql` — **all 8 rows must read PASS**.
 - Safe order: **apply 0139 before (or right after) the PR3 server deploy.** Without it everything still works for owners and family; a caregiver reads nothing and logging answers a friendly 403 (`caregiver_logging_unavailable`).
+- Full procedure, smoke test and **rollback** (`supabase/rollback_0139.sql`): [`db-migration-runbook-0139-0140.md`](db-migration-runbook-0139-0140.md).
 - No app change, no build; builds 30–32 unaffected either way.
 - Production check before applying (read-only, counts only): `select count(*) from pet_caregivers where status='active'` — on 2026-11-23 there was 1 grant in total, 0 active.
 
@@ -478,6 +479,7 @@ Procedure = [`storage-private-media-runbook-a04.md`](storage-private-media-runbo
 
 - [ ] Run `supabase/verify_0140.sql` first if you like (row 6 is a read-only data check — before applying, rows 1–5 will FAIL by design and row 6 must already say `0 mismatched row(s)`; on 2026-11-23 it was 0). Apply the migration, then re-run: **all 6 rows must read PASS**.
 - [ ] Smoke on the owner path after applying (a phone is fine): log a walk, add an allergy, edit a routine, dismiss a reminder as the OWNER of the dog → all succeed. (Family/caregiver writes are anchored to the owner and are not affected.)
+- **Rollback:** `supabase/rollback_0140.sql` (restores the 0022/0117 policy shape; reopens the gap, so only to get unblocked) — see [`db-migration-runbook-0139-0140.md`](db-migration-runbook-0139-0140.md).
 - Safe for builds 30–32: they only write to pets their user owns, which is exactly what the check allows. If anything unexpected is refused, `drop policy … ; create policy … (the 0022 shape)` restores the old behaviour per table (the migration is idempotent).
 
 ## 📱 To test — shared dog, server side (PR3; the phone UI arrives with PR5 / build 33)
