@@ -33,6 +33,7 @@ const DEFAULTS = {
   owner_adoption: true,
   owner_walk_requests: true,
   owner_lost_alerts: true,
+  owner_sharing: true, // family sharing (PR 4)
   // promotional: OFF until the owner opts in
   weekly_digest_push: false,
   winback_push: false,

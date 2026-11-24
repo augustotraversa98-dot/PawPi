@@ -105,6 +105,8 @@ export const API_ROUTE_TEMPLATES = [
   '/api/pet-caregivers',
   '/api/pet-caregivers/:id',
   '/api/pet-caregivers/:id/respond',
+  '/api/pet-caregivers/:id/leave',
+  '/api/pet-caregivers/:id/resend',
   '/api/pet-medical-profiles',
   '/api/pet-vaccinations',
   '/api/pets',

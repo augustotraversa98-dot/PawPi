@@ -495,6 +495,16 @@ Nothing to tap yet: builds 30–32 never ask for shared pets. Server proof is in
 - **Rollback:** `supabase/rollback_0141.sql` (drops the family policies and restores the old owner policy on the 3 tables; reopens that gap, so only to get unblocked). Full procedure: [`db-migration-runbook-0139-0140.md`](db-migration-runbook-0139-0140.md) §0141.
 - Safe for builds 30–32 and safe to apply before or after the PR3b server deploy: without it a family member's write answers a friendly 403 (`family_write_unavailable`), owners are unaffected.
 
+## ⚙️ ACTION 15 — `0142` sharing lifecycle — ⏳ PENDING (hand-apply AFTER 0141)
+
+`supabase/migrations/0142_sharing_lifecycle.sql` — `left` status + `left_at` / `last_notified_at` / `resend_count` on `pet_caregivers`, audit actions `leave` / `resend`, six `pet_share_*` notification types, `leave_pet_caregiver()`, `app_delete_my_account()` and the `delete_my_account()` wrapper (account deletion keeps a member's posts as "Former member").
+
+- [ ] Order: **0139, 0140, 0141, 0142** (the first three are applied). Run `supabase/verify_0142.sql` — **all 7 rows must read PASS** (before applying, rows 1–7 FAIL by design).
+- [ ] Smoke (needs two accounts; the server proof meanwhile is `sharing-lifecycle.integration.test.ts`): owner invites partner by username → partner gets an in-app notification; partner accepts → owner gets one; owner removes partner → partner gets one and the dog disappears from their next refresh. Do **not** test account deletion on a real account — use the demo seed or a throwaway one.
+- **Rollback:** `supabase/rollback_0142.sql` (drops `leave_pet_caregiver` / `app_delete_my_account`, restores the 0062 `delete_my_account()` body — member content cascades again; keeps the widened CHECKs and columns). Procedure: [`db-migration-runbook-0139-0140.md`](db-migration-runbook-0139-0140.md) §0142.
+- Safe for builds 30–32 and safe to apply before or after the PR4 server deploy (see roadmap PR4 for what degrades without it: 503 on leave/resend, notices skipped, old delete behaviour).
+- ⚠️ Privacy-policy / delete-account copy for "posts on a pet you don't own stay as 'Former member' unless you delete them" must be reviewed before build 33 (roadmap PR4, Apple note).
+
 ## ⚙️ ACTION 2 — Payments go-live (Tats, when ready)
 Exact, ordered steps — no research needed, just follow top to bottom. Until you do this, every checkout
 surface (shop, bookings, adoption fees, donations, subscriptions, insurance, Rx fulfillment) shows a

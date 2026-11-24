@@ -111,12 +111,12 @@ describe("1. invite → accept / decline through the real routes", () => {
     expect((await json(await apiReq("/pet-caregivers?mine=true"))).grants).toEqual([]);
 
     // The WRONG account cannot accept it (respond_pet_caregiver pins grantee = caller). The grant stays pending.
-    // TODAY [B9]: the route means to answer 404 "No pending invite for you" but the function's RAISE aborts the request
-    // transaction, so withRequestContext returns a blanket 500 (the route needs a savepoint — fixed in PR4). Either way: denied.
+    // FLIPPED by PR4 (was TODAY [B9], accepted 404 or 500): the route now looks the invite up first and runs the function in a savepoint,
+    // so a wrong account always gets the intended friendly 404.
     const wrongAccount = [(await apiReq(`/pet-caregivers/${grantId}/respond`, "POST", { accept: true })).status];
     as(SITTER);
     wrongAccount.push((await apiReq(`/pet-caregivers/${grantId}/respond`, "POST", { accept: true })).status);
-    expect(wrongAccount.every((st) => st === 404 || st === 500)).toBe(true);
+    expect(wrongAccount).toEqual([404, 404]);
     expect((await raw`select status from pet_caregivers where id = ${grantId}`)[0].status).toBe("pending");
 
     // …the invitee can.
@@ -129,7 +129,7 @@ describe("1. invite → accept / decline through the real routes", () => {
     expect(list.map((g: any) => [g.grantee_username, g.status])).toEqual([[PARTNER.username, "active"]]);
   });
 
-  it.fails("DESIRED [PR4, B9]: a non-grantee (or a double-tap) answering an invite gets a friendly 404, not a 500", async () => {
+  it("FLIPPED by PR4 [B9]: a non-grantee answering an invite gets a friendly 404, not a 500", async () => {
     await seedPetCaregiver(raw, { id: 50, petId: PET, ownerUserId: OWNER.profileId, granteeUserId: PARTNER.profileId, role: "family", status: "pending" });
     as(OUTSIDER);
     expect((await apiReq("/pet-caregivers/50/respond", "POST", { accept: true })).status).toBe(404);
@@ -170,15 +170,17 @@ describe("1. invite → accept / decline through the real routes", () => {
     expect(await raw`select id from pet_caregivers where status = 'active' order by id`).toHaveLength(2);
   });
 
-  it("TODAY [B4]: a grantee has no way to LEAVE (no route; RLS gives them no UPDATE/DELETE) — PR4 adds it", async () => {
+  it("FLIPPED by PR4 [B4]: a grantee can LEAVE through the route; direct UPDATE/DELETE on pet_caregivers is still refused by RLS", async () => {
     await grant(1, PARTNER, "family");
     as(PARTNER);
-    expect((await apiReq("/pet-caregivers/1", "DELETE")).status).toBe(404);
+    expect((await apiReq("/pet-caregivers/1", "DELETE")).status).toBe(404); // DELETE is the OWNER's revoke, not leave
     await asApp(PARTNER.profileId, async (tx) => {
       expect(await tx`update pet_caregivers set status = 'revoked' where id = 1 returning id`).toHaveLength(0);
       expect(await tx`delete from pet_caregivers where id = 1 returning id`).toHaveLength(0);
     });
     expect((await raw`select status from pet_caregivers where id = 1`)[0].status).toBe("active");
+    expect((await apiReq("/pet-caregivers/1/leave", "POST")).status).toBe(200);
+    expect((await raw`select status from pet_caregivers where id = 1`)[0].status).toBe("left");
   });
 });
 
@@ -349,11 +351,11 @@ describe("4. revoke is immediate and preserves history", () => {
     expect((await raw`select action from pet_caregiver_audit where grant_id = 1 and action = 'revoke'`)).toHaveLength(1);
   });
 
-  it("TODAY [C6]: revoking an already-revoked grant is a 404 (the owner's list still shows revoked rows with a trash icon)", async () => {
+  it("FLIPPED by PR4 [C6]: revoking an already-revoked grant is a friendly 200 (the owner's list still shows the revoked row)", async () => {
     await grant(1, PARTNER, "family");
     as(OWNER);
     expect((await apiReq("/pet-caregivers/1", "DELETE")).status).toBe(200);
-    expect((await apiReq("/pet-caregivers/1", "DELETE")).status).toBe(404);
+    expect((await apiReq("/pet-caregivers/1", "DELETE")).status).toBe(200);
     expect((await json(await apiReq(`/pet-caregivers?petId=${PET}`))).grants.map((g: any) => g.status)).toEqual(["revoked"]);
   });
 

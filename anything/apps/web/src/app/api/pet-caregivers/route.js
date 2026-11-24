@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
 import { isBlockedBetween } from "@/app/api/utils/moderation";
+import { notifyPetShare, actorDisplayName } from "@/app/api/utils/petShareNotify";
+import { accessVersion } from "@/app/api/utils/petShareAccess";
 
 // Family/caregiver sharing (ticket 2.47) — person↔person pet access grants.
 //   GET ?petId=    → owner: who has access to my pet
@@ -47,7 +49,9 @@ async function GET(request) {
           AND (pc.expires_at IS NULL OR pc.expires_at > now())
         ORDER BY pc.created_at DESC
       `;
-      return Response.json({ grants });
+      // `access_version` (additive): a fingerprint of the ACTIVE grants, so a client can notice a revoke/leave and drop its caches at once.
+      const active = grants.filter((g) => g.status === "active");
+      return Response.json({ grants, access_version: accessVersion(active) });
     }
 
     if (!Number.isInteger(petId)) {
@@ -114,7 +118,7 @@ async function POST(request) {
 
     // Verify the caller owns the pet (RLS also enforces this on the insert).
     const pets = await sql`
-      SELECT id FROM pets WHERE id = ${petId} AND owner_user_id = ${userId}
+      SELECT id, name FROM pets WHERE id = ${petId} AND owner_user_id = ${userId}
     `;
     if (pets.length === 0) {
       return Response.json({ error: "Pet not found or not yours" }, { status: 403 });
@@ -171,6 +175,22 @@ async function POST(request) {
       INSERT INTO pet_caregiver_audit (grant_id, owner_user_id, actor_user_id, action)
       VALUES (${created[0].id}, ${userId}, ${userId}, 'grant')
     `;
+
+    // Tell the invitee (bell + optional push; one row, one recipient) and remember when — the timestamp rate-limits "resend invite".
+    // Both are best-effort and savepoint-isolated: they can never fail the invite (the lifecycle columns come with migration 0142).
+    await notifyPetShare({
+      type: "pet_share_invite",
+      recipient: granteeId,
+      actor: userId,
+      petId,
+      petName: pets[0].name,
+      actorName: await actorDisplayName(userId),
+    });
+    try {
+      await withSavepoint(() => sql`UPDATE pet_caregivers SET last_notified_at = now() WHERE id = ${created[0].id}`);
+    } catch (e) {
+      if (e?.code !== "42703") throw e;
+    }
 
     return Response.json({ grant: created[0] }, { status: 201 });
   } catch (error) {

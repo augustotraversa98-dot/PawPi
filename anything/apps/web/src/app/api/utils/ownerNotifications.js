@@ -25,6 +25,13 @@ export const OWNER_PUSH_TYPES = {
   adoption_declined: { category: "owner_adoption", promotional: false },
   walk_request_accepted: { category: "owner_walk_requests", promotional: false },
   lost_alert: { category: "owner_lost_alerts", promotional: false },
+  // Family sharing (PR 4) — transactional, default ON, one category.
+  pet_share_invite: { category: "owner_sharing", promotional: false },
+  pet_share_accepted: { category: "owner_sharing", promotional: false },
+  pet_share_declined: { category: "owner_sharing", promotional: false },
+  pet_share_revoked: { category: "owner_sharing", promotional: false },
+  pet_share_left: { category: "owner_sharing", promotional: false },
+  pet_share_owner_deleted: { category: "owner_sharing", promotional: false },
 };
 
 export function ownerPushTypeInfo(type) {
@@ -79,6 +86,31 @@ const COPY = {
   lost_alert: {
     en: () => ({ title: "Lost pet alert", body: "There's news about a lost pet. Tap to see the details." }),
     es: () => ({ title: "Alerta de mascota perdida", body: "Hay novedades sobre una mascota perdida. Tocá para ver los detalles." }),
+  },
+  // Family sharing (PR 4). Generic on purpose: the push carries no names (the bell row has the sentence).
+  pet_share_invite: {
+    en: () => ({ title: "You're invited 🐾", body: "Someone invited you to help care for a dog. Tap to see it." }),
+    es: () => ({ title: "Te invitaron 🐾", body: "Alguien te invitó a ayudar a cuidar a un perro. Tocá para verlo." }),
+  },
+  pet_share_accepted: {
+    en: () => ({ title: "Invitation accepted 🐾", body: "Someone accepted your invitation to share a dog." }),
+    es: () => ({ title: "Invitación aceptada 🐾", body: "Alguien aceptó tu invitación para compartir un perro." }),
+  },
+  pet_share_declined: {
+    en: () => ({ title: "An update on your invitation", body: "Someone declined your invitation to share a dog." }),
+    es: () => ({ title: "Novedades de tu invitación", body: "Alguien rechazó tu invitación para compartir un perro." }),
+  },
+  pet_share_revoked: {
+    en: () => ({ title: "Shared access changed", body: "You no longer have access to a shared dog." }),
+    es: () => ({ title: "Cambió un acceso compartido", body: "Ya no tenés acceso a un perro compartido." }),
+  },
+  pet_share_left: {
+    en: () => ({ title: "Shared care update", body: "Someone stopped helping care for a dog you share." }),
+    es: () => ({ title: "Novedades del cuidado compartido", body: "Alguien dejó de ayudar a cuidar a un perro que compartís." }),
+  },
+  pet_share_owner_deleted: {
+    en: () => ({ title: "A shared dog was removed", body: "The owner deleted their account, so a dog is no longer shared with you." }),
+    es: () => ({ title: "Se quitó un perro compartido", body: "El dueño borró su cuenta, así que un perro ya no está compartido con vos." }),
   },
 };
 
