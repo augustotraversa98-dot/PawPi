@@ -21,6 +21,7 @@ const TAGS = [
   "KeyboardAwareScrollView",
   "RefreshableScrollView",
   "KeyboardSafeFormModal",
+  "KeyboardSafeSheet",
   "TextInput",
 ];
 const TAG_RE = new RegExp(`<(/?)(${TAGS.join("|")})\\b`, "g");
@@ -29,6 +30,7 @@ const AWARE = new Set([
   "KeyboardAwareScrollView",
   "RefreshableScrollView", // wraps KeyboardAwareScrollView
   "KeyboardSafeFormModal", // KeyboardAwareScrollView inside
+  "KeyboardSafeSheet", // shared sheet / full-screen shell: KeyboardAwareScrollView inside
 ]);
 const PLAIN_SCROLLERS = new Set(["ScrollView", "FlatList", "SectionList"]);
 
@@ -96,7 +98,7 @@ const FIXED = [
 describe("fixed screens keep their text inputs inside a KeyboardAwareScrollView", () => {
   it.each(FIXED)("%s", (rel) => {
     const src = read(rel);
-    expect(src).toMatch(/KeyboardAwareScrollView/);
+    expect(src).toMatch(/KeyboardAwareScrollView|KeyboardSafeSheet/);
     const offenders = analyze(src).filter(
       (input) =>
         input.ancestors.some((a) => PLAIN_SCROLLERS.has(a)) &&
@@ -125,16 +127,11 @@ describe("fixed screens keep their text inputs inside a KeyboardAwareScrollView"
 // Multiline fields are the ones that grow and sit lowest in a form. Anything listed here was
 // audited and intentionally left: the field is not inside a scroller, so there is nothing to
 // scroll — the container itself is lifted by the keyboard (full-screen frame, where
-// KeyboardAvoidingView / KeyboardAvoidingAnimatedView measure correctly).
+// KeyboardAvoidingView / KeyboardAvoidingAnimatedView measure correctly). Everything else with a
+// form was moved onto the shared KeyboardSafeSheet (see keyboardSafety.guard.test.js).
 const INTENTIONALLY_UNSCROLLED = {
   "components/Feed/BarkModal.jsx":
     "composer is pinned below the list in a full-screen overlay; KeyboardAvoidingView lifts it",
-  "components/Providers/WriteReviewModal.jsx":
-    "short bottom sheet, full-screen overlay; KeyboardAvoidingView lifts it",
-  "components/Pets/CaregiverLogWalkModal.jsx":
-    "short bottom sheet, full-screen overlay; KeyboardAvoidingAnimatedView lifts it",
-  "app/service/walking.jsx":
-    "short bottom sheet (one multiline note), full-screen overlay; KeyboardAvoidingAnimatedView lifts it",
 };
 
 function sourceFiles(dir, out = []) {
@@ -154,14 +151,14 @@ function guardViolations() {
   const violations = [];
   for (const file of sourceFiles(SRC)) {
     const src = fs.readFileSync(file, "utf8");
-    if (!/multiline/.test(src) || !/<Modal\b|<KeyboardSafeFormModal\b/.test(src)) continue;
+    if (!/multiline/.test(src) || !/<Modal\b|<KeyboardSafeFormModal\b|<KeyboardSafeSheet\b/.test(src)) continue;
     const rel = path.relative(SRC, file).split(path.sep).join("/");
-    const fileHasAware = /<(KeyboardAwareScrollView|RefreshableScrollView|KeyboardSafeFormModal)\b/.test(src);
+    const fileHasAware = /<(KeyboardAwareScrollView|RefreshableScrollView|KeyboardSafeFormModal|KeyboardSafeSheet)\b/.test(src);
     for (const input of analyze(src)) {
       if (!input.multiline) continue;
       // Only fields inside a Modal (or a helper that lives in a file with one) are in scope;
       // a full-screen route's own composer is lifted by its screen-level KeyboardAvoidingView.
-      const inModal = input.ancestors.some((a) => a === "Modal" || a === "KeyboardSafeFormModal");
+      const inModal = input.ancestors.some((a) => a === "Modal" || a === "KeyboardSafeFormModal" || a === "KeyboardSafeSheet");
       if (input.ancestors.length > 0 && !inModal) continue;
       const covered = input.ancestors.some((a) => AWARE.has(a));
       // A field defined in a helper component outside the Modal JSX has no ancestors in this

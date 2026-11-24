@@ -129,3 +129,44 @@ describe("KeyboardAwareScrollView — keyboard-show handler is crash-proof", () 
     focusSpy.mockRestore();
   });
 });
+
+// Regression (Quick Check "notes field hidden"): with a pinned footer between the scroll view and
+// the keyboard, an input can be above the keyboard yet below the scroll view's bottom edge —
+// hidden under the footer. It must be scrolled into the VISIBLE area, not just above the keyboard.
+describe("KeyboardAwareScrollView — scrolls into the visible area, not just above the keyboard", () => {
+  it("scrolls an input that sits under a pinned footer", () => {
+    const handlers = {};
+    const addSpy = jest
+      .spyOn(Keyboard, "addListener")
+      .mockImplementation((name, cb) => {
+        handlers[name] = cb;
+        return { remove: () => {} };
+      });
+    // Input bottom at y=480: above the keyboard top (516) but below the scroll view bottom (400).
+    const focusSpy = jest
+      .spyOn(RNTextInput.State, "currentlyFocusedInput")
+      .mockReturnValue({ measureInWindow: (cb) => cb(20, 440, 300, 40) });
+
+    const ref = React.createRef();
+    render(
+      <KeyboardAwareScrollView ref={ref}>
+        <RNTextInput />
+      </KeyboardAwareScrollView>,
+    );
+    ref.current.getNativeScrollRef = () => ({
+      measureInWindow: (cb) => cb(0, 0, 300, 400),
+    });
+    ref.current.scrollTo = jest.fn();
+
+    act(() => {
+      handlers.keyboardWillShow({ endCoordinates: { screenY: 516 } });
+    });
+
+    expect(ref.current.scrollTo).toHaveBeenCalledWith({
+      y: 480 + KEYBOARD_INPUT_MARGIN - 400,
+      animated: true,
+    });
+    addSpy.mockRestore();
+    focusSpy.mockRestore();
+  });
+});

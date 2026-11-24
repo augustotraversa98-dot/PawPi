@@ -19,13 +19,12 @@ import {
   ROUTINE_FREQUENCY,
   WELLNESS_CHECK_ITEMS,
 } from "@/data/routinesData";
-import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 import { canonicalizeDateValue } from "@/utils/canonicalDateTime";
 import { cadenceLabel } from "./CadenceFrequencySelector";
 import ScheduleBlock, { scheduleFromItem } from "./ScheduleBlock";
 import useRoutinesStore from "@/store/routinesStore";
 import { useTranslation } from "react-i18next";
-import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import KeyboardSafeSheet from "@/components/KeyboardSafeSheet";
 import { defaultWeightUnit } from "@/utils/weightUnit";
 
 const C = {
@@ -537,388 +536,333 @@ export default function WellnessCheckRoutineModal({
 
   // Main Modal - Wellness Check Routine Builder
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingAnimatedView
-        style={{ flex: 1, backgroundColor: C.cream }}
-        behavior="padding"
-      >
-        {/* Header */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: 20,
-            paddingTop: 60,
-            borderBottomWidth: 1,
-            borderBottomColor: C.peach,
-          }}
-        >
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                fontSize: 20,
-                fontWeight: "800",
-                color: C.warmBrown,
-                marginBottom: 4,
-              }}
-            >
-              {editingRoutine
-                ? t("routinesUi.wellnessCheck.titleEdit")
-                : t("routinesUi.wellnessCheck.titleCreate")}
-            </Text>
-            <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-              {t("routinesUi.wellnessCheck.trackHealthChangesOverTime")}
-            </Text>
-          </View>
-          <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            onPress={onClose}
+    <KeyboardSafeSheet
+      visible={visible}
+      onRequestClose={onClose}
+      variant="screen"
+      backgroundColor={C.cream}
+      contentContainerStyle={{ padding: 20, paddingBottom: 24 }}
+      header={(
+        <>
+          {/* Header */}
+          <View
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: C.sand,
-              justifyContent: "center",
+              flexDirection: "row",
               alignItems: "center",
+              justifyContent: "space-between",
+              padding: 20,
+              paddingTop: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: C.peach,
             }}
           >
-            <X size={20} color={C.warmBrown} />
-          </TouchableOpacity>
-        </View>
-
-        <KeyboardAwareScrollView
-          contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {items.length === 0 ? (
-            // Empty State
-            <View
-              style={{
-                backgroundColor: C.card,
-                borderRadius: 16,
-                padding: 24,
-                borderWidth: 1.5,
-                borderColor: C.peach,
-                alignItems: "center",
-                marginBottom: 20,
-              }}
-            >
+            <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontSize: 18,
-                  fontWeight: "700",
+                  fontSize: 20,
+                  fontWeight: "800",
                   color: C.warmBrown,
-                  marginBottom: 8,
-                  textAlign: "center",
+                  marginBottom: 4,
                 }}
               >
-                {t("routinesUi.wellnessCheck.noWellnessChecksYet")}
+                {editingRoutine
+                  ? t("routinesUi.wellnessCheck.titleEdit")
+                  : t("routinesUi.wellnessCheck.titleCreate")}
               </Text>
-              <Text
-                style={{
-                  fontSize: 14,
-                  color: C.mutedBrown,
-                  textAlign: "center",
-                  lineHeight: 20,
-                }}
-              >
-                {t("routinesUi.wellnessCheck.addWeightBodyConditionMobility")}
+              <Text style={{ fontSize: 14, color: C.mutedBrown }}>
+                {t("routinesUi.wellnessCheck.trackHealthChangesOverTime")}
               </Text>
             </View>
-          ) : (
-            <>
-              {/* Items Header */}
+            <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              onPress={onClose}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: C.sand,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <X size={20} color={C.warmBrown} />
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+      footer={(
+        <>
+          <View
+            style={{
+              padding: 20,
+              paddingBottom: 0,
+              borderTopWidth: 1,
+              borderTopColor: C.peach,
+              backgroundColor: C.cream,
+            }}
+          >
+            <TouchableOpacity
+              onPress={handleSave}
+              style={{
+                backgroundColor: "#F4A460",
+                borderRadius: 14,
+                paddingVertical: 16,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}>
+                {editingRoutine
+                  ? t("routinesUi.shared.saveChanges")
+                  : t("routinesUi.shared.createRoutine")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+      overlay={(
+        <>
+
+          {/* Type Picker Overlay - renders inside main modal */}
+          {showTypePicker && (
+            <View
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: MATERIALS.overlay,
+                justifyContent: "center",
+                alignItems: "center",
+                padding: 24,
+                zIndex: 9999,
+              }}
+            >
               <View
                 style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: 12,
+                  width: "100%",
+                  backgroundColor: "#FFF8F0",
+                  borderRadius: 28,
+                  padding: 24,
+                  maxHeight: "80%",
                 }}
               >
                 <Text
                   style={{
-                    fontSize: 15,
-                    fontWeight: "700",
-                    color: C.warmBrown,
+                    fontSize: 28,
+                    fontWeight: "800",
+                    color: "#321E17",
+                    marginBottom: 8,
                   }}
                 >
-                  {t("routinesUi.wellnessCheck.checkItems")}
+                  {t("routinesUi.wellnessCheck.addCheckItem")}
                 </Text>
-                <Text style={{ fontSize: 13, color: C.mutedBrown }}>
-                  {t("routinesUi.wellnessCheck.tapToExpand")}
+                <Text
+                  style={{
+                    fontSize: 16,
+                    color: "#8A6F5B",
+                    marginBottom: 20,
+                  }}
+                >
+                  {t("routinesUi.wellnessCheck.chooseWhatYouWantTo")}
                 </Text>
-              </View>
-
-              {/* Item Cards */}
-              {items.map((item, index) => {
-                const isExpanded = expandedItemId === item.id;
-                return (
-                  <View
-                    key={item.id || `item-${index}`}
-                    style={{
-                      backgroundColor: C.card,
-                      borderRadius: 16,
-                      padding: 16,
-                      borderWidth: 1.5,
-                      borderColor: isExpanded ? "#F4A460" : C.peach,
-                      marginBottom: 12,
-                    }}
-                  >
-                    {/* Item Header - Always Visible */}
-                    <TouchableOpacity
-                      onPress={() =>
-                        setExpandedItemId(isExpanded ? null : item.id)
-                      }
+                <ScrollView
+                  style={{ maxHeight: 400 }}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {CHECK_TYPES.map((type) => (
+                    <Pressable
+                      key={type.id}
+                      onPress={() => handleSelectCheckType(type.id)}
                       style={{
+                        padding: 18,
+                        borderRadius: 18,
+                        backgroundColor: "#FFFFFF",
+                        borderWidth: 1,
+                        borderColor: "#F4D6C8",
+                        marginBottom: 12,
                         flexDirection: "row",
                         alignItems: "center",
-                        justifyContent: "space-between",
                       }}
                     >
-                      <View
+                      <Text style={{ fontSize: 24, marginRight: 12 }}>
+                        {type.icon}
+                      </Text>
+                      <Text
                         style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          flex: 1,
+                          fontSize: 18,
+                          fontWeight: "700",
+                          color: "#321E17",
                         }}
                       >
-                        <Text style={{ fontSize: 24, marginRight: 10 }}>
-                          {getItemIcon(item)}
-                        </Text>
-                        <View style={{ flex: 1 }}>
-                          <Text
-                            style={{
-                              fontSize: 16,
-                              fontWeight: "700",
-                              color: C.warmBrown,
-                              marginBottom: 2,
-                            }}
-                          >
-                            {getItemLabel(item)}
-                          </Text>
-                          <Text style={{ fontSize: 13, color: C.mutedBrown }}>
-                            {item.preferredTime} •{" "}
-                            {cadenceLabel(t, item.frequency)}
-                          </Text>
-                        </View>
-                      </View>
-                      <View
+                        {t(type.labelKey)}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+                <Pressable
+                  onPress={() => setShowTypePicker(false)}
+                  style={{
+                    marginTop: 8,
+                    padding: 16,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 17,
+                      fontWeight: "700",
+                      color: "#8A6F5B",
+                    }}
+                  >
+                    {t("routinesUi.wellnessCheck.cancel")}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
+        </>
+      )}
+    >
+      {items.length === 0 ? (
+        // Empty State
+        <View
+          style={{
+            backgroundColor: C.card,
+            borderRadius: 16,
+            padding: 24,
+            borderWidth: 1.5,
+            borderColor: C.peach,
+            alignItems: "center",
+            marginBottom: 20,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: "700",
+              color: C.warmBrown,
+              marginBottom: 8,
+              textAlign: "center",
+            }}
+          >
+            {t("routinesUi.wellnessCheck.noWellnessChecksYet")}
+          </Text>
+          <Text
+            style={{
+              fontSize: 14,
+              color: C.mutedBrown,
+              textAlign: "center",
+              lineHeight: 20,
+            }}
+          >
+            {t("routinesUi.wellnessCheck.addWeightBodyConditionMobility")}
+          </Text>
+        </View>
+      ) : (
+        <>
+          {/* Items Header */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 12,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 15,
+                fontWeight: "700",
+                color: C.warmBrown,
+              }}
+            >
+              {t("routinesUi.wellnessCheck.checkItems")}
+            </Text>
+            <Text style={{ fontSize: 13, color: C.mutedBrown }}>
+              {t("routinesUi.wellnessCheck.tapToExpand")}
+            </Text>
+          </View>
+
+          {/* Item Cards */}
+          {items.map((item, index) => {
+            const isExpanded = expandedItemId === item.id;
+            return (
+              <View
+                key={item.id || `item-${index}`}
+                style={{
+                  backgroundColor: C.card,
+                  borderRadius: 16,
+                  padding: 16,
+                  borderWidth: 1.5,
+                  borderColor: isExpanded ? "#F4A460" : C.peach,
+                  marginBottom: 12,
+                }}
+              >
+                {/* Item Header - Always Visible */}
+                <TouchableOpacity
+                  onPress={() =>
+                    setExpandedItemId(isExpanded ? null : item.id)
+                  }
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      flex: 1,
+                    }}
+                  >
+                    <Text style={{ fontSize: 24, marginRight: 10 }}>
+                      {getItemIcon(item)}
+                    </Text>
+                    <View style={{ flex: 1 }}>
+                      <Text
                         style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 8,
+                          fontSize: 16,
+                          fontWeight: "700",
+                          color: C.warmBrown,
+                          marginBottom: 2,
                         }}
                       >
-                        <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                          onPress={() => handleRemoveItem(item.id)}
-                          style={{ padding: 4 }}
-                        >
-                          <Trash2 size={18} color={C.coral} />
-                        </TouchableOpacity>
-                        {isExpanded ? (
-                          <ChevronUp size={20} color={C.mutedBrown} />
-                        ) : (
-                          <ChevronDown size={20} color={C.mutedBrown} />
-                        )}
-                      </View>
+                        {getItemLabel(item)}
+                      </Text>
+                      <Text style={{ fontSize: 13, color: C.mutedBrown }}>
+                        {item.preferredTime} •{" "}
+                        {cadenceLabel(t, item.frequency)}
+                      </Text>
+                    </View>
+                  </View>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                      onPress={() => handleRemoveItem(item.id)}
+                      style={{ padding: 4 }}
+                    >
+                      <Trash2 size={18} color={C.coral} />
                     </TouchableOpacity>
+                    {isExpanded ? (
+                      <ChevronUp size={20} color={C.mutedBrown} />
+                    ) : (
+                      <ChevronDown size={20} color={C.mutedBrown} />
+                    )}
+                  </View>
+                </TouchableOpacity>
 
-                    {/* Expanded Content */}
-                    {isExpanded && (
-                      <View style={{ marginTop: 16 }}>
-                        {/* Custom Name (for Custom check type only) */}
-                        {item.checkType === WELLNESS_CHECK_ITEMS.CUSTOM && (
-                          <>
-                            <Text
-                              style={{
-                                fontSize: 12,
-                                fontWeight: "600",
-                                color: C.mutedBrown,
-                                marginBottom: 6,
-                              }}
-                            >
-                              {t("routinesUi.wellnessCheck.checkName")}
-                            </Text>
-                            <TextInput
-                              value={item.customName}
-                              onChangeText={(text) =>
-                                handleItemChange(item.id, "customName", text)
-                              }
-                              placeholder={t("routinesUi.wellnessCheck.exampleAllergyCheck")}
-                              placeholderTextColor={C.mutedBrown}
-                              style={{
-                                backgroundColor: C.sand,
-                                borderRadius: 12,
-                                padding: 12,
-                                fontSize: 15,
-                                color: C.warmBrown,
-                                marginBottom: 12,
-                              }}
-                            />
-                          </>
-                        )}
-
-                        {/* Schedule — date, time, frequency (full cadence list),
-                            conditional sub-controls, and early reminder */}
-                        <ScheduleBlock
-                          value={scheduleFromItem(item)}
-                          onChange={(schedule) =>
-                            handleScheduleChange(item.id, schedule)
-                          }
-                          color="#F4A460"
-                          style={{ marginBottom: 12 }}
-                          testID={`schedule-${item.id}`}
-                        />
-
-                        {/* Weight Unit (for Weight check only) */}
-                        {item.checkType === WELLNESS_CHECK_ITEMS.WEIGHT && (
-                          <>
-                            <Text
-                              style={{
-                                fontSize: 12,
-                                fontWeight: "600",
-                                color: C.mutedBrown,
-                                marginBottom: 8,
-                              }}
-                            >
-                              {t("routinesUi.wellnessCheck.unit")}
-                            </Text>
-                            <View
-                              style={{
-                                flexDirection: "row",
-                                gap: 8,
-                                marginBottom: 12,
-                              }}
-                            >
-                              {["kg", "lbs"].map((unit) => (
-                                <TouchableOpacity
-                                  key={unit}
-                                  onPress={() =>
-                                    handleItemChange(
-                                      item.id,
-                                      "weightUnit",
-                                      unit,
-                                    )
-                                  }
-                                  style={{
-                                    flex: 1,
-                                    backgroundColor:
-                                      item.weightUnit === unit
-                                        ? "#F4A460" + "20"
-                                        : C.sand,
-                                    borderRadius: 12,
-                                    padding: 12,
-                                    borderWidth: 1.5,
-                                    borderColor:
-                                      item.weightUnit === unit
-                                        ? "#F4A460"
-                                        : C.peach,
-                                    alignItems: "center",
-                                  }}
-                                >
-                                  <Text
-                                    style={{
-                                      fontSize: 14,
-                                      fontWeight:
-                                        item.weightUnit === unit
-                                          ? "700"
-                                          : "600",
-                                      color:
-                                        item.weightUnit === unit
-                                          ? "#F4A460"
-                                          : C.warmBrown,
-                                    }}
-                                  >
-                                    {unit}
-                                  </Text>
-                                </TouchableOpacity>
-                              ))}
-                            </View>
-                          </>
-                        )}
-
-                        {/* Reminder Settings */}
-                        <View
-                          style={{
-                            backgroundColor: C.sand,
-                            borderRadius: 12,
-                            padding: 12,
-                            marginBottom: 12,
-                          }}
-                        >
-                          <View
-                            style={{
-                              flexDirection: "row",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              marginBottom: 10,
-                            }}
-                          >
-                            <Text
-                              style={{
-                                fontSize: 14,
-                                fontWeight: "600",
-                                color: C.warmBrown,
-                              }}
-                            >
-                              {t("routinesUi.wellnessCheck.reminderEnabled")}
-                            </Text>
-                            <Switch
-                              value={item.reminderEnabled}
-                              onValueChange={(value) =>
-                                handleItemChange(
-                                  item.id,
-                                  "reminderEnabled",
-                                  value,
-                                )
-                              }
-                              trackColor={{
-                                false: C.peach,
-                                true: C.sage + "60",
-                              }}
-                              thumbColor={
-                                item.reminderEnabled ? C.sage : C.peach
-                              }
-                            />
-                          </View>
-                          <View
-                            style={{
-                              flexDirection: "row",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <Text
-                              style={{
-                                fontSize: 14,
-                                fontWeight: "600",
-                                color: C.warmBrown,
-                              }}
-                            >
-                              {t("routinesUi.wellnessCheck.timeSensitive")}
-                            </Text>
-                            <Switch
-                              value={item.timeSensitive}
-                              onValueChange={(value) =>
-                                handleItemChange(
-                                  item.id,
-                                  "timeSensitive",
-                                  value,
-                                )
-                              }
-                              trackColor={{
-                                false: C.peach,
-                                true: C.coral + "60",
-                              }}
-                              thumbColor={
-                                item.timeSensitive ? C.coral : C.peach
-                              }
-                            />
-                          </View>
-                        </View>
-
-                        {/* Notes */}
+                {/* Expanded Content */}
+                {isExpanded && (
+                  <View style={{ marginTop: 16 }}>
+                    {/* Custom Name (for Custom check type only) */}
+                    {item.checkType === WELLNESS_CHECK_ITEMS.CUSTOM && (
+                      <>
                         <Text
                           style={{
                             fontSize: 12,
@@ -927,198 +871,254 @@ export default function WellnessCheckRoutineModal({
                             marginBottom: 6,
                           }}
                         >
-                          {t("routinesUi.wellnessCheck.notesOptional")}
+                          {t("routinesUi.wellnessCheck.checkName")}
                         </Text>
                         <TextInput
-                          value={item.notes}
+                          value={item.customName}
                           onChangeText={(text) =>
-                            handleItemChange(item.id, "notes", text)
+                            handleItemChange(item.id, "customName", text)
                           }
-                          placeholder={t("wellnessCheck.whatToLookForPlaceholder")}
+                          placeholder={t("routinesUi.wellnessCheck.exampleAllergyCheck")}
                           placeholderTextColor={C.mutedBrown}
-                          multiline
-                          numberOfLines={2}
                           style={{
                             backgroundColor: C.sand,
                             borderRadius: 12,
                             padding: 12,
-                            fontSize: 14,
+                            fontSize: 15,
                             color: C.warmBrown,
-                            textAlignVertical: "top",
-                            minHeight: 60,
+                            marginBottom: 12,
                           }}
                         />
-                      </View>
+                      </>
                     )}
-                  </View>
-                );
-              })}
-            </>
-          )}
 
-          {/* Add Check Item Button */}
-          <TouchableOpacity
-            onPress={() => {
-              console.log("[WellnessCheck] Add check item pressed");
-              setShowTypePicker(true);
-            }}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: C.card,
-              borderRadius: 14,
-              padding: 16,
-              borderWidth: 1.5,
-              borderColor: C.peach,
-              borderStyle: "dashed",
-            }}
-          >
-            <Plus size={20} color={C.coral} strokeWidth={2.5} />
-            <Text
-              style={{
-                fontSize: 15,
-                fontWeight: "700",
-                color: C.coral,
-                marginLeft: 8,
-              }}
-            >
-              {t("routinesUi.wellnessCheck.addCheckItem")}
-            </Text>
-          </TouchableOpacity>
-        </KeyboardAwareScrollView>
+                    {/* Schedule — date, time, frequency (full cadence list),
+                        conditional sub-controls, and early reminder */}
+                    <ScheduleBlock
+                      value={scheduleFromItem(item)}
+                      onChange={(schedule) =>
+                        handleScheduleChange(item.id, schedule)
+                      }
+                      color="#F4A460"
+                      style={{ marginBottom: 12 }}
+                      testID={`schedule-${item.id}`}
+                    />
 
-        {/* Save Button - Fixed at bottom */}
-        <View
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            padding: 20,
-            paddingBottom: 30,
-            borderTopWidth: 1,
-            borderTopColor: C.peach,
-            backgroundColor: C.cream,
-          }}
-        >
-          <TouchableOpacity
-            onPress={handleSave}
-            style={{
-              backgroundColor: "#F4A460",
-              borderRadius: 14,
-              paddingVertical: 16,
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}>
-              {editingRoutine
-                ? t("routinesUi.shared.saveChanges")
-                : t("routinesUi.shared.createRoutine")}
-            </Text>
-          </TouchableOpacity>
-        </View>
+                    {/* Weight Unit (for Weight check only) */}
+                    {item.checkType === WELLNESS_CHECK_ITEMS.WEIGHT && (
+                      <>
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            fontWeight: "600",
+                            color: C.mutedBrown,
+                            marginBottom: 8,
+                          }}
+                        >
+                          {t("routinesUi.wellnessCheck.unit")}
+                        </Text>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            gap: 8,
+                            marginBottom: 12,
+                          }}
+                        >
+                          {["kg", "lbs"].map((unit) => (
+                            <TouchableOpacity
+                              key={unit}
+                              onPress={() =>
+                                handleItemChange(
+                                  item.id,
+                                  "weightUnit",
+                                  unit,
+                                )
+                              }
+                              style={{
+                                flex: 1,
+                                backgroundColor:
+                                  item.weightUnit === unit
+                                    ? "#F4A460" + "20"
+                                    : C.sand,
+                                borderRadius: 12,
+                                padding: 12,
+                                borderWidth: 1.5,
+                                borderColor:
+                                  item.weightUnit === unit
+                                    ? "#F4A460"
+                                    : C.peach,
+                                alignItems: "center",
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  fontSize: 14,
+                                  fontWeight:
+                                    item.weightUnit === unit
+                                      ? "700"
+                                      : "600",
+                                  color:
+                                    item.weightUnit === unit
+                                      ? "#F4A460"
+                                      : C.warmBrown,
+                                }}
+                              >
+                                {unit}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </>
+                    )}
 
-        {/* Type Picker Overlay - renders inside main modal */}
-        {showTypePicker && (
-          <View
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: MATERIALS.overlay,
-              justifyContent: "center",
-              alignItems: "center",
-              padding: 24,
-              zIndex: 9999,
-            }}
-          >
-            <View
-              style={{
-                width: "100%",
-                backgroundColor: "#FFF8F0",
-                borderRadius: 28,
-                padding: 24,
-                maxHeight: "80%",
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 28,
-                  fontWeight: "800",
-                  color: "#321E17",
-                  marginBottom: 8,
-                }}
-              >
-                {t("routinesUi.wellnessCheck.addCheckItem")}
-              </Text>
-              <Text
-                style={{
-                  fontSize: 16,
-                  color: "#8A6F5B",
-                  marginBottom: 20,
-                }}
-              >
-                {t("routinesUi.wellnessCheck.chooseWhatYouWantTo")}
-              </Text>
-              <ScrollView
-                style={{ maxHeight: 400 }}
-                showsVerticalScrollIndicator={false}
-              >
-                {CHECK_TYPES.map((type) => (
-                  <Pressable
-                    key={type.id}
-                    onPress={() => handleSelectCheckType(type.id)}
-                    style={{
-                      padding: 18,
-                      borderRadius: 18,
-                      backgroundColor: "#FFFFFF",
-                      borderWidth: 1,
-                      borderColor: "#F4D6C8",
-                      marginBottom: 12,
-                      flexDirection: "row",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Text style={{ fontSize: 24, marginRight: 12 }}>
-                      {type.icon}
-                    </Text>
-                    <Text
+                    {/* Reminder Settings */}
+                    <View
                       style={{
-                        fontSize: 18,
-                        fontWeight: "700",
-                        color: "#321E17",
+                        backgroundColor: C.sand,
+                        borderRadius: 12,
+                        padding: 12,
+                        marginBottom: 12,
                       }}
                     >
-                      {t(type.labelKey)}
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          marginBottom: 10,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 14,
+                            fontWeight: "600",
+                            color: C.warmBrown,
+                          }}
+                        >
+                          {t("routinesUi.wellnessCheck.reminderEnabled")}
+                        </Text>
+                        <Switch
+                          value={item.reminderEnabled}
+                          onValueChange={(value) =>
+                            handleItemChange(
+                              item.id,
+                              "reminderEnabled",
+                              value,
+                            )
+                          }
+                          trackColor={{
+                            false: C.peach,
+                            true: C.sage + "60",
+                          }}
+                          thumbColor={
+                            item.reminderEnabled ? C.sage : C.peach
+                          }
+                        />
+                      </View>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 14,
+                            fontWeight: "600",
+                            color: C.warmBrown,
+                          }}
+                        >
+                          {t("routinesUi.wellnessCheck.timeSensitive")}
+                        </Text>
+                        <Switch
+                          value={item.timeSensitive}
+                          onValueChange={(value) =>
+                            handleItemChange(
+                              item.id,
+                              "timeSensitive",
+                              value,
+                            )
+                          }
+                          trackColor={{
+                            false: C.peach,
+                            true: C.coral + "60",
+                          }}
+                          thumbColor={
+                            item.timeSensitive ? C.coral : C.peach
+                          }
+                        />
+                      </View>
+                    </View>
+
+                    {/* Notes */}
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontWeight: "600",
+                        color: C.mutedBrown,
+                        marginBottom: 6,
+                      }}
+                    >
+                      {t("routinesUi.wellnessCheck.notesOptional")}
                     </Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
-              <Pressable
-                onPress={() => setShowTypePicker(false)}
-                style={{
-                  marginTop: 8,
-                  padding: 16,
-                  alignItems: "center",
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 17,
-                    fontWeight: "700",
-                    color: "#8A6F5B",
-                  }}
-                >
-                  {t("routinesUi.wellnessCheck.cancel")}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        )}
-      </KeyboardAvoidingAnimatedView>
-    </Modal>
+                    <TextInput
+                      value={item.notes}
+                      onChangeText={(text) =>
+                        handleItemChange(item.id, "notes", text)
+                      }
+                      placeholder={t("wellnessCheck.whatToLookForPlaceholder")}
+                      placeholderTextColor={C.mutedBrown}
+                      multiline
+                      numberOfLines={2}
+                      style={{
+                        backgroundColor: C.sand,
+                        borderRadius: 12,
+                        padding: 12,
+                        fontSize: 14,
+                        color: C.warmBrown,
+                        textAlignVertical: "top",
+                        minHeight: 60,
+                      }}
+                    />
+                  </View>
+                )}
+              </View>
+            );
+          })}
+        </>
+      )}
+
+      {/* Add Check Item Button */}
+      <TouchableOpacity
+        onPress={() => {
+          console.log("[WellnessCheck] Add check item pressed");
+          setShowTypePicker(true);
+        }}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: C.card,
+          borderRadius: 14,
+          padding: 16,
+          borderWidth: 1.5,
+          borderColor: C.peach,
+          borderStyle: "dashed",
+        }}
+      >
+        <Plus size={20} color={C.coral} strokeWidth={2.5} />
+        <Text
+          style={{
+            fontSize: 15,
+            fontWeight: "700",
+            color: C.coral,
+            marginLeft: 8,
+          }}
+        >
+          {t("routinesUi.wellnessCheck.addCheckItem")}
+        </Text>
+      </TouchableOpacity>
+    </KeyboardSafeSheet>
   );
 }

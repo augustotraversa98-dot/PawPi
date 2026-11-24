@@ -1,17 +1,13 @@
-import { MATERIALS } from "@/constants/theme";
 import { COLORS } from "@/constants/theme";
 import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
-  Modal,
   Pressable,
   TouchableOpacity,
   ScrollView,
   TextInput,
   Alert,
-  Platform,
-  KeyboardAvoidingView,
   Image,
   ActivityIndicator,
 } from "react-native";
@@ -19,7 +15,7 @@ import * as ImagePicker from "expo-image-picker";
 import useUpload from "@/utils/useUpload";
 import PrivateImage from "@/components/ui/PrivateImage";
 import { useCurrentPet } from "@/hooks/usePetProfile";
-import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import KeyboardSafeSheet from "@/components/KeyboardSafeSheet";
 import {
   X,
   ChevronRight,
@@ -30,7 +26,6 @@ import {
   Lock,
   Sparkles,
 } from "lucide-react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { CHECK_AREAS, CHANGE_OPTIONS, QUICK_SUGGESTION_COUNT } from "@/data/generalCheckData";
 import { useLogGeneralCheck } from "@/hooks/useHealthTracking";
@@ -77,7 +72,6 @@ export default function GeneralCheckModal({
       ? opt.label
       : tc(`changes.${opt.key}`);
 
-  const insets = useSafeAreaInsets();
   const scrollViewRef = useRef(null);
   const logGeneralCheckMutation = useLogGeneralCheck();
   const [upload, { loading: uploading }] = useUpload();
@@ -401,31 +395,14 @@ export default function GeneralCheckModal({
           : `${names.slice(0, -1).join(", ")} ${andWord} ${names[names.length - 1]}`;
 
     return (
-      <Modal
+      <KeyboardSafeSheet
         visible={visible}
-        animationType="slide"
-        transparent
         onRequestClose={handleCloseModal}
-      >
-        <KeyboardAvoidingView
-          style={{
-            flex: 1,
-            backgroundColor: MATERIALS.overlay,
-            justifyContent: "flex-end",
-          }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
-          <View
-            style={{
-              backgroundColor: C.cream,
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              paddingTop: 20,
-              paddingBottom: insets.bottom + 20,
-              height: "90%",
-            }}
-          >
-            {/* Header */}
+        variant="sheet"
+        backgroundColor={C.cream}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
+        header={(
+          <>
             <View
               style={{
                 flexDirection: "row",
@@ -446,6 +423,10 @@ export default function GeneralCheckModal({
                 <X size={24} color={C.warmBrown} />
               </TouchableOpacity>
             </View>
+          </>
+        )}
+        subheader={(
+          <>
             <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
               <Text style={{ fontSize: 15, fontWeight: "700", color: C.warmBrown }}>
                 {tc("quickTodayLabel", { areas: joinedAreas })}
@@ -454,318 +435,10 @@ export default function GeneralCheckModal({
                 {tc("quickInstruction")}
               </Text>
             </View>
-
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
-              showsVerticalScrollIndicator={false}
-            >
-              {suggested.map((area) => {
-                const ad = checkData[area.key] || {
-                  status: null,
-                  changes: [],
-                  notes: "",
-                  photos: [],
-                };
-                const changed = ad.status === "changed";
-                return (
-                  <View
-                    key={area.key}
-                    style={{
-                      backgroundColor: C.card,
-                      borderRadius: 14,
-                      borderWidth: 1.5,
-                      borderColor: changed
-                        ? "#FFB74D"
-                        : ad.status === "usual"
-                          ? C.sage
-                          : C.peach,
-                      marginBottom: 12,
-                      padding: 14,
-                      gap: 12,
-                    }}
-                  >
-                    {/* Area heading */}
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                      <Text style={{ fontSize: 24 }}>{area.emoji}</Text>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 16, fontWeight: "800", color: C.warmBrown }}>
-                          {areaLabel(area)}
-                        </Text>
-                        <Text style={{ fontSize: 12, color: C.mutedBrown, marginTop: 1 }}>
-                          {areaDesc(area)}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Status choice — starts unanswered; one must be picked to save. */}
-                    <View style={{ flexDirection: "row", gap: 10 }}>
-                      <Pressable
-                        onPress={() => setQuickStatus(area.key, "usual")}
-                        accessibilityRole="radio"
-                        accessibilityLabel={`${areaLabel(area)}: ${tc("looksUsual")}`}
-                        accessibilityState={{ selected: ad.status === "usual" }}
-                        style={{
-                          flex: 1,
-                          backgroundColor: ad.status === "usual" ? C.sage : C.cream,
-                          borderRadius: 12,
-                          paddingVertical: 12,
-                          alignItems: "center",
-                          borderWidth: 1.5,
-                          borderColor: ad.status === "usual" ? C.sage : C.peach,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 13,
-                            fontWeight: "700",
-                            color: ad.status === "usual" ? "#FFF" : C.warmBrown,
-                          }}
-                        >
-                          {tc("looksUsual")}
-                        </Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => setQuickStatus(area.key, "changed")}
-                        accessibilityRole="radio"
-                        accessibilityLabel={`${areaLabel(area)}: ${tc("somethingChanged")}`}
-                        accessibilityState={{ selected: ad.status === "changed" }}
-                        style={{
-                          flex: 1,
-                          backgroundColor: ad.status === "changed" ? "#FFB74D" : C.cream,
-                          borderRadius: 12,
-                          paddingVertical: 12,
-                          alignItems: "center",
-                          borderWidth: 1.5,
-                          borderColor: ad.status === "changed" ? "#FFB74D" : C.peach,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 13,
-                            fontWeight: "700",
-                            color: ad.status === "changed" ? "#FFF" : C.warmBrown,
-                          }}
-                        >
-                          {tc("somethingChanged")}
-                        </Text>
-                      </Pressable>
-                    </View>
-
-                    {/* "Something changed" → what changed. (The photo + note below are
-                        offered for EITHER status, so they live in their own block.) */}
-                    {changed && (
-                      <View style={{ gap: 8 }}>
-                        <Text
-                          style={{ fontSize: 13, fontWeight: "700", color: C.warmBrown }}
-                        >
-                          {tc("whatChanged")}
-                        </Text>
-                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                          {CHANGE_OPTIONS.map((option) => {
-                            const isSelected = ad.changes?.includes(option.key);
-                            return (
-                              <Pressable
-                                key={option.key}
-                                onPress={() => toggleQuickChange(area.key, option.key)}
-                                accessibilityRole="checkbox"
-                                accessibilityLabel={changeLabel(option)}
-                                accessibilityState={{ checked: !!isSelected }}
-                                style={{
-                                  backgroundColor: isSelected ? C.coral + "20" : C.cream,
-                                  borderRadius: 999,
-                                  paddingVertical: 8,
-                                  paddingHorizontal: 12,
-                                  borderWidth: 1.5,
-                                  borderColor: isSelected ? C.coral : C.peach,
-                                  flexDirection: "row",
-                                  alignItems: "center",
-                                  gap: 6,
-                                }}
-                              >
-                                <Text style={{ fontSize: 14 }}>{option.emoji}</Text>
-                                <Text
-                                  style={{
-                                    fontSize: 13,
-                                    fontWeight: isSelected ? "700" : "600",
-                                    color: isSelected ? C.coral : C.warmBrown,
-                                  }}
-                                >
-                                  {changeLabel(option)}
-                                </Text>
-                              </Pressable>
-                            );
-                          })}
-                        </View>
-                      </View>
-                    )}
-
-                    {/* Optional photo + note — offered once the area is answered EITHER
-                        way. A "looks usual" photo is still useful evidence a vet may read
-                        differently than the owner. Never gates Save. */}
-                    {ad.status != null && (
-                      <>
-                        <Text
-                          style={{ fontSize: 13, fontWeight: "700", color: C.warmBrown }}
-                        >
-                          {tc("addPhoto")}
-                        </Text>
-                        <View style={{ flexDirection: "row", gap: 10 }}>
-                          <TouchableOpacity
-                            onPress={() => capturePhotoForArea(area.key, "camera")}
-                            disabled={uploading}
-                            accessibilityRole="button"
-                            accessibilityLabel={tc("takePhoto")}
-                            style={{
-                              flex: 1,
-                              backgroundColor: C.cream,
-                              borderRadius: 12,
-                              padding: 12,
-                              borderWidth: 1.5,
-                              borderColor: C.peach,
-                              flexDirection: "row",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              gap: 6,
-                              opacity: uploading ? 0.6 : 1,
-                            }}
-                          >
-                            <Camera size={16} color={C.terracotta} />
-                            <Text
-                              style={{ fontSize: 12, fontWeight: "700", color: C.warmBrown }}
-                            >
-                              {tc("takePhoto")}
-                            </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            onPress={() => capturePhotoForArea(area.key, "library")}
-                            disabled={uploading}
-                            accessibilityRole="button"
-                            accessibilityLabel={tc("choosePhoto")}
-                            style={{
-                              flex: 1,
-                              backgroundColor: C.cream,
-                              borderRadius: 12,
-                              padding: 12,
-                              borderWidth: 1.5,
-                              borderColor: C.peach,
-                              flexDirection: "row",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              gap: 6,
-                              opacity: uploading ? 0.6 : 1,
-                            }}
-                          >
-                            <ImageIcon size={16} color={C.terracotta} />
-                            <Text
-                              style={{ fontSize: 12, fontWeight: "700", color: C.warmBrown }}
-                            >
-                              {tc("choosePhoto")}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-
-                        {ad.photos?.length > 0 && (
-                          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-                            {ad.photos.map((uri) => (
-                              <View key={uri} style={{ position: "relative" }}>
-                                <PrivateImage
-                                  value={uri}
-                                  style={{
-                                    width: 64,
-                                    height: 64,
-                                    borderRadius: 12,
-                                    borderWidth: 1.5,
-                                    borderColor: C.peach,
-                                  }}
-                                  resizeMode="cover"
-                                />
-                                <TouchableOpacity
-                                  onPress={() => removePhotoFromArea(area.key, uri)}
-                                  accessibilityRole="button"
-                                  accessibilityLabel={tc("removePhoto")}
-                                  hitSlop={8}
-                                  style={{
-                                    position: "absolute",
-                                    top: -8,
-                                    right: -8,
-                                    width: 24,
-                                    height: 24,
-                                    borderRadius: 12,
-                                    backgroundColor: C.warmBrown,
-                                    justifyContent: "center",
-                                    alignItems: "center",
-                                  }}
-                                >
-                                  <X size={14} color="#FFF" />
-                                </TouchableOpacity>
-                              </View>
-                            ))}
-                          </View>
-                        )}
-
-                        <TextInput
-                          value={ad.notes}
-                          onChangeText={(text) => setQuickNotes(area.key, text)}
-                          placeholder={tc("notesPlaceholder")}
-                          placeholderTextColor={C.mutedBrown + "80"}
-                          multiline
-                          style={{
-                            backgroundColor: C.cream,
-                            borderRadius: 12,
-                            padding: 12,
-                            fontSize: 14,
-                            color: C.warmBrown,
-                            borderWidth: 1,
-                            borderColor: C.peach,
-                            minHeight: 64,
-                            textAlignVertical: "top",
-                          }}
-                        />
-                      </>
-                    )}
-                  </View>
-                );
-              })}
-
-              {uploading && (
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                    marginBottom: 8,
-                  }}
-                >
-                  <ActivityIndicator size="small" color={C.terracotta} />
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: C.mutedBrown }}>
-                    {tc("uploadingPhoto")}
-                  </Text>
-                </View>
-              )}
-
-              {/* Safety framing — this prepares vet conversations, it is not a diagnosis. */}
-              <View
-                style={{
-                  backgroundColor: "#FFF4E6",
-                  borderRadius: 12,
-                  padding: 14,
-                  borderWidth: 1,
-                  borderColor: "#FFE4C4",
-                  flexDirection: "row",
-                  alignItems: "flex-start",
-                  gap: 10,
-                  marginTop: 4,
-                }}
-              >
-                <Info size={16} color="#FFB74D" style={{ marginTop: 2 }} />
-                <Text style={{ fontSize: 11, color: C.mutedBrown, lineHeight: 16, flex: 1 }}>
-                  {tc("safetyWarning")}
-                </Text>
-              </View>
-            </KeyboardAwareScrollView>
-
+          </>
+        )}
+        footer={(
+          <>
             {/* Save — disabled until every suggested area is answered. */}
             <View
               style={{
@@ -806,37 +479,327 @@ export default function GeneralCheckModal({
                 </Text>
               </TouchableOpacity>
             </View>
+          </>
+        )}
+      >
+        {suggested.map((area) => {
+          const ad = checkData[area.key] || {
+            status: null,
+            changes: [],
+            notes: "",
+            photos: [],
+          };
+          const changed = ad.status === "changed";
+          return (
+            <View
+              key={area.key}
+              style={{
+                backgroundColor: C.card,
+                borderRadius: 14,
+                borderWidth: 1.5,
+                borderColor: changed
+                  ? "#FFB74D"
+                  : ad.status === "usual"
+                    ? C.sage
+                    : C.peach,
+                marginBottom: 12,
+                padding: 14,
+                gap: 12,
+              }}
+            >
+              {/* Area heading */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <Text style={{ fontSize: 24 }}>{area.emoji}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: "800", color: C.warmBrown }}>
+                    {areaLabel(area)}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: C.mutedBrown, marginTop: 1 }}>
+                    {areaDesc(area)}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Status choice — starts unanswered; one must be picked to save. */}
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <Pressable
+                  onPress={() => setQuickStatus(area.key, "usual")}
+                  accessibilityRole="radio"
+                  accessibilityLabel={`${areaLabel(area)}: ${tc("looksUsual")}`}
+                  accessibilityState={{ selected: ad.status === "usual" }}
+                  style={{
+                    flex: 1,
+                    backgroundColor: ad.status === "usual" ? C.sage : C.cream,
+                    borderRadius: 12,
+                    paddingVertical: 12,
+                    alignItems: "center",
+                    borderWidth: 1.5,
+                    borderColor: ad.status === "usual" ? C.sage : C.peach,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: "700",
+                      color: ad.status === "usual" ? "#FFF" : C.warmBrown,
+                    }}
+                  >
+                    {tc("looksUsual")}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setQuickStatus(area.key, "changed")}
+                  accessibilityRole="radio"
+                  accessibilityLabel={`${areaLabel(area)}: ${tc("somethingChanged")}`}
+                  accessibilityState={{ selected: ad.status === "changed" }}
+                  style={{
+                    flex: 1,
+                    backgroundColor: ad.status === "changed" ? "#FFB74D" : C.cream,
+                    borderRadius: 12,
+                    paddingVertical: 12,
+                    alignItems: "center",
+                    borderWidth: 1.5,
+                    borderColor: ad.status === "changed" ? "#FFB74D" : C.peach,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: "700",
+                      color: ad.status === "changed" ? "#FFF" : C.warmBrown,
+                    }}
+                  >
+                    {tc("somethingChanged")}
+                  </Text>
+                </Pressable>
+              </View>
+
+              {/* "Something changed" → what changed. (The photo + note below are
+                  offered for EITHER status, so they live in their own block.) */}
+              {changed && (
+                <View style={{ gap: 8 }}>
+                  <Text
+                    style={{ fontSize: 13, fontWeight: "700", color: C.warmBrown }}
+                  >
+                    {tc("whatChanged")}
+                  </Text>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                    {CHANGE_OPTIONS.map((option) => {
+                      const isSelected = ad.changes?.includes(option.key);
+                      return (
+                        <Pressable
+                          key={option.key}
+                          onPress={() => toggleQuickChange(area.key, option.key)}
+                          accessibilityRole="checkbox"
+                          accessibilityLabel={changeLabel(option)}
+                          accessibilityState={{ checked: !!isSelected }}
+                          style={{
+                            backgroundColor: isSelected ? C.coral + "20" : C.cream,
+                            borderRadius: 999,
+                            paddingVertical: 8,
+                            paddingHorizontal: 12,
+                            borderWidth: 1.5,
+                            borderColor: isSelected ? C.coral : C.peach,
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
+                          <Text style={{ fontSize: 14 }}>{option.emoji}</Text>
+                          <Text
+                            style={{
+                              fontSize: 13,
+                              fontWeight: isSelected ? "700" : "600",
+                              color: isSelected ? C.coral : C.warmBrown,
+                            }}
+                          >
+                            {changeLabel(option)}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
+
+              {/* Optional photo + note — offered once the area is answered EITHER
+                  way. A "looks usual" photo is still useful evidence a vet may read
+                  differently than the owner. Never gates Save. */}
+              {ad.status != null && (
+                <>
+                  <Text
+                    style={{ fontSize: 13, fontWeight: "700", color: C.warmBrown }}
+                  >
+                    {tc("addPhoto")}
+                  </Text>
+                  <View style={{ flexDirection: "row", gap: 10 }}>
+                    <TouchableOpacity
+                      onPress={() => capturePhotoForArea(area.key, "camera")}
+                      disabled={uploading}
+                      accessibilityRole="button"
+                      accessibilityLabel={tc("takePhoto")}
+                      style={{
+                        flex: 1,
+                        backgroundColor: C.cream,
+                        borderRadius: 12,
+                        padding: 12,
+                        borderWidth: 1.5,
+                        borderColor: C.peach,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                        opacity: uploading ? 0.6 : 1,
+                      }}
+                    >
+                      <Camera size={16} color={C.terracotta} />
+                      <Text
+                        style={{ fontSize: 12, fontWeight: "700", color: C.warmBrown }}
+                      >
+                        {tc("takePhoto")}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => capturePhotoForArea(area.key, "library")}
+                      disabled={uploading}
+                      accessibilityRole="button"
+                      accessibilityLabel={tc("choosePhoto")}
+                      style={{
+                        flex: 1,
+                        backgroundColor: C.cream,
+                        borderRadius: 12,
+                        padding: 12,
+                        borderWidth: 1.5,
+                        borderColor: C.peach,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                        opacity: uploading ? 0.6 : 1,
+                      }}
+                    >
+                      <ImageIcon size={16} color={C.terracotta} />
+                      <Text
+                        style={{ fontSize: 12, fontWeight: "700", color: C.warmBrown }}
+                      >
+                        {tc("choosePhoto")}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {ad.photos?.length > 0 && (
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+                      {ad.photos.map((uri) => (
+                        <View key={uri} style={{ position: "relative" }}>
+                          <PrivateImage
+                            value={uri}
+                            style={{
+                              width: 64,
+                              height: 64,
+                              borderRadius: 12,
+                              borderWidth: 1.5,
+                              borderColor: C.peach,
+                            }}
+                            resizeMode="cover"
+                          />
+                          <TouchableOpacity
+                            onPress={() => removePhotoFromArea(area.key, uri)}
+                            accessibilityRole="button"
+                            accessibilityLabel={tc("removePhoto")}
+                            hitSlop={8}
+                            style={{
+                              position: "absolute",
+                              top: -8,
+                              right: -8,
+                              width: 24,
+                              height: 24,
+                              borderRadius: 12,
+                              backgroundColor: C.warmBrown,
+                              justifyContent: "center",
+                              alignItems: "center",
+                            }}
+                          >
+                            <X size={14} color="#FFF" />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  <TextInput
+                    value={ad.notes}
+                    onChangeText={(text) => setQuickNotes(area.key, text)}
+                    placeholder={tc("notesPlaceholder")}
+                    placeholderTextColor={C.mutedBrown + "80"}
+                    multiline
+                    style={{
+                      backgroundColor: C.cream,
+                      borderRadius: 12,
+                      padding: 12,
+                      fontSize: 14,
+                      color: C.warmBrown,
+                      borderWidth: 1,
+                      borderColor: C.peach,
+                      minHeight: 64,
+                      textAlignVertical: "top",
+                    }}
+                  />
+                </>
+              )}
+            </View>
+          );
+        })}
+
+        {uploading && (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              marginBottom: 8,
+            }}
+          >
+            <ActivityIndicator size="small" color={C.terracotta} />
+            <Text style={{ fontSize: 12, fontWeight: "600", color: C.mutedBrown }}>
+              {tc("uploadingPhoto")}
+            </Text>
           </View>
-        </KeyboardAvoidingView>
-      </Modal>
+        )}
+
+        {/* Safety framing — this prepares vet conversations, it is not a diagnosis. */}
+        <View
+          style={{
+            backgroundColor: "#FFF4E6",
+            borderRadius: 12,
+            padding: 14,
+            borderWidth: 1,
+            borderColor: "#FFE4C4",
+            flexDirection: "row",
+            alignItems: "flex-start",
+            gap: 10,
+            marginTop: 4,
+          }}
+        >
+          <Info size={16} color="#FFB74D" style={{ marginTop: 2 }} />
+          <Text style={{ fontSize: 11, color: C.mutedBrown, lineHeight: 16, flex: 1 }}>
+            {tc("safetyWarning")}
+          </Text>
+        </View>
+      </KeyboardSafeSheet>
     );
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleCloseModal}>
-      <KeyboardAvoidingView
-        style={{
-          flex: 1,
-          backgroundColor: MATERIALS.overlay,
-          justifyContent: "flex-end",
-        }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <View
-          style={{
-            backgroundColor: C.cream,
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
-            paddingTop: 20,
-            paddingBottom: insets.bottom + 20,
-            // A DEFINITE height (not maxHeight-only) is required: the middle child is a
-            // KeyboardAwareScrollView with flex:1, and flex:1 resolves to 0 height when the
-            // parent is content-sized. Without this the entire scroll body (status options,
-            // change list, notes) collapses to zero height and "Next" can never enable.
-            height: "90%",
-          }}
-        >
-          {/* Header */}
+    <KeyboardSafeSheet
+      visible={visible}
+      onRequestClose={handleCloseModal}
+      variant="sheet"
+      backgroundColor={C.cream}
+      scrollRef={scrollViewRef}
+      contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
+      header={(
+        <>
           <View
             style={{
               flexDirection: "row",
@@ -855,8 +818,10 @@ export default function GeneralCheckModal({
               <X size={24} color={C.warmBrown} />
             </TouchableOpacity>
           </View>
-
-          {/* Progress Bar */}
+        </>
+      )}
+      subheader={(
+        <>
           <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
             <View
               style={{
@@ -956,488 +921,10 @@ export default function GeneralCheckModal({
               })}
             </ScrollView>
           </View>
-
-          <KeyboardAwareScrollView
-            ref={scrollViewRef}
-            style={{ flex: 1 }}
-            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Current Area */}
-            <View
-              style={{
-                backgroundColor: C.card,
-                borderRadius: 18,
-                padding: 20,
-                borderWidth: 1.5,
-                borderColor: C.peach,
-                marginBottom: 16,
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 12,
-                  marginBottom: 10,
-                }}
-              >
-                <Text style={{ fontSize: 32 }}>{currentArea.emoji}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      fontSize: 20,
-                      fontWeight: "800",
-                      color: C.warmBrown,
-                      marginBottom: 2,
-                    }}
-                  >
-                    {areaLabel(currentArea)}
-                  </Text>
-                  <Text style={{ fontSize: 13, color: C.mutedBrown }}>
-                    {areaDesc(currentArea)}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Status Selection — optional per area. Every area can be left "not
-                checked"; a subtle hint says so, and "Next" advances regardless. */}
-            <View style={{ marginBottom: 20 }}>
-              <Text
-                style={{
-                  fontSize: 15,
-                  fontWeight: "800",
-                  color: C.warmBrown,
-                  marginBottom: currentAreaData.status === null ? 4 : 12,
-                }}
-              >
-                {tc("howDoesThisLook")}
-              </Text>
-              {currentAreaData.status === null && (
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontWeight: "600",
-                    color: C.mutedBrown,
-                    marginBottom: 12,
-                  }}
-                >
-                  {tc("optionalHint")}
-                </Text>
-              )}
-              <View style={{ gap: 10 }}>
-                <Pressable
-                  onPress={() => handleAreaStatus("usual")}
-                  accessibilityRole="radio"
-                  accessibilityLabel={tc("looksUsual")}
-                  accessibilityState={{
-                    selected: currentAreaData.status === "usual",
-                  }}
-                  hitSlop={8}
-                  style={{
-                    backgroundColor:
-                      currentAreaData.status === "usual" ? C.sage : C.card,
-                    borderRadius: 14,
-                    padding: 16,
-                    borderWidth: 1.5,
-                    borderColor:
-                      currentAreaData.status === "usual" ? C.sage : C.peach,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 12,
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: 12,
-                      backgroundColor:
-                        currentAreaData.status === "usual" ? "#FFF" : C.sand,
-                      justifyContent: "center",
-                      alignItems: "center",
-                    }}
-                  >
-                    {currentAreaData.status === "usual" && (
-                      <CheckCircle size={16} color={C.sage} />
-                    )}
-                  </View>
-                  <Text
-                    style={{
-                      fontSize: 15,
-                      fontWeight: "700",
-                      color:
-                        currentAreaData.status === "usual"
-                          ? "#FFF"
-                          : C.warmBrown,
-                      flex: 1,
-                    }}
-                  >
-                    {tc("looksUsual")}
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => handleAreaStatus("changed")}
-                  accessibilityRole="radio"
-                  accessibilityLabel={tc("somethingChanged")}
-                  accessibilityState={{
-                    selected: currentAreaData.status === "changed",
-                  }}
-                  hitSlop={8}
-                  style={{
-                    backgroundColor:
-                      currentAreaData.status === "changed" ? "#FFB74D" : C.card,
-                    borderRadius: 14,
-                    padding: 16,
-                    borderWidth: 1.5,
-                    borderColor:
-                      currentAreaData.status === "changed"
-                        ? "#FFB74D"
-                        : C.peach,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 12,
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: 12,
-                      backgroundColor:
-                        currentAreaData.status === "changed" ? "#FFF" : C.sand,
-                      justifyContent: "center",
-                      alignItems: "center",
-                    }}
-                  >
-                    {currentAreaData.status === "changed" && (
-                      <CheckCircle size={16} color="#FFB74D" />
-                    )}
-                  </View>
-                  <Text
-                    style={{
-                      fontSize: 15,
-                      fontWeight: "700",
-                      color:
-                        currentAreaData.status === "changed"
-                          ? "#FFF"
-                          : C.warmBrown,
-                      flex: 1,
-                    }}
-                  >
-                    {tc("somethingChanged")}
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-
-            {/* Change Options (if "Something changed" is selected) */}
-            {currentAreaData.status === "changed" && (
-              <View style={{ marginBottom: 20 }}>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "700",
-                    color: C.warmBrown,
-                    marginBottom: 12,
-                  }}
-                >
-                  {tc("whatChanged")}
-                </Text>
-                <View style={{ gap: 8 }}>
-                  {CHANGE_OPTIONS.map((option) => {
-                    const isSelected = currentAreaData.changes?.includes(
-                      option.key,
-                    );
-                    return (
-                      <Pressable
-                        key={option.key}
-                        onPress={() => toggleChange(option.key)}
-                        accessibilityRole="checkbox"
-                        accessibilityLabel={changeLabel(option)}
-                        accessibilityState={{ checked: !!isSelected }}
-                        hitSlop={6}
-                        style={{
-                          backgroundColor: isSelected ? C.coral + "20" : C.card,
-                          borderRadius: 12,
-                          padding: 14,
-                          borderWidth: 1.5,
-                          borderColor: isSelected ? C.coral : C.peach,
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 10,
-                        }}
-                      >
-                        <Text style={{ fontSize: 18 }}>{option.emoji}</Text>
-                        <Text
-                          style={{
-                            fontSize: 14,
-                            fontWeight: isSelected ? "700" : "600",
-                            color: isSelected ? C.coral : C.warmBrown,
-                            flex: 1,
-                          }}
-                        >
-                          {changeLabel(option)}
-                        </Text>
-                        {isSelected && (
-                          <CheckCircle size={18} color={C.coral} />
-                        )}
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </View>
-            )}
-
-            {/* Photo Actions */}
-            <View style={{ marginBottom: 20 }}>
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "700",
-                  color: C.warmBrown,
-                  marginBottom: 12,
-                }}
-              >
-                {tc("addPhoto")}
-              </Text>
-              <View style={{ flexDirection: "row", gap: 10 }}>
-                <TouchableOpacity
-                  onPress={() => capturePhoto("camera")}
-                  disabled={uploading}
-                  accessibilityRole="button"
-                  accessibilityLabel={tc("takePhoto")}
-                  style={{
-                    flex: 1,
-                    backgroundColor: C.card,
-                    borderRadius: 12,
-                    padding: 14,
-                    borderWidth: 1.5,
-                    borderColor: C.peach,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                    opacity: uploading ? 0.6 : 1,
-                  }}
-                >
-                  <Camera size={18} color={C.terracotta} />
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: "700",
-                      color: C.warmBrown,
-                    }}
-                  >
-                    {tc("takePhoto")}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => capturePhoto("library")}
-                  disabled={uploading}
-                  accessibilityRole="button"
-                  accessibilityLabel={tc("choosePhoto")}
-                  style={{
-                    flex: 1,
-                    backgroundColor: C.card,
-                    borderRadius: 12,
-                    padding: 14,
-                    borderWidth: 1.5,
-                    borderColor: C.peach,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                    opacity: uploading ? 0.6 : 1,
-                  }}
-                >
-                  <ImageIcon size={18} color={C.terracotta} />
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: "700",
-                      color: C.warmBrown,
-                    }}
-                  >
-                    {tc("choosePhoto")}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Uploading indicator */}
-              {uploading && (
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                    marginTop: 10,
-                  }}
-                >
-                  <ActivityIndicator size="small" color={C.terracotta} />
-                  <Text
-                    style={{ fontSize: 12, fontWeight: "600", color: C.mutedBrown }}
-                  >
-                    {tc("uploadingPhoto")}
-                  </Text>
-                </View>
-              )}
-
-              {/* Thumbnails of photos added to THIS area, each with a remove control */}
-              {currentAreaData.photos?.length > 0 && (
-                <View
-                  style={{
-                    flexDirection: "row",
-                    flexWrap: "wrap",
-                    gap: 10,
-                    marginTop: 12,
-                  }}
-                >
-                  {currentAreaData.photos.map((uri) => (
-                    <View key={uri} style={{ position: "relative" }}>
-                      <PrivateImage
-                        value={uri}
-                        style={{
-                          width: 72,
-                          height: 72,
-                          borderRadius: 12,
-                          borderWidth: 1.5,
-                          borderColor: C.peach,
-                        }}
-                        resizeMode="cover"
-                      />
-                      <TouchableOpacity
-                        onPress={() => removePhotoFromCurrentArea(uri)}
-                        accessibilityRole="button"
-                        accessibilityLabel={tc("removePhoto")}
-                        hitSlop={8}
-                        style={{
-                          position: "absolute",
-                          top: -8,
-                          right: -8,
-                          width: 24,
-                          height: 24,
-                          borderRadius: 12,
-                          backgroundColor: C.warmBrown,
-                          justifyContent: "center",
-                          alignItems: "center",
-                        }}
-                      >
-                        <X size={14} color="#FFF" />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {/* AI Placeholder */}
-              <View
-                style={{
-                  backgroundColor: "#F3E5F5",
-                  borderRadius: 12,
-                  padding: 14,
-                  borderWidth: 1.5,
-                  borderColor: "#E1BEE7",
-                  marginTop: 10,
-                  opacity: 0.6,
-                }}
-              >
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 10,
-                    marginBottom: 6,
-                  }}
-                >
-                  <Sparkles size={16} color="#9C27B0" />
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: "700",
-                      color: "#6A1B9A",
-                      flex: 1,
-                    }}
-                  >
-                    {tc("askAi")}
-                  </Text>
-                  <Lock size={14} color="#9C27B0" />
-                </View>
-                <Text
-                  style={{
-                    fontSize: 11,
-                    color: "#6A1B9A",
-                    lineHeight: 15,
-                  }}
-                >
-                  {tc("askAiSoon")}
-                </Text>
-              </View>
-            </View>
-
-            {/* Notes */}
-            <View style={{ marginBottom: 20 }}>
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "700",
-                  color: C.warmBrown,
-                  marginBottom: 12,
-                }}
-              >
-                {tc("notes")}
-              </Text>
-              <TextInput
-                value={currentAreaData.notes}
-                onChangeText={handleNotesChange}
-                placeholder={tc("notesPlaceholder")}
-                placeholderTextColor={C.mutedBrown + "80"}
-                multiline
-                numberOfLines={3}
-                style={{
-                  backgroundColor: C.card,
-                  borderRadius: 12,
-                  padding: 14,
-                  fontSize: 15,
-                  color: C.warmBrown,
-                  borderWidth: 1,
-                  borderColor: C.peach,
-                  minHeight: 80,
-                  textAlignVertical: "top",
-                }}
-              />
-            </View>
-
-            {/* Safety Warning */}
-            <View
-              style={{
-                backgroundColor: "#FFF4E6",
-                borderRadius: 12,
-                padding: 14,
-                borderWidth: 1,
-                borderColor: "#FFE4C4",
-                flexDirection: "row",
-                alignItems: "flex-start",
-                gap: 10,
-              }}
-            >
-              <Info size={16} color="#FFB74D" style={{ marginTop: 2 }} />
-              <Text
-                style={{
-                  fontSize: 11,
-                  color: C.mutedBrown,
-                  lineHeight: 16,
-                  flex: 1,
-                }}
-              >
-                {tc("safetyWarning")}
-              </Text>
-            </View>
-          </KeyboardAwareScrollView>
-
+        </>
+      )}
+      footer={(
+        <>
           {/* Navigation Buttons */}
           <View
             style={{
@@ -1503,8 +990,482 @@ export default function GeneralCheckModal({
               {!isLastArea && <ChevronRight size={20} color="#FFF" />}
             </TouchableOpacity>
           </View>
+        </>
+      )}
+    >
+      {/* Current Area */}
+      <View
+        style={{
+          backgroundColor: C.card,
+          borderRadius: 18,
+          padding: 20,
+          borderWidth: 1.5,
+          borderColor: C.peach,
+          marginBottom: 16,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            marginBottom: 10,
+          }}
+        >
+          <Text style={{ fontSize: 32 }}>{currentArea.emoji}</Text>
+          <View style={{ flex: 1 }}>
+            <Text
+              style={{
+                fontSize: 20,
+                fontWeight: "800",
+                color: C.warmBrown,
+                marginBottom: 2,
+              }}
+            >
+              {areaLabel(currentArea)}
+            </Text>
+            <Text style={{ fontSize: 13, color: C.mutedBrown }}>
+              {areaDesc(currentArea)}
+            </Text>
+          </View>
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+      </View>
+
+      {/* Status Selection — optional per area. Every area can be left "not
+          checked"; a subtle hint says so, and "Next" advances regardless. */}
+      <View style={{ marginBottom: 20 }}>
+        <Text
+          style={{
+            fontSize: 15,
+            fontWeight: "800",
+            color: C.warmBrown,
+            marginBottom: currentAreaData.status === null ? 4 : 12,
+          }}
+        >
+          {tc("howDoesThisLook")}
+        </Text>
+        {currentAreaData.status === null && (
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: "600",
+              color: C.mutedBrown,
+              marginBottom: 12,
+            }}
+          >
+            {tc("optionalHint")}
+          </Text>
+        )}
+        <View style={{ gap: 10 }}>
+          <Pressable
+            onPress={() => handleAreaStatus("usual")}
+            accessibilityRole="radio"
+            accessibilityLabel={tc("looksUsual")}
+            accessibilityState={{
+              selected: currentAreaData.status === "usual",
+            }}
+            hitSlop={8}
+            style={{
+              backgroundColor:
+                currentAreaData.status === "usual" ? C.sage : C.card,
+              borderRadius: 14,
+              padding: 16,
+              borderWidth: 1.5,
+              borderColor:
+                currentAreaData.status === "usual" ? C.sage : C.peach,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 12,
+            }}
+          >
+            <View
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 12,
+                backgroundColor:
+                  currentAreaData.status === "usual" ? "#FFF" : C.sand,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              {currentAreaData.status === "usual" && (
+                <CheckCircle size={16} color={C.sage} />
+              )}
+            </View>
+            <Text
+              style={{
+                fontSize: 15,
+                fontWeight: "700",
+                color:
+                  currentAreaData.status === "usual"
+                    ? "#FFF"
+                    : C.warmBrown,
+                flex: 1,
+              }}
+            >
+              {tc("looksUsual")}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => handleAreaStatus("changed")}
+            accessibilityRole="radio"
+            accessibilityLabel={tc("somethingChanged")}
+            accessibilityState={{
+              selected: currentAreaData.status === "changed",
+            }}
+            hitSlop={8}
+            style={{
+              backgroundColor:
+                currentAreaData.status === "changed" ? "#FFB74D" : C.card,
+              borderRadius: 14,
+              padding: 16,
+              borderWidth: 1.5,
+              borderColor:
+                currentAreaData.status === "changed"
+                  ? "#FFB74D"
+                  : C.peach,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 12,
+            }}
+          >
+            <View
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 12,
+                backgroundColor:
+                  currentAreaData.status === "changed" ? "#FFF" : C.sand,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              {currentAreaData.status === "changed" && (
+                <CheckCircle size={16} color="#FFB74D" />
+              )}
+            </View>
+            <Text
+              style={{
+                fontSize: 15,
+                fontWeight: "700",
+                color:
+                  currentAreaData.status === "changed"
+                    ? "#FFF"
+                    : C.warmBrown,
+                flex: 1,
+              }}
+            >
+              {tc("somethingChanged")}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+
+      {/* Change Options (if "Something changed" is selected) */}
+      {currentAreaData.status === "changed" && (
+        <View style={{ marginBottom: 20 }}>
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: "700",
+              color: C.warmBrown,
+              marginBottom: 12,
+            }}
+          >
+            {tc("whatChanged")}
+          </Text>
+          <View style={{ gap: 8 }}>
+            {CHANGE_OPTIONS.map((option) => {
+              const isSelected = currentAreaData.changes?.includes(
+                option.key,
+              );
+              return (
+                <Pressable
+                  key={option.key}
+                  onPress={() => toggleChange(option.key)}
+                  accessibilityRole="checkbox"
+                  accessibilityLabel={changeLabel(option)}
+                  accessibilityState={{ checked: !!isSelected }}
+                  hitSlop={6}
+                  style={{
+                    backgroundColor: isSelected ? C.coral + "20" : C.card,
+                    borderRadius: 12,
+                    padding: 14,
+                    borderWidth: 1.5,
+                    borderColor: isSelected ? C.coral : C.peach,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 10,
+                  }}
+                >
+                  <Text style={{ fontSize: 18 }}>{option.emoji}</Text>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      fontWeight: isSelected ? "700" : "600",
+                      color: isSelected ? C.coral : C.warmBrown,
+                      flex: 1,
+                    }}
+                  >
+                    {changeLabel(option)}
+                  </Text>
+                  {isSelected && (
+                    <CheckCircle size={18} color={C.coral} />
+                  )}
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
+      {/* Photo Actions */}
+      <View style={{ marginBottom: 20 }}>
+        <Text
+          style={{
+            fontSize: 14,
+            fontWeight: "700",
+            color: C.warmBrown,
+            marginBottom: 12,
+          }}
+        >
+          {tc("addPhoto")}
+        </Text>
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          <TouchableOpacity
+            onPress={() => capturePhoto("camera")}
+            disabled={uploading}
+            accessibilityRole="button"
+            accessibilityLabel={tc("takePhoto")}
+            style={{
+              flex: 1,
+              backgroundColor: C.card,
+              borderRadius: 12,
+              padding: 14,
+              borderWidth: 1.5,
+              borderColor: C.peach,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              opacity: uploading ? 0.6 : 1,
+            }}
+          >
+            <Camera size={18} color={C.terracotta} />
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: "700",
+                color: C.warmBrown,
+              }}
+            >
+              {tc("takePhoto")}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => capturePhoto("library")}
+            disabled={uploading}
+            accessibilityRole="button"
+            accessibilityLabel={tc("choosePhoto")}
+            style={{
+              flex: 1,
+              backgroundColor: C.card,
+              borderRadius: 12,
+              padding: 14,
+              borderWidth: 1.5,
+              borderColor: C.peach,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              opacity: uploading ? 0.6 : 1,
+            }}
+          >
+            <ImageIcon size={18} color={C.terracotta} />
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: "700",
+                color: C.warmBrown,
+              }}
+            >
+              {tc("choosePhoto")}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Uploading indicator */}
+        {uploading && (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              marginTop: 10,
+            }}
+          >
+            <ActivityIndicator size="small" color={C.terracotta} />
+            <Text
+              style={{ fontSize: 12, fontWeight: "600", color: C.mutedBrown }}
+            >
+              {tc("uploadingPhoto")}
+            </Text>
+          </View>
+        )}
+
+        {/* Thumbnails of photos added to THIS area, each with a remove control */}
+        {currentAreaData.photos?.length > 0 && (
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: 10,
+              marginTop: 12,
+            }}
+          >
+            {currentAreaData.photos.map((uri) => (
+              <View key={uri} style={{ position: "relative" }}>
+                <PrivateImage
+                  value={uri}
+                  style={{
+                    width: 72,
+                    height: 72,
+                    borderRadius: 12,
+                    borderWidth: 1.5,
+                    borderColor: C.peach,
+                  }}
+                  resizeMode="cover"
+                />
+                <TouchableOpacity
+                  onPress={() => removePhotoFromCurrentArea(uri)}
+                  accessibilityRole="button"
+                  accessibilityLabel={tc("removePhoto")}
+                  hitSlop={8}
+                  style={{
+                    position: "absolute",
+                    top: -8,
+                    right: -8,
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
+                    backgroundColor: C.warmBrown,
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <X size={14} color="#FFF" />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* AI Placeholder */}
+        <View
+          style={{
+            backgroundColor: "#F3E5F5",
+            borderRadius: 12,
+            padding: 14,
+            borderWidth: 1.5,
+            borderColor: "#E1BEE7",
+            marginTop: 10,
+            opacity: 0.6,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
+              marginBottom: 6,
+            }}
+          >
+            <Sparkles size={16} color="#9C27B0" />
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: "700",
+                color: "#6A1B9A",
+                flex: 1,
+              }}
+            >
+              {tc("askAi")}
+            </Text>
+            <Lock size={14} color="#9C27B0" />
+          </View>
+          <Text
+            style={{
+              fontSize: 11,
+              color: "#6A1B9A",
+              lineHeight: 15,
+            }}
+          >
+            {tc("askAiSoon")}
+          </Text>
+        </View>
+      </View>
+
+      {/* Notes */}
+      <View style={{ marginBottom: 20 }}>
+        <Text
+          style={{
+            fontSize: 14,
+            fontWeight: "700",
+            color: C.warmBrown,
+            marginBottom: 12,
+          }}
+        >
+          {tc("notes")}
+        </Text>
+        <TextInput
+          value={currentAreaData.notes}
+          onChangeText={handleNotesChange}
+          placeholder={tc("notesPlaceholder")}
+          placeholderTextColor={C.mutedBrown + "80"}
+          multiline
+          numberOfLines={3}
+          style={{
+            backgroundColor: C.card,
+            borderRadius: 12,
+            padding: 14,
+            fontSize: 15,
+            color: C.warmBrown,
+            borderWidth: 1,
+            borderColor: C.peach,
+            minHeight: 80,
+            textAlignVertical: "top",
+          }}
+        />
+      </View>
+
+      {/* Safety Warning */}
+      <View
+        style={{
+          backgroundColor: "#FFF4E6",
+          borderRadius: 12,
+          padding: 14,
+          borderWidth: 1,
+          borderColor: "#FFE4C4",
+          flexDirection: "row",
+          alignItems: "flex-start",
+          gap: 10,
+        }}
+      >
+        <Info size={16} color="#FFB74D" style={{ marginTop: 2 }} />
+        <Text
+          style={{
+            fontSize: 11,
+            color: C.mutedBrown,
+            lineHeight: 16,
+            flex: 1,
+          }}
+        >
+          {tc("safetyWarning")}
+        </Text>
+      </View>
+    </KeyboardSafeSheet>
   );
 }

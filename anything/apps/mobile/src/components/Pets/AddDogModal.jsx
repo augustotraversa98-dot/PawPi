@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  Modal,
   Platform,
   ActivityIndicator,
   Alert,
@@ -18,10 +17,9 @@ import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import { useCreatePet, useCurrentPet } from "@/hooks/usePetProfile";
 import useUpload from "@/utils/useUpload";
-import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 import DateField from "@/components/DateField";
 import BreedPicker from "@/components/BreedPicker";
-import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import KeyboardSafeSheet from "@/components/KeyboardSafeSheet";
 import { defaultWeightUnit } from "@/utils/weightUnit";
 import { trackFeature } from "@/telemetry/track";
 import { useFormTelemetry } from "@/telemetry/useFormTelemetry";
@@ -160,270 +158,262 @@ export function AddDogModal({ visible, onClose }) {
   const canSave = !!form.name.trim() && !busy;
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={close}>
-      <KeyboardAvoidingAnimatedView
-        style={{ flex: 1, backgroundColor: COLORS.cream }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        {/* Header */}
-        <View
-          style={{
-            paddingTop: insets.top + 8,
-            paddingHorizontal: 20,
-            paddingBottom: 14,
-            backgroundColor: COLORS.card,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            borderBottomWidth: 1,
-            borderBottomColor: COLORS.peach,
-          }}
-        >
-          <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={close}>
-            <X size={22} color={COLORS.warmBrown} />
-          </TouchableOpacity>
-          <Text
-            style={{ fontSize: 18, fontWeight: "800", color: COLORS.warmBrown }}
+    <KeyboardSafeSheet
+      visible={visible}
+      onRequestClose={close}
+      variant="screen"
+      backgroundColor={COLORS.cream}
+      contentContainerStyle={{ padding: 20, paddingBottom: 24 }}
+      header={(
+        <>
+          {/* Header */}
+          <View
+            style={{
+              paddingTop: insets.top + 8,
+              paddingHorizontal: 20,
+              paddingBottom: 14,
+              backgroundColor: COLORS.card,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              borderBottomWidth: 1,
+              borderBottomColor: COLORS.peach,
+            }}
           >
-            {t("addDog.title")}
-          </Text>
-          <View style={{ width: 22 }} />
-        </View>
-
-        <KeyboardAwareScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{
-            paddingHorizontal: 20,
-            paddingTop: 20,
-            paddingBottom: insets.bottom + 120,
-          }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Photo */}
-          <View style={{ alignItems: "center", marginBottom: 28 }}>
-            {form.photo ? (
-              <Image
-                source={{ uri: form.photo }}
-                style={{ width: 120, height: 120, borderRadius: 60 }}
-                contentFit="cover"
-              />
-            ) : (
-              <View
-                style={{
-                  width: 120,
-                  height: 120,
-                  borderRadius: 60,
-                  backgroundColor: COLORS.sand,
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                <Text style={{ fontSize: 60 }}>🐕</Text>
-              </View>
-            )}
+            <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={close}>
+              <X size={22} color={COLORS.warmBrown} />
+            </TouchableOpacity>
+            <Text
+              style={{ fontSize: 18, fontWeight: "800", color: COLORS.warmBrown }}
+            >
+              {t("addDog.title")}
+            </Text>
+            <View style={{ width: 22 }} />
+          </View>
+        </>
+      )}
+      footer={(
+        <>
+          {/* Save */}
+          <View
+            style={{
+              backgroundColor: COLORS.cream,
+              paddingHorizontal: 20,
+              paddingTop: 16,
+              paddingBottom: 0,
+              borderTopWidth: 1,
+              borderTopColor: COLORS.sand,
+            }}
+          >
             <TouchableOpacity
-              onPress={handlePickPhoto}
+              onPress={handleSave}
+              disabled={!canSave}
               style={{
-                marginTop: 12,
-                paddingVertical: 10,
-                paddingHorizontal: 20,
-                backgroundColor: COLORS.sand,
-                borderRadius: 12,
+                backgroundColor: canSave ? COLORS.coral : COLORS.sand,
+                borderRadius: 18,
+                height: 56,
                 flexDirection: "row",
+                justifyContent: "center",
                 alignItems: "center",
                 gap: 8,
               }}
             >
-              <Camera size={16} color={COLORS.coral} />
-              <Text
-                style={{ fontSize: 14, fontWeight: "700", color: COLORS.coral }}
-              >
-                {form.photo ? t("addDog.changePhoto") : t("addDog.addPhoto")}
-              </Text>
+              {busy ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <>
+                  <Text
+                    style={{ color: "#FFF", fontSize: 17, fontWeight: "800" }}
+                  >
+                    {t("common.save")}
+                  </Text>
+                  <Check size={20} color="#FFF" />
+                </>
+              )}
             </TouchableOpacity>
           </View>
-
-          {/* Name */}
-          <Field
-            label={t("addDog.fieldName")}
-            required
-            value={form.name}
-            onChangeText={(v) => setField("name", v)}
-            placeholder={t("addDog.namePlaceholder")}
+        </>
+      )}
+    >
+      {/* Photo */}
+      <View style={{ alignItems: "center", marginBottom: 28 }}>
+        {form.photo ? (
+          <Image
+            source={{ uri: form.photo }}
+            style={{ width: 120, height: 120, borderRadius: 60 }}
+            contentFit="cover"
           />
-
-          {/* Breed — searchable picker (canonical list + Mixed breed + custom) */}
-          <View style={{ marginBottom: 20 }}>
-            <Label>{t("addDog.fieldBreed")}</Label>
-            <BreedPicker
-              value={form.breed}
-              onChange={(value) => setField("breed", value)}
-            />
-          </View>
-
-          {/* Gender */}
-          <Label>{t("addDog.fieldGender")}</Label>
-          <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
-            {[
-              { key: "male", label: t("addDog.genderMale") },
-              { key: "female", label: t("addDog.genderFemale") },
-              { key: "unknown", label: t("addDog.genderUnknown") },
-            ].map(({ key: option, label }) => {
-              const selected = form.gender === option;
-              return (
-                <TouchableOpacity
-                  key={option}
-                  onPress={() => setField("gender", option)}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 12,
-                    borderRadius: 12,
-                    backgroundColor: selected ? COLORS.coral : COLORS.sand,
-                    borderWidth: 1,
-                    borderColor: selected ? COLORS.coral : COLORS.peach,
-                    alignItems: "center",
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      fontWeight: "700",
-                      color: selected ? "#FFF" : COLORS.warmBrown,
-                    }}
-                  >
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          {/* Weight */}
-          <Label>{t("addDog.fieldWeight")}</Label>
+        ) : (
           <View
             style={{
-              flexDirection: "row",
-              gap: 12,
-              marginBottom: 20,
-              alignItems: "flex-end",
-            }}
-          >
-            <View style={{ flex: 1 }}>
-              <TextInput
-                style={inputStyle}
-                placeholder="0"
-                placeholderTextColor={COLORS.mutedBrown}
-                value={form.weight}
-                onChangeText={(v) =>
-                  setField("weight", v.replace(/[^0-9.]/g, ""))
-                }
-                keyboardType="decimal-pad"
-              />
-            </View>
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              {["kg", "lbs"].map((unit) => {
-                const selected = form.weightUnit === unit;
-                return (
-                  <TouchableOpacity
-                    key={unit}
-                    onPress={() => setField("weightUnit", unit)}
-                    style={{
-                      paddingVertical: 14,
-                      paddingHorizontal: 20,
-                      borderRadius: 12,
-                      backgroundColor: selected ? COLORS.coral : COLORS.sand,
-                      borderWidth: 1,
-                      borderColor: selected ? COLORS.coral : COLORS.peach,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        fontWeight: "700",
-                        color: selected ? "#FFF" : COLORS.warmBrown,
-                      }}
-                    >
-                      {unit}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Birthday */}
-          <View style={{ marginBottom: 20 }}>
-            <Label>{t("addDog.fieldBirthday")}</Label>
-            <DateField
-              value={form.birthday}
-              onChange={(date) => setField("birthday", date)}
-              maximumDate={new Date()}
-              fieldStyle={{
-                backgroundColor: "#FFF",
-                padding: 14,
-                borderColor: COLORS.sand,
-              }}
-              textStyle={{ fontSize: 16, fontWeight: "600" }}
-            />
-          </View>
-
-          {/* Notes */}
-          <Label>{t("addDog.fieldNotes")}</Label>
-          <TextInput
-            style={[inputStyle, { minHeight: 110, textAlignVertical: "top" }]}
-            placeholder={t("addDog.notesPlaceholder")}
-            placeholderTextColor={COLORS.mutedBrown}
-            value={form.notes}
-            onChangeText={(v) => setField("notes", v)}
-            multiline
-          />
-        </KeyboardAwareScrollView>
-
-        {/* Save */}
-        <View
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            backgroundColor: COLORS.cream,
-            paddingHorizontal: 20,
-            paddingTop: 16,
-            paddingBottom: insets.bottom + 16,
-            borderTopWidth: 1,
-            borderTopColor: COLORS.sand,
-          }}
-        >
-          <TouchableOpacity
-            onPress={handleSave}
-            disabled={!canSave}
-            style={{
-              backgroundColor: canSave ? COLORS.coral : COLORS.sand,
-              borderRadius: 18,
-              height: 56,
-              flexDirection: "row",
+              width: 120,
+              height: 120,
+              borderRadius: 60,
+              backgroundColor: COLORS.sand,
               justifyContent: "center",
               alignItems: "center",
-              gap: 8,
             }}
           >
-            {busy ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <>
-                <Text
-                  style={{ color: "#FFF", fontSize: 17, fontWeight: "800" }}
-                >
-                  {t("common.save")}
-                </Text>
-                <Check size={20} color="#FFF" />
-              </>
-            )}
-          </TouchableOpacity>
+            <Text style={{ fontSize: 60 }}>🐕</Text>
+          </View>
+        )}
+        <TouchableOpacity
+          onPress={handlePickPhoto}
+          style={{
+            marginTop: 12,
+            paddingVertical: 10,
+            paddingHorizontal: 20,
+            backgroundColor: COLORS.sand,
+            borderRadius: 12,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <Camera size={16} color={COLORS.coral} />
+          <Text
+            style={{ fontSize: 14, fontWeight: "700", color: COLORS.coral }}
+          >
+            {form.photo ? t("addDog.changePhoto") : t("addDog.addPhoto")}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Name */}
+      <Field
+        label={t("addDog.fieldName")}
+        required
+        value={form.name}
+        onChangeText={(v) => setField("name", v)}
+        placeholder={t("addDog.namePlaceholder")}
+      />
+
+      {/* Breed — searchable picker (canonical list + Mixed breed + custom) */}
+      <View style={{ marginBottom: 20 }}>
+        <Label>{t("addDog.fieldBreed")}</Label>
+        <BreedPicker
+          value={form.breed}
+          onChange={(value) => setField("breed", value)}
+        />
+      </View>
+
+      {/* Gender */}
+      <Label>{t("addDog.fieldGender")}</Label>
+      <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
+        {[
+          { key: "male", label: t("addDog.genderMale") },
+          { key: "female", label: t("addDog.genderFemale") },
+          { key: "unknown", label: t("addDog.genderUnknown") },
+        ].map(({ key: option, label }) => {
+          const selected = form.gender === option;
+          return (
+            <TouchableOpacity
+              key={option}
+              onPress={() => setField("gender", option)}
+              style={{
+                flex: 1,
+                paddingVertical: 12,
+                borderRadius: 12,
+                backgroundColor: selected ? COLORS.coral : COLORS.sand,
+                borderWidth: 1,
+                borderColor: selected ? COLORS.coral : COLORS.peach,
+                alignItems: "center",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: "700",
+                  color: selected ? "#FFF" : COLORS.warmBrown,
+                }}
+              >
+                {label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Weight */}
+      <Label>{t("addDog.fieldWeight")}</Label>
+      <View
+        style={{
+          flexDirection: "row",
+          gap: 12,
+          marginBottom: 20,
+          alignItems: "flex-end",
+        }}
+      >
+        <View style={{ flex: 1 }}>
+          <TextInput
+            style={inputStyle}
+            placeholder="0"
+            placeholderTextColor={COLORS.mutedBrown}
+            value={form.weight}
+            onChangeText={(v) =>
+              setField("weight", v.replace(/[^0-9.]/g, ""))
+            }
+            keyboardType="decimal-pad"
+          />
         </View>
-      </KeyboardAvoidingAnimatedView>
-    </Modal>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          {["kg", "lbs"].map((unit) => {
+            const selected = form.weightUnit === unit;
+            return (
+              <TouchableOpacity
+                key={unit}
+                onPress={() => setField("weightUnit", unit)}
+                style={{
+                  paddingVertical: 14,
+                  paddingHorizontal: 20,
+                  borderRadius: 12,
+                  backgroundColor: selected ? COLORS.coral : COLORS.sand,
+                  borderWidth: 1,
+                  borderColor: selected ? COLORS.coral : COLORS.peach,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: "700",
+                    color: selected ? "#FFF" : COLORS.warmBrown,
+                  }}
+                >
+                  {unit}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* Birthday */}
+      <View style={{ marginBottom: 20 }}>
+        <Label>{t("addDog.fieldBirthday")}</Label>
+        <DateField
+          value={form.birthday}
+          onChange={(date) => setField("birthday", date)}
+          maximumDate={new Date()}
+          fieldStyle={{
+            backgroundColor: "#FFF",
+            padding: 14,
+            borderColor: COLORS.sand,
+          }}
+          textStyle={{ fontSize: 16, fontWeight: "600" }}
+        />
+      </View>
+
+      {/* Notes */}
+      <Label>{t("addDog.fieldNotes")}</Label>
+      <TextInput
+        style={[inputStyle, { minHeight: 110, textAlignVertical: "top" }]}
+        placeholder={t("addDog.notesPlaceholder")}
+        placeholderTextColor={COLORS.mutedBrown}
+        value={form.notes}
+        onChangeText={(v) => setField("notes", v)}
+        multiline
+      />
+    </KeyboardSafeSheet>
   );
 }
 

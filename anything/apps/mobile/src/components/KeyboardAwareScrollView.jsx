@@ -7,6 +7,7 @@ import React, {
   useState,
 } from "react";
 import { Keyboard, Platform, ScrollView, StyleSheet, TextInput } from "react-native";
+import { computeVisibleBottom } from "@/utils/keyboardLayout";
 
 // Gap kept between the bottom of the focused input and the top of the keyboard.
 export const KEYBOARD_INPUT_MARGIN = 16;
@@ -27,15 +28,18 @@ export function computeKeyboardPadding(scrollViewBottomY, keyboardTopY) {
 
 /**
  * How far the scroll offset must increase for the focused input to clear the
- * keyboard. Both arguments are window coordinates. 0 means already visible
- * (and 0 for any non-finite input, so a NaN never reaches scrollTo).
+ * bottom of the VISIBLE scroll area. Both arguments are window coordinates.
+ * `visibleBottomY` is the keyboard top, or the scroll view's own bottom edge when
+ * that is higher (a pinned footer sits between the scroll view and the keyboard —
+ * see computeVisibleBottom). 0 means already visible (and 0 for any non-finite
+ * input, so a NaN never reaches scrollTo).
  */
 export function computeScrollDelta(
   inputBottomY,
-  keyboardTopY,
+  visibleBottomY,
   margin = KEYBOARD_INPUT_MARGIN,
 ) {
-  const delta = Math.round(inputBottomY + margin - keyboardTopY);
+  const delta = Math.round(inputBottomY + margin - visibleBottomY);
   return Number.isFinite(delta) ? Math.max(0, delta) : 0;
 }
 
@@ -98,7 +102,13 @@ const KeyboardAwareScrollView = forwardRef(function KeyboardAwareScrollView(
             }
             input.measureInWindow((ix, iy, iw, ih) => {
               try {
-                const delta = computeScrollDelta(iy + ih, keyboardTopY);
+                // Measure against what is actually visible: a pinned footer between
+                // the scroll view and the keyboard hides an input that is "above the
+                // keyboard" but below the scroll view's own bottom edge.
+                const delta = computeScrollDelta(
+                  iy + ih,
+                  computeVisibleBottom(sy + sh, keyboardTopY),
+                );
                 if (delta > 0 && typeof scrollView.scrollTo === "function") {
                   scrollView.scrollTo({
                     y: scrollOffsetYRef.current + delta,
@@ -153,6 +163,7 @@ const KeyboardAwareScrollView = forwardRef(function KeyboardAwareScrollView(
   return (
     <ScrollView
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode={Platform.OS === "ios" ? "on-drag" : "none"}
       {...props}
       ref={scrollRef}
       onScroll={handleScroll}

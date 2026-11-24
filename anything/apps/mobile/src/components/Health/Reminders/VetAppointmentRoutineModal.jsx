@@ -5,7 +5,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Modal,
   TextInput,
   Switch,
   Alert,
@@ -14,7 +13,6 @@ import {
 import { X, Plus, ChevronDown, ChevronUp, Calendar } from "lucide-react-native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 import DateField from "@/components/DateField";
 import TimeField from "@/components/TimeField";
 import { useCurrentPet } from "@/hooks/usePetProfile";
@@ -24,7 +22,7 @@ import {
   updateVetAppointmentInCalendar,
   deleteVetAppointmentFromCalendar,
 } from "@/utils/calendarIntegration";
-import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import KeyboardSafeSheet from "@/components/KeyboardSafeSheet";
 import { friendlyErrorMessage } from "@/utils/appAlert";
 
 const C = {
@@ -428,877 +426,874 @@ export default function VetAppointmentRoutineModal({
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingAnimatedView
-        style={{ flex: 1, backgroundColor: C.cream }}
-        behavior="padding"
-      >
-        {/* Header */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: 20,
-            paddingTop: 60,
-            borderBottomWidth: 1,
-            borderBottomColor: C.peach,
-          }}
-        >
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                fontSize: 20,
-                fontWeight: "800",
-                color: C.warmBrown,
-                marginBottom: 4,
-              }}
-            >
-              {t("routinesUi.vetAppointment.vetAppointments")}
-            </Text>
-            <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-              {t("routinesUi.vetAppointment.manageUpcomingVetVisits")}
-            </Text>
-          </View>
-          <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            onPress={onClose}
+    <KeyboardSafeSheet
+      visible={visible}
+      onRequestClose={onClose}
+      variant="screen"
+      backgroundColor={C.cream}
+      contentContainerStyle={{ padding: 20, paddingBottom: 24 }}
+      header={(
+        <>
+          {/* Header */}
+          <View
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: C.sand,
-              justifyContent: "center",
+              flexDirection: "row",
               alignItems: "center",
+              justifyContent: "space-between",
+              padding: 20,
+              paddingTop: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: C.peach,
             }}
           >
-            <X size={20} color={C.warmBrown} />
-          </TouchableOpacity>
-        </View>
-
-        <KeyboardAwareScrollView
-          contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {isLoading ? (
-            <View style={{ padding: 40, alignItems: "center" }}>
-              <ActivityIndicator size="large" color={C.sage} />
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: "800",
+                  color: C.warmBrown,
+                  marginBottom: 4,
+                }}
+              >
+                {t("routinesUi.vetAppointment.vetAppointments")}
+              </Text>
+              <Text style={{ fontSize: 14, color: C.mutedBrown }}>
+                {t("routinesUi.vetAppointment.manageUpcomingVetVisits")}
+              </Text>
             </View>
-          ) : (
-            <>
-              {/* Editing/Creating Form */}
-              {isEditing && (
+            <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              onPress={onClose}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: C.sand,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <X size={20} color={C.warmBrown} />
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+      footer={(
+        <>
+          <View
+            style={{
+              padding: 20,
+              paddingBottom: 0,
+              borderTopWidth: 1,
+              borderTopColor: C.peach,
+              backgroundColor: C.cream,
+            }}
+          >
+            <TouchableOpacity
+              onPress={onClose}
+              style={{
+                backgroundColor: C.warmBrown,
+                borderRadius: 14,
+                paddingVertical: 16,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}>
+                {t("routinesUi.vetAppointment.close")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+    >
+      {isLoading ? (
+        <View style={{ padding: 40, alignItems: "center" }}>
+          <ActivityIndicator size="large" color={C.sage} />
+        </View>
+      ) : (
+        <>
+          {/* Editing/Creating Form */}
+          {isEditing && (
+            <View
+              style={{
+                backgroundColor: C.card,
+                borderRadius: 16,
+                padding: 16,
+                borderWidth: 2,
+                borderColor: C.sage,
+                marginBottom: 20,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 16,
+                  fontWeight: "800",
+                  color: C.warmBrown,
+                  marginBottom: 16,
+                }}
+              >
+                {typeof editingAppointmentId === "number"
+                  ? t("routinesUi.vetAppointment.editAppointment")
+                  : t("routinesUi.vetAppointment.newAppointment")}
+              </Text>
+
+              {/* Title */}
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: "600",
+                  color: C.mutedBrown,
+                  marginBottom: 6,
+                }}
+              >
+                {t("routinesUi.vetAppointment.appointmentTitle")}
+              </Text>
+              <TextInput
+                value={formData.title}
+                onChangeText={(text) =>
+                  setFormData((prev) => ({ ...prev, title: text }))
+                }
+                placeholder={t("routinesUi.vetAppointment.exampleAnnualCheckup")}
+                placeholderTextColor={C.mutedBrown}
+                style={{
+                  backgroundColor: C.sand,
+                  borderRadius: 12,
+                  padding: 12,
+                  fontSize: 15,
+                  color: C.warmBrown,
+                  marginBottom: 12,
+                }}
+              />
+
+              {/* Date and Time — stacked so the inline pickers have full width */}
+              <View style={{ gap: 12, marginBottom: 12 }}>
+                <View>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "600",
+                      color: C.mutedBrown,
+                      marginBottom: 6,
+                    }}
+                  >
+                    {t("routinesUi.vetAppointment.date")}
+                  </Text>
+                  <DateField
+                    value={formData.appointmentDate}
+                    onChange={(date) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        appointmentDate: date,
+                      }))
+                    }
+                    fieldStyle={{
+                      backgroundColor: C.sand,
+                      borderWidth: 0,
+                    }}
+                  />
+                </View>
+                <View>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "600",
+                      color: C.mutedBrown,
+                      marginBottom: 6,
+                    }}
+                  >
+                    {t("routinesUi.vetAppointment.time")}
+                  </Text>
+                  <TimeField
+                    value={formData.appointmentTime}
+                    onChange={(time) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        appointmentTime: time,
+                      }))
+                    }
+                    fieldStyle={{
+                      backgroundColor: C.sand,
+                      borderWidth: 0,
+                    }}
+                  />
+                </View>
+              </View>
+
+              {/* Clinic */}
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: "600",
+                  color: C.mutedBrown,
+                  marginBottom: 6,
+                }}
+              >
+                {t("routinesUi.vetAppointment.clinicOptional")}
+              </Text>
+              <TextInput
+                value={formData.clinic}
+                onChangeText={(text) =>
+                  setFormData((prev) => ({ ...prev, clinic: text }))
+                }
+                placeholder={t("health.reminders.vetAppt.clinicPlaceholder")}
+                placeholderTextColor={C.mutedBrown}
+                style={{
+                  backgroundColor: C.sand,
+                  borderRadius: 12,
+                  padding: 12,
+                  fontSize: 15,
+                  color: C.warmBrown,
+                  marginBottom: 12,
+                }}
+              />
+
+              {/* Veterinarian */}
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: "600",
+                  color: C.mutedBrown,
+                  marginBottom: 6,
+                }}
+              >
+                {t("routinesUi.vetAppointment.veterinarianOptional")}
+              </Text>
+              <TextInput
+                value={formData.veterinarian}
+                onChangeText={(text) =>
+                  setFormData((prev) => ({ ...prev, veterinarian: text }))
+                }
+                placeholder={t("health.reminders.vetAppt.vetPlaceholder")}
+                placeholderTextColor={C.mutedBrown}
+                style={{
+                  backgroundColor: C.sand,
+                  borderRadius: 12,
+                  padding: 12,
+                  fontSize: 15,
+                  color: C.warmBrown,
+                  marginBottom: 12,
+                }}
+              />
+
+              {/* Reason for Visit */}
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: "600",
+                  color: C.mutedBrown,
+                  marginBottom: 6,
+                }}
+              >
+                {t("routinesUi.vetAppointment.reasonForVisitOptional")}
+              </Text>
+              <TextInput
+                value={formData.reasonForVisit}
+                onChangeText={(text) =>
+                  setFormData((prev) => ({ ...prev, reasonForVisit: text }))
+                }
+                placeholder={t("routinesUi.vetAppointment.exampleAnnualCheckup2")}
+                placeholderTextColor={C.mutedBrown}
+                multiline
+                numberOfLines={2}
+                style={{
+                  backgroundColor: C.sand,
+                  borderRadius: 12,
+                  padding: 12,
+                  fontSize: 14,
+                  color: C.warmBrown,
+                  textAlignVertical: "top",
+                  minHeight: 60,
+                  marginBottom: 12,
+                }}
+              />
+
+              {/* Notes */}
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: "600",
+                  color: C.mutedBrown,
+                  marginBottom: 6,
+                }}
+              >
+                {t("routinesUi.vetAppointment.notesOptional")}
+              </Text>
+              <TextInput
+                value={formData.notes}
+                onChangeText={(text) =>
+                  setFormData((prev) => ({ ...prev, notes: text }))
+                }
+                placeholder={t("health.reminders.vetAppt.notesPlaceholder")}
+                placeholderTextColor={C.mutedBrown}
+                multiline
+                numberOfLines={3}
+                style={{
+                  backgroundColor: C.sand,
+                  borderRadius: 12,
+                  padding: 12,
+                  fontSize: 14,
+                  color: C.warmBrown,
+                  textAlignVertical: "top",
+                  minHeight: 70,
+                  marginBottom: 12,
+                }}
+              />
+
+              {/* Reminder Timing */}
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: "600",
+                  color: C.mutedBrown,
+                  marginBottom: 6,
+                }}
+              >
+                {t("routinesUi.vetAppointment.reminderTiming")}
+              </Text>
+              <View style={{ gap: 6, marginBottom: 12 }}>
+                {REMINDER_TIMING_OPTIONS.map((option) => (
+                  <TouchableOpacity
+                    key={option.value}
+                    onPress={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        reminderTiming: option.value,
+                      }))
+                    }
+                    style={{
+                      backgroundColor:
+                        formData.reminderTiming === option.value
+                          ? C.sage + "20"
+                          : C.sand,
+                      borderRadius: 10,
+                      padding: 12,
+                      borderWidth: 1,
+                      borderColor:
+                        formData.reminderTiming === option.value
+                          ? C.sage
+                          : C.peach,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight:
+                          formData.reminderTiming === option.value
+                            ? "700"
+                            : "600",
+                        color:
+                          formData.reminderTiming === option.value
+                            ? C.sage
+                            : C.warmBrown,
+                      }}
+                    >
+                      {REMINDER_TIMING_LABELS[option.value] || option.value}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Settings */}
+              <View
+                style={{
+                  backgroundColor: C.sand,
+                  borderRadius: 12,
+                  padding: 12,
+                  marginBottom: 12,
+                }}
+              >
                 <View
                   style={{
-                    backgroundColor: C.card,
-                    borderRadius: 16,
-                    padding: 16,
-                    borderWidth: 2,
-                    borderColor: C.sage,
-                    marginBottom: 20,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: 10,
                   }}
                 >
                   <Text
                     style={{
-                      fontSize: 16,
-                      fontWeight: "800",
-                      color: C.warmBrown,
-                      marginBottom: 16,
-                    }}
-                  >
-                    {typeof editingAppointmentId === "number"
-                      ? t("routinesUi.vetAppointment.editAppointment")
-                      : t("routinesUi.vetAppointment.newAppointment")}
-                  </Text>
-
-                  {/* Title */}
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: "600",
-                      color: C.mutedBrown,
-                      marginBottom: 6,
-                    }}
-                  >
-                    {t("routinesUi.vetAppointment.appointmentTitle")}
-                  </Text>
-                  <TextInput
-                    value={formData.title}
-                    onChangeText={(text) =>
-                      setFormData((prev) => ({ ...prev, title: text }))
-                    }
-                    placeholder={t("routinesUi.vetAppointment.exampleAnnualCheckup")}
-                    placeholderTextColor={C.mutedBrown}
-                    style={{
-                      backgroundColor: C.sand,
-                      borderRadius: 12,
-                      padding: 12,
-                      fontSize: 15,
-                      color: C.warmBrown,
-                      marginBottom: 12,
-                    }}
-                  />
-
-                  {/* Date and Time — stacked so the inline pickers have full width */}
-                  <View style={{ gap: 12, marginBottom: 12 }}>
-                    <View>
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          fontWeight: "600",
-                          color: C.mutedBrown,
-                          marginBottom: 6,
-                        }}
-                      >
-                        {t("routinesUi.vetAppointment.date")}
-                      </Text>
-                      <DateField
-                        value={formData.appointmentDate}
-                        onChange={(date) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            appointmentDate: date,
-                          }))
-                        }
-                        fieldStyle={{
-                          backgroundColor: C.sand,
-                          borderWidth: 0,
-                        }}
-                      />
-                    </View>
-                    <View>
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          fontWeight: "600",
-                          color: C.mutedBrown,
-                          marginBottom: 6,
-                        }}
-                      >
-                        {t("routinesUi.vetAppointment.time")}
-                      </Text>
-                      <TimeField
-                        value={formData.appointmentTime}
-                        onChange={(time) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            appointmentTime: time,
-                          }))
-                        }
-                        fieldStyle={{
-                          backgroundColor: C.sand,
-                          borderWidth: 0,
-                        }}
-                      />
-                    </View>
-                  </View>
-
-                  {/* Clinic */}
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: "600",
-                      color: C.mutedBrown,
-                      marginBottom: 6,
-                    }}
-                  >
-                    {t("routinesUi.vetAppointment.clinicOptional")}
-                  </Text>
-                  <TextInput
-                    value={formData.clinic}
-                    onChangeText={(text) =>
-                      setFormData((prev) => ({ ...prev, clinic: text }))
-                    }
-                    placeholder={t("health.reminders.vetAppt.clinicPlaceholder")}
-                    placeholderTextColor={C.mutedBrown}
-                    style={{
-                      backgroundColor: C.sand,
-                      borderRadius: 12,
-                      padding: 12,
-                      fontSize: 15,
-                      color: C.warmBrown,
-                      marginBottom: 12,
-                    }}
-                  />
-
-                  {/* Veterinarian */}
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: "600",
-                      color: C.mutedBrown,
-                      marginBottom: 6,
-                    }}
-                  >
-                    {t("routinesUi.vetAppointment.veterinarianOptional")}
-                  </Text>
-                  <TextInput
-                    value={formData.veterinarian}
-                    onChangeText={(text) =>
-                      setFormData((prev) => ({ ...prev, veterinarian: text }))
-                    }
-                    placeholder={t("health.reminders.vetAppt.vetPlaceholder")}
-                    placeholderTextColor={C.mutedBrown}
-                    style={{
-                      backgroundColor: C.sand,
-                      borderRadius: 12,
-                      padding: 12,
-                      fontSize: 15,
-                      color: C.warmBrown,
-                      marginBottom: 12,
-                    }}
-                  />
-
-                  {/* Reason for Visit */}
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: "600",
-                      color: C.mutedBrown,
-                      marginBottom: 6,
-                    }}
-                  >
-                    {t("routinesUi.vetAppointment.reasonForVisitOptional")}
-                  </Text>
-                  <TextInput
-                    value={formData.reasonForVisit}
-                    onChangeText={(text) =>
-                      setFormData((prev) => ({ ...prev, reasonForVisit: text }))
-                    }
-                    placeholder={t("routinesUi.vetAppointment.exampleAnnualCheckup2")}
-                    placeholderTextColor={C.mutedBrown}
-                    multiline
-                    numberOfLines={2}
-                    style={{
-                      backgroundColor: C.sand,
-                      borderRadius: 12,
-                      padding: 12,
                       fontSize: 14,
-                      color: C.warmBrown,
-                      textAlignVertical: "top",
-                      minHeight: 60,
-                      marginBottom: 12,
-                    }}
-                  />
-
-                  {/* Notes */}
-                  <Text
-                    style={{
-                      fontSize: 12,
                       fontWeight: "600",
-                      color: C.mutedBrown,
-                      marginBottom: 6,
+                      color: C.warmBrown,
                     }}
                   >
-                    {t("routinesUi.vetAppointment.notesOptional")}
+                    {t("routinesUi.vetAppointment.reminderEnabled")}
                   </Text>
-                  <TextInput
-                    value={formData.notes}
-                    onChangeText={(text) =>
-                      setFormData((prev) => ({ ...prev, notes: text }))
+                  <Switch
+                    value={formData.reminderEnabled}
+                    onValueChange={(value) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        reminderEnabled: value,
+                      }))
                     }
-                    placeholder={t("health.reminders.vetAppt.notesPlaceholder")}
-                    placeholderTextColor={C.mutedBrown}
-                    multiline
-                    numberOfLines={3}
-                    style={{
-                      backgroundColor: C.sand,
-                      borderRadius: 12,
-                      padding: 12,
-                      fontSize: 14,
-                      color: C.warmBrown,
-                      textAlignVertical: "top",
-                      minHeight: 70,
-                      marginBottom: 12,
-                    }}
+                    trackColor={{ false: C.peach, true: C.sage + "60" }}
+                    thumbColor={formData.reminderEnabled ? C.sage : C.peach}
                   />
-
-                  {/* Reminder Timing */}
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: "600",
-                      color: C.mutedBrown,
-                      marginBottom: 6,
-                    }}
-                  >
-                    {t("routinesUi.vetAppointment.reminderTiming")}
-                  </Text>
-                  <View style={{ gap: 6, marginBottom: 12 }}>
-                    {REMINDER_TIMING_OPTIONS.map((option) => (
-                      <TouchableOpacity
-                        key={option.value}
-                        onPress={() =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            reminderTiming: option.value,
-                          }))
-                        }
-                        style={{
-                          backgroundColor:
-                            formData.reminderTiming === option.value
-                              ? C.sage + "20"
-                              : C.sand,
-                          borderRadius: 10,
-                          padding: 12,
-                          borderWidth: 1,
-                          borderColor:
-                            formData.reminderTiming === option.value
-                              ? C.sage
-                              : C.peach,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 14,
-                            fontWeight:
-                              formData.reminderTiming === option.value
-                                ? "700"
-                                : "600",
-                            color:
-                              formData.reminderTiming === option.value
-                                ? C.sage
-                                : C.warmBrown,
-                          }}
-                        >
-                          {REMINDER_TIMING_LABELS[option.value] || option.value}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-
-                  {/* Settings */}
-                  <View
-                    style={{
-                      backgroundColor: C.sand,
-                      borderRadius: 12,
-                      padding: 12,
-                      marginBottom: 12,
-                    }}
-                  >
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        marginBottom: 10,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 14,
-                          fontWeight: "600",
-                          color: C.warmBrown,
-                        }}
-                      >
-                        {t("routinesUi.vetAppointment.reminderEnabled")}
-                      </Text>
-                      <Switch
-                        value={formData.reminderEnabled}
-                        onValueChange={(value) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            reminderEnabled: value,
-                          }))
-                        }
-                        trackColor={{ false: C.peach, true: C.sage + "60" }}
-                        thumbColor={formData.reminderEnabled ? C.sage : C.peach}
-                      />
-                    </View>
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        marginBottom: 10,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 14,
-                          fontWeight: "600",
-                          color: C.warmBrown,
-                        }}
-                      >
-                        {t("routinesUi.vetAppointment.timeSensitive")}
-                      </Text>
-                      <Switch
-                        value={formData.timeSensitive}
-                        onValueChange={(value) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            timeSensitive: value,
-                          }))
-                        }
-                        trackColor={{ false: C.peach, true: C.coral + "60" }}
-                        thumbColor={formData.timeSensitive ? C.coral : C.peach}
-                      />
-                    </View>
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 14,
-                          fontWeight: "600",
-                          color: C.warmBrown,
-                        }}
-                      >
-                        {t("routinesUi.vetAppointment.addToPhoneCalendar")}
-                      </Text>
-                      <Switch
-                        value={formData.addToCalendar}
-                        onValueChange={(value) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            addToCalendar: value,
-                          }))
-                        }
-                        trackColor={{ false: C.peach, true: "#4DB8E8" + "60" }}
-                        thumbColor={
-                          formData.addToCalendar ? "#4DB8E8" : C.peach
-                        }
-                      />
-                    </View>
-                  </View>
-
-                  {/* Action Buttons */}
-                  <View style={{ flexDirection: "row", gap: 10 }}>
-                    <TouchableOpacity
-                      onPress={handleCancel}
-                      disabled={isSaving}
-                      style={{
-                        flex: 1,
-                        backgroundColor: C.sand,
-                        borderRadius: 12,
-                        paddingVertical: 14,
-                        alignItems: "center",
-                        borderWidth: 1,
-                        borderColor: C.peach,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 15,
-                          fontWeight: "700",
-                          color: C.mutedBrown,
-                        }}
-                      >
-                        {t("routinesUi.vetAppointment.cancel")}
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={handleSaveAppointment}
-                      disabled={isSaving}
-                      style={{
-                        flex: 1,
-                        backgroundColor: isSaving ? C.mutedBrown : C.sage,
-                        borderRadius: 12,
-                        paddingVertical: 14,
-                        alignItems: "center",
-                      }}
-                    >
-                      {isSaving ? (
-                        <ActivityIndicator color="#FFF" />
-                      ) : (
-                        <Text
-                          style={{
-                            fontSize: 15,
-                            fontWeight: "700",
-                            color: "#FFF",
-                          }}
-                        >
-                          {typeof editingAppointmentId === "number"
-                            ? t("routinesUi.vetAppointment.update")
-                            : t("routinesUi.vetAppointment.create")}
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
                 </View>
-              )}
-
-              {/* Appointments List */}
-              {!isEditing && (
-                <>
-                  {appointments.length === 0 ? (
-                    // Empty State
-                    <View
-                      style={{
-                        backgroundColor: C.card,
-                        borderRadius: 16,
-                        padding: 24,
-                        borderWidth: 1.5,
-                        borderColor: C.peach,
-                        alignItems: "center",
-                        marginBottom: 20,
-                      }}
-                    >
-                      <Text style={{ fontSize: 48, marginBottom: 12 }}>🩺</Text>
-                      <Text
-                        style={{
-                          fontSize: 18,
-                          fontWeight: "700",
-                          color: C.warmBrown,
-                          marginBottom: 8,
-                          textAlign: "center",
-                        }}
-                      >
-                        {t("routinesUi.vetAppointment.noVetAppointmentsYet")}
-                      </Text>
-                      <Text
-                        style={{
-                          fontSize: 14,
-                          color: C.mutedBrown,
-                          textAlign: "center",
-                          lineHeight: 20,
-                        }}
-                      >
-                        {t("routinesUi.vetAppointment.addUpcomingVisitsSoPawpi")}
-                      </Text>
-                    </View>
-                  ) : (
-                    <>
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          marginBottom: 12,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 15,
-                            fontWeight: "700",
-                            color: C.warmBrown,
-                          }}
-                        >
-                          {t("routinesUi.vetAppointment.upcomingAppointments")}
-                        </Text>
-                      </View>
-
-                      {/* Appointment Cards */}
-                      {appointments.map((appt) => {
-                        const isExpanded = expandedAppointmentId === appt.id;
-                        return (
-                          <View
-                            key={appt.id}
-                            style={{
-                              backgroundColor: C.card,
-                              borderRadius: 16,
-                              padding: 16,
-                              borderWidth: 1.5,
-                              borderColor: isExpanded ? C.sage : C.peach,
-                              marginBottom: 12,
-                            }}
-                          >
-                            {/* Appointment Header */}
-                            <TouchableOpacity
-                              onPress={() =>
-                                setExpandedAppointmentId(
-                                  isExpanded ? null : appt.id,
-                                )
-                              }
-                              style={{
-                                flexDirection: "row",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                              }}
-                            >
-                              <View
-                                style={{
-                                  flexDirection: "row",
-                                  alignItems: "center",
-                                  flex: 1,
-                                }}
-                              >
-                                <View
-                                  style={{
-                                    width: 42,
-                                    height: 42,
-                                    borderRadius: 21,
-                                    backgroundColor: C.sage + "20",
-                                    justifyContent: "center",
-                                    alignItems: "center",
-                                    marginRight: 12,
-                                  }}
-                                >
-                                  <Calendar size={20} color={C.sage} />
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                  <Text
-                                    style={{
-                                      fontSize: 16,
-                                      fontWeight: "700",
-                                      color: C.warmBrown,
-                                      marginBottom: 2,
-                                    }}
-                                  >
-                                    {appt.title}
-                                  </Text>
-                                  <Text
-                                    style={{
-                                      fontSize: 13,
-                                      color: C.mutedBrown,
-                                    }}
-                                  >
-                                    {formatDisplayDate(appt.appointment_date)} •{" "}
-                                    {formatTime(appt.appointment_time)}
-                                  </Text>
-                                  {appt.clinic && (
-                                    <Text
-                                      style={{
-                                        fontSize: 12,
-                                        color: C.mutedBrown,
-                                        marginTop: 2,
-                                      }}
-                                    >
-                                      📍 {appt.clinic}
-                                    </Text>
-                                  )}
-                                </View>
-                              </View>
-                              <View
-                                style={{
-                                  flexDirection: "row",
-                                  alignItems: "center",
-                                  gap: 8,
-                                }}
-                              >
-                                {isExpanded ? (
-                                  <ChevronUp size={20} color={C.mutedBrown} />
-                                ) : (
-                                  <ChevronDown size={20} color={C.mutedBrown} />
-                                )}
-                              </View>
-                            </TouchableOpacity>
-
-                            {/* Expanded Content */}
-                            {isExpanded && (
-                              <View style={{ marginTop: 16 }}>
-                                {appt.veterinarian && (
-                                  <View style={{ marginBottom: 8 }}>
-                                    <Text
-                                      style={{
-                                        fontSize: 12,
-                                        color: C.mutedBrown,
-                                        marginBottom: 2,
-                                      }}
-                                    >
-                                      {t("routinesUi.vetAppointment.veterinarian")}
-                                    </Text>
-                                    <Text
-                                      style={{
-                                        fontSize: 14,
-                                        fontWeight: "600",
-                                        color: C.warmBrown,
-                                      }}
-                                    >
-                                      {appt.veterinarian}
-                                    </Text>
-                                  </View>
-                                )}
-                                {appt.reason_for_visit && (
-                                  <View style={{ marginBottom: 8 }}>
-                                    <Text
-                                      style={{
-                                        fontSize: 12,
-                                        color: C.mutedBrown,
-                                        marginBottom: 2,
-                                      }}
-                                    >
-                                      {t("routinesUi.vetAppointment.reason")}
-                                    </Text>
-                                    <Text
-                                      style={{
-                                        fontSize: 14,
-                                        color: C.warmBrown,
-                                      }}
-                                    >
-                                      {appt.reason_for_visit}
-                                    </Text>
-                                  </View>
-                                )}
-                                {appt.notes && (
-                                  <View style={{ marginBottom: 8 }}>
-                                    <Text
-                                      style={{
-                                        fontSize: 12,
-                                        color: C.mutedBrown,
-                                        marginBottom: 2,
-                                      }}
-                                    >
-                                      {t("routinesUi.vetAppointment.notes")}
-                                    </Text>
-                                    <Text
-                                      style={{
-                                        fontSize: 14,
-                                        color: C.warmBrown,
-                                      }}
-                                    >
-                                      {appt.notes}
-                                    </Text>
-                                  </View>
-                                )}
-                                <View style={{ marginBottom: 8 }}>
-                                  <Text
-                                    style={{
-                                      fontSize: 12,
-                                      color: C.mutedBrown,
-                                      marginBottom: 2,
-                                    }}
-                                  >
-                                    {t("routinesUi.vetAppointment.reminder")}
-                                  </Text>
-                                  <Text
-                                    style={{
-                                      fontSize: 14,
-                                      fontWeight: "600",
-                                      color: C.warmBrown,
-                                    }}
-                                  >
-                                    {appt.reminder_enabled
-                                      ? REMINDER_TIMING_LABELS[appt.reminder_timing] || t("health.reminders.vetAppt.enabled")
-                                      : t("health.reminders.vetAppt.disabled")}
-                                  </Text>
-                                </View>
-
-                                {/* Action Buttons */}
-                                <View
-                                  style={{
-                                    flexDirection: "row",
-                                    gap: 10,
-                                    marginTop: 12,
-                                  }}
-                                >
-                                  <TouchableOpacity
-                                    onPress={() => handleEditAppointment(appt)}
-                                    style={{
-                                      flex: 1,
-                                      backgroundColor: C.sage,
-                                      borderRadius: 12,
-                                      paddingVertical: 12,
-                                      alignItems: "center",
-                                    }}
-                                  >
-                                    <Text
-                                      style={{
-                                        fontSize: 14,
-                                        fontWeight: "700",
-                                        color: "#FFF",
-                                      }}
-                                    >
-                                      {t("routinesUi.vetAppointment.edit")}
-                                    </Text>
-                                  </TouchableOpacity>
-                                  <TouchableOpacity
-                                    onPress={() =>
-                                      handleDeleteAppointment(appt.id)
-                                    }
-                                    disabled={deleteMutation.isPending}
-                                    style={{
-                                      flex: 1,
-                                      backgroundColor: C.coral,
-                                      borderRadius: 12,
-                                      paddingVertical: 12,
-                                      alignItems: "center",
-                                      opacity: deleteMutation.isPending
-                                        ? 0.6
-                                        : 1,
-                                    }}
-                                  >
-                                    {deleteMutation.isPending ? (
-                                      <ActivityIndicator
-                                        color="#FFF"
-                                        size="small"
-                                      />
-                                    ) : (
-                                      <Text
-                                        style={{
-                                          fontSize: 14,
-                                          fontWeight: "700",
-                                          color: "#FFF",
-                                        }}
-                                      >
-                                        {t("routinesUi.vetAppointment.delete")}
-                                      </Text>
-                                    )}
-                                  </TouchableOpacity>
-                                </View>
-                              </View>
-                            )}
-                          </View>
-                        );
-                      })}
-                    </>
-                  )}
-
-                  {/* Add Appointment Button */}
-                  <TouchableOpacity
-                    onPress={handleAddAppointment}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: 10,
+                  }}
+                >
+                  <Text
                     style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: C.card,
-                      borderRadius: 14,
-                      padding: 16,
-                      borderWidth: 1.5,
-                      borderColor: C.peach,
-                      borderStyle: "dashed",
+                      fontSize: 14,
+                      fontWeight: "600",
+                      color: C.warmBrown,
                     }}
                   >
-                    <Plus size={20} color={C.sage} strokeWidth={2.5} />
+                    {t("routinesUi.vetAppointment.timeSensitive")}
+                  </Text>
+                  <Switch
+                    value={formData.timeSensitive}
+                    onValueChange={(value) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        timeSensitive: value,
+                      }))
+                    }
+                    trackColor={{ false: C.peach, true: C.coral + "60" }}
+                    thumbColor={formData.timeSensitive ? C.coral : C.peach}
+                  />
+                </View>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      fontWeight: "600",
+                      color: C.warmBrown,
+                    }}
+                  >
+                    {t("routinesUi.vetAppointment.addToPhoneCalendar")}
+                  </Text>
+                  <Switch
+                    value={formData.addToCalendar}
+                    onValueChange={(value) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        addToCalendar: value,
+                      }))
+                    }
+                    trackColor={{ false: C.peach, true: "#4DB8E8" + "60" }}
+                    thumbColor={
+                      formData.addToCalendar ? "#4DB8E8" : C.peach
+                    }
+                  />
+                </View>
+              </View>
+
+              {/* Action Buttons */}
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <TouchableOpacity
+                  onPress={handleCancel}
+                  disabled={isSaving}
+                  style={{
+                    flex: 1,
+                    backgroundColor: C.sand,
+                    borderRadius: 12,
+                    paddingVertical: 14,
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor: C.peach,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 15,
+                      fontWeight: "700",
+                      color: C.mutedBrown,
+                    }}
+                  >
+                    {t("routinesUi.vetAppointment.cancel")}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleSaveAppointment}
+                  disabled={isSaving}
+                  style={{
+                    flex: 1,
+                    backgroundColor: isSaving ? C.mutedBrown : C.sage,
+                    borderRadius: 12,
+                    paddingVertical: 14,
+                    alignItems: "center",
+                  }}
+                >
+                  {isSaving ? (
+                    <ActivityIndicator color="#FFF" />
+                  ) : (
                     <Text
                       style={{
                         fontSize: 15,
                         fontWeight: "700",
-                        color: C.sage,
-                        marginLeft: 8,
+                        color: "#FFF",
                       }}
                     >
-                      {t("routinesUi.vetAppointment.addAppointment")}
+                      {typeof editingAppointmentId === "number"
+                        ? t("routinesUi.vetAppointment.update")
+                        : t("routinesUi.vetAppointment.create")}
                     </Text>
-                  </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* Appointments List */}
+          {!isEditing && (
+            <>
+              {appointments.length === 0 ? (
+                // Empty State
+                <View
+                  style={{
+                    backgroundColor: C.card,
+                    borderRadius: 16,
+                    padding: 24,
+                    borderWidth: 1.5,
+                    borderColor: C.peach,
+                    alignItems: "center",
+                    marginBottom: 20,
+                  }}
+                >
+                  <Text style={{ fontSize: 48, marginBottom: 12 }}>🩺</Text>
+                  <Text
+                    style={{
+                      fontSize: 18,
+                      fontWeight: "700",
+                      color: C.warmBrown,
+                      marginBottom: 8,
+                      textAlign: "center",
+                    }}
+                  >
+                    {t("routinesUi.vetAppointment.noVetAppointmentsYet")}
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      color: C.mutedBrown,
+                      textAlign: "center",
+                      lineHeight: 20,
+                    }}
+                  >
+                    {t("routinesUi.vetAppointment.addUpcomingVisitsSoPawpi")}
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: 12,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 15,
+                        fontWeight: "700",
+                        color: C.warmBrown,
+                      }}
+                    >
+                      {t("routinesUi.vetAppointment.upcomingAppointments")}
+                    </Text>
+                  </View>
+
+                  {/* Appointment Cards */}
+                  {appointments.map((appt) => {
+                    const isExpanded = expandedAppointmentId === appt.id;
+                    return (
+                      <View
+                        key={appt.id}
+                        style={{
+                          backgroundColor: C.card,
+                          borderRadius: 16,
+                          padding: 16,
+                          borderWidth: 1.5,
+                          borderColor: isExpanded ? C.sage : C.peach,
+                          marginBottom: 12,
+                        }}
+                      >
+                        {/* Appointment Header */}
+                        <TouchableOpacity
+                          onPress={() =>
+                            setExpandedAppointmentId(
+                              isExpanded ? null : appt.id,
+                            )
+                          }
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              flex: 1,
+                            }}
+                          >
+                            <View
+                              style={{
+                                width: 42,
+                                height: 42,
+                                borderRadius: 21,
+                                backgroundColor: C.sage + "20",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                marginRight: 12,
+                              }}
+                            >
+                              <Calendar size={20} color={C.sage} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text
+                                style={{
+                                  fontSize: 16,
+                                  fontWeight: "700",
+                                  color: C.warmBrown,
+                                  marginBottom: 2,
+                                }}
+                              >
+                                {appt.title}
+                              </Text>
+                              <Text
+                                style={{
+                                  fontSize: 13,
+                                  color: C.mutedBrown,
+                                }}
+                              >
+                                {formatDisplayDate(appt.appointment_date)} •{" "}
+                                {formatTime(appt.appointment_time)}
+                              </Text>
+                              {appt.clinic && (
+                                <Text
+                                  style={{
+                                    fontSize: 12,
+                                    color: C.mutedBrown,
+                                    marginTop: 2,
+                                  }}
+                                >
+                                  📍 {appt.clinic}
+                                </Text>
+                              )}
+                            </View>
+                          </View>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 8,
+                            }}
+                          >
+                            {isExpanded ? (
+                              <ChevronUp size={20} color={C.mutedBrown} />
+                            ) : (
+                              <ChevronDown size={20} color={C.mutedBrown} />
+                            )}
+                          </View>
+                        </TouchableOpacity>
+
+                        {/* Expanded Content */}
+                        {isExpanded && (
+                          <View style={{ marginTop: 16 }}>
+                            {appt.veterinarian && (
+                              <View style={{ marginBottom: 8 }}>
+                                <Text
+                                  style={{
+                                    fontSize: 12,
+                                    color: C.mutedBrown,
+                                    marginBottom: 2,
+                                  }}
+                                >
+                                  {t("routinesUi.vetAppointment.veterinarian")}
+                                </Text>
+                                <Text
+                                  style={{
+                                    fontSize: 14,
+                                    fontWeight: "600",
+                                    color: C.warmBrown,
+                                  }}
+                                >
+                                  {appt.veterinarian}
+                                </Text>
+                              </View>
+                            )}
+                            {appt.reason_for_visit && (
+                              <View style={{ marginBottom: 8 }}>
+                                <Text
+                                  style={{
+                                    fontSize: 12,
+                                    color: C.mutedBrown,
+                                    marginBottom: 2,
+                                  }}
+                                >
+                                  {t("routinesUi.vetAppointment.reason")}
+                                </Text>
+                                <Text
+                                  style={{
+                                    fontSize: 14,
+                                    color: C.warmBrown,
+                                  }}
+                                >
+                                  {appt.reason_for_visit}
+                                </Text>
+                              </View>
+                            )}
+                            {appt.notes && (
+                              <View style={{ marginBottom: 8 }}>
+                                <Text
+                                  style={{
+                                    fontSize: 12,
+                                    color: C.mutedBrown,
+                                    marginBottom: 2,
+                                  }}
+                                >
+                                  {t("routinesUi.vetAppointment.notes")}
+                                </Text>
+                                <Text
+                                  style={{
+                                    fontSize: 14,
+                                    color: C.warmBrown,
+                                  }}
+                                >
+                                  {appt.notes}
+                                </Text>
+                              </View>
+                            )}
+                            <View style={{ marginBottom: 8 }}>
+                              <Text
+                                style={{
+                                  fontSize: 12,
+                                  color: C.mutedBrown,
+                                  marginBottom: 2,
+                                }}
+                              >
+                                {t("routinesUi.vetAppointment.reminder")}
+                              </Text>
+                              <Text
+                                style={{
+                                  fontSize: 14,
+                                  fontWeight: "600",
+                                  color: C.warmBrown,
+                                }}
+                              >
+                                {appt.reminder_enabled
+                                  ? REMINDER_TIMING_LABELS[appt.reminder_timing] || t("health.reminders.vetAppt.enabled")
+                                  : t("health.reminders.vetAppt.disabled")}
+                              </Text>
+                            </View>
+
+                            {/* Action Buttons */}
+                            <View
+                              style={{
+                                flexDirection: "row",
+                                gap: 10,
+                                marginTop: 12,
+                              }}
+                            >
+                              <TouchableOpacity
+                                onPress={() => handleEditAppointment(appt)}
+                                style={{
+                                  flex: 1,
+                                  backgroundColor: C.sage,
+                                  borderRadius: 12,
+                                  paddingVertical: 12,
+                                  alignItems: "center",
+                                }}
+                              >
+                                <Text
+                                  style={{
+                                    fontSize: 14,
+                                    fontWeight: "700",
+                                    color: "#FFF",
+                                  }}
+                                >
+                                  {t("routinesUi.vetAppointment.edit")}
+                                </Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                onPress={() =>
+                                  handleDeleteAppointment(appt.id)
+                                }
+                                disabled={deleteMutation.isPending}
+                                style={{
+                                  flex: 1,
+                                  backgroundColor: C.coral,
+                                  borderRadius: 12,
+                                  paddingVertical: 12,
+                                  alignItems: "center",
+                                  opacity: deleteMutation.isPending
+                                    ? 0.6
+                                    : 1,
+                                }}
+                              >
+                                {deleteMutation.isPending ? (
+                                  <ActivityIndicator
+                                    color="#FFF"
+                                    size="small"
+                                  />
+                                ) : (
+                                  <Text
+                                    style={{
+                                      fontSize: 14,
+                                      fontWeight: "700",
+                                      color: "#FFF",
+                                    }}
+                                  >
+                                    {t("routinesUi.vetAppointment.delete")}
+                                  </Text>
+                                )}
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })}
                 </>
               )}
+
+              {/* Add Appointment Button */}
+              <TouchableOpacity
+                onPress={handleAddAppointment}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: C.card,
+                  borderRadius: 14,
+                  padding: 16,
+                  borderWidth: 1.5,
+                  borderColor: C.peach,
+                  borderStyle: "dashed",
+                }}
+              >
+                <Plus size={20} color={C.sage} strokeWidth={2.5} />
+                <Text
+                  style={{
+                    fontSize: 15,
+                    fontWeight: "700",
+                    color: C.sage,
+                    marginLeft: 8,
+                  }}
+                >
+                  {t("routinesUi.vetAppointment.addAppointment")}
+                </Text>
+              </TouchableOpacity>
             </>
           )}
-        </KeyboardAwareScrollView>
-
-        {/* Close Button - Fixed at bottom */}
-        <View
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            padding: 20,
-            paddingBottom: 30,
-            borderTopWidth: 1,
-            borderTopColor: C.peach,
-            backgroundColor: C.cream,
-          }}
-        >
-          <TouchableOpacity
-            onPress={onClose}
-            style={{
-              backgroundColor: C.warmBrown,
-              borderRadius: 14,
-              paddingVertical: 16,
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}>
-              {t("routinesUi.vetAppointment.close")}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingAnimatedView>
-    </Modal>
+        </>
+      )}
+    </KeyboardSafeSheet>
   );
 }

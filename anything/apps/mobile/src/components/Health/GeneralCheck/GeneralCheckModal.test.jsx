@@ -234,10 +234,12 @@ test("bottom sheet has a definite height so the flex:1 scroll body can't collaps
   };
   walk(toJSON());
 
-  const sheet = styles.find((st) => st.height === "90%");
+  // The sheet now comes from the shared KeyboardSafeSheet: a DEFINITE pixel height (iOS) that
+  // grows to fill the space above the keyboard — never a maxHeight-only sheet.
+  const sheet = styles.find((st) => typeof st.height === "number" && st.borderTopLeftRadius === 24);
   expect(sheet).toBeTruthy();
-  // And it must not be the old maxHeight-only sizing that caused the collapse.
-  expect(styles.some((st) => st.maxHeight === "90%" && st.height == null)).toBe(false);
+  expect(sheet.height).toBeGreaterThan(0);
+  expect(styles.some((st) => st.maxHeight != null && st.height == null && st.borderTopLeftRadius === 24)).toBe(false);
 });
 
 test("renders fully localized in Spanish (es-AR)", () => {

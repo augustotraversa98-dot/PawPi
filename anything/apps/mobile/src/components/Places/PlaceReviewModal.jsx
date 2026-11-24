@@ -2,20 +2,17 @@ import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
-  Modal,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
   Alert,
-  Platform,
-  KeyboardAvoidingView,
 } from "react-native";
 import { X, Star } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import { PET_WELCOME_LEVELS, PLACE_AMENITIES } from "@/constants/placeReviews";
 import { useSubmitPlaceReview } from "@/hooks/usePlaceReviews";
-import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import KeyboardSafeSheet from "@/components/KeyboardSafeSheet";
 import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // Two-dimension PLACE review composer (drill-in from the place detail). Star picker mirrors the
@@ -82,28 +79,15 @@ export default function PlaceReviewModal({
   };
 
   return (
-    <Modal
+    <KeyboardSafeSheet
       visible={visible}
-      animationType="slide"
-      transparent
       onRequestClose={onClose}
-    >
-      <KeyboardAvoidingView
-        style={{ flex: 1, justifyContent: "flex-end" }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <View
-          testID="place-review-modal"
-          style={{
-            backgroundColor: COLORS.cream,
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
-            paddingHorizontal: 20,
-            paddingTop: 20,
-            paddingBottom: 36,
-            maxHeight: "88%",
-          }}
-        >
+      variant="sheet"
+      fit
+      backgroundColor={COLORS.cream}
+      contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 12 }}
+      header={(
+        <View style={{ paddingHorizontal: 20 }}>
           <View
             style={{
               flexDirection: "row",
@@ -131,149 +115,10 @@ export default function PlaceReviewModal({
               <X size={18} color={COLORS.warmBrown} />
             </TouchableOpacity>
           </View>
-
-          <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
-            {place?.name ? (
-              <Text style={{ fontSize: 14, color: COLORS.mutedBrown, marginBottom: 16 }}>
-                {place.name}
-              </Text>
-            ) : null}
-
-            {/* Overall 1–5 stars */}
-            <Text style={styles.label(COLORS)}>{t("placeReviews.overallLabel")}</Text>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "center",
-                gap: 10,
-                marginBottom: 20,
-              }}
-            >
-              {[1, 2, 3, 4, 5].map((n) => (
-                <TouchableOpacity
-                  key={n}
-                  testID={`place-star-${n}`}
-                  onPress={() => setRating(n)}
-                  disabled={submitting}
-                  accessibilityLabel={`${n}`}
-                >
-                  <Star
-                    size={36}
-                    color={COLORS.coral}
-                    fill={n <= rating ? COLORS.coral : "transparent"}
-                  />
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Pet-welcome tier — single select */}
-            <Text style={styles.label(COLORS)}>{t("placeReviews.welcomeLabel")}</Text>
-            <View style={{ gap: 8, marginBottom: 20 }}>
-              {PET_WELCOME_LEVELS.map((lvl) => {
-                const active = welcome === lvl.key;
-                return (
-                  <TouchableOpacity
-                    key={lvl.key}
-                    testID={`place-welcome-${lvl.key}`}
-                    onPress={() => setWelcome(lvl.key)}
-                    disabled={submitting}
-                    accessibilityState={{ selected: active }}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 10,
-                      paddingVertical: 12,
-                      paddingHorizontal: 14,
-                      borderRadius: 14,
-                      backgroundColor: active ? COLORS.coral + "18" : COLORS.card,
-                      borderWidth: 1,
-                      borderColor: active ? COLORS.coral : COLORS.peach,
-                    }}
-                  >
-                    <Text style={{ fontSize: 18 }}>{lvl.icon}</Text>
-                    <Text
-                      style={{
-                        fontSize: 15,
-                        fontWeight: active ? "800" : "600",
-                        color: active ? COLORS.warmBrown : COLORS.mutedBrown,
-                      }}
-                    >
-                      {t(`placeReviews.welcome.${lvl.key}`)}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Amenities — multi select chips */}
-            <Text style={styles.label(COLORS)}>{t("placeReviews.amenitiesLabel")}</Text>
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                gap: 8,
-                marginBottom: 20,
-              }}
-            >
-              {PLACE_AMENITIES.map((am) => {
-                const active = amenities.includes(am.key);
-                return (
-                  <TouchableOpacity
-                    key={am.key}
-                    testID={`place-amenity-${am.key}`}
-                    onPress={() => toggleAmenity(am.key)}
-                    disabled={submitting}
-                    accessibilityState={{ selected: active }}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 6,
-                      paddingVertical: 8,
-                      paddingHorizontal: 12,
-                      borderRadius: 999,
-                      backgroundColor: active ? COLORS.coral : COLORS.card,
-                      borderWidth: 1,
-                      borderColor: active ? COLORS.coral : COLORS.peach,
-                    }}
-                  >
-                    <Text style={{ fontSize: 14 }}>{am.icon}</Text>
-                    <Text
-                      style={{
-                        fontSize: 13,
-                        fontWeight: "700",
-                        color: active ? "#FFF" : COLORS.warmBrown,
-                      }}
-                    >
-                      {t(`placeReviews.amenity.${am.key}`)}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <TextInput
-              testID="place-review-comment"
-              value={comment}
-              onChangeText={setComment}
-              placeholder={t("placeReviews.commentPlaceholder")}
-              placeholderTextColor={COLORS.mutedBrown}
-              multiline
-              editable={!submitting}
-              style={{
-                backgroundColor: COLORS.card,
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: COLORS.peach,
-                padding: 14,
-                fontSize: 14,
-                color: COLORS.warmBrown,
-                minHeight: 90,
-                textAlignVertical: "top",
-                marginBottom: 18,
-              }}
-            />
-          </KeyboardAwareScrollView>
-
+        </View>
+      )}
+      footer={(
+        <View style={{ paddingHorizontal: 20 }}>
           <TouchableOpacity
             testID="place-review-submit"
             onPress={handleSubmit}
@@ -300,8 +145,148 @@ export default function PlaceReviewModal({
             )}
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+      )}
+    >
+      {place?.name ? (
+        <Text style={{ fontSize: 14, color: COLORS.mutedBrown, marginBottom: 16 }}>
+          {place.name}
+        </Text>
+      ) : null}
+
+      {/* Overall 1–5 stars */}
+      <Text style={styles.label(COLORS)}>{t("placeReviews.overallLabel")}</Text>
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "center",
+          gap: 10,
+          marginBottom: 20,
+        }}
+      >
+        {[1, 2, 3, 4, 5].map((n) => (
+          <TouchableOpacity
+            key={n}
+            testID={`place-star-${n}`}
+            onPress={() => setRating(n)}
+            disabled={submitting}
+            accessibilityLabel={`${n}`}
+          >
+            <Star
+              size={36}
+              color={COLORS.coral}
+              fill={n <= rating ? COLORS.coral : "transparent"}
+            />
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Pet-welcome tier — single select */}
+      <Text style={styles.label(COLORS)}>{t("placeReviews.welcomeLabel")}</Text>
+      <View style={{ gap: 8, marginBottom: 20 }}>
+        {PET_WELCOME_LEVELS.map((lvl) => {
+          const active = welcome === lvl.key;
+          return (
+            <TouchableOpacity
+              key={lvl.key}
+              testID={`place-welcome-${lvl.key}`}
+              onPress={() => setWelcome(lvl.key)}
+              disabled={submitting}
+              accessibilityState={{ selected: active }}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 10,
+                paddingVertical: 12,
+                paddingHorizontal: 14,
+                borderRadius: 14,
+                backgroundColor: active ? COLORS.coral + "18" : COLORS.card,
+                borderWidth: 1,
+                borderColor: active ? COLORS.coral : COLORS.peach,
+              }}
+            >
+              <Text style={{ fontSize: 18 }}>{lvl.icon}</Text>
+              <Text
+                style={{
+                  fontSize: 15,
+                  fontWeight: active ? "800" : "600",
+                  color: active ? COLORS.warmBrown : COLORS.mutedBrown,
+                }}
+              >
+                {t(`placeReviews.welcome.${lvl.key}`)}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Amenities — multi select chips */}
+      <Text style={styles.label(COLORS)}>{t("placeReviews.amenitiesLabel")}</Text>
+      <View
+        style={{
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: 8,
+          marginBottom: 20,
+        }}
+      >
+        {PLACE_AMENITIES.map((am) => {
+          const active = amenities.includes(am.key);
+          return (
+            <TouchableOpacity
+              key={am.key}
+              testID={`place-amenity-${am.key}`}
+              onPress={() => toggleAmenity(am.key)}
+              disabled={submitting}
+              accessibilityState={{ selected: active }}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+                borderRadius: 999,
+                backgroundColor: active ? COLORS.coral : COLORS.card,
+                borderWidth: 1,
+                borderColor: active ? COLORS.coral : COLORS.peach,
+              }}
+            >
+              <Text style={{ fontSize: 14 }}>{am.icon}</Text>
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: "700",
+                  color: active ? "#FFF" : COLORS.warmBrown,
+                }}
+              >
+                {t(`placeReviews.amenity.${am.key}`)}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      <TextInput
+        testID="place-review-comment"
+        value={comment}
+        onChangeText={setComment}
+        placeholder={t("placeReviews.commentPlaceholder")}
+        placeholderTextColor={COLORS.mutedBrown}
+        multiline
+        editable={!submitting}
+        style={{
+          backgroundColor: COLORS.card,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: COLORS.peach,
+          padding: 14,
+          fontSize: 14,
+          color: COLORS.warmBrown,
+          minHeight: 90,
+          textAlignVertical: "top",
+          marginBottom: 18,
+        }}
+      />
+    </KeyboardSafeSheet>
   );
 }
 

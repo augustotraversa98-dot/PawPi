@@ -4,7 +4,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Modal,
   TextInput,
   Alert,
 } from "react-native";
@@ -12,9 +11,8 @@ import { useTranslation } from "react-i18next";
 import { X, Camera } from "lucide-react-native";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 import { formatLocalTime } from "@/utils/localeDateTime";
-import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import KeyboardSafeSheet from "@/components/KeyboardSafeSheet";
 
 const C = {
   cream: COLORS.cream,
@@ -116,297 +114,294 @@ export default function FeedingIssueModal({
     : "";
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={handleClose}>
-      <KeyboardAvoidingAnimatedView
-        style={{ flex: 1, backgroundColor: C.cream }}
-        behavior="padding"
-      >
-        {/* Header */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: 20,
-            paddingTop: 60,
-            borderBottomWidth: 1,
-            borderBottomColor: C.peach,
-          }}
-        >
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                fontSize: 20,
-                fontWeight: "800",
-                color: C.warmBrown,
-                marginBottom: 4,
-              }}
-            >
-              {t("health.feeding.issueTitle")}
-            </Text>
-            <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-              {t("health.feeding.issueSubtitle", { meal: mealName, time: scheduledTime, pet: petName })}
-            </Text>
-          </View>
-          <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            onPress={handleClose}
+    <KeyboardSafeSheet
+      visible={visible}
+      onRequestClose={handleClose}
+      variant="screen"
+      backgroundColor={C.cream}
+      contentContainerStyle={{ padding: 20, paddingBottom: 24 }}
+      header={(
+        <>
+          {/* Header */}
+          <View
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: C.sand,
-              justifyContent: "center",
+              flexDirection: "row",
               alignItems: "center",
+              justifyContent: "space-between",
+              padding: 20,
+              paddingTop: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: C.peach,
             }}
           >
-            <X size={20} color={C.warmBrown} />
-          </TouchableOpacity>
-        </View>
-
-        <KeyboardAwareScrollView
-          contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Appetite */}
-          <View style={{ marginBottom: 20 }}>
-            <Text
-              style={{
-                fontSize: 14,
-                fontWeight: "700",
-                color: C.warmBrown,
-                marginBottom: 10,
-              }}
-            >
-              {t("health.feeding.appetite")}
-            </Text>
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              {[
-                { value: "low", label: t("health.feeding.appetiteLow") },
-                { value: "normal", label: t("health.feeding.appetiteNormal") },
-                { value: "high", label: t("health.feeding.appetiteHigh") },
-              ].map(({ value: level, label }) => (
-                <TouchableOpacity
-                  key={level}
-                  onPress={() => setAppetite(level)}
-                  style={{
-                    flex: 1,
-                    backgroundColor:
-                      appetite === level ? C.sage + "20" : C.sand,
-                    borderRadius: 12,
-                    paddingVertical: 12,
-                    borderWidth: 1.5,
-                    borderColor: appetite === level ? C.sage : C.peach,
-                    alignItems: "center",
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      fontWeight: appetite === level ? "700" : "600",
-                      color: appetite === level ? C.sage : C.warmBrown,
-                    }}
-                  >
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: "800",
+                  color: C.warmBrown,
+                  marginBottom: 4,
+                }}
+              >
+                {t("health.feeding.issueTitle")}
+              </Text>
+              <Text style={{ fontSize: 14, color: C.mutedBrown }}>
+                {t("health.feeding.issueSubtitle", { meal: mealName, time: scheduledTime, pet: petName })}
+              </Text>
             </View>
-          </View>
-
-          {/* Finished meal */}
-          <View style={{ marginBottom: 20 }}>
-            <Text
+            <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              onPress={handleClose}
               style={{
-                fontSize: 14,
-                fontWeight: "700",
-                color: C.warmBrown,
-                marginBottom: 10,
-              }}
-            >
-              {t("health.feeding.finishedMeal")}
-            </Text>
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              {[
-                { value: "yes", label: t("health.feeding.finishedYes") },
-                { value: "partially", label: t("health.feeding.finishedPartially") },
-                { value: "no", label: t("health.feeding.finishedNo") },
-              ].map(({ value: option, label }) => (
-                <TouchableOpacity
-                  key={option}
-                  onPress={() => setFinishedMeal(option)}
-                  style={{
-                    flex: 1,
-                    backgroundColor:
-                      finishedMeal === option ? C.sage + "20" : C.sand,
-                    borderRadius: 12,
-                    paddingVertical: 12,
-                    borderWidth: 1.5,
-                    borderColor: finishedMeal === option ? C.sage : C.peach,
-                    alignItems: "center",
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      fontWeight: finishedMeal === option ? "700" : "600",
-                      color: finishedMeal === option ? C.sage : C.warmBrown,
-                    }}
-                  >
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* Vomiting or reaction */}
-          <View style={{ marginBottom: 20 }}>
-            <Text
-              style={{
-                fontSize: 14,
-                fontWeight: "700",
-                color: C.warmBrown,
-                marginBottom: 10,
-              }}
-            >
-              {t("health.feeding.vomiting")}
-            </Text>
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              {[
-                { value: false, label: t("health.feeding.no") },
-                { value: true, label: t("health.feeding.yes") },
-              ].map((option) => (
-                <TouchableOpacity
-                  key={option.label}
-                  onPress={() => setVomiting(option.value)}
-                  style={{
-                    flex: 1,
-                    backgroundColor:
-                      vomiting === option.value
-                        ? option.value
-                          ? C.coral + "20"
-                          : C.sage + "20"
-                        : C.sand,
-                    borderRadius: 12,
-                    paddingVertical: 12,
-                    borderWidth: 1.5,
-                    borderColor:
-                      vomiting === option.value
-                        ? option.value
-                          ? C.coral
-                          : C.sage
-                        : C.peach,
-                    alignItems: "center",
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      fontWeight: vomiting === option.value ? "700" : "600",
-                      color:
-                        vomiting === option.value
-                          ? option.value
-                            ? C.coral
-                            : C.sage
-                          : C.warmBrown,
-                    }}
-                  >
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* Notes */}
-          <View style={{ marginBottom: 20 }}>
-            <Text
-              style={{
-                fontSize: 14,
-                fontWeight: "700",
-                color: C.warmBrown,
-                marginBottom: 10,
-              }}
-            >
-              {t("health.feeding.notes")}
-            </Text>
-            <TextInput
-              value={notes}
-              onChangeText={setNotes}
-              placeholder={t("health.feeding.notesPlaceholder")}
-              placeholderTextColor={C.mutedBrown}
-              multiline
-              numberOfLines={4}
-              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
                 backgroundColor: C.sand,
-                borderRadius: 12,
-                padding: 12,
-                fontSize: 14,
-                color: C.warmBrown,
-                textAlignVertical: "top",
-                minHeight: 80,
-                borderWidth: 1,
-                borderColor: C.peach,
+                justifyContent: "center",
+                alignItems: "center",
               }}
-            />
+            >
+              <X size={20} color={C.warmBrown} />
+            </TouchableOpacity>
           </View>
-
-          {/* Info box */}
-          {(appetite === "low" || vomiting || finishedMeal === "no") && (
-            <View
+        </>
+      )}
+      footer={(
+        <>
+          {/* Save Button - Fixed at bottom */}
+          <View
+            style={{
+              padding: 20,
+              borderTopWidth: 1,
+              borderTopColor: C.peach,
+              backgroundColor: C.cream,
+            }}
+          >
+            <TouchableOpacity
+              onPress={handleSave}
+              disabled={logIssueMutation.isPending}
               style={{
-                backgroundColor: "#FFF4E6",
+                backgroundColor: C.sage,
+                borderRadius: 14,
+                paddingVertical: 16,
+                alignItems: "center",
+                opacity: logIssueMutation.isPending ? 0.6 : 1,
+              }}
+            >
+              <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}>
+                {logIssueMutation.isPending ? t("health.feeding.saving") : t("health.feeding.save")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+    >
+      {/* Appetite */}
+      <View style={{ marginBottom: 20 }}>
+        <Text
+          style={{
+            fontSize: 14,
+            fontWeight: "700",
+            color: C.warmBrown,
+            marginBottom: 10,
+          }}
+        >
+          {t("health.feeding.appetite")}
+        </Text>
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          {[
+            { value: "low", label: t("health.feeding.appetiteLow") },
+            { value: "normal", label: t("health.feeding.appetiteNormal") },
+            { value: "high", label: t("health.feeding.appetiteHigh") },
+          ].map(({ value: level, label }) => (
+            <TouchableOpacity
+              key={level}
+              onPress={() => setAppetite(level)}
+              style={{
+                flex: 1,
+                backgroundColor:
+                  appetite === level ? C.sage + "20" : C.sand,
                 borderRadius: 12,
-                padding: 14,
-                borderWidth: 1,
-                borderColor: "#FFE4C4",
-                marginBottom: 20,
+                paddingVertical: 12,
+                borderWidth: 1.5,
+                borderColor: appetite === level ? C.sage : C.peach,
+                alignItems: "center",
               }}
             >
               <Text
                 style={{
-                  fontSize: 13,
-                  color: C.mutedBrown,
-                  lineHeight: 18,
+                  fontSize: 14,
+                  fontWeight: appetite === level ? "700" : "600",
+                  color: appetite === level ? C.sage : C.warmBrown,
                 }}
               >
-                {t("health.feeding.watchNote")}
+                {label}
               </Text>
-            </View>
-          )}
-        </KeyboardAwareScrollView>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
 
-        {/* Save Button - Fixed at bottom */}
-        <View
+      {/* Finished meal */}
+      <View style={{ marginBottom: 20 }}>
+        <Text
           style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            padding: 20,
-            borderTopWidth: 1,
-            borderTopColor: C.peach,
-            backgroundColor: C.cream,
+            fontSize: 14,
+            fontWeight: "700",
+            color: C.warmBrown,
+            marginBottom: 10,
           }}
         >
-          <TouchableOpacity
-            onPress={handleSave}
-            disabled={logIssueMutation.isPending}
+          {t("health.feeding.finishedMeal")}
+        </Text>
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          {[
+            { value: "yes", label: t("health.feeding.finishedYes") },
+            { value: "partially", label: t("health.feeding.finishedPartially") },
+            { value: "no", label: t("health.feeding.finishedNo") },
+          ].map(({ value: option, label }) => (
+            <TouchableOpacity
+              key={option}
+              onPress={() => setFinishedMeal(option)}
+              style={{
+                flex: 1,
+                backgroundColor:
+                  finishedMeal === option ? C.sage + "20" : C.sand,
+                borderRadius: 12,
+                paddingVertical: 12,
+                borderWidth: 1.5,
+                borderColor: finishedMeal === option ? C.sage : C.peach,
+                alignItems: "center",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: finishedMeal === option ? "700" : "600",
+                  color: finishedMeal === option ? C.sage : C.warmBrown,
+                }}
+              >
+                {label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* Vomiting or reaction */}
+      <View style={{ marginBottom: 20 }}>
+        <Text
+          style={{
+            fontSize: 14,
+            fontWeight: "700",
+            color: C.warmBrown,
+            marginBottom: 10,
+          }}
+        >
+          {t("health.feeding.vomiting")}
+        </Text>
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          {[
+            { value: false, label: t("health.feeding.no") },
+            { value: true, label: t("health.feeding.yes") },
+          ].map((option) => (
+            <TouchableOpacity
+              key={option.label}
+              onPress={() => setVomiting(option.value)}
+              style={{
+                flex: 1,
+                backgroundColor:
+                  vomiting === option.value
+                    ? option.value
+                      ? C.coral + "20"
+                      : C.sage + "20"
+                    : C.sand,
+                borderRadius: 12,
+                paddingVertical: 12,
+                borderWidth: 1.5,
+                borderColor:
+                  vomiting === option.value
+                    ? option.value
+                      ? C.coral
+                      : C.sage
+                    : C.peach,
+                alignItems: "center",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: vomiting === option.value ? "700" : "600",
+                  color:
+                    vomiting === option.value
+                      ? option.value
+                        ? C.coral
+                        : C.sage
+                      : C.warmBrown,
+                }}
+              >
+                {option.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* Notes */}
+      <View style={{ marginBottom: 20 }}>
+        <Text
+          style={{
+            fontSize: 14,
+            fontWeight: "700",
+            color: C.warmBrown,
+            marginBottom: 10,
+          }}
+        >
+          {t("health.feeding.notes")}
+        </Text>
+        <TextInput
+          value={notes}
+          onChangeText={setNotes}
+          placeholder={t("health.feeding.notesPlaceholder")}
+          placeholderTextColor={C.mutedBrown}
+          multiline
+          numberOfLines={4}
+          style={{
+            backgroundColor: C.sand,
+            borderRadius: 12,
+            padding: 12,
+            fontSize: 14,
+            color: C.warmBrown,
+            textAlignVertical: "top",
+            minHeight: 80,
+            borderWidth: 1,
+            borderColor: C.peach,
+          }}
+        />
+      </View>
+
+      {/* Info box */}
+      {(appetite === "low" || vomiting || finishedMeal === "no") && (
+        <View
+          style={{
+            backgroundColor: "#FFF4E6",
+            borderRadius: 12,
+            padding: 14,
+            borderWidth: 1,
+            borderColor: "#FFE4C4",
+            marginBottom: 20,
+          }}
+        >
+          <Text
             style={{
-              backgroundColor: C.sage,
-              borderRadius: 14,
-              paddingVertical: 16,
-              alignItems: "center",
-              opacity: logIssueMutation.isPending ? 0.6 : 1,
+              fontSize: 13,
+              color: C.mutedBrown,
+              lineHeight: 18,
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}>
-              {logIssueMutation.isPending ? t("health.feeding.saving") : t("health.feeding.save")}
-            </Text>
-          </TouchableOpacity>
+            {t("health.feeding.watchNote")}
+          </Text>
         </View>
-      </KeyboardAvoidingAnimatedView>
-    </Modal>
+      )}
+    </KeyboardSafeSheet>
   );
 }

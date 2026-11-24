@@ -5,13 +5,10 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Modal,
   TextInput,
   Switch,
-  Platform,
-  KeyboardAvoidingView,
 } from "react-native";
-import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import KeyboardSafeSheet from "@/components/KeyboardSafeSheet";
 import { X } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { ROUTINE_TYPES, ROUTINE_FREQUENCY } from "@/data/routinesData";
@@ -110,20 +107,21 @@ export default function MedicationRoutineModal({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={0}
-      >
-        <View style={{ flex: 1, backgroundColor: C.cream }}>
+    <KeyboardSafeSheet
+      visible={visible}
+      onRequestClose={onClose}
+      variant="screen"
+      backgroundColor={C.cream}
+      contentContainerStyle={{ padding: 20, paddingBottom: 24 }}
+      header={(
+        <>
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
               padding: 20,
-              paddingTop: 60,
+              paddingTop: 12,
               borderBottomWidth: 1,
               borderBottomColor: C.peach,
             }}
@@ -159,335 +157,14 @@ export default function MedicationRoutineModal({
               <X size={20} color={C.warmBrown} />
             </TouchableOpacity>
           </View>
-
-          <KeyboardAwareScrollView
-            contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <View
-              style={{
-                backgroundColor: "#FEF3C7",
-                borderRadius: 12,
-                padding: 14,
-                marginBottom: 20,
-                borderWidth: 1,
-                borderColor: "#FDE68A",
-              }}
-            >
-              <Text style={{ fontSize: 13, color: "#92400E", lineHeight: 19 }}>
-                {t("routinesUi.medication.followYourVeterinarianSInstructions")}
-              </Text>
-            </View>
-
-            <Text
-              style={{
-                fontSize: 15,
-                fontWeight: "700",
-                color: C.warmBrown,
-                marginBottom: 12,
-              }}
-            >
-              {t("routinesUi.medication.medicationName")}
-            </Text>
-            <TextInput
-              value={medicationName}
-              onChangeText={setMedicationName}
-              placeholder={t("routinesUi.medication.exampleApoquel")}
-              placeholderTextColor={C.mutedBrown}
-              style={{
-                backgroundColor: C.card,
-                borderRadius: 12,
-                padding: 12,
-                fontSize: 15,
-                color: C.warmBrown,
-                borderWidth: 1,
-                borderColor: C.peach,
-                marginBottom: 20,
-              }}
-            />
-
-            <Text
-              style={{
-                fontSize: 15,
-                fontWeight: "700",
-                color: C.warmBrown,
-                marginBottom: 12,
-              }}
-            >
-              {t("routinesUi.medication.dose")}
-            </Text>
-            <TextInput
-              value={dose}
-              onChangeText={setDose}
-              placeholder={t("routinesUi.medication.example1Tablet")}
-              placeholderTextColor={C.mutedBrown}
-              style={{
-                backgroundColor: C.card,
-                borderRadius: 12,
-                padding: 12,
-                fontSize: 15,
-                color: C.warmBrown,
-                borderWidth: 1,
-                borderColor: C.peach,
-                marginBottom: 20,
-              }}
-            />
-
-            <Text
-              style={{
-                fontSize: 15,
-                fontWeight: "700",
-                color: C.warmBrown,
-                marginBottom: 12,
-              }}
-            >
-              {t("routinesUi.medication.frequency")}
-            </Text>
-            <View style={{ gap: 8, marginBottom: 20 }}>
-              {[
-                { value: ROUTINE_FREQUENCY.DAILY, label: t("routinesUi.medication.onceDaily") },
-                { value: "twice_daily", label: t("routinesUi.medication.twiceDaily") },
-                { value: "every_12_hours", label: t("routinesUi.medication.every12Hours") },
-              ].map((option) => (
-                <TouchableOpacity
-                  key={option.value}
-                  onPress={() => {
-                    setFrequency(option.value);
-                    if (option.value === "twice_daily")
-                      setTimes(["09:00", "21:00"]);
-                    else if (option.value === "every_12_hours")
-                      setTimes(["09:00", "21:00"]);
-                    else setTimes(["21:00"]);
-                  }}
-                  style={{
-                    backgroundColor:
-                      frequency === option.value ? C.terracotta + "20" : C.card,
-                    borderRadius: 12,
-                    padding: 14,
-                    borderWidth: 1.5,
-                    borderColor:
-                      frequency === option.value ? C.terracotta : C.peach,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 15,
-                      fontWeight: frequency === option.value ? "700" : "600",
-                      color:
-                        frequency === option.value ? C.terracotta : C.warmBrown,
-                    }}
-                  >
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text
-              style={{
-                fontSize: 15,
-                fontWeight: "700",
-                color: C.warmBrown,
-                marginBottom: 12,
-              }}
-            >
-              {t("routinesUi.medication.timeS")}
-            </Text>
-            {times.map((time, index) => (
-              <View key={index} style={{ marginBottom: 10 }}>
-                <TimeField
-                  value={time}
-                  onChange={(next) => {
-                    const updated = [...times];
-                    updated[index] = next;
-                    setTimes(updated);
-                  }}
-                />
-              </View>
-            ))}
-
-            {/* Stacked (not side-by-side) so the inline calendar has full width */}
-            <View style={{ gap: 12, marginBottom: 20, marginTop: 10 }}>
-              <View>
-                <Text
-                  style={{
-                    fontSize: 13,
-                    fontWeight: "600",
-                    color: C.mutedBrown,
-                    marginBottom: 8,
-                  }}
-                >
-                  {t("routinesUi.medication.startDate")}
-                </Text>
-                <DateField value={startDate} onChange={setStartDate} />
-              </View>
-              <View>
-                <Text
-                  style={{
-                    fontSize: 13,
-                    fontWeight: "600",
-                    color: C.mutedBrown,
-                    marginBottom: 8,
-                  }}
-                >
-                  {t("routinesUi.medication.endDate")}
-                </Text>
-                <DateField value={endDate} onChange={setEndDate} />
-              </View>
-            </View>
-
-            <Text
-              style={{
-                fontSize: 15,
-                fontWeight: "700",
-                color: C.warmBrown,
-                marginBottom: 12,
-              }}
-            >
-              {t("routinesUi.medication.prescribedBy")}
-            </Text>
-            <TextInput
-              value={prescribedBy}
-              onChangeText={setPrescribedBy}
-              placeholder={t("health.reminders.medication.vetPlaceholder")}
-              placeholderTextColor={C.mutedBrown}
-              style={{
-                backgroundColor: C.card,
-                borderRadius: 12,
-                padding: 12,
-                fontSize: 15,
-                color: C.warmBrown,
-                borderWidth: 1,
-                borderColor: C.peach,
-                marginBottom: 20,
-              }}
-            />
-
-            <Text
-              style={{
-                fontSize: 15,
-                fontWeight: "700",
-                color: C.warmBrown,
-                marginBottom: 12,
-              }}
-            >
-              {t("routinesUi.medication.instructions")}
-            </Text>
-            <TextInput
-              value={instructions}
-              onChangeText={setInstructions}
-              placeholder={t("routinesUi.medication.exampleGiveWithFood")}
-              placeholderTextColor={C.mutedBrown}
-              multiline
-              numberOfLines={2}
-              style={{
-                backgroundColor: C.card,
-                borderRadius: 12,
-                padding: 12,
-                fontSize: 14,
-                color: C.warmBrown,
-                borderWidth: 1,
-                borderColor: C.peach,
-                textAlignVertical: "top",
-                marginBottom: 20,
-              }}
-            />
-
-            <View
-              style={{
-                backgroundColor: C.card,
-                borderRadius: 16,
-                padding: 16,
-                borderWidth: 1,
-                borderColor: C.peach,
-                marginBottom: 16,
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: 14,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 15,
-                    fontWeight: "600",
-                    color: C.warmBrown,
-                  }}
-                >
-                  {t("routinesUi.medication.reminderEnabled")}
-                </Text>
-                <Switch
-                  value={reminderEnabled}
-                  onValueChange={setReminderEnabled}
-                  trackColor={{ false: C.sand, true: C.sage + "60" }}
-                  thumbColor={reminderEnabled ? C.sage : C.peach}
-                />
-              </View>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 15,
-                    fontWeight: "600",
-                    color: C.warmBrown,
-                  }}
-                >
-                  {t("routinesUi.medication.timeSensitive")}
-                </Text>
-                <Switch
-                  value={timeSensitive}
-                  onValueChange={setTimeSensitive}
-                  trackColor={{ false: C.sand, true: C.coral + "60" }}
-                  thumbColor={timeSensitive ? C.coral : C.peach}
-                />
-              </View>
-            </View>
-
-            <Text
-              style={{
-                fontSize: 15,
-                fontWeight: "700",
-                color: C.warmBrown,
-                marginBottom: 12,
-              }}
-            >
-              {t("routinesUi.medication.notesOptional")}
-            </Text>
-            <TextInput
-              value={notes}
-              onChangeText={setNotes}
-              placeholder={t("health.reminders.medication.notesPlaceholder")}
-              placeholderTextColor={C.mutedBrown}
-              multiline
-              numberOfLines={3}
-              style={{
-                backgroundColor: C.card,
-                borderRadius: 12,
-                padding: 12,
-                fontSize: 14,
-                color: C.warmBrown,
-                borderWidth: 1,
-                borderColor: C.peach,
-                textAlignVertical: "top",
-                marginBottom: 24,
-              }}
-            />
-          </KeyboardAwareScrollView>
-
+        </>
+      )}
+      footer={(
+        <>
           <View
             style={{
               padding: 20,
-              paddingBottom: 30,
+              paddingBottom: 0,
               borderTopWidth: 1,
               borderTopColor: C.peach,
               backgroundColor: C.cream,
@@ -509,8 +186,326 @@ export default function MedicationRoutineModal({
               </Text>
             </TouchableOpacity>
           </View>
+        </>
+      )}
+    >
+      <View
+        style={{
+          backgroundColor: "#FEF3C7",
+          borderRadius: 12,
+          padding: 14,
+          marginBottom: 20,
+          borderWidth: 1,
+          borderColor: "#FDE68A",
+        }}
+      >
+        <Text style={{ fontSize: 13, color: "#92400E", lineHeight: 19 }}>
+          {t("routinesUi.medication.followYourVeterinarianSInstructions")}
+        </Text>
+      </View>
+
+      <Text
+        style={{
+          fontSize: 15,
+          fontWeight: "700",
+          color: C.warmBrown,
+          marginBottom: 12,
+        }}
+      >
+        {t("routinesUi.medication.medicationName")}
+      </Text>
+      <TextInput
+        value={medicationName}
+        onChangeText={setMedicationName}
+        placeholder={t("routinesUi.medication.exampleApoquel")}
+        placeholderTextColor={C.mutedBrown}
+        style={{
+          backgroundColor: C.card,
+          borderRadius: 12,
+          padding: 12,
+          fontSize: 15,
+          color: C.warmBrown,
+          borderWidth: 1,
+          borderColor: C.peach,
+          marginBottom: 20,
+        }}
+      />
+
+      <Text
+        style={{
+          fontSize: 15,
+          fontWeight: "700",
+          color: C.warmBrown,
+          marginBottom: 12,
+        }}
+      >
+        {t("routinesUi.medication.dose")}
+      </Text>
+      <TextInput
+        value={dose}
+        onChangeText={setDose}
+        placeholder={t("routinesUi.medication.example1Tablet")}
+        placeholderTextColor={C.mutedBrown}
+        style={{
+          backgroundColor: C.card,
+          borderRadius: 12,
+          padding: 12,
+          fontSize: 15,
+          color: C.warmBrown,
+          borderWidth: 1,
+          borderColor: C.peach,
+          marginBottom: 20,
+        }}
+      />
+
+      <Text
+        style={{
+          fontSize: 15,
+          fontWeight: "700",
+          color: C.warmBrown,
+          marginBottom: 12,
+        }}
+      >
+        {t("routinesUi.medication.frequency")}
+      </Text>
+      <View style={{ gap: 8, marginBottom: 20 }}>
+        {[
+          { value: ROUTINE_FREQUENCY.DAILY, label: t("routinesUi.medication.onceDaily") },
+          { value: "twice_daily", label: t("routinesUi.medication.twiceDaily") },
+          { value: "every_12_hours", label: t("routinesUi.medication.every12Hours") },
+        ].map((option) => (
+          <TouchableOpacity
+            key={option.value}
+            onPress={() => {
+              setFrequency(option.value);
+              if (option.value === "twice_daily")
+                setTimes(["09:00", "21:00"]);
+              else if (option.value === "every_12_hours")
+                setTimes(["09:00", "21:00"]);
+              else setTimes(["21:00"]);
+            }}
+            style={{
+              backgroundColor:
+                frequency === option.value ? C.terracotta + "20" : C.card,
+              borderRadius: 12,
+              padding: 14,
+              borderWidth: 1.5,
+              borderColor:
+                frequency === option.value ? C.terracotta : C.peach,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 15,
+                fontWeight: frequency === option.value ? "700" : "600",
+                color:
+                  frequency === option.value ? C.terracotta : C.warmBrown,
+              }}
+            >
+              {option.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Text
+        style={{
+          fontSize: 15,
+          fontWeight: "700",
+          color: C.warmBrown,
+          marginBottom: 12,
+        }}
+      >
+        {t("routinesUi.medication.timeS")}
+      </Text>
+      {times.map((time, index) => (
+        <View key={index} style={{ marginBottom: 10 }}>
+          <TimeField
+            value={time}
+            onChange={(next) => {
+              const updated = [...times];
+              updated[index] = next;
+              setTimes(updated);
+            }}
+          />
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+      ))}
+
+      {/* Stacked (not side-by-side) so the inline calendar has full width */}
+      <View style={{ gap: 12, marginBottom: 20, marginTop: 10 }}>
+        <View>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: "600",
+              color: C.mutedBrown,
+              marginBottom: 8,
+            }}
+          >
+            {t("routinesUi.medication.startDate")}
+          </Text>
+          <DateField value={startDate} onChange={setStartDate} />
+        </View>
+        <View>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: "600",
+              color: C.mutedBrown,
+              marginBottom: 8,
+            }}
+          >
+            {t("routinesUi.medication.endDate")}
+          </Text>
+          <DateField value={endDate} onChange={setEndDate} />
+        </View>
+      </View>
+
+      <Text
+        style={{
+          fontSize: 15,
+          fontWeight: "700",
+          color: C.warmBrown,
+          marginBottom: 12,
+        }}
+      >
+        {t("routinesUi.medication.prescribedBy")}
+      </Text>
+      <TextInput
+        value={prescribedBy}
+        onChangeText={setPrescribedBy}
+        placeholder={t("health.reminders.medication.vetPlaceholder")}
+        placeholderTextColor={C.mutedBrown}
+        style={{
+          backgroundColor: C.card,
+          borderRadius: 12,
+          padding: 12,
+          fontSize: 15,
+          color: C.warmBrown,
+          borderWidth: 1,
+          borderColor: C.peach,
+          marginBottom: 20,
+        }}
+      />
+
+      <Text
+        style={{
+          fontSize: 15,
+          fontWeight: "700",
+          color: C.warmBrown,
+          marginBottom: 12,
+        }}
+      >
+        {t("routinesUi.medication.instructions")}
+      </Text>
+      <TextInput
+        value={instructions}
+        onChangeText={setInstructions}
+        placeholder={t("routinesUi.medication.exampleGiveWithFood")}
+        placeholderTextColor={C.mutedBrown}
+        multiline
+        numberOfLines={2}
+        style={{
+          backgroundColor: C.card,
+          borderRadius: 12,
+          padding: 12,
+          fontSize: 14,
+          color: C.warmBrown,
+          borderWidth: 1,
+          borderColor: C.peach,
+          textAlignVertical: "top",
+          marginBottom: 20,
+        }}
+      />
+
+      <View
+        style={{
+          backgroundColor: C.card,
+          borderRadius: 16,
+          padding: 16,
+          borderWidth: 1,
+          borderColor: C.peach,
+          marginBottom: 16,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 14,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 15,
+              fontWeight: "600",
+              color: C.warmBrown,
+            }}
+          >
+            {t("routinesUi.medication.reminderEnabled")}
+          </Text>
+          <Switch
+            value={reminderEnabled}
+            onValueChange={setReminderEnabled}
+            trackColor={{ false: C.sand, true: C.sage + "60" }}
+            thumbColor={reminderEnabled ? C.sage : C.peach}
+          />
+        </View>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 15,
+              fontWeight: "600",
+              color: C.warmBrown,
+            }}
+          >
+            {t("routinesUi.medication.timeSensitive")}
+          </Text>
+          <Switch
+            value={timeSensitive}
+            onValueChange={setTimeSensitive}
+            trackColor={{ false: C.sand, true: C.coral + "60" }}
+            thumbColor={timeSensitive ? C.coral : C.peach}
+          />
+        </View>
+      </View>
+
+      <Text
+        style={{
+          fontSize: 15,
+          fontWeight: "700",
+          color: C.warmBrown,
+          marginBottom: 12,
+        }}
+      >
+        {t("routinesUi.medication.notesOptional")}
+      </Text>
+      <TextInput
+        value={notes}
+        onChangeText={setNotes}
+        placeholder={t("health.reminders.medication.notesPlaceholder")}
+        placeholderTextColor={C.mutedBrown}
+        multiline
+        numberOfLines={3}
+        style={{
+          backgroundColor: C.card,
+          borderRadius: 12,
+          padding: 12,
+          fontSize: 14,
+          color: C.warmBrown,
+          borderWidth: 1,
+          borderColor: C.peach,
+          textAlignVertical: "top",
+          marginBottom: 24,
+        }}
+      />
+    </KeyboardSafeSheet>
   );
 }
