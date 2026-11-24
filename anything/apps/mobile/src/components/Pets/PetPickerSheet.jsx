@@ -13,15 +13,16 @@ import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import { usePetProfile, useCurrentPet } from "@/hooks/usePetProfile";
 import { PetAvatar } from "./PetAvatar";
+import { SharedPetBadge } from "./SharedPetBadge";
 import { breedLabel } from "@/data/dogBreeds";
 
-// Bottom-sheet picker listing the current owner's real dogs (scoped server-side
-// by owner_user_id = user_profiles.id). Marks the active dog, lets the user
+// Bottom-sheet picker listing the person's real dogs: their own (scoped server-side by owner_user_id = user_profiles.id) and the
+// ones SHARED with them (family / caregiver grants), the latter with a role badge and who shared them. Marks the active dog, lets the user
 // switch via setCurrentPet, and exposes an "Add a dog" action at the bottom.
 export function PetPickerSheet({ visible, onClose, onAddDog }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { data: pets, isLoading } = usePetProfile();
+  const { data: pets, isLoading, isError, refetch } = usePetProfile();
   const { data: currentPet, setCurrentPet } = useCurrentPet();
 
   const handleSelect = (petId) => {
@@ -94,6 +95,19 @@ export function PetPickerSheet({ visible, onClose, onAddDog }) {
                 color={COLORS.coral}
                 style={{ marginVertical: 24 }}
               />
+            ) : isError && !(pets && pets.length) ? (
+              <TouchableOpacity
+                testID="pet-picker-error"
+                onPress={() => refetch?.()}
+                style={{ padding: 16, alignItems: "center" }}
+              >
+                <Text style={{ fontSize: 14, color: COLORS.mutedBrown, textAlign: "center", lineHeight: 20 }}>
+                  {t("sharedDog.pickerLoadError")}
+                </Text>
+                <Text style={{ fontSize: 14, fontWeight: "800", color: COLORS.coral, marginTop: 8 }}>
+                  {t("common.retry")}
+                </Text>
+              </TouchableOpacity>
             ) : (
               (pets || []).map((pet) => {
                 const active = pet.id === currentPet?.id;
@@ -136,6 +150,7 @@ export function PetPickerSheet({ visible, onClose, onAddDog }) {
                         </Text>
                       ) : null}
                     </View>
+                    {pet.is_shared ? <SharedPetBadge pet={pet} align="flex-end" style={{ marginRight: 8, maxWidth: 130 }} /> : null}
                     {active && <Check size={20} color={COLORS.coral} />}
                   </TouchableOpacity>
                 );

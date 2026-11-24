@@ -161,6 +161,7 @@ describe("every menu item opens its own screen", () => {
     ["My Hub", "/(tabs)/more/hub"],
     ["Dog Profile", "/(tabs)/more/profile"],
     ["Family & Caregivers", "/pet-sharing"],
+    ["Household & dogs", "/household"], // the household screen used to have NO entry point at all (audit M10)
     ["Lost & Found", "/lost-found"],
     ["Memories & Wrapped", "/memories"],
     ["Reminders & Routines", "/(tabs)/more/reminders"],

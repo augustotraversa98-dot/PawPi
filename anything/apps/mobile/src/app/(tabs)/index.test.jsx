@@ -173,3 +173,49 @@ test("lock resolved: no skeleton", () => {
   const { queryByTestId } = render(<FeedScreen />);
   expect(queryByTestId("feed-skeleton")).toBeNull();
 });
+
+// Family sharing: who may post a moment for a SHARED dog. Owner + family can; a caregiver gets a friendly explanation (the server answers 403).
+describe("post entry points by role on the active dog", () => {
+  const { Alert } = require("react-native");
+  let alertSpy;
+  beforeEach(() => {
+    alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+  });
+  afterEach(() => alertSpy.mockRestore());
+
+  const withRole = (petProfile) => {
+    mockFeed = feedData({ feedUnlocked: false, posts: [{ id: 9, pet_id: 42 }], petProfile, petName: petProfile.name });
+  };
+
+  test("owner (own dog, no role field from an old server): the CTA opens the composer", () => {
+    withRole({ id: 1, name: "Mango" });
+    const { getByTestId } = render(<FeedScreen />);
+    fireEvent.press(getByTestId("locked-post-cta"));
+    expect(getByTestId("composer-open")).toBeTruthy();
+    expect(alertSpy).not.toHaveBeenCalled();
+  });
+
+  test("family on a shared dog: the CTA opens the composer", () => {
+    withRole({ id: 7, name: "Luna", is_shared: true, access_role: "family" });
+    const { getByTestId } = render(<FeedScreen />);
+    fireEvent.press(getByTestId("locked-post-cta"));
+    expect(getByTestId("composer-open")).toBeTruthy();
+  });
+
+  test("caregiver on a shared dog: NO composer, a friendly alert naming the dog instead", () => {
+    withRole({ id: 8, name: "Rocky", is_shared: true, access_role: "caregiver" });
+    const { getByTestId, queryByTestId } = render(<FeedScreen />);
+    fireEvent.press(getByTestId("locked-post-cta"));
+    expect(queryByTestId("composer-open")).toBeNull();
+    expect(alertSpy).toHaveBeenCalledTimes(1);
+    expect(alertSpy.mock.calls[0][1]).toContain("Rocky");
+  });
+
+  test("caregiver arriving with the ?compose= deep link also gets the explanation, not the composer", () => {
+    mockParams = { compose: "1" };
+    withRole({ id: 8, name: "Rocky", is_shared: true, access_role: "caregiver" });
+    const { queryByTestId } = render(<FeedScreen />);
+    expect(queryByTestId("composer-open")).toBeNull();
+    expect(alertSpy).toHaveBeenCalled();
+  });
+});

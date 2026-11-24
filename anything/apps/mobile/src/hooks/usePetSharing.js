@@ -83,3 +83,22 @@ export function useRevokeGrant(petId) {
     onError: (e) => alertError(e, "appAlerts.couldNotRevoke"),
   });
 }
+
+// A member leaves a shared dog (POST /api/pet-caregivers/[id]/leave — the member's own grant only). The server keeps the history and the owner
+// can invite them again. On success the pets list is refetched: usePetProfile's reconcile then sees the dog gone and clears everything keyed to it.
+export function useLeaveGrant() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (grantId) => {
+      const res = await fetch(`/api/pet-caregivers/${grantId}/leave`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to leave");
+      return res.json().catch(() => ({}));
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["shared-with-me"] });
+      qc.invalidateQueries({ queryKey: ["pets"] });
+      qc.invalidateQueries({ queryKey: ["household"] });
+    },
+    onError: (e) => alertError(e, "sharedDog.leaveError"),
+  });
+}

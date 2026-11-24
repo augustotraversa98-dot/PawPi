@@ -63,6 +63,8 @@ import {
 import { Card, PressableScale } from "@/components/ui";
 import { breedLabel } from "@/data/dogBreeds";
 import { spayNeuterLabel } from "@/utils/healthText";
+import { memberDisplayName } from "@/utils/sharingLabels";
+import { usePetPermissions } from "@/hooks/usePetPermissions";
 
 // Ordered sub-tabs of the "Medical history" group. Each key drives its own
 // list/query/modal below; the parent chip sub-nav renders in this order and the
@@ -84,6 +86,9 @@ export default function HealthVetRecord() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data: currentPet } = useCurrentPet();
+  // Deleting a vet-record entry is the owner's (the server filters on the owner); a family member can add and edit but not delete.
+  const { can } = usePetPermissions();
+  const canDeleteRecords = can("deleteVetRecord");
 
   // Localized "N items" for section count badges (explicit key select so it works
   // under the test i18n resolver, which doesn't do i18next plural suffixing).
@@ -145,7 +150,7 @@ export default function HealthVetRecord() {
     if (!row) return null;
     const isEditor = row.created_by_role === "editor";
     const name =
-      row.created_by_name ||
+      memberDisplayName(t, row.created_by_name) ||
       t(isEditor ? "health.vetRecord.roleEditor" : "health.vetRecord.you");
     const roleLabel = t(
       isEditor ? "health.vetRecord.roleEditor" : "health.vetRecord.roleOwner",
@@ -1399,13 +1404,15 @@ export default function HealthVetRecord() {
                       >
                         {formatDisplayDate(note.note_date)}
                       </Text>
-                      <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button"
-                        testID="delete-vet-note"
-                        onPress={() => deleteVetNote(note)}
-                        hitSlop={8}
-                      >
-                        <Trash2 size={15} color={COLORS.mutedBrown} />
-                      </TouchableOpacity>
+                      {canDeleteRecords ? (
+                        <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button"
+                          testID="delete-vet-note"
+                          onPress={() => deleteVetNote(note)}
+                          hitSlop={8}
+                        >
+                          <Trash2 size={15} color={COLORS.mutedBrown} />
+                        </TouchableOpacity>
+                      ) : null}
                     </View>
                   </View>
                   <Text
@@ -1597,13 +1604,15 @@ export default function HealthVetRecord() {
                     </View>
                     {renderAttribution(doc)}
                   </View>
-                  <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button"
-                    testID="delete-document"
-                    onPress={() => deleteDocument(doc)}
-                    hitSlop={8}
-                  >
-                    <Trash2 size={18} color={COLORS.mutedBrown} />
-                  </TouchableOpacity>
+                  {canDeleteRecords ? (
+                    <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button"
+                      testID="delete-document"
+                      onPress={() => deleteDocument(doc)}
+                      hitSlop={8}
+                    >
+                      <Trash2 size={18} color={COLORS.mutedBrown} />
+                    </TouchableOpacity>
+                  ) : null}
                 </TouchableOpacity>
                     ))
                   )}

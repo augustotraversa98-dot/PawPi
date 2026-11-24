@@ -29,8 +29,9 @@ export function useFeedData() {
   // The DELETE/PATCH post routes are owner-scoped by user_id, so the viewer may
   // edit/delete ANY post they own — this set is what the feed uses to show those
   // affordances for every owned pet, not only the active one.
+  // Pets SHARED with the viewer (family / caregiver) are not in this set: the owner's posts about them are not the viewer's to edit or delete.
   const ownedPetIds = useMemo(
-    () => new Set((allPets ?? []).map((p) => String(p.id))),
+    () => new Set((allPets ?? []).filter((p) => !p.is_shared).map((p) => String(p.id))),
     [allPets],
   );
 

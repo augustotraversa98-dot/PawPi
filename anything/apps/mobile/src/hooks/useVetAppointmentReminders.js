@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCurrentPet } from "./usePetProfile";
+import { canDoOnPet } from "@/utils/petPermissions";
 import { combineDateAndTime } from "@/utils/calendarFormat";
 
 // Postgres hands back `appointment_date` as a date/ISO string and `appointment_time` as "HH:MM" or
@@ -88,7 +89,8 @@ export function useVetAppointmentReminders() {
 
       return reminders;
     },
-    enabled: !!currentPet?.id,
+    // A caregiver on a shared dog has no appointments (the server keeps them closed): do not ask, so no 403 and no empty-error state.
+    enabled: !!currentPet?.id && canDoOnPet(currentPet, "viewAppointments"),
     staleTime: 1000 * 60, // 1 minute
     refetchInterval: 1000 * 60 * 5, // Refetch every 5 minutes
   });

@@ -27,7 +27,8 @@ const C = {
   sand: "#F5EDE4",
 };
 
-export default function RoutineCard({ routine, onEdit, onToggle, onDelete }) {
+// `readOnly`: the person may SEE this routine but not change it (a caregiver on a shared dog) — no pause switch, no edit, no delete.
+export default function RoutineCard({ routine, onEdit, onToggle, onDelete, readOnly = false }) {
   const { t } = useTranslation();
   const config = ROUTINE_TYPE_CONFIG[routine.type];
 
@@ -319,13 +320,15 @@ export default function RoutineCard({ routine, onEdit, onToggle, onDelete }) {
           </View>
         </View>
 
-        <Switch
-          value={routine.isActive}
-          onValueChange={() => onToggle(routine.id)}
-          trackColor={{ false: C.sand, true: C.sage + "60" }}
-          thumbColor={routine.isActive ? C.sage : C.peach}
-          ios_backgroundColor={C.sand}
-        />
+        {readOnly ? null : (
+          <Switch
+            value={routine.isActive}
+            onValueChange={() => onToggle(routine.id)}
+            trackColor={{ false: C.sand, true: C.sage + "60" }}
+            thumbColor={routine.isActive ? C.sage : C.peach}
+            ios_backgroundColor={C.sand}
+          />
+        )}
       </View>
 
       {/* Schedule Summary */}
@@ -436,6 +439,8 @@ export default function RoutineCard({ routine, onEdit, onToggle, onDelete }) {
         </>
       )}
 
+      {readOnly ? null : (
+        <>
       {/* Edit Button */}
       <TouchableOpacity
         onPress={() => onEdit(routine)}
@@ -479,6 +484,8 @@ export default function RoutineCard({ routine, onEdit, onToggle, onDelete }) {
           {t("routineCard.deleteRoutine")}
         </Text>
       </TouchableOpacity>
+        </>
+      )}
     </View>
   );
 }

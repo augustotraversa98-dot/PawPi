@@ -19,6 +19,7 @@ import QRCode from "react-native-qrcode-svg";
 import { COLORS } from "@/constants/colors";
 import { PetAvatar } from "@/components/Pets/PetAvatar";
 import { useCurrentPet } from "@/hooks/usePetProfile";
+import { usePetPermissions } from "@/hooks/usePetPermissions";
 import { breedLabel } from "@/data/dogBreeds";
 import {
   useEmergencyCard,
@@ -91,6 +92,10 @@ export default function EmergencyCardScreen() {
   const { t } = useTranslation();
   const params = useLocalSearchParams();
   const { data: currentPet } = useCurrentPet();
+  // The tag QR, who-can-reach-me settings and vet links are the OWNER's. A family member or caregiver sees the card itself (read-only):
+  // the server sends them no tag token, no contacts and no links, and refuses the writes.
+  const { can } = usePetPermissions();
+  const canEditCard = can("editEmergencyCard");
   const petId = params.petId || (currentPet?.id != null ? String(currentPet.id) : "");
 
   const { data, isLoading, isError, refetch } = useEmergencyCard(petId || null);
@@ -226,6 +231,8 @@ export default function EmergencyCardScreen() {
               <Text style={{ color: "#fff", fontWeight: "800" }}>{t("emergencyCard.shareCardImage")}</Text>
             </TouchableOpacity>
 
+            {canEditCard ? (
+              <>
             {/* Tag QR */}
             <View style={{ backgroundColor: COLORS.card, borderRadius: 16, padding: 16, marginTop: 18, borderWidth: 1, borderColor: COLORS.peach }}>
               <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.warmBrown }}>{t("emergencyCard.tagQrTitle")}</Text>
@@ -354,6 +361,12 @@ export default function EmergencyCardScreen() {
                 ))
               )}
             </View>
+              </>
+            ) : (
+              <Text testID="emergency-owner-only" style={{ color: COLORS.mutedBrown, fontSize: 13, marginTop: 18, textAlign: "center" }}>
+                {t("sharedDog.ownerOnlyHint")}
+              </Text>
+            )}
           </>
         )}
       </KeyboardAwareScrollView>

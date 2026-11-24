@@ -1,4 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { PETS_QUERY_KEY } from "@/utils/launchQueries";
+import { canDoOnPet } from "@/utils/petPermissions";
 
 /**
  * Owner-side read + write of a pet's vaccinations (pet_vaccinations).
@@ -15,6 +17,11 @@ export function vaccinationsKey(petId) {
 }
 
 export function usePetVaccinations(petId) {
+  // A caregiver on a shared dog has no vaccines (closed by the server): do not ask. The role comes from the cached pets list
+  // (no extra fetch); a pet that is not in the cache keeps the old behaviour and lets the server decide.
+  const queryClient = useQueryClient();
+  const pet = (queryClient.getQueryData(PETS_QUERY_KEY) || []).find((p) => p.id === petId);
+  const allowed = pet ? canDoOnPet(pet, "viewVaccinations") : true;
   return useQuery({
     queryKey: vaccinationsKey(petId),
     queryFn: async () => {
@@ -25,7 +32,7 @@ export function usePetVaccinations(petId) {
       const { vaccinations } = await response.json();
       return vaccinations;
     },
-    enabled: !!petId,
+    enabled: !!petId && allowed,
   });
 }
 

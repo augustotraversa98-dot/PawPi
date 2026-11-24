@@ -7,6 +7,8 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { ChevronLeft, PawPrint, Grid3X3, MessageCircle, Share2, Camera, Lock } from "lucide-react-native";
 import { PetAvatar } from "@/components/Pets/PetAvatar";
 import { OwnerMenu } from "@/components/More/OwnerMenu";
+import { SharedPetBadge } from "@/components/Pets/SharedPetBadge";
+import { canDoOnPetOrUnknown } from "@/utils/petPermissions";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { BarkModal } from "@/components/Feed/BarkModal";
 import { PostDetailModal } from "@/components/Feed/PostDetailModal";
@@ -57,10 +59,10 @@ export default function PetProfileScreen({ embedded = false }) {
   // may edit/delete them when they OWN that pet — any of their pets, not just the
   // active one, and String-compared so a number/string id mismatch can't hide the
   // controls. Mirrors the Feed's owner check; the server DELETE/PATCH stay the
-  // real guard (owner-scoped by user_id).
+  // real guard (owner-scoped by user_id). A dog SHARED with the viewer is not theirs to edit/delete posts on.
   const { data: allPets } = usePetProfile();
   const ownsProfilePet = useMemo(
-    () => new Set((allPets ?? []).map((p) => String(p.id))).has(String(petId)),
+    () => new Set((allPets ?? []).filter((p) => !p.is_shared).map((p) => String(p.id))).has(String(petId)),
     [allPets, petId],
   );
 
@@ -401,6 +403,9 @@ export default function PetProfileScreen({ embedded = false }) {
             </Text>
           )}
 
+          {/* Role + owner for a dog shared with the viewer (own dogs show nothing). */}
+          {isOwnPet ? <SharedPetBadge pet={currentPet} align="center" style={{ marginTop: 4 }} /> : null}
+
           {/* Handle */}
           {!!handle && (
             <Text
@@ -644,7 +649,13 @@ export default function PetProfileScreen({ embedded = false }) {
               </Text>
               <PressableScale
                 testID="pet-profile-moments-locked-cta"
-                onPress={() => setComposerVisible(true)}
+                onPress={() => {
+                  if (!canDoOnPetOrUnknown(currentPet, "postMoment")) {
+                    Alert.alert(t("sharedDog.cannotPostTitle"), t("sharedDog.cannotPostBody", { name: viewerPetName }));
+                    return;
+                  }
+                  setComposerVisible(true);
+                }}
                 accessibilityRole="button"
                 style={{
                   flexDirection: "row",

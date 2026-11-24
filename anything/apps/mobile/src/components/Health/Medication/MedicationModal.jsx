@@ -1,3 +1,4 @@
+import { usePetPermissions } from "@/hooks/usePetPermissions";
 import { COLORS } from "@/constants/theme";
 import React, { useState, useRef } from "react";
 import {
@@ -138,6 +139,11 @@ function StatusBadge({ color, label }) {
   );
 }
 
+// Read-only stand-in for RowActions (same props, renders nothing).
+function NoRowActions() {
+  return null;
+}
+
 function RowActions({ onEdit, onDelete, editLabel, deleteLabel }) {
   return (
     <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
@@ -192,6 +198,11 @@ export default function MedicationModal({
   const { t } = useTranslation();
   const tc = (k, vars) => t(`health.medications.${k}`, vars);
   const scrollViewRef = useRef(null);
+
+  // A caregiver on a shared dog sees the medications and preventives but cannot add / edit / delete them, and has no vaccines tab.
+  const { can } = usePetPermissions();
+  const canEditMeds = can("editMedications");
+  const Actions = canEditMeds ? RowActions : NoRowActions;
 
   const [activeTab, setActiveTab] = useState(initialTab);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -398,7 +409,7 @@ export default function MedicationModal({
     ]);
   };
 
-  const addButton = (label) => (
+  const addButton = (label) => !canEditMeds ? null : (
     <TouchableOpacity
       onPress={openAdd}
       accessibilityRole="button"
@@ -454,7 +465,7 @@ export default function MedicationModal({
 
   const TABS = [
     { key: "medications", label: tc("tabMedications"), Icon: Pill },
-    { key: "vaccines", label: tc("tabVaccines"), Icon: Syringe },
+    ...(can("viewVaccinations") ? [{ key: "vaccines", label: tc("tabVaccines"), Icon: Syringe }] : []),
     { key: "preventives", label: tc("tabPreventives"), Icon: Shield },
   ];
 
@@ -601,7 +612,7 @@ export default function MedicationModal({
                         >
                           <Text style={{ fontSize: 13, fontWeight: "700", color: C.sage }}>{tc("markCompleted")}</Text>
                         </TouchableOpacity>
-                        <RowActions
+                        <Actions
                           onEdit={() => editMedication(med)}
                           onDelete={() => confirmDelete(med.name, () => deleteMed.mutate(med.id))}
                           editLabel={tc("edit")}
@@ -632,7 +643,7 @@ export default function MedicationModal({
                           </Text>
                         ) : null}
                         {med.notes ? <Text style={{ ...styles.rowLine, fontStyle: "italic", marginTop: 4 }}>{med.notes}</Text> : null}
-                        <RowActions
+                        <Actions
                           onEdit={() => editMedication(med)}
                           onDelete={() => confirmDelete(med.name, () => deleteMed.mutate(med.id))}
                           editLabel={tc("edit")}
@@ -700,7 +711,7 @@ export default function MedicationModal({
                     {vax.expires_on ? <Text style={styles.rowLine}>{tc("labelDue")}: {formatDate(vax.expires_on)}</Text> : null}
                     {vax.clinic_name ? <Text style={styles.rowLine}>{vax.clinic_name}</Text> : null}
                     {vax.notes ? <Text style={{ ...styles.rowLine, fontStyle: "italic", marginTop: 4 }}>{vax.notes}</Text> : null}
-                    <RowActions
+                    <Actions
                       onEdit={() => editVaccine(vax)}
                       onDelete={() => confirmDelete(vax.name, () => deleteVax.mutate(vax.id))}
                       editLabel={tc("edit")}
@@ -805,7 +816,7 @@ export default function MedicationModal({
                     {prev.last_given ? <Text style={styles.rowLine}>{tc("labelLastGiven")}: {formatDate(prev.last_given)}</Text> : null}
                     {prev.next_due ? <Text style={styles.rowLine}>{tc("labelNextDue")}: {formatDate(prev.next_due)}</Text> : null}
                     {prev.notes ? <Text style={{ ...styles.rowLine, fontStyle: "italic", marginTop: 4 }}>{prev.notes}</Text> : null}
-                    <RowActions
+                    <Actions
                       onEdit={() => editPreventive(prev)}
                       onDelete={() => confirmDelete(prev.product_name, () => deletePrev.mutate(prev.id))}
                       editLabel={tc("edit")}

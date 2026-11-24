@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Alert } from "react-native";
 import { COLORS } from "@/constants/theme";
 import {
   View,
@@ -22,6 +23,9 @@ import {
 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useCurrentPet } from "@/hooks/usePetProfile";
+import { usePetPermissions } from "@/hooks/usePetPermissions";
+import { SharedPetBadge } from "@/components/Pets/SharedPetBadge";
+import { grantStatusLabel, granteeLabel } from "@/utils/sharingLabels";
 import { useSearch, useDebouncedValue } from "@/hooks/useSearch";
 import {
   usePetGrants,
@@ -29,6 +33,7 @@ import {
   useInviteCaregiver,
   useRespondGrant,
   useRevokeGrant,
+  useLeaveGrant,
 } from "@/hooks/usePetSharing";
 import CaregiverLogWalkModal from "@/components/Pets/CaregiverLogWalkModal";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
@@ -61,6 +66,10 @@ export default function PetSharingScreen() {
   const ROLE_LABEL = useRoleLabel();
   const { data: currentPet, isLoading: petLoading } = useCurrentPet();
   const petId = currentPet?.id;
+  // Managing who has access is the OWNER's. When the active dog is one SHARED with this person (family / caregiver) the Manage tab explains
+  // who decides instead of offering invite / revoke (the server would refuse them).
+  const { can, ownerName } = usePetPermissions();
+  const canManage = can("manageSharing");
 
   // FF2: the shared pet a family caregiver is logging a walk for ({ id, name } | null).
   const [logWalkPet, setLogWalkPet] = useState(null);
@@ -71,14 +80,26 @@ export default function PetSharingScreen() {
   const debounced = useDebouncedValue(query, 300);
   const { data: results, isFetching } = useSearch(debounced);
 
-  const { data: grants, isLoading: grantsLoading } = usePetGrants(petId);
+  const { data: grants, isLoading: grantsLoading } = usePetGrants(canManage ? petId : null);
   const { data: shared, isLoading: sharedLoading } = useSharedWithMe();
   const invite = useInviteCaregiver(petId);
   const respond = useRespondGrant();
   const revoke = useRevokeGrant(petId);
+  const leave = useLeaveGrant();
+
+  const confirmLeave = (g) => {
+    Alert.alert(
+      t("sharedDog.leaveConfirmTitle", { name: g.pet_name }),
+      t("sharedDog.leaveConfirmBody", { name: g.pet_name }),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        { text: t("sharedDog.leave"), style: "destructive", onPress: () => leave.mutate(g.id) },
+      ],
+    );
+  };
 
   const handleInvite = (owner) => {
-    if (!petId) return;
+    if (!petId || !canManage) return;
     // (AUDIT A-26) Guard against a double-tap sending two invites for the same
     // caregiver while the first is still in flight.
     if (invite.isPending) return;
@@ -154,6 +175,27 @@ export default function PetSharingScreen() {
               </Text>
             </View>
           )
+        ) : tab === "manage" && !canManage ? (
+          // The active dog is SHARED with this person: only the owner invites / removes people.
+          <View testID="pet-sharing-owner-only" style={{ alignItems: "center", paddingVertical: 32, paddingHorizontal: 12 }}>
+            <SharedPetBadge pet={currentPet} align="center" />
+            <Text style={{ fontSize: 17, fontWeight: "800", color: C.warmBrown, marginTop: 14, textAlign: "center" }}>
+              {t("sharedDog.manageOwnerOnlyTitle")}
+            </Text>
+            <Text style={{ fontSize: 14, color: C.mutedBrown, marginTop: 8, lineHeight: 20, textAlign: "center" }}>
+              {ownerName
+                ? t("sharedDog.manageOwnerOnlyBody", { owner: ownerName, name: currentPet?.name || t("common.yourPet") })
+                : t("sharedDog.manageOwnerOnlyBodyNoName", { name: currentPet?.name || t("common.yourPet") })}
+            </Text>
+            <TouchableOpacity
+              testID="open-household"
+              accessibilityRole="button"
+              onPress={() => router.push("/household")}
+              style={{ marginTop: 16, backgroundColor: C.sageDark, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 20 }}
+            >
+              <Text style={{ color: "#FFF", fontWeight: "800" }}>{t("sharedDog.householdCta")}</Text>
+            </TouchableOpacity>
+          </View>
         ) : tab === "manage" ? (
           <>
             <Text style={{ fontSize: 14, color: C.mutedBrown, marginBottom: 14, lineHeight: 20 }}>
@@ -231,15 +273,17 @@ export default function PetSharingScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 14, fontWeight: "700", color: C.warmBrown }}>
-                    @{g.grantee_username}
+                    {granteeLabel(t, g.grantee_username)}
                   </Text>
                   <Text style={{ fontSize: 12, color: C.mutedBrown }}>
-                    {ROLE_LABEL[g.role]} · {g.status}
+                    {ROLE_LABEL[g.role]} · {grantStatusLabel(t, g.status)}
                   </Text>
                 </View>
-                <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID={`revoke-${g.id}`} onPress={() => revoke.mutate(g.id)}>
-                  <Trash2 size={18} color={C.terracotta} />
-                </TouchableOpacity>
+                {g.status === "active" || g.status === "pending" ? (
+                  <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID={`revoke-${g.id}`} onPress={() => revoke.mutate(g.id)}>
+                    <Trash2 size={18} color={C.terracotta} />
+                  </TouchableOpacity>
+                ) : null}
               </View>
             ))}
           </>
@@ -259,7 +303,7 @@ export default function PetSharingScreen() {
                     {g.pet_name}
                   </Text>
                   <Text style={{ fontSize: 12, color: C.mutedBrown }}>
-                    {t("petSharing.sharedFrom", { username: g.owner_username, roleLabel: ROLE_LABEL[g.role], status: g.status })}
+                    {t("petSharing.sharedFrom", { username: g.owner_username, roleLabel: ROLE_LABEL[g.role], status: grantStatusLabel(t, g.status) })}
                   </Text>
                   {/* FF2: a FAMILY caregiver on an ACTIVE grant can log day-to-day care (a Viewer
                       cannot — the server rejects a health write, and 0049 keeps it read-only). */}
@@ -304,7 +348,18 @@ export default function PetSharingScreen() {
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: C.sageDark }}>{t("petSharing.activeChip")}</Text>
+                  <View style={{ alignItems: "flex-end", gap: 6 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: C.sageDark }}>{t("petSharing.activeChip")}</Text>
+                    <TouchableOpacity
+                      testID={`leave-${g.id}`}
+                      accessibilityRole="button"
+                      disabled={leave.isPending}
+                      onPress={() => confirmLeave(g)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: "700", color: C.terracotta }}>{t("sharedDog.leave")}</Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
               </View>
             ))}

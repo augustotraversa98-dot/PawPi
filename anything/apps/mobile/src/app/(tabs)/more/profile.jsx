@@ -22,6 +22,8 @@ import {
   Scissors,
 } from "lucide-react-native";
 import { useCurrentPet } from "@/hooks/usePetProfile";
+import { usePetPermissions } from "@/hooks/usePetPermissions";
+import { SharedPetBadge } from "@/components/Pets/SharedPetBadge";
 import { useGroomSessions } from "@/hooks/useGroomSessions";
 import { getDisplayAgeParts } from "@/utils/petAge";
 import { formatDisplayDate } from "@/utils/canonicalDateTime";
@@ -50,6 +52,9 @@ export default function ProfileScreen() {
 
   // Fetch pet from database instead of AsyncStorage
   const { data: currentPet, isLoading: loadingPet } = useCurrentPet();
+  // Editing the dog's profile is for the owner and family; a caregiver on a shared dog just sees it.
+  const { can } = usePetPermissions();
+  const canEditProfile = can("editPetProfile");
   const { data: authUser } = useUser();
   // Grooming sessions for this pet (ticket 2.6) — before/after photos a groomer logged.
   const { data: groomSessions } = useGroomSessions(currentPet?.id);
@@ -181,7 +186,9 @@ export default function ProfileScreen() {
         <Text style={[TYPE.headline, { fontWeight: "800", color: COLORS.warmBrown }]}>
           {t("dogProfile.title")} 🐾
         </Text>
+        {canEditProfile ? (
         <PressableScale
+          testID="dog-profile-edit"
           onPress={() => {
             console.log("[Dog Profile] Edit button tapped");
             router.push("/more/profile-edit");
@@ -199,6 +206,9 @@ export default function ProfileScreen() {
         >
           <Edit size={16} color={COLORS.coral} />
         </PressableScale>
+        ) : (
+          <View style={{ width: 36, height: 36 }} />
+        )}
       </View>
 
       <ScrollView
@@ -246,6 +256,8 @@ export default function ProfileScreen() {
           >
             {petName}
           </Text>
+          {/* A shared dog shows the viewer's role + who shared it ("Family · Shared by Sam"); the owner's own dog shows nothing. */}
+          <SharedPetBadge pet={currentPet} align="center" style={{ marginTop: 6 }} />
           {petBreed && (
             <Text
               style={[TYPE.body, { color: COLORS.terracotta, fontWeight: "700", marginTop: 3 }]}
