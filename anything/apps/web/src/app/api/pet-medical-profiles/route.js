@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
+import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { getCurrentWeight, logCurrentWeight } from "@/app/api/utils/petWeight";
 
@@ -152,15 +153,18 @@ async function POST(request) {
 
     const ownerUserId = userProfile[0].id;
 
-    // Verify pet ownership
-    const pet = await sql`
-      SELECT id, weight FROM pets 
-      WHERE id = ${petId} AND owner_user_id = ${ownerUserId}
-    `;
-
-    if (!pet || pet.length === 0) {
-      return Response.json({ error: "Pet not found" }, { status: 404 });
+    // The pet's OWNER or an active FAMILY grantee (co-owner) may save the medical profile (owner decision 2, PR3b). A first-time
+    // INSERT by family needs pet_medical_profiles_family_insert (0141) — absent => friendly 403. Everything below is anchored to the
+    // pet's OWNER (the profile, weigh-ins and the pets row all belong to the household owner).
+    const access = await resolvePetLogOwner(ownerUserId, petId, {
+      familyPolicy: { table: "pet_medical_profiles", policy: "pet_medical_profiles_family_insert" },
+    });
+    if (access.error) {
+      return access.code
+        ? Response.json({ error: access.error, code: access.code }, { status: access.status })
+        : Response.json({ error: "Pet not found" }, { status: 404 });
     }
+    const anchorOwnerId = access.ownerUserId;
 
     // Update shared fields in pets table
     const updateFields = [];
@@ -203,7 +207,7 @@ async function POST(request) {
 
     updateFields.push(`updated_at = NOW()`);
     updateValues.push(petId);
-    updateValues.push(ownerUserId);
+    updateValues.push(anchorOwnerId);
 
     if (updateFields.length > 1) {
       await sql.unsafe(
@@ -224,7 +228,7 @@ async function POST(request) {
       if (!isNaN(numericWeight)) {
         await logCurrentWeight(
           petId,
-          ownerUserId,
+          anchorOwnerId,
           numericWeight,
           weightUnit || "lbs",
         );
@@ -234,7 +238,7 @@ async function POST(request) {
     // Upsert medical profile
     const existingProfile = await sql`
       SELECT id FROM pet_medical_profiles 
-      WHERE pet_id = ${petId} AND owner_user_id = ${ownerUserId} AND deleted_at IS NULL
+      WHERE pet_id = ${petId} AND owner_user_id = ${anchorOwnerId} AND deleted_at IS NULL
     `;
 
     if (existingProfile.length > 0) {
@@ -265,7 +269,7 @@ async function POST(request) {
           emergency_contact_name, emergency_contact_phone, insurance_provider,
           insurance_policy_number, medical_notes
         ) VALUES (
-          ${petId}, ${ownerUserId}, ${microchipId || null}, ${spayedNeuteredStatus || null},
+          ${petId}, ${anchorOwnerId}, ${microchipId || null}, ${spayedNeuteredStatus || null},
           ${spayedNeuteredDate || null}, ${primaryVetName || null}, ${primaryClinicName || null},
           ${vetPhone || null}, ${vetEmail || null}, ${emergencyContactName || null},
           ${emergencyContactPhone || null}, ${insuranceProvider || null},

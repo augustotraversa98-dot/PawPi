@@ -317,11 +317,11 @@ describe("C. LOGGING per role", () => {
     expect((await raw`select owner_user_id from health_food_logs where pet_id = ${PET} and food_name = 'kibble'`).length).toBeGreaterThan(0);
   });
 
-  it("a CAREGIVER cannot record an administered vaccine (owner-only) — friendly 403 with a code; a skipped vaccine is fine", async () => {
+  it("a CAREGIVER cannot record an administered vaccine (owner/family only since PR3b) — friendly 403 with a code; a skipped vaccine is fine", async () => {
     as(CARE);
     const r = await req("/health/medical-care-logs", "POST", { petId: PET, careType: "vaccine", name: "Rabies", status: "completed" });
     expect(r.status).toBe(403);
-    expect((await json(r)).code).toBe("vaccine_owner_only");
+    expect((await json(r)).code).toBe("vaccine_family_only");
     expect(await raw`select id from pet_vaccinations`).toHaveLength(0);
     expect((await req("/health/medical-care-logs", "POST", { petId: PET, careType: "vaccine", name: "Rabies", status: "skipped" })).status).toBe(201);
     as(OWNER); // the owner still writes through to pet_vaccinations

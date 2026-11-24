@@ -1,4 +1,5 @@
 import sql from "@/app/api/utils/sql";
+import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
@@ -59,18 +60,22 @@ async function POST(request) {
       return Response.json({ error: "productName is required" }, { status: 400 });
     }
 
-    const owned = await sql`
-      SELECT id FROM pets WHERE id = ${petId} AND owner_user_id = ${ownerUserId}
-    `;
-    if (owned.length === 0) {
-      return Response.json({ error: "Pet not found" }, { status: 404 });
+    // The pet's OWNER or an active FAMILY grantee (co-owner) may add this (owner decision 2, PR3b). Family needs the pet_preventive_treatments_family_all
+    // policy (0141) — absent => friendly 403. The row is anchored to the pet's OWNER.
+    const access = await resolvePetLogOwner(ownerUserId, petId, {
+      familyPolicy: { table: "pet_preventive_treatments", policy: "pet_preventive_treatments_family_all" },
+    });
+    if (access.error) {
+      return access.code
+        ? Response.json({ error: access.error, code: access.code }, { status: access.status })
+        : Response.json({ error: "Pet not found" }, { status: 404 });
     }
 
     const rows = await sql`
       INSERT INTO pet_preventive_treatments
         (pet_id, owner_user_id, product_name, treatment_type, frequency, last_given, next_due, notes, reminder_enabled)
       VALUES (
-        ${petId}, ${ownerUserId}, ${productName.trim()},
+        ${petId}, ${access.ownerUserId}, ${productName.trim()},
         ${treatmentType || null}, ${frequency || null},
         ${lastGiven || null}, ${nextDue || null}, ${notes || null}, ${reminderEnabled || false}
       )
@@ -111,7 +116,7 @@ async function PATCH(request) {
         notes            = ${notes !== undefined ? notes || null : sql`notes`},
         reminder_enabled = COALESCE(${reminderEnabled ?? null}, reminder_enabled),
         updated_at       = now()
-      WHERE id = ${id} AND owner_user_id = ${ownerUserId} AND deleted_at IS NULL
+      WHERE id = ${id} AND (owner_user_id = ${ownerUserId} OR app_user_has_pet_family(pet_id)) AND deleted_at IS NULL
       RETURNING *
     `;
     if (rows.length === 0) {
@@ -143,7 +148,7 @@ async function DELETE(request) {
 
     const rows = await sql`
       UPDATE pet_preventive_treatments SET deleted_at = now()
-      WHERE id = ${parseInt(id)} AND owner_user_id = ${ownerUserId} AND deleted_at IS NULL
+      WHERE id = ${parseInt(id)} AND (owner_user_id = ${ownerUserId} OR app_user_has_pet_family(pet_id)) AND deleted_at IS NULL
       RETURNING id
     `;
     if (rows.length === 0) {

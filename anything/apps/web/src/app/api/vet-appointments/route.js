@@ -1,4 +1,5 @@
 import sql from "@/app/api/utils/sql";
+import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 import { auth } from "@/auth";
 import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
 import { bizNotifyBody } from "@/app/api/utils/notify";
@@ -63,7 +64,10 @@ async function GET(request) {
         updated_at
       FROM vet_appointments
       WHERE pet_id = ${petId}
-        AND owner_user_id = ${ownerUserId}
+        AND owner_user_id = (
+          SELECT p.owner_user_id FROM pets p
+          WHERE p.id = ${petId} AND (p.owner_user_id = ${ownerUserId} OR app_user_has_pet_family(p.id))
+        )
         AND deleted_at IS NULL
       ORDER BY appointment_date ASC, appointment_time ASC
     `;
@@ -129,16 +133,15 @@ async function POST(request) {
 
     const ownerUserId = userProfileResult[0].id;
 
-    // Verify pet belongs to user
-    const petCheck = await sql`
-      SELECT id FROM pets WHERE id = ${petId} AND owner_user_id = ${ownerUserId}
-    `;
-
-    if (petCheck.length === 0) {
-      return Response.json(
-        { error: "Pet not found or unauthorized" },
-        { status: 404 },
-      );
+    // The pet's OWNER or an active FAMILY grantee (co-owner) may add an appointment (owner decision 2, PR3b). Family needs
+    // vet_appointments_family_all (0141) - absent => friendly 403. The row is anchored to the pet's OWNER.
+    const access = await resolvePetLogOwner(ownerUserId, petId, {
+      familyPolicy: { table: "vet_appointments", policy: "vet_appointments_family_all" },
+    });
+    if (access.error) {
+      return access.code
+        ? Response.json({ error: access.error, code: access.code }, { status: access.status })
+        : Response.json({ error: "Pet not found or unauthorized" }, { status: 404 });
     }
 
     // Insert new appointment
@@ -161,7 +164,7 @@ async function POST(request) {
         status
       ) VALUES (
         ${petId},
-        ${ownerUserId},
+        ${access.ownerUserId},
         ${title},
         ${appointmentDate},
         ${appointmentTime},
@@ -264,9 +267,11 @@ async function PUT(request) {
 
     // Load the row (owner-scoped) to decide what the owner may change on a PROVIDER booking.
     const current = await sql`
-      SELECT provider_id, status, appointment_date, appointment_time
+      SELECT provider_id, status, appointment_date, appointment_time, owner_user_id
       FROM vet_appointments
-      WHERE id = ${id} AND owner_user_id = ${ownerUserId} AND deleted_at IS NULL
+      WHERE id = ${id}
+        AND (owner_user_id = ${ownerUserId} OR app_user_has_pet_family(pet_id))
+        AND deleted_at IS NULL
       LIMIT 1
     `;
     if (current.length === 0) {
@@ -372,7 +377,7 @@ async function PUT(request) {
     // Add WHERE clause parameters
     values.push(id);
     const idParam = `$${paramCounter++}`;
-    values.push(ownerUserId);
+    values.push(current[0].owner_user_id); // anchored to the appointment's owner (= the pet's owner), whoever edits
     const ownerParam = `$${paramCounter}`;
 
     const query = `
@@ -471,7 +476,7 @@ async function DELETE(request) {
         reminder_enabled = CASE WHEN provider_id IS NOT NULL THEN false ELSE reminder_enabled END,
         updated_at = NOW()
       WHERE id = ${id}
-        AND owner_user_id = ${ownerUserId}
+        AND (owner_user_id = ${ownerUserId} OR app_user_has_pet_family(pet_id))
         AND deleted_at IS NULL
       RETURNING id, provider_id, appointment_date, appointment_time
     `;

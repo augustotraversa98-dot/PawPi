@@ -60,10 +60,12 @@ async function PATCH(request, { params }) {
 
     const userId = userProfile[0].id;
 
-    // Check if pet exists and belongs to user
+    // The pet's OWNER or an active FAMILY grantee (co-owner) may edit the profile (owner decision 2, PR3b; pets_family_update RLS,
+    // 0049, and the owner-transfer trigger already allow it). A caregiver gets a 404 here as before. Deleting the pet and managing
+    // sharing stay owner-only (no such route for a grantee).
     const existingPet = await sql`
       SELECT * FROM pets 
-      WHERE id = ${petId} AND owner_user_id = ${userId}
+      WHERE id = ${petId} AND (owner_user_id = ${userId} OR app_user_has_pet_family(id))
       LIMIT 1
     `;
 
@@ -227,7 +229,8 @@ async function PATCH(request, { params }) {
     if (loggingWeight) {
       const unitForWeight =
         weight_unit !== undefined ? weight_unit : updatedPet.weight_unit;
-      await logCurrentWeight(petId, userId, numericWeight, unitForWeight);
+      // Weigh-ins are anchored to the pet's OWNER (the household's shared history), whoever edits.
+      await logCurrentWeight(petId, existingPet[0].owner_user_id, numericWeight, unitForWeight);
 
       // logCurrentWeight just wrote this exact value (either seeded onto
       // pets, or as the newest health_weight_logs row) — it IS the pet's
@@ -279,10 +282,10 @@ async function GET(request, { params }) {
 
     const userId = userProfile[0].id;
 
-    // Get pet
+    // Get pet: the owner, or any active grantee (family or caregiver — read access, owner decision 2; 0049 pets_grantee_read)
     const pet = await sql`
       SELECT * FROM pets 
-      WHERE id = ${petId} AND owner_user_id = ${userId}
+      WHERE id = ${petId} AND (owner_user_id = ${userId} OR app_user_has_pet_access(id))
       LIMIT 1
     `;
 
@@ -295,7 +298,7 @@ async function GET(request, { params }) {
     // when the pet has zero weigh-ins logged yet.
     const currentWeight = await getCurrentWeight(
       petId,
-      userId,
+      pet[0].owner_user_id,
       pet[0].weight,
       pet[0].weight_unit,
     );

@@ -237,13 +237,19 @@ describe("2. per-role access through the real routes", () => {
     expect((await apiReq("/posts", "POST", moment)).status).toBe(201);
   });
 
-  it("a grantee cannot edit the pet profile, routines or medical profile through the API; nor delete the pet", async () => {
+  // CHANGED by PR3b (owner decision 2): a FAMILY co-owner now edits the pet profile (see family-write-paths.integration.test.ts); a CAREGIVER
+  // still cannot, and NOBODY but the owner can delete the pet (there is no DELETE route at all).
+  it("a CAREGIVER cannot edit the pet profile; nobody but the owner can delete the pet; the family member's edit does not change the owner", async () => {
+    as(SITTER);
+    expect((await apiReq(`/pets/${PET}`, "PATCH", { name: "Hijack" })).status).toBe(404);
     for (const u of [PARTNER, SITTER]) {
       as(u);
-      expect((await apiReq(`/pets/${PET}`, "PATCH", { name: "Hijack" })).status).toBe(404);
       expect((await apiReq(`/pets/${PET}`, "DELETE")).status).toBeGreaterThanOrEqual(404); // no DELETE route exists
     }
     expect((await raw`select name from pets where id = ${PET}`)[0].name).toBe(OWNER.petName);
+    as(PARTNER);
+    expect((await apiReq(`/pets/${PET}`, "PATCH", { notes: "family note" })).status).toBe(200);
+    expect((await raw`select owner_user_id from pets where id = ${PET}`)[0].owner_user_id).toBe(OWNER.profileId);
   });
 
   // FLIPPED by PR3 (were "TODAY [B2]" + three "DESIRED [PR3]" pins): both grantee roles READ what the owner decision allows.
