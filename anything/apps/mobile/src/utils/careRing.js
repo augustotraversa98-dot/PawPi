@@ -41,6 +41,22 @@ export function ringClosed(state) {
   return normalizeRing(state).ring_closed;
 }
 
+/**
+ * How each arc of the ring should be painted. The arcs ALWAYS reflect what was really logged today:
+ * a done segment is "filled", an open one is "empty". A rest day / pause only softens the OPEN arcs
+ * ("rest" — a calm sage track) so the ring reads as resting without ever looking finished. It must never
+ * repaint a segment: a rest-day ring with 2 of 3 done used to turn all three arcs green, contradicting the
+ * "2 of 3" text beside it. Returns [{ seg, filled, tone }] in RING_SEGMENTS order.
+ */
+export function ringArcTones(state) {
+  const s = normalizeRing(state);
+  const resting = isRestOrPaused(s);
+  return RING_SEGMENTS.map((seg) => {
+    const filled = segmentDone(s, seg);
+    return { seg, filled, tone: filled ? "filled" : resting ? "rest" : "empty" };
+  });
+}
+
 /** A rest day or an active pause: the ring/streak is intentionally on hold, never a "miss". */
 export function isRestOrPaused(state) {
   const s = normalizeRing(state);

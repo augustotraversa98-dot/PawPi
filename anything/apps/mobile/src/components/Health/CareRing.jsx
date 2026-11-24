@@ -2,8 +2,8 @@
 //
 // Three equal arcs (Walk · Moment · Care). A filled arc = that segment is done today; an empty arc is
 // a gentle invitation, never a scold. When all three close, a one-time celebratory pop + success
-// haptic fire. On a rest/paused day the ring shows a calm, full "resting" state so the streak never
-// feels broken. Pure RN Animated (no reanimated worklets) + guarded expo-haptics keeps it test-safe.
+// haptic fire. On a rest/paused day the moon shows and the open arcs soften to a calm sage track, but the
+// arcs and the n/3 count still tell the truth about what was logged (the streak is safe either way). Pure RN Animated (no reanimated worklets) + guarded expo-haptics keeps it test-safe.
 
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, View, Text, StyleSheet } from "react-native";
@@ -17,11 +17,14 @@ import {
   ringClosed,
   isRestOrPaused,
   completedCount,
+  ringArcTones,
 } from "@/utils/careRing";
 
 const SEGMENT_COLOR = { walk: COLORS.coral, moment: COLORS.apricot, care: COLORS.sageDark };
 const TRACK_COLOR = "#EFE2D3"; // faint sand track for an unfinished arc
-const REST_COLOR = COLORS.sage;
+// An OPEN arc on a rest/paused day: a calm sage-tinted track. Deliberately paler than every filled colour so
+// a resting ring never looks finished — a rest day does not repaint what was (or was not) really logged.
+const REST_TRACK_COLOR = "#DCE8D8";
 
 function polar(cx, cy, r, angleDeg) {
   const a = ((angleDeg - 90) * Math.PI) / 180;
@@ -65,11 +68,12 @@ export function CareRing({ state, size = 120, strokeWidth = 12, onPressSegment, 
   const cy = size / 2;
   const r = (size - strokeWidth) / 2;
 
+  const arcTones = ringArcTones(s);
   const segments = RING_SEGMENTS.map((seg, i) => {
     const start = i * (SEGMENT_SWEEP_DEG + RING_GAP_DEG) + RING_GAP_DEG / 2;
     const end = start + SEGMENT_SWEEP_DEG;
-    const filled = seg === "walk" ? s.walk_done : seg === "moment" ? s.moment_done : s.care_done;
-    const color = resting ? REST_COLOR : filled ? SEGMENT_COLOR[seg] : TRACK_COLOR;
+    const { tone } = arcTones[i];
+    const color = tone === "filled" ? SEGMENT_COLOR[seg] : tone === "rest" ? REST_TRACK_COLOR : TRACK_COLOR;
     return { seg, d: arcPath(cx, cy, r, start, end), color };
   });
 
@@ -93,7 +97,7 @@ export function CareRing({ state, size = 120, strokeWidth = 12, onPressSegment, 
       {showCenter ? (
         <View style={styles.center} pointerEvents="none">
           <Text style={styles.centerIcon}>{resting ? "🌙" : closed ? "🎉" : "🐾"}</Text>
-          {!resting ? <Text style={styles.centerCount}>{done}/3</Text> : null}
+          <Text style={styles.centerCount}>{done}/3</Text>
         </View>
       ) : null}
     </Animated.View>
