@@ -16,6 +16,7 @@ import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import useRoutinesStore from "@/store/routinesStore";
 import { ROUTINE_TYPES } from "@/data/routinesData";
 import { useCurrentPet } from "@/hooks/usePetProfile";
+import { usePetPermissions } from "@/hooks/usePetPermissions";
 import RoutineCard from "./RoutineCard";
 import RoutineTypeSelector from "./RoutineTypeSelector";
 import FeedingRoutineModal from "./FeedingRoutineModal";
@@ -47,6 +48,9 @@ export default function RoutinesTab({ editRoutineId } = {}) {
   const bottomClearance = useBottomClearance();
   const { t } = useTranslation();
   const { data: currentPet, isLoading: petLoading } = useCurrentPet();
+  // A caregiver on a shared dog SEES the routines (feeding, meds) but cannot create, edit, pause or delete them.
+  const { can } = usePetPermissions();
+  const canEditRoutines = can("editRoutines");
   const queryClient = useQueryClient();
   const {
     routines,
@@ -314,6 +318,7 @@ export default function RoutinesTab({ editRoutineId } = {}) {
                 onEdit={handleEdit}
                 onToggle={handleToggle}
                 onDelete={handleDelete}
+                readOnly={!canEditRoutines}
               />
             ))}
           </View>
@@ -351,6 +356,7 @@ export default function RoutinesTab({ editRoutineId } = {}) {
             >
               {t("routinesUi.routinesTab.subtitle", { name: petName })}
             </Text>
+            {canEditRoutines ? (
             <TouchableOpacity
               onPress={handleCreateRoutine}
               style={{
@@ -368,6 +374,11 @@ export default function RoutinesTab({ editRoutineId } = {}) {
                 {t("routinesUi.routinesTab.createFirstRoutine")}
               </Text>
             </TouchableOpacity>
+            ) : (
+              <Text testID="routines-read-only-hint" style={{ fontSize: 13, color: C.mutedBrown, textAlign: "center" }}>
+                {t("sharedDog.familyOnlyHint")}
+              </Text>
+            )}
           </View>
         )}
 
@@ -398,7 +409,7 @@ export default function RoutinesTab({ editRoutineId } = {}) {
       </RefreshableScrollView>
 
       {/* Floating Add Button */}
-      {hasAnyRoutines && (
+      {hasAnyRoutines && canEditRoutines && (
         <TouchableOpacity
           onPress={handleCreateRoutine}
           style={{

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   View,
   Text,
@@ -15,7 +15,10 @@ import * as ImagePicker from "expo-image-picker";
 import { X, Check, Camera } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
-import { useCreatePet, useCurrentPet } from "@/hooks/usePetProfile";
+import { useCreatePet, useCurrentPet, usePetProfile } from "@/hooks/usePetProfile";
+import { uuidv4 } from "@/telemetry/uuid";
+import { ownerNameOfPet } from "@/utils/petPermissions";
+import { findSamePet } from "@/utils/findSamePet";
 import useUpload from "@/utils/useUpload";
 import DateField from "@/components/DateField";
 import BreedPicker from "@/components/BreedPicker";
@@ -43,7 +46,12 @@ export function AddDogModal({ visible, onClose }) {
   const insets = useSafeAreaInsets();
   const createPet = useCreatePet();
   const { setCurrentPet } = useCurrentPet();
+  // Every dog the person already has, shared ones included (the duplicate check below must see them).
+  const { data: knownPets } = usePetProfile();
   const [upload, { loading: uploading }] = useUpload();
+  // ONE Idempotency-Key per "add this dog" attempt, reused by every retry of it (a lost response / double tap can never create a second
+  // row); a fresh key once the name changes or the attempt succeeded. { key, name } | null.
+  const attemptRef = useRef(null);
 
   const [form, setForm] = useState(makeEmpty);
   const [submitting, setSubmitting] = useState(false);
@@ -54,7 +62,16 @@ export function AddDogModal({ visible, onClose }) {
 
   const close = () => {
     setForm(makeEmpty());
+    attemptRef.current = null;
     onClose();
+  };
+
+  const keyForName = (name) => {
+    const norm = name.trim().toLowerCase();
+    if (!attemptRef.current || attemptRef.current.name !== norm) {
+      attemptRef.current = { key: uuidv4(), name: norm };
+    }
+    return attemptRef.current.key;
   };
 
   const pickFromGallery = async () => {
@@ -105,12 +122,32 @@ export function AddDogModal({ visible, onClose }) {
     }
   };
 
-  const handleSave = async () => {
-    if (!form.name.trim()) {
+  // A dog with this name is already in the list (own or SHARED with the person): the usual way a partner ends up with the same dog twice.
+  // Ask before creating; "different dog" goes ahead (the Idempotency-Key makes sure it is created exactly once).
+  const handleSave = () => {
+    const name = form.name.trim();
+    if (!name) {
       Alert.alert(t("addDog.nameNeededTitle"), t("addDog.nameNeededBody"));
       return;
     }
+    const same = findSamePet(knownPets, name);
+    if (same) {
+      Alert.alert(
+        t("addDog.dupTitle", { name }),
+        same.is_shared
+          ? t("addDog.dupBodyShared", { name, owner: ownerNameOfPet(same) || "" })
+          : t("addDog.dupBodyOwn", { name }),
+        [
+          { text: t("addDog.dupCancel"), style: "cancel" },
+          { text: t("addDog.dupDifferent"), onPress: () => saveDog() },
+        ],
+      );
+      return;
+    }
+    saveDog();
+  };
 
+  const saveDog = async () => {
     setSubmitting(true);
     try {
       let avatarUrl = null;
@@ -137,8 +174,10 @@ export function AddDogModal({ visible, onClose }) {
         birthday: form.birthday.trim() || null,
         notes: form.notes.trim() || null,
         avatar_url: avatarUrl,
+        idempotencyKey: keyForName(form.name),
       });
 
+      attemptRef.current = null; // created: the next "add a dog" is a new attempt
       const newPetId = result?.pet?.id;
       if (newPetId) setCurrentPet(newPetId);
       formTelemetry.complete();

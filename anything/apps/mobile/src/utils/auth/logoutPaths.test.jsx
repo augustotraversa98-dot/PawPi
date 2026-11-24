@@ -139,7 +139,7 @@ beforeEach(() => {
     }
     if (url === "/api/account") return { ok: true, status: 200, json: async () => ({}) };
     // a REAL dead session: the server stamps its 401 with the session_expired code
-    if (url === "/api/pets") {
+    if (url === "/api/pets?include_shared=1") {
       const res = {
         ok: false,
         status: 401,

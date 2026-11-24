@@ -251,6 +251,12 @@ export function OwnerMenu() {
                 onPress={() => goMenu("/pet-sharing")}
               />
               <MenuItem
+                title={t("ownerMenu.household")}
+                emoji="🏡"
+                color={C.sageDark}
+                onPress={() => goMenu("/household")}
+              />
+              <MenuItem
                 title={t("ownerMenu.lostFound")}
                 emoji="🔍"
                 color={C.coral}

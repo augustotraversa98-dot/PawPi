@@ -12,6 +12,7 @@ let mockShared;
 let mockInvite;
 let mockRespond;
 let mockRevoke;
+let mockLeave;
 let mockSearch;
 let mockCurrentPet;
 const mockRouter = { back: jest.fn(), push: jest.fn(), replace: jest.fn(), navigate: jest.fn() };
@@ -44,6 +45,7 @@ jest.mock("@/hooks/usePetSharing", () => ({
   useInviteCaregiver: () => mockInvite,
   useRespondGrant: () => mockRespond,
   useRevokeGrant: () => mockRevoke,
+  useLeaveGrant: () => mockLeave,
 }));
 
 import PetSharingScreen from "./pet-sharing";
@@ -62,6 +64,7 @@ beforeEach(() => {
   mockInvite = { mutate: jest.fn(), isPending: false };
   mockRespond = { mutate: jest.fn(), isPending: false };
   mockRevoke = { mutate: jest.fn(), isPending: false };
+  mockLeave = { mutate: jest.fn(), isPending: false };
   mockSearch = { data: { owners: [{ id: 8, username: "kim" }] }, isFetching: false };
 });
 

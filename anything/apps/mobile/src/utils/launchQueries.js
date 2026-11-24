@@ -14,6 +14,7 @@
 // user's entry can never be served to another.
 
 import { carriesSessionExpiredCode, wasBearerSent } from "@/utils/auth/sessionHealth";
+import { noteAccessVersion, reconcileSharedPets } from "@/store/petAccessStore";
 
 export const PETS_QUERY_KEY = ["pets"];
 export const MY_PROVIDERS_QUERY_KEY = ["providers", "mine"];
@@ -23,11 +24,16 @@ export const MY_PROVIDERS_QUERY_KEY = ["providers", "mine"];
 // pet still invalidates ["pets"] to refetch immediately.
 export const PETS_STALE_MS = 1000 * 45;
 
-// GET /api/pets → the owner's pets (newest first). Throws an Error carrying `.status` on a non-OK
+// The list URL. `include_shared=1` is the family-sharing opt-in (server PR3): own pets first, then pets the person holds an active
+// grant on, each carrying is_shared / access_role / owner_display (and `access_version` on the response). Without it the server
+// answers owned pets only (what builds 30-32 get). EVERY place that lists the person's pets must use this one URL.
+export const PETS_LIST_URL = "/api/pets?include_shared=1";
+
+// GET /api/pets?include_shared=1 → the person's pets: own (newest first), then shared with them. Throws an Error carrying `.status` on a non-OK
 // response so the EntryPoint can tell an auth failure (401/403) from a transient one; `signal`
 // lets it bound the launch read.
 export async function fetchPets({ signal } = {}) {
-  const response = await fetch("/api/pets", signal ? { signal } : undefined);
+  const response = await fetch(PETS_LIST_URL, signal ? { signal } : undefined);
   if (!response.ok) {
     const error = new Error("Failed to fetch pets");
     error.status = response.status;
@@ -40,6 +46,21 @@ export async function fetchPets({ signal } = {}) {
     throw error;
   }
   const data = await response.json();
+  // The server's fingerprint of this person's active grants. A change since the last read means their access moved (revoked / left /
+  // expired / newly accepted): usePetProfile reacts to it by dropping pet-scoped caches (utils/petAccess). Absent on an old server.
+  noteAccessVersion(data?.access_version);
+  // A shared pet that was listed before and is gone now = this person lost access to it (revoked / left / expired): drop what belongs
+  // to it, forget a selection that points at it and queue the friendly notice. Required lazily to keep the launch graph light.
+  const lost = reconcileSharedPets(data.pets);
+  if (lost.length > 0) {
+    try {
+      const { handleAccessLost } = require("@/utils/petAccess");
+      const { queryClient } = require("@/utils/queryClient");
+      for (const pet of lost) handleAccessLost(queryClient, pet, { refetchPets: false });
+    } catch {
+      // housekeeping only: the list itself is still returned
+    }
+  }
   return data.pets;
 }
 

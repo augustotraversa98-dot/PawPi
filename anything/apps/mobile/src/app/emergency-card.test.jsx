@@ -26,7 +26,8 @@ jest.mock("react-native-qrcode-svg", () => () => null);
 jest.mock("react-native-view-shot", () => ({ captureRef: jest.fn() }));
 jest.mock("expo-sharing", () => ({ isAvailableAsync: jest.fn(), shareAsync: jest.fn() }));
 jest.mock("@/components/Pets/PetAvatar", () => ({ PetAvatar: () => null }));
-jest.mock("@/hooks/usePetProfile", () => ({ useCurrentPet: () => ({ data: { id: 5 } }) }));
+let mockViewerPet = { id: 5 };
+jest.mock("@/hooks/usePetProfile", () => ({ useCurrentPet: () => ({ data: mockViewerPet }) }));
 jest.mock("@/hooks/useEmergencyCard", () => ({
   useEmergencyCard: () => ({ data: mockData, isLoading: false, isError: !!mockError, refetch: mockRefetch }),
   useUpdateEmergencyCard: () => ({ mutate: mockUpdate }),
@@ -41,6 +42,7 @@ import EmergencyCardScreen from "./emergency-card";
 beforeEach(() => {
   jest.clearAllMocks();
   mockError = false;
+  mockViewerPet = { id: 5 };
   mockData = {
     card: {
       id: 1,
@@ -119,4 +121,44 @@ describe("Emergency card — failed load", () => {
     fireEvent.press(getByTestId("emergency-error-retry"));
     expect(mockRefetch).toHaveBeenCalled();
   });
+});
+
+// Family sharing: the tag QR, "who can reach me" settings and vet links are the OWNER's. A family member / caregiver sees the card itself
+// (the server already sends them no tag token, contacts or links) and cannot reach the writes.
+describe.each([
+  ["family", { id: 5, is_shared: true, access_role: "family" }],
+  ["caregiver", { id: 5, is_shared: true, access_role: "caregiver" }],
+])("a %s on a shared dog", (_role, pet) => {
+  beforeEach(() => {
+    mockViewerPet = pet;
+  });
+
+  test("sees the card but none of the owner-only controls", () => {
+    const { getByText, queryByTestId } = render(<EmergencyCardScreen />);
+    expect(getByText("Rex")).toBeTruthy();
+    expect(getByText("Penicillin")).toBeTruthy();
+    expect(queryByTestId("toggle-medical")).toBeNull();
+    expect(queryByTestId("contact-phone")).toBeNull();
+    expect(queryByTestId("create-link")).toBeNull();
+    expect(queryByTestId("tag-qr")).toBeNull();
+  });
+
+  test("is told, kindly, that only the owner can change it", () => {
+    const { getByTestId, getByText } = render(<EmergencyCardScreen />);
+    expect(getByTestId("emergency-owner-only")).toBeTruthy();
+    expect(getByText("Only the owner can change this.")).toBeTruthy();
+  });
+
+  test("the share-as-image action stays available (it only shares what they can already read)", () => {
+    const { getByTestId } = render(<EmergencyCardScreen />);
+    expect(getByTestId("share-card")).toBeTruthy();
+  });
+});
+
+test("the owner still sees every control", () => {
+  mockViewerPet = { id: 5, is_shared: false, access_role: "owner" };
+  const { getByTestId, queryByTestId } = render(<EmergencyCardScreen />);
+  expect(getByTestId("toggle-medical")).toBeTruthy();
+  expect(getByTestId("create-link")).toBeTruthy();
+  expect(queryByTestId("emergency-owner-only")).toBeNull();
 });

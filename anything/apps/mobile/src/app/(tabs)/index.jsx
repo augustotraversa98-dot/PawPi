@@ -16,6 +16,7 @@ import { PostComposerModal } from "@/components/Feed/PostComposerModal";
 import { BarkModal } from "@/components/Feed/BarkModal";
 import { PostDetailModal } from "@/components/Feed/PostDetailModal";
 import { useFeedData } from "@/hooks/useFeedData";
+import { canDoOnPetOrUnknown } from "@/utils/petPermissions";
 import { useFeedSuggestions } from "@/hooks/useFeedSuggestions";
 import { usePostingStreak, useUpdatePostCaption, useTogglePaw } from "@/hooks/useFeedPosts";
 import { stashProviderPost } from "@/utils/providerPostHandoff";
@@ -65,12 +66,21 @@ export default function FeedScreen() {
 
   // Modal states — each isolated from the other
   const [composerVisible, setComposerVisible] = useState(false);
+  // A caregiver on a shared dog cannot post its moments (owner + family can): every "post" entry explains that instead of opening the composer.
+  const canPostMoment = canDoOnPetOrUnknown(petProfile, "postMoment");
+  const openComposer = useCallback(() => {
+    if (!canPostMoment) {
+      Alert.alert(t("sharedDog.cannotPostTitle"), t("sharedDog.cannotPostBody", { name: petName }));
+      return;
+    }
+    setComposerVisible(true);
+  }, [canPostMoment, petName, t]);
   // Other screens (e.g. the weekly-digest "post a daily moment" prompt) ask the Feed to open the
   // composer by navigating here with a fresh `compose` param.
   const { compose } = useLocalSearchParams();
   useEffect(() => {
-    if (compose) setComposerVisible(true);
-  }, [compose]);
+    if (compose) openComposer();
+  }, [compose, openComposer]);
   const [barkPost, setBarkPost] = useState(null);
   const [detailPost, setDetailPost] = useState(null);
 
@@ -310,12 +320,12 @@ export default function FeedScreen() {
                 feed (per active pet). The locked feed below adds its own per-card
                 FOMO nudges (feed polish #4). */}
             <View>
-              <GettingStartedCard onSharePost={() => setComposerVisible(true)} />
+              <GettingStartedCard onSharePost={openComposer} />
               <DailyPromptCard
                 petName={petName}
                 hasPostedToday={hasPostedToday}
                 todayPostId={todayPostId}
-                onPostPress={() => setComposerVisible(true)}
+                onPostPress={openComposer}
                 onViewTodayPost={handleViewTodayPost}
               />
             </View>
@@ -336,7 +346,7 @@ export default function FeedScreen() {
               <LockedFeedOverlay
                 posts={posts}
                 petName={petName}
-                onPostPress={() => setComposerVisible(true)}
+                onPostPress={openComposer}
                 onOpenProfile={openProfile}
                 onOpenBusinessPost={openBusinessPost}
               />

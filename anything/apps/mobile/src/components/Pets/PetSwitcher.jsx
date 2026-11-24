@@ -7,6 +7,7 @@ import { useCurrentPet } from "@/hooks/usePetProfile";
 import { PetAvatar } from "./PetAvatar";
 import { PetPickerSheet } from "./PetPickerSheet";
 import { AddDogModal } from "./AddDogModal";
+import { SharedPetBadge } from "./SharedPetBadge";
 
 // Single entry point for switching/adding dogs. Owns the picker + add-dog modal
 // state so it can be dropped anywhere. `pill` is the compact header element
@@ -56,6 +57,7 @@ export function PetSwitcher({ variant = "pill" }) {
           >
             {currentPet ? t("pets.activePrefix", { name: currentPet.name }) : t("pets.addYourFirstDog")}
           </Text>
+          {currentPet?.is_shared ? <SharedPetBadge pet={currentPet} style={{ marginTop: 4 }} /> : null}
         </View>
         <ChevronRight size={18} color={COLORS.peach} />
       </TouchableOpacity>

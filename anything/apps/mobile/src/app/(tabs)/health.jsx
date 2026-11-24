@@ -11,6 +11,8 @@ import HealthTrack from "../../components/Health/HealthTrack";
 import HealthInsights from "../../components/Health/HealthInsights";
 import HealthVetRecord from "../../components/Health/HealthVetRecord";
 import { PetSwitcher } from "@/components/Pets/PetSwitcher";
+import { RoleLockedCard } from "@/components/Pets/RoleLockedCard";
+import { usePetPermissions } from "@/hooks/usePetPermissions";
 import { FirstFocusGate } from "@/components/FirstFocusGate";
 import {
   COLORS,
@@ -47,6 +49,8 @@ function HealthScreenContent() {
       ? params.section
       : null;
   const [activeSection, setActiveSection] = useState(paramSection || "today");
+  // A caregiver on a shared dog logs and completes things but has no vet record / vaccines / appointments (the server keeps them closed).
+  const { can, pet: activePet } = usePetPermissions();
 
   // Anonymous funnel: health_logging / health_tab (Health opened) and track_open (the Track section shown).
   useEffect(() => {
@@ -71,7 +75,12 @@ function HealthScreenContent() {
       case "insights":
         return <HealthInsights />;
       case "vet-record":
-        return <HealthVetRecord />;
+        // While the pets list is still loading `can` is false for everything; do not flash the lock before we know the role.
+        return activePet && !can("viewVetRecord") ? (
+          <RoleLockedCard petName={activePet.name} testID="vet-record-locked" />
+        ) : (
+          <HealthVetRecord />
+        );
       default:
         return <HealthToday />;
     }

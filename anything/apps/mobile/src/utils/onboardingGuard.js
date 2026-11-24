@@ -1,4 +1,4 @@
-// onboardingGuard — the onboarding wizard is for accounts with NO dog yet.
+// onboardingGuard — the onboarding wizard is for accounts with NO dog yet (own OR shared).
 //
 // Incident (Oct 2026): an account that had already finished onboarding (a profile + a pet) was
 // thrown back into the wizard — after tapping Services — and, filling it in again, created a
@@ -15,13 +15,18 @@
 import { useEffect } from "react";
 import { useRouter } from "expo-router";
 import { reportClientDiagnostic, EVENT_WIZARD_FOR_EXISTING_OWNER } from "./clientDiagnostics";
+import { PETS_LIST_URL } from "./launchQueries";
 
 export const APP_HOME = "/(tabs)";
 
-/** true only when GET /api/pets answers 200 with at least one pet. Never throws. */
+/**
+ * true only when GET /api/pets?include_shared=1 answers 200 with at least one pet — a dog SHARED with this account counts: a
+ * partner who only has a shared dog must never be offered onboarding (it would create a second row for the same real dog).
+ * Never throws.
+ */
 export async function accountAlreadyHasPets(fetchImpl = fetch) {
   try {
-    const res = await fetchImpl("/api/pets");
+    const res = await fetchImpl(PETS_LIST_URL);
     if (!res?.ok) return false;
     const body = await res.json();
     return Array.isArray(body?.pets) && body.pets.length > 0;

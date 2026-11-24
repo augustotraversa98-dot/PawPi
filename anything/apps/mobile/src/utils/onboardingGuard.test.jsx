@@ -116,3 +116,19 @@ describe("useLeaveOnboardingIfHasPets", () => {
     expect(mockReplace).not.toHaveBeenCalled();
   });
 });
+
+describe("accountAlreadyHasPets sees SHARED dogs (family sharing)", () => {
+  test("asks for the shared-inclusive list", async () => {
+    const seen = [];
+    await accountAlreadyHasPets(async (url) => {
+      seen.push(url);
+      return ok({ pets: [] });
+    });
+    expect(seen).toEqual(["/api/pets?include_shared=1"]);
+  });
+
+  test("an account whose only dog is shared with it already HAS a dog: the wizard must not create another one", async () => {
+    const sharedOnly = [{ id: 7, name: "Luna", is_shared: true, access_role: "family" }];
+    expect(await accountAlreadyHasPets(async () => ok({ pets: sharedOnly }))).toBe(true);
+  });
+});

@@ -8,6 +8,10 @@ import React from "react";
 import { render, fireEvent, waitFor, act } from "@testing-library/react-native";
 
 jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
+// These tests are about the form / section routing, not roles: an owner can do everything (roles are tested in the *.roles.test.jsx files).
+jest.mock("@/hooks/usePetPermissions", () => ({
+  usePetPermissions: () => ({ can: () => true, pet: { id: 1, name: "Rex" }, role: "owner" }),
+}));
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));

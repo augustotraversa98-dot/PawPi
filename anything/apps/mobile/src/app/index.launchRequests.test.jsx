@@ -88,7 +88,7 @@ beforeEach(() => {
   pets = [{ id: 7, name: "Mango" }];
   providers = [];
   global.fetch = jest.fn(async (url) => {
-    if (url === "/api/pets") return json({ pets });
+    if (url === "/api/pets?include_shared=1") return json({ pets });
     if (url === "/api/providers") return json({ providers });
     return json({});
   });
@@ -119,7 +119,7 @@ test("no pets: providers is read once for the role check and the later useMyProv
 test("a failing providers read still never blocks onboarding", async () => {
   pets = [];
   global.fetch = jest.fn(async (url) => {
-    if (url === "/api/pets") return json({ pets: [] });
+    if (url === "/api/pets?include_shared=1") return json({ pets: [] });
     throw new Error("offline");
   });
   const screen = launch();

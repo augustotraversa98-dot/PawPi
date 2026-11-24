@@ -24,6 +24,25 @@ Reasoning, the exact expected residual (`supabase_admin:r|S|f` only) and when to
 
 ---
 
+## 📱 To test — Family & caregivers: the shared dog in the app (PR5a; mobile JS only)
+
+**Needs EAS build 33** (merged + CI-green; not device-verified; the server side has been live since #749–#753 / migrations 0137–0142). You need TWO accounts on two phones (or phone + Simulator): **Owner** (has the dog) and **Partner** (signs in with their OWN account, ideally Apple "Hide My Email"). The partner must have a username/name you can find by search (invite link/code is PR6).
+- [ ] **1. Invite (Owner phone):** More menu (burger) → Family & caregivers → search the partner by name/@handle → role **Family** → Invite. The row shows "Pending" (EN) / "Pendiente" (ES), never the English word in Spanish.
+- [ ] **2. Accept (Partner phone, fresh account that has NO dog):** open the app → More menu → Family & caregivers → "Shared with me" → accept. **Expect: no onboarding, no "Add your dog first".** Kill the app and relaunch: it opens straight into the app on the owner's dog.
+- [ ] **3. Same dog, not a copy (Partner):** the dog's name/photo in Feed, Health, More → Dog Profile is the owner's dog. In the pet picker (tap the dog pill on Health) it shows a "Family" badge + "Shared by <Owner>". Dog Profile shows the same badge. The Owner sees NO badge on their own dog.
+- [ ] **4. Co-owner edits (Partner = Family):** Dog Profile → edit (works); Health → routines → add / edit / pause a routine; Vet Record → add a note / document; Health → medication → add. Then check on the Owner phone that the SAME entries appear (one history). The partner can NOT delete vet-record notes/documents (no trash icon), and can NOT invite/remove people (Family & caregivers shows "Only the owner manages sharing").
+- [ ] **5. Posting:** Partner (Family) can post a daily moment for the shared dog.
+- [ ] **6. Caregiver role:** Owner changes nothing; invite a THIRD account as **Caregiver**. On that phone: routines are visible but read-only (no add / edit / pause / delete); Health → Vet Record shows "Only for family and the owner"; medication sheet has no Vaccines tab and no add/edit; Dog Profile has no edit pencil; posting a moment shows a friendly explanation; logging a walk / meal / weight and completing a reminder still works.
+- [ ] **7. Duplicate guards:** Partner → More → My Dogs → Add a dog → type the SAME name as the shared dog → Save: it asks "You already have <name> … is this a different dog?". Cancel → nothing created. On a bad connection, tapping Save twice never makes two dogs.
+- [ ] **8. Revoked:** Owner removes the partner (trash icon). On the partner phone, within a minute (or after any action / pull to refresh): ONE friendly message "Access ended — You no longer have access to <dog>…", the app moves to another dog, or shows the empty state if there is none; it never crashes and never lands in onboarding by itself. Re-inviting works.
+- [ ] **9. Leave:** Partner → Family & caregivers → Shared with me → **Leave** (asks to confirm) → the dog disappears from the partner's app; the Owner's list shows "Left" and can invite again. (Needs migration 0142 applied; without it the app shows a friendly error.)
+- [ ] **10. Household screen:** More menu → "Household & dogs" lists own + shared dogs; tapping a shared dog switches to it and it STAYS selected.
+- [ ] **11. Apple Hide My Email partner:** repeat 1–3 with an account created through Apple + "Hide My Email". Nothing in sharing uses e-mail, so it should behave exactly like the others (they are found by name / @handle).
+- [ ] **12. Spanish:** switch the phone to Spanish and re-read steps 1, 3, 6, 7, 8: statuses ("Pendiente / Activo / Acceso quitado / Se fue"), roles ("Familia / Cuidador"), "Compartido por …", the locked and duplicate messages are all Spanish.
+- [ ] **13. A person with no dog at all** (brand-new account, nothing shared): still goes to onboarding and can create their dog (nothing about sharing must get in the way).
+
+---
+
 ## 📱 To test — Keyboard no longer hides text fields (mobile JS only; shared KeyboardSafeSheet)
 
 **Needs EAS build 33** (merged + CI-green; not device-verified). Layout can only be seen on a real phone. Convention:
