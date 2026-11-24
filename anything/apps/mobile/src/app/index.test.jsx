@@ -36,7 +36,7 @@ beforeEach(() => {
 test("5xx on /api/pets → retry screen with Start over that clears auth and goes to Welcome", async () => {
   global.fetch = jest.fn((url) =>
     Promise.resolve(
-      url === "/api/pets"
+      url === "/api/pets?include_shared=1"
         ? { ok: false, status: 500, json: async () => ({}) }
         : { ok: true, status: 200, json: async () => ({ providers: [] }) },
     ),
@@ -78,11 +78,11 @@ const json = (body) => ({ ok: true, status: 200, json: async () => body });
 let petsAnswer;
 function mockBackend() {
   global.fetch = jest.fn((url) => {
-    if (url === "/api/pets") return Promise.resolve(json({ pets: petsAnswer }));
+    if (url === "/api/pets?include_shared=1") return Promise.resolve(json({ pets: petsAnswer }));
     return Promise.resolve(json({ providers: [] }));
   });
 }
-const petsCalls = () => global.fetch.mock.calls.filter(([u]) => u === "/api/pets").length;
+const petsCalls = () => global.fetch.mock.calls.filter(([u]) => u === "/api/pets?include_shared=1").length;
 
 describe("EntryPoint routes once per session", () => {
   beforeEach(() => {
@@ -177,7 +177,7 @@ describe("EntryPoint routes once per session", () => {
     mockAuth = { isReady: true, auth: { jwt: JWT_A }, setAuth: mockSetAuth };
     global.fetch = jest.fn((url) =>
       Promise.resolve(
-        url === "/api/pets" ? { ok: false, status: 500, json: async () => ({}) } : json({ providers: [] }),
+        url === "/api/pets?include_shared=1" ? { ok: false, status: 500, json: async () => ({}) } : json({ providers: [] }),
       ),
     );
     const { findByText } = render(<EntryPoint />);

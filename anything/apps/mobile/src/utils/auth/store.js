@@ -6,6 +6,7 @@ import { cleanUpAfterIdentityChange, isIdentityChange } from './sessionCleanup';
 import { persistAuth } from './persistAuth';
 import { setCachedAuth } from './tokenCache';
 import { isUsableToken } from './recovery';
+import { resetPetAccessMemory } from '@/store/petAccessStore';
 
 // Re-exported for the existing importers (useAuth, tests). The definitions live
 // in ./secureStore so the global fetch wrapper can share them without pulling
@@ -79,7 +80,11 @@ export const useAuthStore = create((set, get) => ({
     // pet + 403s" bug. The persisted selectedPetId self-corrects via
     // useCurrentPet's find()-guard once ["pets"] is empty.
     // A rolling token refresh keeps the same user, so it keeps their cache too.
-    if (!refresh) queryClient.clear();
+    if (!refresh) {
+      queryClient.clear();
+      // The previous person's shared-pet bookkeeping (access fingerprint, "you lost access" notice) must not leak into the next one.
+      resetPetAccessMemory();
+    }
     set({ auth });
   },
 }));

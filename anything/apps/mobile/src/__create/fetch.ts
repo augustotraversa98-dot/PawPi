@@ -132,6 +132,19 @@ const handleUnauthorized = (response: Response, jwt: string) => {
     });
 };
 
+// A first-party /api 403 can carry { code: "pet_access_revoked" }: the person was a member of a shared pet and no longer is (the owner revoked
+// them, they left, or the grant expired). Learn it from a CLONE of the body (the caller still reads the original) and refetch the pet
+// lists so the app stops showing the dog at once. Fire-and-forget; modules are required lazily to keep this entry-file graph small.
+const handleForbidden = (response: Response) => {
+  try {
+    const { onForbiddenResponse } = require('@/utils/petAccess');
+    const { queryClient } = require('@/utils/queryClient');
+    onForbiddenResponse(response, queryClient).catch(() => {});
+  } catch {
+    // never let access bookkeeping break the request itself
+  }
+};
+
 type Params = Parameters<typeof expoFetch>;
 const fetchToWeb = async function fetchWithHeaders(...args: Params) {
   const firstPartyURL = process.env.EXPO_PUBLIC_BASE_URL;
@@ -227,6 +240,8 @@ const fetchToWeb = async function fetchWithHeaders(...args: Params) {
     markBearerSent(response);
     if (response.status === 401) {
       handleUnauthorized(response, auth.jwt);
+    } else if (response.status === 403) {
+      handleForbidden(response);
     } else if (response.status >= 200 && response.status < 400) {
       handleRefreshedToken(response, auth.jwt);
     }

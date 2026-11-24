@@ -14,6 +14,7 @@ import { recordAppOpenHour } from "@/utils/notificationPreferences";
 import { AuthModal } from "@/utils/auth/useAuthModal";
 import { wireQueryConnectivity } from "@/utils/connectivity";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { AccessLostNotice } from "@/components/Pets/AccessLostNotice";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import "@/i18n"; // i18n init side-effect (ticket 2.29)
 import { initLocaleFromStorage } from "@/i18n/localePreference";
@@ -169,6 +170,7 @@ export default function RootLayout() {
         </ErrorBoundary>
         <AuthModal />
         <OfflineBanner />
+        <AccessLostNotice />
       </GestureHandlerRootView>
     </QueryClientProvider>
   );

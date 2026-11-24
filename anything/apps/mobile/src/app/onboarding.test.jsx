@@ -681,6 +681,35 @@ describe("OnboardingScreen — never creates a duplicate dog for an existing own
     expect(mockRouter.replace).not.toHaveBeenCalledWith("/(tabs)");
     expect(mockNoteBounce).not.toHaveBeenCalled();
   });
+
+  // Family sharing: every create carries an Idempotency-Key, and a retry of the SAME attempt (a lost response, a 500, a flaky connection) reuses it,
+  // so the server answers with the first dog instead of creating a second row.
+  test("the create sends an Idempotency-Key, and a retry after a failure reuses the same one", async () => {
+    let failNext = true;
+    global.fetch = jest.fn((url, init) => {
+      if (url === "/api/pets" && init?.method === "POST") {
+        if (failNext) {
+          failNext = false;
+          return Promise.resolve({ ok: false, status: 500, json: async () => ({ error: "boom" }) });
+        }
+        return Promise.resolve({ ok: true, status: 201, json: async () => ({ pet: { id: 1, name: "Buddy" } }) });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ available: true }) });
+    });
+    const screen = render(<OnboardingScreen />);
+    await walkToReview(screen);
+
+    mockHasPets.mockResolvedValue(false);
+    fireEvent.press(screen.getByText("Create Buddy's profile"));
+    await waitFor(() => expect(postsToPets()).toHaveLength(1));
+    await waitFor(() => expect(screen.getByText("Create Buddy's profile")).toBeTruthy());
+    fireEvent.press(screen.getByText("Create Buddy's profile"));
+    await waitFor(() => expect(postsToPets()).toHaveLength(2));
+
+    const [first, second] = postsToPets().map(([, init]) => init.headers["Idempotency-Key"]);
+    expect(first).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(second).toBe(first);
+  });
 });
 
 // Night run #2 PR B — suggestions, alternatives chips and the save-time race.

@@ -53,6 +53,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { trackFunnel, trackTap } from "@/telemetry/track";
 import { useFormTelemetry } from "@/telemetry/useFormTelemetry";
 import { breedLabel } from "@/data/dogBreeds";
+import { uuidv4 } from "@/telemetry/uuid";
 
 const TOTAL_STEPS = 9;
 
@@ -168,6 +169,9 @@ function OnboardingScreen() {
   const keyboardVisible = useKeyboardVisible();
   const scrollRef = useRef(null);
   const router = useRouter();
+  // One Idempotency-Key per "create my dog" attempt, reused by every retry of it (a lost response, a double tap, a flaky connection), so the
+  // server can never create a second row for the same dog. A different name = a different dog = a new key.
+  const createAttemptRef = useRef(null);
   useLeaveOnboardingIfHasPets("onboarding");
   // Anonymous telemetry: the wizard is the "onboarding" form (steps step_0..step_8) and the activation funnel's
   // onboarding_dog_details step. Additive only.
@@ -421,9 +425,13 @@ function OnboardingScreen() {
         JSON.stringify(finalProfile, null, 2),
       );
 
+      const attemptName = String(finalProfile.name ?? "").trim().toLowerCase();
+      if (!createAttemptRef.current || createAttemptRef.current.name !== attemptName) {
+        createAttemptRef.current = { key: uuidv4(), name: attemptName };
+      }
       const petResponse = await fetch("/api/pets", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": createAttemptRef.current.key },
         body: JSON.stringify(finalProfile),
       });
 

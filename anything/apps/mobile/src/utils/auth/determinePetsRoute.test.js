@@ -124,3 +124,37 @@ describe("determinePetsRoute — pets already known this session (launch hardeni
     expect(determinePetsRoute({ networkError: true, knownPets: [{ id: 7 }] }).action).toBe("error");
   });
 });
+
+// Family sharing: a partner whose ONLY dog is one shared with them (family / caregiver) has a non-empty list, so the launch gate sends them into
+// the app. The wizard would create a second row for the same real dog.
+describe("determinePetsRoute — a person whose only dog is SHARED with them", () => {
+  const sharedOnly = [
+    { id: 7, name: "Luna", is_shared: true, access_role: "family", owner_display: { full_name: "Sam" } },
+  ];
+
+  it.each(["family", "caregiver"])("a shared-only %s goes to the app, never to onboarding", (role) => {
+    const pets = [{ ...sharedOnly[0], access_role: role }];
+    expect(determinePetsRoute({ ok: true, status: 200, pets })).toEqual({ action: "home", destination: "/(tabs)" });
+  });
+
+  it("shared-only also beats the business branch (a vet who is also a caregiver for a friend's dog keeps the pet app)", () => {
+    expect(determinePetsRoute({ ok: true, status: 200, pets: sharedOnly, providers: [{ id: 1 }] })).toEqual({
+      action: "home",
+      destination: "/(tabs)",
+    });
+  });
+
+  it("a person with NO dog at all (own or shared) still gets onboarding", () => {
+    expect(determinePetsRoute({ ok: true, status: 200, pets: [] })).toEqual({
+      action: "onboarding",
+      destination: "/onboarding-photo",
+    });
+  });
+
+  it("access that was just lost, with a transient empty answer, is not a reason to onboard a person this session knows had a dog", () => {
+    expect(determinePetsRoute({ ok: true, status: 200, pets: [], knownPets: sharedOnly })).toEqual({
+      action: "home",
+      destination: "/(tabs)",
+    });
+  });
+});
