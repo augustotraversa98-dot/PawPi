@@ -13,6 +13,7 @@ import {
   streakCount,
   streakIsSafe,
   canRepairStreak,
+  ringArcTones,
   RING_SEGMENTS,
   SEGMENT_SWEEP_DEG,
 } from "./careRing";
@@ -108,5 +109,30 @@ describe("careRing — geometry", () => {
     expect(RING_SEGMENTS).toHaveLength(3);
     expect(SEGMENT_SWEEP_DEG).toBeGreaterThan(0);
     expect(SEGMENT_SWEEP_DEG * 3).toBeLessThan(360);
+  });
+});
+
+describe("careRing — ringArcTones (arcs never contradict the n/3 count)", () => {
+  const tones = (state) => ringArcTones(state).map((a) => a.tone);
+
+  test("a normal day: done arcs are filled, open arcs are empty", () => {
+    expect(tones({ walk_done: true, moment_done: false, care_done: true })).toEqual(["filled", "empty", "filled"]);
+  });
+
+  test("a REST day with 2 of 3 done keeps the real fill: the open arc is soft 'rest', never 'filled'", () => {
+    // Regression (ITEM 3): a rest day used to repaint all three arcs the same green while the card said "2 of 3".
+    const state = { walk_done: true, moment_done: false, care_done: true, rest_day: true };
+    expect(tones(state)).toEqual(["filled", "rest", "filled"]);
+    expect(ringArcTones(state).filter((a) => a.filled)).toHaveLength(completedCount(state));
+  });
+
+  test("a paused ring with nothing done shows no filled arcs at all", () => {
+    expect(tones({ paused: true })).toEqual(["rest", "rest", "rest"]);
+  });
+
+  test("a closed ring is three filled arcs", () => {
+    expect(tones({ walk_done: true, moment_done: true, care_done: true, ring_closed: true })).toEqual([
+      "filled", "filled", "filled",
+    ]);
   });
 });

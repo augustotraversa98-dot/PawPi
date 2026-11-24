@@ -18,6 +18,16 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-23 — Care Ring arcs no longer all turn green on a rest day — client-only, needs EAS build 33
+
+Reported on a live iPhone: pet 27's ring showed all three arcs green while the card said "2 of 3", and no moment was uploaded (one had been posted then deleted).
+- **Diagnosis (read-only production check, counts/booleans only).** NOT stale state and NOT the database: pet 27 has 0 posts, `pet_care_days.moment_done = false`, `ring_closed = false`, and the server derivation (`app_pet_ring_segments`, 0137) is correct, because `posts` is a HARD delete (no `deleted_at`) and the delete hook already invalidates `["care-ring"]` (AUDIT A-24). The real cause: `pet_care_days.rest_day = true` for that pet today (one tap on the "Taking a rest day?" link). On a rest/paused day `CareRing` repainted ALL three arcs in one "resting" green and hid the count, while the card's text still read the real "2 of 3".
+- **Fix (`CareRing.jsx`, `careRing.js`).** Arcs always show what was really logged (new pure `ringArcTones`): done arcs keep their colour; open arcs on a rest day get a pale sage track (never "finished"); the centre keeps the moon and now also the real n/3 count.
+- Tests: `careRing.test.js` (4 new `ringArcTones` cases), new `CareRing.arcs.test.jsx` (4), new `useCareRing.momentDelete.test.jsx` (post a moment then delete it: the mounted ring closes then reverts to 2/3 via the real hooks).
+- No SQL change needed.
+
+---
+
 ## 2026-11-23 — Care Ring pills stay tappable at every progress (0/3 to 3/3) — client-only, needs EAS build 33
 
 Reported on a live iPhone: once 1 of 3 ring pills was done, tapping the other pills (to do a quick update) did nothing.

@@ -24,6 +24,16 @@ Reasoning, the exact expected residual (`supabase_admin:r|S|f` only) and when to
 
 ---
 
+## 📱 To test — Care Ring arcs on a rest day (mobile JS only)
+
+**Needs EAS build 33** (merged + CI-green; not device-verified).
+
+- [ ] **1. Health → Today:** log a walk and a quick check (2 of 3), then tap **Taking a rest day?**. The ring keeps two coloured arcs (coral + green) and the Moment arc is a very pale green; the centre shows the moon and **2/3**. It must NOT be three identical green arcs.
+- [ ] **2. Tap "It's not a rest day".** The ring looks the same except the moon turns back into the paw and the pale arc becomes the plain sand track.
+- [ ] **3. Post today's moment** (ring 3/3, closes), then **delete that moment** from your profile: back on Health → Today the Moment arc is open again and the card says "2 of 3" (no reload needed).
+
+---
+
 ## 📱 To test — Care Ring pills stay tappable (mobile JS only)
 
 **Needs EAS build 33** (merged + CI-green; not device-verified).
