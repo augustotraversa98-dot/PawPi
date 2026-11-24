@@ -15,6 +15,9 @@ export const OWNER_NOTIFICATION_CATALOG = [
   { key: "owner_adoption", channel: "push", promotional: false, defaultEnabled: true },
   { key: "owner_walk_requests", channel: "push", promotional: false, defaultEnabled: true },
   { key: "owner_lost_alerts", channel: "push", promotional: false, defaultEnabled: true },
+  // Family sharing (PR 4): someone invited you / accepted / declined / left, your access was removed, a shared dog's owner deleted their
+  // account. Transactional (a reply to something you did, or an event that changes what you can reach). Default ON.
+  { key: "owner_sharing", channel: "push", promotional: false, defaultEnabled: true },
   // PROMOTIONAL (opt-in, default OFF):
   { key: "winback_email", channel: "email", promotional: true, defaultEnabled: false },
   // PR 3b — the weekly digest and the win-back become a real PHONE push only for owners who opt in.

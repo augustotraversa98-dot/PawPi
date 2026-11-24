@@ -31,7 +31,7 @@ async function GET(request) {
     }
 
     const vaccinations = await sql`
-      SELECT v.*, NULLIF(BTRIM(up.full_name), '') AS created_by_name
+      SELECT v.*, COALESCE(NULLIF(BTRIM(up.full_name), ''), CASE WHEN v.created_by_role = 'editor' AND v.created_by_user_id IS NULL THEN 'Former member' END) AS created_by_name
       FROM pet_vaccinations v
       LEFT JOIN user_profiles up ON up.id = v.created_by_user_id
       WHERE v.pet_id = ${petId}

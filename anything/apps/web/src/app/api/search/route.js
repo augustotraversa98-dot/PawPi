@@ -58,6 +58,8 @@ async function GET(request) {
          OR full_name ILIKE ${pattern})
         AND banned_at IS NULL
         AND is_demo IS NOT TRUE
+        -- the anonymous "Former member" profiles that account deletion creates (0142) are not people to find or follow
+        AND left(username, 14) <> 'former_member_'
         AND NOT app_user_is_blocked(current_app_user_id(), id)
       ORDER BY username ASC
       LIMIT ${LIMIT}

@@ -1,4 +1,5 @@
 import sql from "@/app/api/utils/sql";
+import { withSavepoint } from "@/app/api/utils/requestContext";
 import { pushForNotification } from "@/app/api/utils/push";
 import { pushForOwnerNotification } from "@/app/api/utils/ownerNotifications";
 
@@ -39,6 +40,37 @@ export async function safeNotify({ recipient, actor, type, subjectRef, body }) {
   } catch (error) {
     // Non-fatal: log and move on so the underlying action still succeeds.
     console.error("[safeNotify] non-fatal:", error?.message);
+  }
+}
+
+// Same as safeNotify, but the app_notify INSERT runs in a SAVEPOINT. A failed insert (e.g. a notification type the DB CHECK does not know yet
+// because a migration is not applied) is rolled back to the savepoint instead of aborting the REQUEST transaction, which would turn the
+// caller's successful action into a blanket 500 at COMMIT. Use this for any notification that must never be able to fail its action.
+// Returns the bell row id, or null when nothing was written (self-notify, gated, or the insert was refused).
+export async function safeNotifyIsolated({ recipient, actor, type, subjectRef, body }) {
+  try {
+    if (recipient == null || recipient === actor) return null;
+    let notificationId = null;
+    try {
+      await withSavepoint(async () => {
+        const rows = await sql`
+          SELECT app_notify(
+            ${recipient}, ${actor ?? null}, ${type}, ${subjectRef ?? null}, ${body ?? null}
+          ) AS id
+        `;
+        notificationId = rows?.[0]?.id ?? null;
+      });
+    } catch (e) {
+      console.error("[safeNotifyIsolated] insert refused (non-fatal):", e?.message);
+      return null;
+    }
+    if (notificationId == null) return null;
+    await pushForNotification({ recipient, actor, type, subjectRef, body });
+    await pushForOwnerNotification({ recipient, type, subjectRef });
+    return notificationId;
+  } catch (error) {
+    console.error("[safeNotifyIsolated] non-fatal:", error?.message);
+    return null;
   }
 }
 

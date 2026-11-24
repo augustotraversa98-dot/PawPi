@@ -19,7 +19,9 @@ const OWNER = { authUserId: 1, profileId: 1, username: "owner", fullName: "owner
 const CARE = { authUserId: 2, profileId: 2, username: "caregiver", fullName: "caregiver" };
 const VIEWER = { authUserId: 3, profileId: 3, username: "viewer" };
 const STRANGER = { authUserId: 4, profileId: 4, username: "stranger" };
-const TODAY = new Date().toISOString().slice(0, 10); // the route caps against the real "today"
+// The route caps against the pet's LOCAL "today" (owner timezone, default America/Buenos_Aires), not the UTC date — computing it in UTC made
+// this test fail every day between 21:00 and 24:00 Buenos Aires time (when UTC is already tomorrow).
+const TODAY = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Buenos_Aires' });
 
 let raw: Sql;
 let api: any;

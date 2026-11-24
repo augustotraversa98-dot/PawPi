@@ -30,7 +30,7 @@ async function GET(request) {
     }
 
     const allergies = await sql`
-      SELECT a.*, NULLIF(BTRIM(up.full_name), '') AS created_by_name
+      SELECT a.*, COALESCE(NULLIF(BTRIM(up.full_name), ''), CASE WHEN a.created_by_role = 'editor' AND a.created_by_user_id IS NULL THEN 'Former member' END) AS created_by_name
       FROM pet_allergies a
       LEFT JOIN user_profiles up ON up.id = a.created_by_user_id
       WHERE a.pet_id = ${petId} AND a.owner_user_id = ${gate.ownerUserId}

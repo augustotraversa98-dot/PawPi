@@ -1,4 +1,4 @@
-# Runbook — migrations 0139, 0140 (family-sharing PR3) and 0141 (PR3b)
+# Runbook — migrations 0139, 0140 (family-sharing PR3), 0141 (PR3b) and 0142 (PR4)
 
 **All three are written, CI-proven on the throwaway Postgres, and NOT applied. You (human) apply them in the Supabase SQL editor.** Neither needs an app build; builds 30–32 are unaffected before or after.
 
@@ -16,6 +16,7 @@
 2. Apply **0139**, run `verify_0139.sql` → 8 PASS.
 3. Apply **0140**, run `verify_0140.sql` → 6 PASS.
 4. Apply **0141** (PR3b), run `verify_0141.sql` → **9 PASS** (row 9 is the read-only "0 mismatched rows" check for `pet_vaccinations`, `vet_appointments`, `pet_medical_profiles`).
+5. Apply **0142** (PR4, see §0142 below), run `verify_0142.sql` → **7 PASS**.
 
 ## Smoke test after applying (a phone is fine)
 - As the **owner** of a dog: log a walk, add an allergy, edit a routine, dismiss a reminder → all succeed (0140 must not block the owner).
@@ -43,3 +44,14 @@ Each rollback is **idempotent, non-destructive and takes effect on the next stat
 | If not applied | a family member's first write answers a friendly `403 family_write_unavailable`; edits of existing rows match zero rows (404); owners, caregivers and providers unaffected; never a 500 |
 | Smoke | as the OWNER: add a medication, a vaccine and an appointment, save the medical profile → all succeed |
 | Cost | same as 0140: only INSERT/UPDATE WITH CHECK (`app_owns_pet`, ~2.6 µs/row); reads unchanged; `app_user_has_pet_family` is evaluated per candidate row on family writes only |
+
+## 0142 `sharing_lifecycle` (PR4) — apply AFTER 0141
+| | |
+|---|---|
+| What | `pet_caregivers.status` accepts `left` (+ `left_at`, `last_notified_at`, `resend_count`); audit actions `leave` / `resend`; `notifications_type_check` gains the six `pet_share_*` types; `leave_pet_caregiver(grant_id)`; `app_delete_my_account(delete_contributions)`; `delete_my_account()` becomes a wrapper with the same signature. All functions SECURITY DEFINER, `search_path = public, pg_temp`, REVOKE PUBLIC/anon/authenticated, GRANT pawpi_app |
+| Why | owner decision 1: members can leave; a member deleting their account keeps their posts on someone else's dog as "Former member" instead of deleting them; invite/accept/revoke/leave notifications |
+| Verify | `supabase/verify_0142.sql` — **7 PASS** (rows FAIL before applying, by design) |
+| Rollback | `supabase/rollback_0142.sql` — drops the two new functions, restores the 0062 `delete_my_account()` body. Keeps the widened CHECKs and columns (harmless supersets; removing them would mean rewriting real `left` rows / notifications). "Former member" profiles already created stay (they own preserved content) |
+| If not applied | leave/resend → friendly `503 sharing_lifecycle_unavailable`; invite/accept/revoke still succeed, notices for types the old CHECK refuses are skipped (logged, never a 500); `DELETE /api/account` uses the old delete (everything the member wrote on shared pets is deleted with them) |
+| Smoke | two accounts: invite → accept → remove, watch the in-app notifications and that the removed member's dog vanishes on refresh. Never test deletion on a real account |
+| Cost | none on reads. `delete_my_account` does a few indexed UPDATEs on the member's own rows; negligible |

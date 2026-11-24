@@ -20,6 +20,7 @@ import {
 import { moderationResponse } from "@/app/api/utils/moderateText";
 import { recordBusinessEvent } from "@/lib/telemetry/business";
 import { loadSharedPets, asOwnedPet } from "@/app/api/utils/sharedPets";
+import { accessVersion } from "@/app/api/utils/petShareAccess";
 import {
   parseIdempotencyKey,
   lockOwnerForPetCreate,
@@ -127,7 +128,12 @@ async function GET(request) {
       return Response.json({ pets: petsWithCurrentWeight });
     }
     const shared = await loadSharedPets(userId, { excludePetIds: petsWithCurrentWeight.map((p) => p.id) });
-    return Response.json({ pets: [...petsWithCurrentWeight.map(asOwnedPet), ...shared] });
+    // `access_version` (opt-in response only): a fingerprint of the active grants listed above. When it changes between two reads the client's
+    // access changed (revoked / left / expired / newly accepted) and its pet-scoped caches must be dropped at once.
+    return Response.json({
+      pets: [...petsWithCurrentWeight.map(asOwnedPet), ...shared],
+      access_version: accessVersion(shared.map((p) => ({ id: p.grant_id, role: p.access_role, expires_at: p.grant_expires_at }))),
+    });
   } catch (error) {
     console.error("[GET /api/pets] Error:", error.message);
     return Response.json({ error: "Failed to fetch pets" }, { status: 500 });

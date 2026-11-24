@@ -62,7 +62,11 @@ export async function resolvePetLogOwner(callerId, petId, { allowCaregiver = fal
   } catch (e) {
     if (e?.code !== MISSING_FN && e?.code !== MISSING_TABLE) throw e; // pre-0049 → not a caregiver
   }
-  if (!isFamily) return { error: "Pet not found or access denied", status: 403 };
+  if (!isFamily) {
+    // Same denial as always — plus, when the caller USED to be a member (revoked / left / expired), a machine-readable code so a client can
+    // drop its cached copy of the pet at once instead of waiting out a stale window. Only on this denial path (no cost for allowed callers).
+    return { error: "Pet not found or access denied", status: 403, ...((await endedMembershipCode(callerId, petId)) ?? {}) };
+  }
 
   // A caregiver may only APPEND to a log table, via <table>_caregiver_insert (0139). Without it (migration not applied yet)
   // refuse cleanly rather than let RLS abort the request transaction.
@@ -85,6 +89,26 @@ export async function resolvePetLogOwner(callerId, petId, { allowCaregiver = fal
   const [p] = await sql`SELECT owner_user_id FROM pets WHERE id = ${petId} LIMIT 1`;
   if (!p) return { error: "Pet not found or access denied", status: 403 };
   return { ownerUserId: p.owner_user_id, isOwner: false, role: caregiverOnly ? "caregiver" : "family" };
+}
+
+// { code: 'pet_access_revoked' } when the caller holds an ENDED grant on this pet (revoked / left, or an active grant past its expiry); else null.
+// The grantee can read their own grants under RLS. Best-effort: any trouble answers "no code" (the plain denial stands).
+async function endedMembershipCode(callerId, petId) {
+  try {
+    let code = null;
+    await withSavepoint(async () => {
+      const rows = await sql`
+        SELECT 1 FROM pet_caregivers
+        WHERE pet_id = ${petId} AND grantee_user_id = ${callerId}
+          AND (status IN ('revoked', 'left') OR (status = 'active' AND expires_at IS NOT NULL AND expires_at <= now()))
+        LIMIT 1
+      `;
+      if (rows.length > 0) code = { code: "pet_access_revoked" };
+    });
+    return code;
+  } catch {
+    return null;
+  }
 }
 
 // Does policy `policy` exist on public.`table`? (pg_policies is readable by pawpi_app.) Used to degrade to a friendly 403 while a
