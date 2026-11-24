@@ -18,6 +18,16 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-24 — Family & caregivers series — PR5b design: reminders across household members — DOCS ONLY, nothing built
+
+New proposal doc [`pr5b-reminder-sync-design.md`](pr5b-reminder-sync-design.md) for you to decide on. Problem: a member's phone arms its own local alarms for the shared dog, but when one person logs a task the other phone's already-armed alarm is not cancelled (and an ex-member's alarms are not cleared when access ends).
+- Read from the real code: alarms are local `expo-notifications` DATE triggers armed by `loadRoutines` for the selected dog only; cancel happens only on the phone that acts; feeding/walk have no server link between a log and a reminder; skips are owner-only; no silent-push path or background task exists; iOS keeps only 64 pending alarms.
+- Four options compared (reconcile on open, silent push, server-only sender, hybrid). **Recommendation: hybrid in 3 phases** — (1) client-only clean-up: clear alarms on access loss, reconcile on foreground, alarm budget, per-dog "remind me" switch; (2) one small household-scoped completions table + a "Sam logged it" push + best-effort silent push (needs a native build after 33); (3) server single-sender only if real use shows it is needed.
+- 11 numbered decisions for Augusto with recommended answers, plus a list of what could not be verified, are at the end of the doc.
+- No code, no SQL, no EAS build needed.
+
+---
+
 ## 2026-11-24 — Family & caregivers series — PR5a: the shared dog is visible and usable (mobile) — client-only, needs EAS build 33
 
 Server work (#749–#753, migrations 0137–0142) is merged and applied; this is the app side so a couple living with ONE dog can each sign in with their own account and see and edit the SAME dog.
