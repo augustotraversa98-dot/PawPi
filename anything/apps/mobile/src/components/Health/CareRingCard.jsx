@@ -12,6 +12,7 @@ import { useDeleteGeneralCheck } from "@/hooks/useHealthReinforcement";
 import { Card } from "@/components/ui/Card";
 import DateField from "@/components/DateField";
 import GeneralCheckModal from "@/components/Health/GeneralCheck/GeneralCheckModal";
+import WalkActivityModal from "@/components/Health/WalkActivity/WalkActivityModal";
 import { CareRing } from "@/components/Health/CareRing";
 import { useCareRing, useSetRestDay, useSetPause, useRepairStreak } from "@/hooks/useCareRing";
 import { useGeneralChecks } from "@/hooks/useFetchHealthData";
@@ -47,6 +48,7 @@ export function CareRingCard({ petId, petName, onPressSegment }) {
   const suggestedAreas = getSuggestedAreas(gcData?.checks || [], undefined, getLocalPostDateString());
   const [showPause, setShowPause] = useState(false);
   const [checkOpen, setCheckOpen] = useState(false);
+  const [walkOpen, setWalkOpen] = useState(false);
   // Holds the id of the general check we just saved, so we can offer Undo even after the
   // ring's Care segment flips to done (which would otherwise hide the block).
   const [justCheckId, setJustCheckId] = useState(null);
@@ -69,6 +71,17 @@ export function CareRingCard({ petId, petName, onPressSegment }) {
     } catch {
       // If the delete fails the ring stays closed; nothing destructive happened.
     }
+  };
+
+  // A segment (a pill, or an arc of the ring) is ALWAYS actionable, whatever the ring's
+  // done-count. The Health → Today screen is already "/(tabs)/health", so routing the
+  // Walk / Care pills there was a silent no-op — they now open their quick log in place.
+  // A completed segment behaves the same way (log another walk / another quick check), so
+  // a tap is never swallowed. Moment lives on the feed tab, so it still navigates there.
+  const handleSegment = (seg) => {
+    if (seg === "walk") setWalkOpen(true);
+    else if (seg === "care") setCheckOpen(true);
+    else onPressSegment?.(seg);
   };
 
   // E5 streak-save: when today's ring is exactly one segment from closing and the streak is at
@@ -102,7 +115,7 @@ export function CareRingCard({ petId, petName, onPressSegment }) {
       <Text style={styles.title}>{name ? t("health.careRing.title", { name }) : t("health.careRing.titleGeneric")}</Text>
 
       <View style={styles.ringRow}>
-        <CareRing state={s} size={116} onPressSegment={onPressSegment} />
+        <CareRing state={s} size={116} onPressSegment={handleSegment} />
         <View style={styles.side}>
           <Text style={styles.status}>{statusText}</Text>
           <Text style={styles.progress}>{t("health.careRing.progress", { done: [s.walk_done, s.moment_done, s.care_done].filter(Boolean).length })}</Text>
@@ -129,7 +142,7 @@ export function CareRingCard({ petId, petName, onPressSegment }) {
           return (
             <Pressable
               key={seg}
-              onPress={() => onPressSegment?.(seg)}
+              onPress={() => handleSegment(seg)}
               accessibilityRole="button"
               accessibilityLabel={t(`health.careRing.${SEG_HINT_KEY[seg]}`)}
               style={[styles.pill, done && styles.pillDone]}
@@ -185,6 +198,9 @@ export function CareRingCard({ petId, petName, onPressSegment }) {
         onClose={() => setCheckOpen(false)}
         onSaved={onCheckSaved}
       />
+
+      {/* Quick walk log, opened by the Walk pill / ring arc. Mounted only while open. */}
+      {walkOpen ? <WalkActivityModal visible onClose={() => setWalkOpen(false)} /> : null}
 
       {/* Rest / vacation mode — always visible, always gentle. */}
       <View style={styles.restRow}>

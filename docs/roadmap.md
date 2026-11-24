@@ -18,6 +18,15 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-23 — Care Ring pills stay tappable at every progress (0/3 to 3/3) — client-only, needs EAS build 33
+
+Reported on a live iPhone: once 1 of 3 ring pills was done, tapping the other pills (to do a quick update) did nothing.
+- **Root cause.** Not a disabled state tied to the done-count. On Health → Today the Walk and Care pills (and the ring arcs) called `router.push("/(tabs)/health")` — the screen the owner is already on — so the tap was a silent no-op at any progress. Only Moment (feed tab) navigated.
+- **Fix (`CareRingCard.jsx`).** The card now handles taps itself: Walk opens the quick walk log in place, Care opens the quick check (`GeneralCheckModal`, quick mode), Moment still hands off to `onPressSegment` (feed). The ring's own arcs share the same handler. A completed pill behaves the same way (log another walk / another quick check) — a tap is never swallowed.
+- Tests: new `CareRingCard.pills.test.jsx` — every pill and the ring arc, across 0/3, 1/3 (walk or care done), 2/3 and 3/3.
+
+---
+
 ## 2026-11-23 — Date picker hardening (the "1969" bug) — client-only, needs EAS build 33
 
 Reported on a live iPhone (UTC-3): Health → Track → Medications & care → Vaccine → Add vaccine, expiration date opened on Dec 1969, a picked future date jumped back to 31 Dec 1969, repeating it crashed.
