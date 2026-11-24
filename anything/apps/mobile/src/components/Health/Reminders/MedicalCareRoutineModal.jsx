@@ -8,12 +8,10 @@ import {
   ScrollView,
   Modal,
   TextInput,
-  KeyboardAvoidingView,
-  Platform,
   Switch,
   Alert,
 } from "react-native";
-import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import KeyboardSafeSheet from "@/components/KeyboardSafeSheet";
 import { X, Plus, Edit3, Trash2, ChevronRight } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import {
@@ -666,364 +664,27 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onCancel}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <View style={{ flex: 1, backgroundColor: C.cream }}>
+    <KeyboardSafeSheet
+      visible={visible}
+      onRequestClose={onCancel}
+      variant="screen"
+      backgroundColor={C.cream}
+      contentContainerStyle={{ padding: 20, paddingBottom: 24 }}
+      header={(
+        <>
           <Header
             title={`${getSubtypeIcon(subtype)} ${getSubtypeLabel(subtype, t)}`}
             subtitle={t("routinesUi.medicalCare.careItemDetails")}
             onClose={onCancel}
           />
-
-          <KeyboardAwareScrollView
-            contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Safety copy per type */}
-            {subtype === MEDICAL_CARE_SUBTYPES.MEDICATION && (
-              <SafetyNote>
-                {t("routinesUi.medicalCare.followYourVeterinarianSInstructions2")}
-              </SafetyNote>
-            )}
-            {subtype === MEDICAL_CARE_SUBTYPES.VACCINE && (
-              <SafetyNote>
-                {t("routinesUi.medicalCare.followYourVeterinarianSVaccination")}
-              </SafetyNote>
-            )}
-            {(subtype === MEDICAL_CARE_SUBTYPES.FLEA_TICK ||
-              subtype === MEDICAL_CARE_SUBTYPES.DEWORMING ||
-              subtype === MEDICAL_CARE_SUBTYPES.HEARTWORM) && (
-              <SafetyNote>
-                {t("routinesUi.medicalCare.followYourVeterinarianSInstructions3")}
-              </SafetyNote>
-            )}
-
-            {/* Name field (label varies per type) */}
-            <Label>
-              {subtype === MEDICAL_CARE_SUBTYPES.MEDICATION
-                ? t("routinesUi.medicalCare.nameMedication")
-                : subtype === MEDICAL_CARE_SUBTYPES.VACCINE
-                  ? t("routinesUi.medicalCare.nameVaccine")
-                  : subtype === MEDICAL_CARE_SUBTYPES.SUPPLEMENT
-                    ? t("routinesUi.medicalCare.nameSupplement")
-                    : subtype === MEDICAL_CARE_SUBTYPES.OTHER
-                      ? t("routinesUi.medicalCare.nameOther")
-                      : t("routinesUi.medicalCare.nameProduct")}
-            </Label>
-            <Input
-              value={draft.name}
-              onChangeText={(v) => set({ name: v })}
-              placeholder={
-                subtype === MEDICAL_CARE_SUBTYPES.MEDICATION
-                  ? t("routinesUi.medicalCare.exampleApoquel")
-                  : subtype === MEDICAL_CARE_SUBTYPES.VACCINE
-                    ? t("routinesUi.medicalCare.exampleRabies")
-                    : subtype === MEDICAL_CARE_SUBTYPES.SUPPLEMENT
-                      ? t("routinesUi.medicalCare.exampleOmega")
-                      : subtype === MEDICAL_CARE_SUBTYPES.OTHER
-                        ? t("routinesUi.medicalCare.exampleEarCleaning")
-                        : t("routinesUi.medicalCare.exampleBravecto")
-              }
-            />
-
-            {/* =========================== MEDICATION =========================== */}
-            {subtype === MEDICAL_CARE_SUBTYPES.MEDICATION && (
-              <>
-                <Label>{t("routinesUi.medicalCare.dose")}</Label>
-                <Input
-                  value={draft.dose}
-                  onChangeText={(v) => set({ dose: v })}
-                  placeholder={t("routinesUi.medicalCare.example1Tablet")}
-                />
-
-                {/* Schedule — shared ScheduleBlock owns Date / Frequency / day
-                    chips / interval / Early reminder. hideTime: dose times stay
-                    in the multi-add Time(s) field below (DoseTimes). */}
-                <ScheduleBlock
-                  value={scheduleFromItem(draft)}
-                  onChange={(schedule) => set(schedule)}
-                  hideTime
-                  cadenceOptions={MED_CADENCE_OPTIONS}
-                  color={C.terracotta}
-                  style={{ marginBottom: 16 }}
-                />
-
-                <DoseTimes draft={draft} set={set} />
-
-                {/* Stacked (not Row/Half) so the inline calendar has full width.
-                    Dose-course honors item.endDate to bound the course. */}
-                <Label small>{t("routinesUi.medicalCare.endDateOptional")}</Label>
-                <View style={{ marginBottom: 10 }}>
-                  <DateField
-                    value={draft.endDate}
-                    onChange={(v) => set({ endDate: v })}
-                  />
-                </View>
-
-                <Label>{t("routinesUi.medicalCare.instructionsOptional")}</Label>
-                <Input
-                  value={draft.instructions}
-                  onChangeText={(v) => set({ instructions: v })}
-                  placeholder={t("routinesUi.medicalCare.exampleGiveWithFood")}
-                  multiline
-                />
-              </>
-            )}
-
-            {/* =========================== VACCINE =========================== */}
-            {subtype === MEDICAL_CARE_SUBTYPES.VACCINE && (
-              <>
-                <Label>{t("routinesUi.medicalCare.lastGivenDateOptional")}</Label>
-                <View style={{ marginBottom: 10 }}>
-                  <DateField
-                    value={draft.lastGiven}
-                    onChange={(v) => set({ lastGiven: v })}
-                    maximumDate={new Date()}
-                  />
-                </View>
-
-                <Label>{t("routinesUi.medicalCare.nextDueDate")}</Label>
-                <View style={{ marginBottom: 10 }}>
-                  <DateField
-                    value={draft.nextDue}
-                    onChange={(v) => set({ nextDue: v })}
-                  />
-                </View>
-
-                <Label>{t("routinesUi.medicalCare.vetClinicOptional")}</Label>
-                <Input
-                  value={draft.vetClinic}
-                  onChangeText={(v) => set({ vetClinic: v })}
-                  placeholder={t("routinesUi.medicalCare.veterinarianOrClinicName")}
-                />
-
-                <Label>{t("routinesUi.medicalCare.reminderTiming")}</Label>
-                <View style={{ gap: 8, marginBottom: 20 }}>
-                  {[
-                    { value: "on_due", label: t("routinesUi.medicalCare.onDueDate") },
-                    { value: "1w", label: t("routinesUi.medicalCare.1WeekBefore") },
-                    { value: "2w", label: t("routinesUi.medicalCare.2WeeksBefore") },
-                    { value: "1m", label: t("routinesUi.medicalCare.1MonthBefore") },
-                  ].map((option) => (
-                    <ChoiceRow
-                      key={option.value}
-                      selected={draft.reminderTiming === option.value}
-                      label={option.label}
-                      onPress={() => set({ reminderTiming: option.value })}
-                    />
-                  ))}
-                </View>
-              </>
-            )}
-
-            {/* =========================== PREVENTIVES =========================== */}
-            {(subtype === MEDICAL_CARE_SUBTYPES.FLEA_TICK ||
-              subtype === MEDICAL_CARE_SUBTYPES.DEWORMING ||
-              subtype === MEDICAL_CARE_SUBTYPES.HEARTWORM) && (
-              <>
-                <Label>{t("routinesUi.medicalCare.lastGivenDate")}</Label>
-                <View style={{ marginBottom: 10 }}>
-                  <DateField
-                    value={draft.lastGiven}
-                    onChange={(v) => set({ lastGiven: v })}
-                    maximumDate={new Date()}
-                  />
-                </View>
-
-                <Label>{t("routinesUi.medicalCare.repeatInterval")}</Label>
-                <View style={{ gap: 8, marginBottom: 20 }}>
-                  {[
-                    { value: "monthly", label: t("routinesUi.medicalCare.monthly") },
-                    { value: "every_3_months", label: t("routinesUi.medicalCare.every3Months") },
-                    { value: "every_6_months", label: t("routinesUi.medicalCare.every6Months") },
-                    { value: "yearly", label: t("routinesUi.medicalCare.yearly") },
-                    { value: "custom", label: t("routinesUi.medicalCare.custom") },
-                  ].map((option) => (
-                    <ChoiceRow
-                      key={option.value}
-                      selected={draft.repeatInterval === option.value}
-                      label={option.label}
-                      onPress={() => set({ repeatInterval: option.value })}
-                    />
-                  ))}
-                </View>
-
-                <Label>{t("routinesUi.medicalCare.nextDueDate")}</Label>
-                <View style={{ marginBottom: 10 }}>
-                  <DateField
-                    value={draft.nextDue}
-                    onChange={(v) => set({ nextDue: v })}
-                  />
-                </View>
-              </>
-            )}
-
-            {/* =========================== SUPPLEMENT =========================== */}
-            {subtype === MEDICAL_CARE_SUBTYPES.SUPPLEMENT && (
-              <>
-                <Label>{t("routinesUi.medicalCare.amountDose")}</Label>
-                <Input
-                  value={draft.dose}
-                  onChangeText={(v) => set({ dose: v })}
-                  placeholder={t("routinesUi.medicalCare.example1Chew")}
-                />
-
-                {/* Schedule — shared ScheduleBlock (hideTime); dose times stay in
-                    the When-to-give controls below. */}
-                <ScheduleBlock
-                  value={scheduleFromItem(draft)}
-                  onChange={(schedule) => set(schedule)}
-                  hideTime
-                  cadenceOptions={MED_CADENCE_OPTIONS}
-                  color={C.terracotta}
-                  style={{ marginBottom: 16 }}
-                />
-
-                <Label>{t("routinesUi.medicalCare.whenToGive")}</Label>
-                <View
-                  style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}
-                >
-                  <SegmentBtn
-                    selected={draft.timingMode === "linked"}
-                    label={t("routinesUi.medicalCare.linkedToMeal")}
-                    onPress={() => set({ timingMode: "linked" })}
-                  />
-                  <SegmentBtn
-                    selected={draft.timingMode === "time"}
-                    label={t("routinesUi.medicalCare.customTime")}
-                    onPress={() => set({ timingMode: "time" })}
-                  />
-                </View>
-
-                {draft.timingMode === "linked" ? (
-                  <View style={{ gap: 8, marginBottom: 20 }}>
-                    {[
-                      { value: "breakfast", label: t("routinesUi.medicalCare.withBreakfast") },
-                      { value: "dinner", label: t("routinesUi.medicalCare.withDinner") },
-                      { value: "meal", label: t("routinesUi.medicalCare.withMeal") },
-                      { value: "custom", label: t("routinesUi.medicalCare.customTime") },
-                    ].map((option) => (
-                      <ChoiceRow
-                        key={option.value}
-                        selected={draft.linkedMeal === option.value}
-                        label={option.label}
-                        onPress={() => {
-                          if (option.value === "custom") {
-                            set({
-                              linkedMeal: option.value,
-                              timingMode: "time",
-                            });
-                          } else {
-                            set({ linkedMeal: option.value });
-                          }
-                        }}
-                      />
-                    ))}
-                  </View>
-                ) : (
-                  <DoseTimes draft={draft} set={set} />
-                )}
-
-                <Label>{t("routinesUi.medicalCare.instructionsOptional")}</Label>
-                <Input
-                  value={draft.instructions}
-                  onChangeText={(v) => set({ instructions: v })}
-                  placeholder={t("routinesUi.medicalCare.exampleGiveWithFood")}
-                  multiline
-                />
-              </>
-            )}
-
-            {/* =========================== OTHER =========================== */}
-            {subtype === MEDICAL_CARE_SUBTYPES.OTHER && (
-              <>
-                <Label>{t("routinesUi.medicalCare.description")}</Label>
-                <Input
-                  value={draft.description}
-                  onChangeText={(v) => set({ description: v })}
-                  placeholder={t("routinesUi.medicalCare.whatKindOfCareIs")}
-                  multiline
-                />
-
-                <Label>{t("routinesUi.medicalCare.frequency")}</Label>
-                <View style={{ gap: 8, marginBottom: 20 }}>
-                  {[
-                    { value: ROUTINE_FREQUENCY.DAILY, label: t("routinesUi.medicalCare.daily") },
-                    { value: ROUTINE_FREQUENCY.WEEKLY, label: t("routinesUi.medicalCare.weekly") },
-                    { value: ROUTINE_FREQUENCY.MONTHLY, label: t("routinesUi.medicalCare.monthly") },
-                    { value: "one_time", label: t("routinesUi.medicalCare.oneTime") },
-                    { value: ROUTINE_FREQUENCY.CUSTOM, label: t("routinesUi.medicalCare.custom") },
-                  ].map((option) => (
-                    <ChoiceRow
-                      key={option.value}
-                      selected={draft.frequency === option.value}
-                      label={option.label}
-                      onPress={() => set({ frequency: option.value })}
-                    />
-                  ))}
-                </View>
-
-                {/* Stacked (not Row/Half) so the inline pickers have full width */}
-                <Label small>{t("routinesUi.medicalCare.date")}</Label>
-                <View style={{ marginBottom: 10 }}>
-                  <DateField
-                    value={draft.startDate}
-                    onChange={(v) => set({ startDate: v })}
-                  />
-                </View>
-                <Label small>{t("routinesUi.medicalCare.time")}</Label>
-                <View style={{ marginBottom: 10 }}>
-                  <TimeField
-                    value={draft.times?.[0] || ""}
-                    onChange={(v) => set({ times: [v] })}
-                  />
-                </View>
-              </>
-            )}
-
-            {/* Reminder + time-sensitive toggles (all types) */}
-            <View
-              style={{
-                backgroundColor: C.card,
-                borderRadius: 16,
-                padding: 16,
-                borderWidth: 1,
-                borderColor: C.peach,
-                marginBottom: 16,
-              }}
-            >
-              <ToggleRow
-                label={t("routinesUi.medicalCare.reminderEnabled")}
-                value={draft.reminderEnabled}
-                onValueChange={(v) => set({ reminderEnabled: v })}
-                color={C.sage}
-              />
-              <View style={{ height: 14 }} />
-              <ToggleRow
-                label={t("routinesUi.medicalCare.timeSensitive")}
-                value={draft.timeSensitive}
-                onValueChange={(v) => set({ timeSensitive: v })}
-                color={C.coral}
-              />
-            </View>
-
-            <Label>{t("routinesUi.medicalCare.notesOptional")}</Label>
-            <Input
-              value={draft.notes}
-              onChangeText={(v) => set({ notes: v })}
-              placeholder={t("routinesUi.medicalCare.additionalNotes")}
-              multiline
-            />
-          </KeyboardAwareScrollView>
-
+        </>
+      )}
+      footer={(
+        <>
           <View
             style={{
               padding: 20,
-              paddingBottom: 30,
+              paddingBottom: 0,
               borderTopWidth: 1,
               borderTopColor: C.peach,
               backgroundColor: C.cream,
@@ -1062,9 +723,345 @@ function ItemFormModal({ visible, item, onCancel, onSave }) {
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+        </>
+      )}
+    >
+      {/* Safety copy per type */}
+      {subtype === MEDICAL_CARE_SUBTYPES.MEDICATION && (
+        <SafetyNote>
+          {t("routinesUi.medicalCare.followYourVeterinarianSInstructions2")}
+        </SafetyNote>
+      )}
+      {subtype === MEDICAL_CARE_SUBTYPES.VACCINE && (
+        <SafetyNote>
+          {t("routinesUi.medicalCare.followYourVeterinarianSVaccination")}
+        </SafetyNote>
+      )}
+      {(subtype === MEDICAL_CARE_SUBTYPES.FLEA_TICK ||
+        subtype === MEDICAL_CARE_SUBTYPES.DEWORMING ||
+        subtype === MEDICAL_CARE_SUBTYPES.HEARTWORM) && (
+        <SafetyNote>
+          {t("routinesUi.medicalCare.followYourVeterinarianSInstructions3")}
+        </SafetyNote>
+      )}
+
+      {/* Name field (label varies per type) */}
+      <Label>
+        {subtype === MEDICAL_CARE_SUBTYPES.MEDICATION
+          ? t("routinesUi.medicalCare.nameMedication")
+          : subtype === MEDICAL_CARE_SUBTYPES.VACCINE
+            ? t("routinesUi.medicalCare.nameVaccine")
+            : subtype === MEDICAL_CARE_SUBTYPES.SUPPLEMENT
+              ? t("routinesUi.medicalCare.nameSupplement")
+              : subtype === MEDICAL_CARE_SUBTYPES.OTHER
+                ? t("routinesUi.medicalCare.nameOther")
+                : t("routinesUi.medicalCare.nameProduct")}
+      </Label>
+      <Input
+        value={draft.name}
+        onChangeText={(v) => set({ name: v })}
+        placeholder={
+          subtype === MEDICAL_CARE_SUBTYPES.MEDICATION
+            ? t("routinesUi.medicalCare.exampleApoquel")
+            : subtype === MEDICAL_CARE_SUBTYPES.VACCINE
+              ? t("routinesUi.medicalCare.exampleRabies")
+              : subtype === MEDICAL_CARE_SUBTYPES.SUPPLEMENT
+                ? t("routinesUi.medicalCare.exampleOmega")
+                : subtype === MEDICAL_CARE_SUBTYPES.OTHER
+                  ? t("routinesUi.medicalCare.exampleEarCleaning")
+                  : t("routinesUi.medicalCare.exampleBravecto")
+        }
+      />
+
+      {/* =========================== MEDICATION =========================== */}
+      {subtype === MEDICAL_CARE_SUBTYPES.MEDICATION && (
+        <>
+          <Label>{t("routinesUi.medicalCare.dose")}</Label>
+          <Input
+            value={draft.dose}
+            onChangeText={(v) => set({ dose: v })}
+            placeholder={t("routinesUi.medicalCare.example1Tablet")}
+          />
+
+          {/* Schedule — shared ScheduleBlock owns Date / Frequency / day
+              chips / interval / Early reminder. hideTime: dose times stay
+              in the multi-add Time(s) field below (DoseTimes). */}
+          <ScheduleBlock
+            value={scheduleFromItem(draft)}
+            onChange={(schedule) => set(schedule)}
+            hideTime
+            cadenceOptions={MED_CADENCE_OPTIONS}
+            color={C.terracotta}
+            style={{ marginBottom: 16 }}
+          />
+
+          <DoseTimes draft={draft} set={set} />
+
+          {/* Stacked (not Row/Half) so the inline calendar has full width.
+              Dose-course honors item.endDate to bound the course. */}
+          <Label small>{t("routinesUi.medicalCare.endDateOptional")}</Label>
+          <View style={{ marginBottom: 10 }}>
+            <DateField
+              value={draft.endDate}
+              onChange={(v) => set({ endDate: v })}
+            />
+          </View>
+
+          <Label>{t("routinesUi.medicalCare.instructionsOptional")}</Label>
+          <Input
+            value={draft.instructions}
+            onChangeText={(v) => set({ instructions: v })}
+            placeholder={t("routinesUi.medicalCare.exampleGiveWithFood")}
+            multiline
+          />
+        </>
+      )}
+
+      {/* =========================== VACCINE =========================== */}
+      {subtype === MEDICAL_CARE_SUBTYPES.VACCINE && (
+        <>
+          <Label>{t("routinesUi.medicalCare.lastGivenDateOptional")}</Label>
+          <View style={{ marginBottom: 10 }}>
+            <DateField
+              value={draft.lastGiven}
+              onChange={(v) => set({ lastGiven: v })}
+              maximumDate={new Date()}
+            />
+          </View>
+
+          <Label>{t("routinesUi.medicalCare.nextDueDate")}</Label>
+          <View style={{ marginBottom: 10 }}>
+            <DateField
+              value={draft.nextDue}
+              onChange={(v) => set({ nextDue: v })}
+            />
+          </View>
+
+          <Label>{t("routinesUi.medicalCare.vetClinicOptional")}</Label>
+          <Input
+            value={draft.vetClinic}
+            onChangeText={(v) => set({ vetClinic: v })}
+            placeholder={t("routinesUi.medicalCare.veterinarianOrClinicName")}
+          />
+
+          <Label>{t("routinesUi.medicalCare.reminderTiming")}</Label>
+          <View style={{ gap: 8, marginBottom: 20 }}>
+            {[
+              { value: "on_due", label: t("routinesUi.medicalCare.onDueDate") },
+              { value: "1w", label: t("routinesUi.medicalCare.1WeekBefore") },
+              { value: "2w", label: t("routinesUi.medicalCare.2WeeksBefore") },
+              { value: "1m", label: t("routinesUi.medicalCare.1MonthBefore") },
+            ].map((option) => (
+              <ChoiceRow
+                key={option.value}
+                selected={draft.reminderTiming === option.value}
+                label={option.label}
+                onPress={() => set({ reminderTiming: option.value })}
+              />
+            ))}
+          </View>
+        </>
+      )}
+
+      {/* =========================== PREVENTIVES =========================== */}
+      {(subtype === MEDICAL_CARE_SUBTYPES.FLEA_TICK ||
+        subtype === MEDICAL_CARE_SUBTYPES.DEWORMING ||
+        subtype === MEDICAL_CARE_SUBTYPES.HEARTWORM) && (
+        <>
+          <Label>{t("routinesUi.medicalCare.lastGivenDate")}</Label>
+          <View style={{ marginBottom: 10 }}>
+            <DateField
+              value={draft.lastGiven}
+              onChange={(v) => set({ lastGiven: v })}
+              maximumDate={new Date()}
+            />
+          </View>
+
+          <Label>{t("routinesUi.medicalCare.repeatInterval")}</Label>
+          <View style={{ gap: 8, marginBottom: 20 }}>
+            {[
+              { value: "monthly", label: t("routinesUi.medicalCare.monthly") },
+              { value: "every_3_months", label: t("routinesUi.medicalCare.every3Months") },
+              { value: "every_6_months", label: t("routinesUi.medicalCare.every6Months") },
+              { value: "yearly", label: t("routinesUi.medicalCare.yearly") },
+              { value: "custom", label: t("routinesUi.medicalCare.custom") },
+            ].map((option) => (
+              <ChoiceRow
+                key={option.value}
+                selected={draft.repeatInterval === option.value}
+                label={option.label}
+                onPress={() => set({ repeatInterval: option.value })}
+              />
+            ))}
+          </View>
+
+          <Label>{t("routinesUi.medicalCare.nextDueDate")}</Label>
+          <View style={{ marginBottom: 10 }}>
+            <DateField
+              value={draft.nextDue}
+              onChange={(v) => set({ nextDue: v })}
+            />
+          </View>
+        </>
+      )}
+
+      {/* =========================== SUPPLEMENT =========================== */}
+      {subtype === MEDICAL_CARE_SUBTYPES.SUPPLEMENT && (
+        <>
+          <Label>{t("routinesUi.medicalCare.amountDose")}</Label>
+          <Input
+            value={draft.dose}
+            onChangeText={(v) => set({ dose: v })}
+            placeholder={t("routinesUi.medicalCare.example1Chew")}
+          />
+
+          {/* Schedule — shared ScheduleBlock (hideTime); dose times stay in
+              the When-to-give controls below. */}
+          <ScheduleBlock
+            value={scheduleFromItem(draft)}
+            onChange={(schedule) => set(schedule)}
+            hideTime
+            cadenceOptions={MED_CADENCE_OPTIONS}
+            color={C.terracotta}
+            style={{ marginBottom: 16 }}
+          />
+
+          <Label>{t("routinesUi.medicalCare.whenToGive")}</Label>
+          <View
+            style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}
+          >
+            <SegmentBtn
+              selected={draft.timingMode === "linked"}
+              label={t("routinesUi.medicalCare.linkedToMeal")}
+              onPress={() => set({ timingMode: "linked" })}
+            />
+            <SegmentBtn
+              selected={draft.timingMode === "time"}
+              label={t("routinesUi.medicalCare.customTime")}
+              onPress={() => set({ timingMode: "time" })}
+            />
+          </View>
+
+          {draft.timingMode === "linked" ? (
+            <View style={{ gap: 8, marginBottom: 20 }}>
+              {[
+                { value: "breakfast", label: t("routinesUi.medicalCare.withBreakfast") },
+                { value: "dinner", label: t("routinesUi.medicalCare.withDinner") },
+                { value: "meal", label: t("routinesUi.medicalCare.withMeal") },
+                { value: "custom", label: t("routinesUi.medicalCare.customTime") },
+              ].map((option) => (
+                <ChoiceRow
+                  key={option.value}
+                  selected={draft.linkedMeal === option.value}
+                  label={option.label}
+                  onPress={() => {
+                    if (option.value === "custom") {
+                      set({
+                        linkedMeal: option.value,
+                        timingMode: "time",
+                      });
+                    } else {
+                      set({ linkedMeal: option.value });
+                    }
+                  }}
+                />
+              ))}
+            </View>
+          ) : (
+            <DoseTimes draft={draft} set={set} />
+          )}
+
+          <Label>{t("routinesUi.medicalCare.instructionsOptional")}</Label>
+          <Input
+            value={draft.instructions}
+            onChangeText={(v) => set({ instructions: v })}
+            placeholder={t("routinesUi.medicalCare.exampleGiveWithFood")}
+            multiline
+          />
+        </>
+      )}
+
+      {/* =========================== OTHER =========================== */}
+      {subtype === MEDICAL_CARE_SUBTYPES.OTHER && (
+        <>
+          <Label>{t("routinesUi.medicalCare.description")}</Label>
+          <Input
+            value={draft.description}
+            onChangeText={(v) => set({ description: v })}
+            placeholder={t("routinesUi.medicalCare.whatKindOfCareIs")}
+            multiline
+          />
+
+          <Label>{t("routinesUi.medicalCare.frequency")}</Label>
+          <View style={{ gap: 8, marginBottom: 20 }}>
+            {[
+              { value: ROUTINE_FREQUENCY.DAILY, label: t("routinesUi.medicalCare.daily") },
+              { value: ROUTINE_FREQUENCY.WEEKLY, label: t("routinesUi.medicalCare.weekly") },
+              { value: ROUTINE_FREQUENCY.MONTHLY, label: t("routinesUi.medicalCare.monthly") },
+              { value: "one_time", label: t("routinesUi.medicalCare.oneTime") },
+              { value: ROUTINE_FREQUENCY.CUSTOM, label: t("routinesUi.medicalCare.custom") },
+            ].map((option) => (
+              <ChoiceRow
+                key={option.value}
+                selected={draft.frequency === option.value}
+                label={option.label}
+                onPress={() => set({ frequency: option.value })}
+              />
+            ))}
+          </View>
+
+          {/* Stacked (not Row/Half) so the inline pickers have full width */}
+          <Label small>{t("routinesUi.medicalCare.date")}</Label>
+          <View style={{ marginBottom: 10 }}>
+            <DateField
+              value={draft.startDate}
+              onChange={(v) => set({ startDate: v })}
+            />
+          </View>
+          <Label small>{t("routinesUi.medicalCare.time")}</Label>
+          <View style={{ marginBottom: 10 }}>
+            <TimeField
+              value={draft.times?.[0] || ""}
+              onChange={(v) => set({ times: [v] })}
+            />
+          </View>
+        </>
+      )}
+
+      {/* Reminder + time-sensitive toggles (all types) */}
+      <View
+        style={{
+          backgroundColor: C.card,
+          borderRadius: 16,
+          padding: 16,
+          borderWidth: 1,
+          borderColor: C.peach,
+          marginBottom: 16,
+        }}
+      >
+        <ToggleRow
+          label={t("routinesUi.medicalCare.reminderEnabled")}
+          value={draft.reminderEnabled}
+          onValueChange={(v) => set({ reminderEnabled: v })}
+          color={C.sage}
+        />
+        <View style={{ height: 14 }} />
+        <ToggleRow
+          label={t("routinesUi.medicalCare.timeSensitive")}
+          value={draft.timeSensitive}
+          onValueChange={(v) => set({ timeSensitive: v })}
+          color={C.coral}
+        />
+      </View>
+
+      <Label>{t("routinesUi.medicalCare.notesOptional")}</Label>
+      <Input
+        value={draft.notes}
+        onChangeText={(v) => set({ notes: v })}
+        placeholder={t("routinesUi.medicalCare.additionalNotes")}
+        multiline
+      />
+    </KeyboardSafeSheet>
   );
 }
 

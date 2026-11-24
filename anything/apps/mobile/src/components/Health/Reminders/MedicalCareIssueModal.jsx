@@ -1,16 +1,12 @@
-import { MATERIALS } from "@/constants/theme";
 import { COLORS } from "@/constants/theme";
 import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
-  Modal,
   TextInput,
-  KeyboardAvoidingView,
-  Platform,
 } from "react-native";
-import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import KeyboardSafeSheet from "@/components/KeyboardSafeSheet";
 import { X } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 
@@ -58,149 +54,132 @@ export default function MedicalCareIssueModal({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: MATERIALS.overlay,
-            justifyContent: "flex-end",
-          }}
-        >
+    <KeyboardSafeSheet
+      visible={visible}
+      onRequestClose={onClose}
+      variant="sheet"
+      fit
+      backgroundColor={C.cream}
+      contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+      header={(
+        <>
           <View
             style={{
-              backgroundColor: C.cream,
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              maxHeight: "90%",
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: 20,
+              borderBottomWidth: 1,
+              borderBottomColor: C.peach,
             }}
           >
-            <View
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: "800",
+                  color: C.warmBrown,
+                  marginBottom: 4,
+                }}
+              >
+                {t("routinesUi.medicalCareIssue.somethingWasOff")}
+              </Text>
+              <Text style={{ fontSize: 13, color: C.mutedBrown }}>
+                {reminder.title}
+              </Text>
+            </View>
+            <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              onPress={onClose}
               style={{
-                flexDirection: "row",
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: C.sand,
+                justifyContent: "center",
                 alignItems: "center",
-                justifyContent: "space-between",
-                padding: 20,
-                borderBottomWidth: 1,
-                borderBottomColor: C.peach,
               }}
             >
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{
-                    fontSize: 18,
-                    fontWeight: "800",
-                    color: C.warmBrown,
-                    marginBottom: 4,
-                  }}
-                >
-                  {t("routinesUi.medicalCareIssue.somethingWasOff")}
-                </Text>
-                <Text style={{ fontSize: 13, color: C.mutedBrown }}>
-                  {reminder.title}
-                </Text>
-              </View>
-              <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                onPress={onClose}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: C.sand,
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                <X size={20} color={C.warmBrown} />
-              </TouchableOpacity>
-            </View>
-
-            <KeyboardAwareScrollView
-              contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
-              keyboardShouldPersistTaps="handled"
-            >
-              <View
-                style={{
-                  backgroundColor: "#FEF3C7",
-                  borderRadius: 12,
-                  padding: 14,
-                  marginBottom: 20,
-                  borderWidth: 1,
-                  borderColor: "#FDE68A",
-                }}
-              >
-                <Text
-                  style={{ fontSize: 13, color: "#92400E", lineHeight: 19 }}
-                >
-                  {t("routinesUi.medicalCareIssue.contactYourVeterinarianIfYou")}
-                </Text>
-              </View>
-
-              <Label>{t("health.reminders.medicalCareIssue.givenLabel")}</Label>
-              <ChoiceGroup
-                options={[
-                  { value: "yes", label: t("routinesUi.medicalCareIssue.yes") },
-                  { value: "partially", label: t("routinesUi.medicalCareIssue.partially") },
-                  { value: "no", label: t("routinesUi.medicalCareIssue.no") },
-                ]}
-                value={givenAnswer}
-                onChange={setGivenAnswer}
-              />
-
-              <Label>{t("health.reminders.medicalCareIssue.reactionLabel")}</Label>
-              <ChoiceGroup
-                options={[
-                  { value: "no", label: t("routinesUi.medicalCareIssue.no") },
-                  { value: "yes", label: t("routinesUi.medicalCareIssue.yes") },
-                ]}
-                value={reactionAnswer}
-                onChange={setReactionAnswer}
-              />
-
-              <Label>{t("health.reminders.medicalCareIssue.notesLabel")}</Label>
-              <TextInput
-                value={notes}
-                onChangeText={setNotes}
-                placeholder={t("health.reminders.medicalCareIssue.notesPlaceholder")}
-                placeholderTextColor={C.mutedBrown}
-                multiline
-                style={{
-                  backgroundColor: C.card,
-                  borderRadius: 12,
-                  padding: 12,
-                  fontSize: 14,
-                  color: C.warmBrown,
-                  borderWidth: 1,
-                  borderColor: C.peach,
-                  minHeight: 80,
-                  textAlignVertical: "top",
-                  marginBottom: 24,
-                }}
-              />
-
-              <TouchableOpacity
-                onPress={handleSubmit}
-                style={{
-                  backgroundColor: C.terracotta,
-                  borderRadius: 14,
-                  paddingVertical: 16,
-                  alignItems: "center",
-                }}
-              >
-                <Text
-                  style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}
-                >
-                  {t("routinesUi.medicalCareIssue.saveIssue")}
-                </Text>
-              </TouchableOpacity>
-            </KeyboardAwareScrollView>
+              <X size={20} color={C.warmBrown} />
+            </TouchableOpacity>
           </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+        </>
+      )}
+    >
+      <View
+        style={{
+          backgroundColor: "#FEF3C7",
+          borderRadius: 12,
+          padding: 14,
+          marginBottom: 20,
+          borderWidth: 1,
+          borderColor: "#FDE68A",
+        }}
+      >
+        <Text
+          style={{ fontSize: 13, color: "#92400E", lineHeight: 19 }}
+        >
+          {t("routinesUi.medicalCareIssue.contactYourVeterinarianIfYou")}
+        </Text>
+      </View>
+
+      <Label>{t("health.reminders.medicalCareIssue.givenLabel")}</Label>
+      <ChoiceGroup
+        options={[
+          { value: "yes", label: t("routinesUi.medicalCareIssue.yes") },
+          { value: "partially", label: t("routinesUi.medicalCareIssue.partially") },
+          { value: "no", label: t("routinesUi.medicalCareIssue.no") },
+        ]}
+        value={givenAnswer}
+        onChange={setGivenAnswer}
+      />
+
+      <Label>{t("health.reminders.medicalCareIssue.reactionLabel")}</Label>
+      <ChoiceGroup
+        options={[
+          { value: "no", label: t("routinesUi.medicalCareIssue.no") },
+          { value: "yes", label: t("routinesUi.medicalCareIssue.yes") },
+        ]}
+        value={reactionAnswer}
+        onChange={setReactionAnswer}
+      />
+
+      <Label>{t("health.reminders.medicalCareIssue.notesLabel")}</Label>
+      <TextInput
+        value={notes}
+        onChangeText={setNotes}
+        placeholder={t("health.reminders.medicalCareIssue.notesPlaceholder")}
+        placeholderTextColor={C.mutedBrown}
+        multiline
+        style={{
+          backgroundColor: C.card,
+          borderRadius: 12,
+          padding: 12,
+          fontSize: 14,
+          color: C.warmBrown,
+          borderWidth: 1,
+          borderColor: C.peach,
+          minHeight: 80,
+          textAlignVertical: "top",
+          marginBottom: 24,
+        }}
+      />
+
+      <TouchableOpacity
+        onPress={handleSubmit}
+        style={{
+          backgroundColor: C.terracotta,
+          borderRadius: 14,
+          paddingVertical: 16,
+          alignItems: "center",
+        }}
+      >
+        <Text
+          style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}
+        >
+          {t("routinesUi.medicalCareIssue.saveIssue")}
+        </Text>
+      </TouchableOpacity>
+    </KeyboardSafeSheet>
   );
 }
 

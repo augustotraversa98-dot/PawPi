@@ -18,6 +18,17 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-24 — Keyboard no longer hides text fields, app-wide (shared KeyboardSafeSheet + CI guard) — client-only, needs EAS build 33
+
+Reported: Quick Check on iPhone, keyboard open, the notes box under Ears hidden and the visible scroll area tiny (it had been "fixed" before, screen by screen).
+- **Root cause (layout math, `docs/keyboard-convention.md`).** Hand-rolled sheets were `Modal transparent > KeyboardAvoidingView > View "90%"` with fixed header, instruction block, footer hint + button and `insets.bottom + 20` home-indicator padding: with the keyboard up ~270pt of chrome was left inside ~464pt, so ~194pt (SE-size ~130pt) of scroll. And the focused input was scrolled only "above the keyboard", not above the pinned footer, so the last field stayed hidden under it.
+- **Fix at the shared level.** New `KeyboardSafeSheet` (+ `useKeyboardMetrics`, pure `keyboardLayout.js`): full-window transparent Modal driven by the real keyboard overlap, sheet grows to all space above the keyboard, sub-header/hint collapse and footer padding drops while typing, footer pinned above the keyboard outside the scroll, backdrop tap and drag dismiss the keyboard. `KeyboardAwareScrollView` now scrolls into the VISIBLE area (min of scroll bottom and keyboard top).
+- **Migrated:** Quick Check (both modes), Medication sheet, medical-care issue, place/provider review, walk request, caregiver walk log, 7 routine modals, feeding issue, add-dog, vet appointment detail, vet-record proposal review, `KeyboardSafeFormModal`. Left on purpose (listed with reasons in the guard): Bark, ServicesDiscovery, PhotoCheckCapture, chat screens, pageSheet forms whose CTA is inside the scroll.
+- **Guard:** `keyboardSafety.guard.test.js` scans every src file with a `<TextInput>` and fails on a bypass (plain ScrollView, hand-rolled transparent sheet, new unlisted file). Device checklist in `test-backlog.md`.
+- No SQL change needed.
+
+---
+
 ## 2026-11-23 — Care Ring arcs no longer all turn green on a rest day — client-only, needs EAS build 33
 
 Reported on a live iPhone: pet 27's ring showed all three arcs green while the card said "2 of 3", and no moment was uploaded (one had been posted then deleted).

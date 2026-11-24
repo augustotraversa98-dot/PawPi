@@ -1,19 +1,23 @@
 import React, { useState } from "react";
-import { View, Text, Modal, TextInput, ActivityIndicator, Alert } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  View,
+  Text,
+  TextInput,
+  ActivityIndicator,
+  Alert,
+} from "react-native";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, PawPrint } from "lucide-react-native";
 import { PressableScale } from "@/components/ui";
 import { COLORS, TYPE, SPACING, RADIUS, MATERIALS } from "@/constants/theme";
-import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
+import KeyboardSafeSheet from "@/components/KeyboardSafeSheet";
 
 // FF2 — a compact "Log a walk" sheet a FAMILY caregiver opens for a pet SHARED with them (from the
 // "Shared with me" tab). Posts to /api/health/walk-logs for the given petId; the server anchors the
 // write to the pet's owner (owner-OR-family gate), so the household sees it. Owned-pet logging flows
 // are untouched — this is a separate, petId-scoped entry point for shared pets.
 export default function CaregiverLogWalkModal({ visible, petId, petName, onClose }) {
-  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const qc = useQueryClient();
   const [duration, setDuration] = useState("");
@@ -55,18 +59,15 @@ export default function CaregiverLogWalkModal({ visible, petId, petName, onClose
   });
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <KeyboardAvoidingAnimatedView style={{ flex: 1, backgroundColor: MATERIALS.overlay, justifyContent: "flex-end" }}>
-        <View
-          style={{
-            backgroundColor: COLORS.cream,
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
-            paddingHorizontal: SPACING.xl,
-            paddingTop: SPACING.lg,
-            paddingBottom: insets.bottom + SPACING.xl,
-          }}
-        >
+    <KeyboardSafeSheet
+      visible={visible}
+      onRequestClose={onClose}
+      variant="sheet"
+      fit
+      backgroundColor={COLORS.cream}
+      contentContainerStyle={{ paddingHorizontal: SPACING.xl, paddingBottom: SPACING.md }}
+      header={(
+        <View style={{ paddingHorizontal: SPACING.xl }}>
           <View style={{ flexDirection: "row", alignItems: "center", marginBottom: SPACING.md }}>
             <PawPrint size={20} color={COLORS.coral} style={{ marginRight: SPACING.sm }} />
             <View style={{ flex: 1 }}>
@@ -89,33 +90,10 @@ export default function CaregiverLogWalkModal({ visible, petId, petName, onClose
               <X size={22} color={COLORS.mutedBrown} />
             </PressableScale>
           </View>
-
-          <Text style={[TYPE.footnote, { color: COLORS.warmBrown, marginBottom: 4 }]}>
-            {t("caregiverLog.duration")}
-          </Text>
-          <TextInput
-            testID="caregiver-log-walk-duration"
-            value={duration}
-            onChangeText={setDuration}
-            keyboardType="number-pad"
-            placeholder={t("caregiverLog.durationPlaceholder")}
-            placeholderTextColor={COLORS.mutedBrown}
-            style={inputStyle}
-          />
-
-          <Text style={[TYPE.footnote, { color: COLORS.warmBrown, marginTop: SPACING.md, marginBottom: 4 }]}>
-            {t("caregiverLog.notes")}
-          </Text>
-          <TextInput
-            testID="caregiver-log-walk-notes"
-            value={notes}
-            onChangeText={setNotes}
-            placeholder={t("caregiverLog.notesPlaceholder")}
-            placeholderTextColor={COLORS.mutedBrown}
-            multiline
-            style={[inputStyle, { minHeight: 64, textAlignVertical: "top" }]}
-          />
-
+        </View>
+      )}
+      footer={(
+        <View style={{ paddingHorizontal: SPACING.xl }}>
           <PressableScale
             onPress={() => logWalk.mutate()}
             disabled={logWalk.isPending}
@@ -137,8 +115,34 @@ export default function CaregiverLogWalkModal({ visible, petId, petName, onClose
             )}
           </PressableScale>
         </View>
-      </KeyboardAvoidingAnimatedView>
-    </Modal>
+      )}
+    >
+      <Text style={[TYPE.footnote, { color: COLORS.warmBrown, marginBottom: 4 }]}>
+        {t("caregiverLog.duration")}
+      </Text>
+      <TextInput
+        testID="caregiver-log-walk-duration"
+        value={duration}
+        onChangeText={setDuration}
+        keyboardType="number-pad"
+        placeholder={t("caregiverLog.durationPlaceholder")}
+        placeholderTextColor={COLORS.mutedBrown}
+        style={inputStyle}
+      />
+
+      <Text style={[TYPE.footnote, { color: COLORS.warmBrown, marginTop: SPACING.md, marginBottom: 4 }]}>
+        {t("caregiverLog.notes")}
+      </Text>
+      <TextInput
+        testID="caregiver-log-walk-notes"
+        value={notes}
+        onChangeText={setNotes}
+        placeholder={t("caregiverLog.notesPlaceholder")}
+        placeholderTextColor={COLORS.mutedBrown}
+        multiline
+        style={[inputStyle, { minHeight: 64, textAlignVertical: "top" }]}
+      />
+    </KeyboardSafeSheet>
   );
 }
 

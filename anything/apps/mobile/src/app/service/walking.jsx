@@ -4,7 +4,6 @@ import {
   Text,
   Image,
   ActivityIndicator,
-  Modal,
   TextInput,
   Switch,
   Alert,
@@ -44,7 +43,7 @@ import RatingBadge from "@/components/Providers/RatingBadge";
 import ProviderListControls, {
   useProviderListFilter,
 } from "@/components/Providers/ProviderListControls";
-import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
+import KeyboardSafeSheet from "@/components/KeyboardSafeSheet";
 import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // Dog Walking discovery + live (ticket 2.7) — browse PUBLISHED walker providers (real
@@ -606,17 +605,15 @@ function RequestWalkModal({ provider, petName, onClose, onSubmit, busy, t }) {
   }, [visible]);
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingAnimatedView style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "#00000055" }}>
-        <View
-          style={{
-            backgroundColor: COLORS.cream,
-            borderTopLeftRadius: RADIUS.card,
-            borderTopRightRadius: RADIUS.card,
-            padding: SPACING.xl,
-            paddingBottom: SPACING.xxl,
-          }}
-        >
+    <KeyboardSafeSheet
+      visible={visible}
+      onRequestClose={onClose}
+      variant="sheet"
+      fit
+      backgroundColor={COLORS.cream}
+      contentContainerStyle={{ paddingHorizontal: SPACING.xl, paddingBottom: SPACING.md }}
+      header={(
+        <View style={{ paddingHorizontal: SPACING.xl }}>
           <View
             style={{
               flexDirection: "row",
@@ -632,57 +629,10 @@ function RequestWalkModal({ provider, petName, onClose, onSubmit, busy, t }) {
               <X size={22} color={COLORS.mutedBrown} />
             </PressableScale>
           </View>
-
-          <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, marginBottom: SPACING.lg }]}>
-            {t("walkRequests.modalSubtitle", {
-              walker: provider?.name ?? "",
-              pet: petName ?? "",
-            })}
-          </Text>
-
-          <TextInput
-            value={note}
-            onChangeText={setNote}
-            placeholder={t("walkRequests.notePlaceholder", "Anything the walker should know? (optional)")}
-            placeholderTextColor={COLORS.mutedBrown}
-            multiline
-            testID="request-note-input"
-            style={{
-              backgroundColor: COLORS.card,
-              borderRadius: RADIUS.control,
-              borderWidth: 1,
-              borderColor: COLORS.peach,
-              padding: SPACING.md,
-              minHeight: 72,
-              color: COLORS.warmBrown,
-              textAlignVertical: "top",
-              marginBottom: SPACING.lg,
-            }}
-          />
-
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: SPACING.xl,
-            }}
-          >
-            <View style={{ flex: 1, paddingRight: SPACING.md }}>
-              <Text style={[TYPE.subhead, { color: COLORS.warmBrown, fontWeight: "700" }]}>
-                {t("walkRequests.shareLocation", "Share my pickup location")}
-              </Text>
-              <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
-                {t("walkRequests.shareLocationHint", "Helps the walker find you.")}
-              </Text>
-            </View>
-            <Switch
-              value={shareLocation}
-              onValueChange={setShareLocation}
-              testID="request-share-location"
-            />
-          </View>
-
+        </View>
+      )}
+      footer={(
+        <View style={{ paddingHorizontal: SPACING.xl }}>
           <PressableScale
             onPress={() => onSubmit({ note, shareLocation })}
             disabled={busy}
@@ -702,8 +652,58 @@ function RequestWalkModal({ provider, petName, onClose, onSubmit, busy, t }) {
             </Text>
           </PressableScale>
         </View>
-      </KeyboardAvoidingAnimatedView>
-    </Modal>
+      )}
+    >
+      <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, marginBottom: SPACING.lg }]}>
+        {t("walkRequests.modalSubtitle", {
+          walker: provider?.name ?? "",
+          pet: petName ?? "",
+        })}
+      </Text>
+
+      <TextInput
+        value={note}
+        onChangeText={setNote}
+        placeholder={t("walkRequests.notePlaceholder", "Anything the walker should know? (optional)")}
+        placeholderTextColor={COLORS.mutedBrown}
+        multiline
+        testID="request-note-input"
+        style={{
+          backgroundColor: COLORS.card,
+          borderRadius: RADIUS.control,
+          borderWidth: 1,
+          borderColor: COLORS.peach,
+          padding: SPACING.md,
+          minHeight: 72,
+          color: COLORS.warmBrown,
+          textAlignVertical: "top",
+          marginBottom: SPACING.lg,
+        }}
+      />
+
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: SPACING.xl,
+        }}
+      >
+        <View style={{ flex: 1, paddingRight: SPACING.md }}>
+          <Text style={[TYPE.subhead, { color: COLORS.warmBrown, fontWeight: "700" }]}>
+            {t("walkRequests.shareLocation", "Share my pickup location")}
+          </Text>
+          <Text style={[TYPE.footnote, { color: COLORS.mutedBrown, marginTop: 1 }]}>
+            {t("walkRequests.shareLocationHint", "Helps the walker find you.")}
+          </Text>
+        </View>
+        <Switch
+          value={shareLocation}
+          onValueChange={setShareLocation}
+          testID="request-share-location"
+        />
+      </View>
+    </KeyboardSafeSheet>
   );
 }
 

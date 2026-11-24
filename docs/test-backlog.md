@@ -24,6 +24,26 @@ Reasoning, the exact expected residual (`supabase_admin:r|S|f` only) and when to
 
 ---
 
+## 📱 To test — Keyboard no longer hides text fields (mobile JS only; shared KeyboardSafeSheet)
+
+**Needs EAS build 33** (merged + CI-green; not device-verified). Layout can only be seen on a real phone. Convention:
+[`keyboard-convention.md`](keyboard-convention.md). Test on **both a small phone (iPhone SE size) and a large one**, and with the
+**English AND the Spanish keyboard** (the Spanish one is taller/has a different bar). For each form below the same four checks:
+(a) the field you tap is visible above the keyboard, (b) the Save/Next button stays visible right above the keyboard,
+(c) you can still scroll the form and tap other fields, (d) tapping the dim area / dragging the form hides the keyboard.
+
+- [ ] **1. Quick Check (Health -> Today -> Quick Check, tap "Something changed" on Eyes and Ears, then the notes box under Ears):** the notes box is visible above the keyboard, Save stays visible (hint text is hidden while typing), the scroll area is a decent size, and when the keyboard closes the instruction text comes back. Also try the full 8-area check (the long one) and its notes field.
+- [ ] **2. Medications / vaccines / preventives sheet (Health -> Medication):** open the add form, type in the long text boxes.
+- [ ] **3. Routines (Health -> routines -> medication, vaccine, preventive, medical care, feeding, vet appointment, wellness check):** every text box is reachable, the "Create routine"/"Save" button stays above the keyboard. In wellness check also open the type picker.
+- [ ] **4. Vet record:** add a vet note, add a record, add a document (title/notes), review a scanned proposal (Apply button must stay visible above the keyboard), edit the medical profile.
+- [ ] **5. Post caption (Feed -> new post), post comments, the Bark sheet comment box, forum compose + thread reply.**
+- [ ] **6. Chat and provider chat:** the message bar rides on top of the keyboard on both phone sizes (chat uses a fixed header offset: check it is not too high/low).
+- [ ] **7. Other sheets:** add a pet, write a review (place + provider), "Request a walk" note, caregiver log-a-walk, service booking notes, weight / pee / poo / vomit / food-water logs.
+- [ ] **8. Rotate / switch keyboards while a field is focused** (EN <-> ES, emoji keyboard): the sheet re-fits, nothing jumps under the keyboard.
+- If a form looks worse than before (too much empty space, a header cut by the status bar), tell Claude which screen and phone size.
+
+---
+
 ## 📱 To test — Care Ring arcs on a rest day (mobile JS only)
 
 **Needs EAS build 33** (merged + CI-green; not device-verified).

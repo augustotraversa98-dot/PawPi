@@ -2,14 +2,12 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  Modal,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
   Alert,
-  Platform,
-  KeyboardAvoidingView,
 } from "react-native";
+import KeyboardSafeSheet from "@/components/KeyboardSafeSheet";
 import { X, Star } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
@@ -65,25 +63,15 @@ export default function WriteReviewModal({
   const submitting = writeReview.isPending;
 
   return (
-    <Modal
+    <KeyboardSafeSheet
       visible={visible}
-      animationType="slide"
-      transparent
       onRequestClose={onClose}
-    >
-      <KeyboardAvoidingView
-        style={{ flex: 1, justifyContent: "flex-end" }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <View
-          style={{
-            backgroundColor: COLORS.cream,
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
-            padding: 20,
-            paddingBottom: 36,
-          }}
-        >
+      variant="sheet"
+      fit
+      backgroundColor={COLORS.cream}
+      contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 12 }}
+      header={(
+        <View style={{ paddingHorizontal: 20 }}>
           <View
             style={{
               flexDirection: "row",
@@ -110,61 +98,10 @@ export default function WriteReviewModal({
               <X size={18} color={COLORS.warmBrown} />
             </TouchableOpacity>
           </View>
-
-          {providerName ? (
-            <Text
-              style={{ fontSize: 14, color: COLORS.mutedBrown, marginBottom: 16 }}
-            >
-              {t("writeReview.prompt", { provider: providerName })}
-            </Text>
-          ) : null}
-
-          {/* Star picker */}
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "center",
-              gap: 10,
-              marginBottom: 20,
-            }}
-          >
-            {[1, 2, 3, 4, 5].map((n) => (
-              <TouchableOpacity
-                key={n}
-                onPress={() => setRating(n)}
-                disabled={submitting}
-                accessibilityLabel={t("writeReview.rateStars", { count: n })}
-              >
-                <Star
-                  size={36}
-                  color={COLORS.coral}
-                  fill={n <= rating ? COLORS.coral : "transparent"}
-                />
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <TextInput
-            value={body}
-            onChangeText={setBody}
-            placeholder={t("writeReview.bodyPlaceholder")}
-            placeholderTextColor={COLORS.mutedBrown}
-            multiline
-            editable={!submitting}
-            style={{
-              backgroundColor: COLORS.card,
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: COLORS.peach,
-              padding: 14,
-              fontSize: 14,
-              color: COLORS.warmBrown,
-              minHeight: 100,
-              textAlignVertical: "top",
-              marginBottom: 18,
-            }}
-          />
-
+        </View>
+      )}
+      footer={(
+        <View style={{ paddingHorizontal: 20 }}>
           <TouchableOpacity
             onPress={handleSubmit}
             disabled={submitting}
@@ -187,7 +124,61 @@ export default function WriteReviewModal({
             )}
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+      )}
+    >
+      {providerName ? (
+        <Text
+          style={{ fontSize: 14, color: COLORS.mutedBrown, marginBottom: 16 }}
+        >
+          {t("writeReview.prompt", { provider: providerName })}
+        </Text>
+      ) : null}
+
+      {/* Star picker */}
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "center",
+          gap: 10,
+          marginBottom: 20,
+        }}
+      >
+        {[1, 2, 3, 4, 5].map((n) => (
+          <TouchableOpacity
+            key={n}
+            onPress={() => setRating(n)}
+            disabled={submitting}
+            accessibilityLabel={t("writeReview.rateStars", { count: n })}
+          >
+            <Star
+              size={36}
+              color={COLORS.coral}
+              fill={n <= rating ? COLORS.coral : "transparent"}
+            />
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <TextInput
+        value={body}
+        onChangeText={setBody}
+        placeholder={t("writeReview.bodyPlaceholder")}
+        placeholderTextColor={COLORS.mutedBrown}
+        multiline
+        editable={!submitting}
+        style={{
+          backgroundColor: COLORS.card,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: COLORS.peach,
+          padding: 14,
+          fontSize: 14,
+          color: COLORS.warmBrown,
+          minHeight: 100,
+          textAlignVertical: "top",
+          marginBottom: 18,
+        }}
+      />
+    </KeyboardSafeSheet>
   );
 }

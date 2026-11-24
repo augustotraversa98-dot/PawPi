@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  Modal,
   View,
   Text,
   TextInput,
@@ -8,12 +7,11 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { X, Sparkles, Check } from "lucide-react-native";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
-import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import KeyboardSafeSheet from "@/components/KeyboardSafeSheet";
 import { getLocalPostDateString } from "@/utils/dateUtils";
 
 // AI-2 (night-run 2026-08-18d): the REVIEW SHEET. After a document is read by Claude vision
@@ -141,7 +139,6 @@ function flatten(records = {}) {
 }
 
 export function ReviewProposalModal({ visible, proposal, petId, onClose, onApplied }) {
-  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
@@ -224,219 +221,220 @@ export function ReviewProposalModal({ visible, proposal, petId, onClose, onAppli
   };
 
   return (
-    <Modal
+    <KeyboardSafeSheet
       visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
       onRequestClose={onClose}
-    >
-      <View style={{ flex: 1, backgroundColor: COLORS.cream }}>
-        <View
-          style={{
-            paddingTop: insets.top + 6,
-            paddingHorizontal: 20,
-            paddingBottom: 14,
-            backgroundColor: MATERIALS.surface,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            borderBottomWidth: 1,
-            borderBottomColor: MATERIALS.hairline,
-          }}
-        >
-          <TouchableOpacity onPress={onClose} accessibilityLabel={t("health.vetRecord.close")}>
-            <X size={22} color={COLORS.mutedBrown} />
-          </TouchableOpacity>
-          <Text style={[TYPE.headline, { fontWeight: "800", color: COLORS.warmBrown }]}>
-            {rv("title")}
-          </Text>
-          <View style={{ width: 22 }} />
-        </View>
-
-        <KeyboardAwareScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
-        >
-          <Text style={[TYPE.body, { color: COLORS.mutedBrown, marginBottom: 12 }]}>
-            {rv("subtitle")}
-          </Text>
-
-          {/* AI transparency line */}
+      variant="sheet"
+      backgroundColor={COLORS.cream}
+      contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+      header={(
+        <>
           <View
             style={{
+              paddingTop: 6,
+              paddingHorizontal: 20,
+              paddingBottom: 14,
+              backgroundColor: MATERIALS.surface,
               flexDirection: "row",
-              gap: 10,
-              alignItems: "flex-start",
-              backgroundColor: MATERIALS.surfaceSunken,
-              borderRadius: 14,
-              padding: 12,
-              marginBottom: SPACING.xl,
-              borderWidth: 1,
-              borderColor: MATERIALS.hairline,
+              alignItems: "center",
+              justifyContent: "space-between",
+              borderBottomWidth: 1,
+              borderBottomColor: MATERIALS.hairline,
             }}
           >
-            <Sparkles size={16} color={COLORS.coral} style={{ marginTop: 1 }} />
-            <Text style={{ flex: 1, fontSize: 12, color: COLORS.mutedBrown, lineHeight: 17 }}>
-              {rv("aiDisclosure")}
+            <TouchableOpacity onPress={onClose} accessibilityLabel={t("health.vetRecord.close")}>
+              <X size={22} color={COLORS.mutedBrown} />
+            </TouchableOpacity>
+            <Text style={[TYPE.headline, { fontWeight: "800", color: COLORS.warmBrown }]}>
+              {rv("title")}
             </Text>
+            <View style={{ width: 22 }} />
           </View>
-
-          {GROUPS.map((g) => {
-            const groupItems = items.filter((it) => it.groupKey === g.key);
-            if (!groupItems.length) return null;
-            return (
-              <View key={g.key} style={{ marginBottom: SPACING.xl }}>
+        </>
+      )}
+      footer={(
+        <>
+          {/* Footer actions */}
+          <View
+            style={{
+              padding: 16,
+              paddingBottom: 0,
+              borderTopWidth: 1,
+              borderTopColor: MATERIALS.hairline,
+              backgroundColor: MATERIALS.surface,
+              gap: 10,
+            }}
+          >
+            <TouchableOpacity
+              testID="apply-records"
+              onPress={handleApply}
+              disabled={includedCount === 0 || applying}
+              style={{
+                backgroundColor: includedCount > 0 ? COLORS.coral : MATERIALS.surfaceSunken,
+                borderRadius: RADIUS.control,
+                height: 52,
+                flexDirection: "row",
+                justifyContent: "center",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              {applying ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
                 <Text
-                  style={{
-                    fontSize: 13,
-                    fontWeight: "800",
-                    color: COLORS.warmBrown,
-                    marginBottom: 10,
-                    textTransform: "uppercase",
-                    letterSpacing: 0.4,
-                  }}
+                  style={[
+                    TYPE.headline,
+                    {
+                      fontWeight: "800",
+                      color: includedCount > 0 ? "#FFF" : COLORS.mutedBrown,
+                    },
+                  ]}
                 >
-                  {rv(`group${g.key.charAt(0).toUpperCase()}${g.key.slice(1)}`)}
+                  {includedCount > 0
+                    ? rv("addCount", { count: includedCount })
+                    : rv("addNone")}
                 </Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onClose} disabled={applying} style={{ alignItems: "center", paddingVertical: 6 }}>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: COLORS.mutedBrown }}>
+                {rv("notNow")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+    >
+      >
+        <Text style={[TYPE.body, { color: COLORS.mutedBrown, marginBottom: 12 }]}>
+          {rv("subtitle")}
+        </Text>
 
-                {groupItems.map((item) => (
-                  <View
-                    key={item.id}
-                    testID={`proposed-${item.id}`}
-                    style={{
-                      backgroundColor: "#FFF",
-                      borderRadius: RADIUS.control,
-                      padding: 14,
-                      marginBottom: 12,
-                      borderWidth: 1.5,
-                      borderColor: item.included ? COLORS.coral : MATERIALS.hairline,
-                      opacity: item.included ? 1 : 0.6,
-                    }}
-                  >
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        justifyContent: "flex-end",
-                        marginBottom: 6,
-                      }}
-                    >
-                      <TouchableOpacity
-                        testID={`toggle-${item.id}`}
-                        onPress={() => toggle(item.id)}
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 6,
-                          paddingVertical: 4,
-                          paddingHorizontal: 10,
-                          borderRadius: 14,
-                          backgroundColor: item.included
-                            ? COLORS.coral + "18"
-                            : MATERIALS.surfaceSunken,
-                        }}
-                      >
-                        {item.included ? (
-                          <Check size={14} color={COLORS.coral} />
-                        ) : null}
-                        <Text
-                          style={{
-                            fontSize: 12,
-                            fontWeight: "700",
-                            color: item.included ? COLORS.coral : COLORS.mutedBrown,
-                          }}
-                        >
-                          {item.included ? rv("include") : rv("skip")}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    {g.fields.map(([key, labelKey]) => (
-                      <View key={key} style={{ marginBottom: 10 }}>
-                        <Text
-                          style={{
-                            fontSize: 11,
-                            fontWeight: "700",
-                            color: COLORS.mutedBrown,
-                            marginBottom: 4,
-                          }}
-                        >
-                          {rv(labelKey)}
-                        </Text>
-                        <TextInput
-                          value={item.values[key]}
-                          onChangeText={(txt) => setValue(item.id, key, txt)}
-                          editable={item.included}
-                          placeholder={rv(labelKey)}
-                          placeholderTextColor={COLORS.mutedBrown}
-                          style={{
-                            backgroundColor: MATERIALS.surfaceSunken,
-                            borderRadius: 12,
-                            paddingHorizontal: 12,
-                            paddingVertical: 10,
-                            fontSize: 14,
-                            color: COLORS.warmBrown,
-                          }}
-                        />
-                      </View>
-                    ))}
-                  </View>
-                ))}
-              </View>
-            );
-          })}
-        </KeyboardAwareScrollView>
-
-        {/* Footer actions */}
+        {/* AI transparency line */}
         <View
           style={{
-            padding: 16,
-            paddingBottom: insets.bottom + 12,
-            borderTopWidth: 1,
-            borderTopColor: MATERIALS.hairline,
-            backgroundColor: MATERIALS.surface,
+            flexDirection: "row",
             gap: 10,
+            alignItems: "flex-start",
+            backgroundColor: MATERIALS.surfaceSunken,
+            borderRadius: 14,
+            padding: 12,
+            marginBottom: SPACING.xl,
+            borderWidth: 1,
+            borderColor: MATERIALS.hairline,
           }}
         >
-          <TouchableOpacity
-            testID="apply-records"
-            onPress={handleApply}
-            disabled={includedCount === 0 || applying}
-            style={{
-              backgroundColor: includedCount > 0 ? COLORS.coral : MATERIALS.surfaceSunken,
-              borderRadius: RADIUS.control,
-              height: 52,
-              flexDirection: "row",
-              justifyContent: "center",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            {applying ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <Text
-                style={[
-                  TYPE.headline,
-                  {
-                    fontWeight: "800",
-                    color: includedCount > 0 ? "#FFF" : COLORS.mutedBrown,
-                  },
-                ]}
-              >
-                {includedCount > 0
-                  ? rv("addCount", { count: includedCount })
-                  : rv("addNone")}
-              </Text>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity onPress={onClose} disabled={applying} style={{ alignItems: "center", paddingVertical: 6 }}>
-            <Text style={{ fontSize: 14, fontWeight: "700", color: COLORS.mutedBrown }}>
-              {rv("notNow")}
-            </Text>
-          </TouchableOpacity>
+          <Sparkles size={16} color={COLORS.coral} style={{ marginTop: 1 }} />
+          <Text style={{ flex: 1, fontSize: 12, color: COLORS.mutedBrown, lineHeight: 17 }}>
+            {rv("aiDisclosure")}
+          </Text>
         </View>
-      </View>
-    </Modal>
+
+        {GROUPS.map((g) => {
+          const groupItems = items.filter((it) => it.groupKey === g.key);
+          if (!groupItems.length) return null;
+          return (
+            <View key={g.key} style={{ marginBottom: SPACING.xl }}>
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: "800",
+                  color: COLORS.warmBrown,
+                  marginBottom: 10,
+                  textTransform: "uppercase",
+                  letterSpacing: 0.4,
+                }}
+              >
+                {rv(`group${g.key.charAt(0).toUpperCase()}${g.key.slice(1)}`)}
+              </Text>
+
+              {groupItems.map((item) => (
+                <View
+                  key={item.id}
+                  testID={`proposed-${item.id}`}
+                  style={{
+                    backgroundColor: "#FFF",
+                    borderRadius: RADIUS.control,
+                    padding: 14,
+                    marginBottom: 12,
+                    borderWidth: 1.5,
+                    borderColor: item.included ? COLORS.coral : MATERIALS.hairline,
+                    opacity: item.included ? 1 : 0.6,
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "flex-end",
+                      marginBottom: 6,
+                    }}
+                  >
+                    <TouchableOpacity
+                      testID={`toggle-${item.id}`}
+                      onPress={() => toggle(item.id)}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                        paddingVertical: 4,
+                        paddingHorizontal: 10,
+                        borderRadius: 14,
+                        backgroundColor: item.included
+                          ? COLORS.coral + "18"
+                          : MATERIALS.surfaceSunken,
+                      }}
+                    >
+                      {item.included ? (
+                        <Check size={14} color={COLORS.coral} />
+                      ) : null}
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          fontWeight: "700",
+                          color: item.included ? COLORS.coral : COLORS.mutedBrown,
+                        }}
+                      >
+                        {item.included ? rv("include") : rv("skip")}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {g.fields.map(([key, labelKey]) => (
+                    <View key={key} style={{ marginBottom: 10 }}>
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: "700",
+                          color: COLORS.mutedBrown,
+                          marginBottom: 4,
+                        }}
+                      >
+                        {rv(labelKey)}
+                      </Text>
+                      <TextInput
+                        value={item.values[key]}
+                        onChangeText={(txt) => setValue(item.id, key, txt)}
+                        editable={item.included}
+                        placeholder={rv(labelKey)}
+                        placeholderTextColor={COLORS.mutedBrown}
+                        style={{
+                          backgroundColor: MATERIALS.surfaceSunken,
+                          borderRadius: 12,
+                          paddingHorizontal: 12,
+                          paddingVertical: 10,
+                          fontSize: 14,
+                          color: COLORS.warmBrown,
+                        }}
+                      />
+                    </View>
+                  ))}
+                </View>
+              ))}
+            </View>
+          );
+        })}
+    </KeyboardSafeSheet>
   );
 }
 

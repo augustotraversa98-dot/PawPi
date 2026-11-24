@@ -4,13 +4,10 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Modal,
   TextInput,
   Switch,
-  Platform,
-  KeyboardAvoidingView,
 } from "react-native";
-import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import KeyboardSafeSheet from "@/components/KeyboardSafeSheet";
 import { X } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { ROUTINE_TYPES } from "@/data/routinesData";
@@ -87,20 +84,21 @@ export default function VaccineRoutineModal({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={0}
-      >
-        <View style={{ flex: 1, backgroundColor: C.cream }}>
+    <KeyboardSafeSheet
+      visible={visible}
+      onRequestClose={onClose}
+      variant="screen"
+      backgroundColor={C.cream}
+      contentContainerStyle={{ padding: 20, paddingBottom: 24 }}
+      header={(
+        <>
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
               padding: 20,
-              paddingTop: 60,
+              paddingTop: 12,
               borderBottomWidth: 1,
               borderBottomColor: C.peach,
             }}
@@ -136,190 +134,14 @@ export default function VaccineRoutineModal({
               <X size={20} color={C.warmBrown} />
             </TouchableOpacity>
           </View>
-
-          <KeyboardAwareScrollView
-            contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <Text
-              style={{
-                fontSize: 15,
-                fontWeight: "700",
-                color: C.warmBrown,
-                marginBottom: 12,
-              }}
-            >
-              {t("routinesUi.vaccine.vaccineName")}
-            </Text>
-            <TextInput
-              value={vaccineName}
-              onChangeText={setVaccineName}
-              placeholder={t("health.reminders.vaccine.namePlaceholder")}
-              placeholderTextColor={C.mutedBrown}
-              style={{
-                backgroundColor: C.card,
-                borderRadius: 12,
-                padding: 12,
-                fontSize: 15,
-                color: C.warmBrown,
-                borderWidth: 1,
-                borderColor: C.peach,
-                marginBottom: 20,
-              }}
-            />
-
-            {/* Stacked (not side-by-side) so the inline calendar has full width */}
-            <View style={{ gap: 12, marginBottom: 20 }}>
-              <View>
-                <Text
-                  style={{
-                    fontSize: 13,
-                    fontWeight: "600",
-                    color: C.mutedBrown,
-                    marginBottom: 8,
-                  }}
-                >
-                  {t("routinesUi.vaccine.lastGiven")}
-                </Text>
-                <DateField value={lastGiven} onChange={setLastGiven} maximumDate={new Date()} />
-              </View>
-              <View>
-                <Text
-                  style={{
-                    fontSize: 13,
-                    fontWeight: "600",
-                    color: C.mutedBrown,
-                    marginBottom: 8,
-                  }}
-                >
-                  {t("routinesUi.vaccine.nextDue")}
-                </Text>
-                <DateField value={nextDue} onChange={setNextDue} />
-              </View>
-            </View>
-
-            <Text
-              style={{
-                fontSize: 15,
-                fontWeight: "700",
-                color: C.warmBrown,
-                marginBottom: 12,
-              }}
-            >
-              {t("routinesUi.vaccine.vetClinic")}
-            </Text>
-            <TextInput
-              value={vetClinic}
-              onChangeText={setVetClinic}
-              placeholder={t("health.reminders.vaccine.clinicPlaceholder")}
-              placeholderTextColor={C.mutedBrown}
-              style={{
-                backgroundColor: C.card,
-                borderRadius: 12,
-                padding: 12,
-                fontSize: 15,
-                color: C.warmBrown,
-                borderWidth: 1,
-                borderColor: C.peach,
-                marginBottom: 20,
-              }}
-            />
-
-            <View
-              style={{
-                backgroundColor: C.card,
-                borderRadius: 16,
-                padding: 16,
-                borderWidth: 1,
-                borderColor: C.peach,
-                marginBottom: 16,
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: 14,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 15,
-                    fontWeight: "600",
-                    color: C.warmBrown,
-                  }}
-                >
-                  {t("routinesUi.vaccine.reminderEnabled")}
-                </Text>
-                <Switch
-                  value={reminderEnabled}
-                  onValueChange={setReminderEnabled}
-                  trackColor={{ false: C.sand, true: C.sage + "60" }}
-                  thumbColor={reminderEnabled ? C.sage : C.peach}
-                />
-              </View>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 15,
-                    fontWeight: "600",
-                    color: C.warmBrown,
-                  }}
-                >
-                  {t("routinesUi.vaccine.timeSensitive")}
-                </Text>
-                <Switch
-                  value={timeSensitive}
-                  onValueChange={setTimeSensitive}
-                  trackColor={{ false: C.sand, true: C.coral + "60" }}
-                  thumbColor={timeSensitive ? C.coral : C.peach}
-                />
-              </View>
-            </View>
-
-            <Text
-              style={{
-                fontSize: 15,
-                fontWeight: "700",
-                color: C.warmBrown,
-                marginBottom: 12,
-              }}
-            >
-              {t("routinesUi.vaccine.notesOptional")}
-            </Text>
-            <TextInput
-              value={notes}
-              onChangeText={setNotes}
-              placeholder={t("health.reminders.vaccine.notesPlaceholder")}
-              placeholderTextColor={C.mutedBrown}
-              multiline
-              numberOfLines={3}
-              style={{
-                backgroundColor: C.card,
-                borderRadius: 12,
-                padding: 12,
-                fontSize: 14,
-                color: C.warmBrown,
-                borderWidth: 1,
-                borderColor: C.peach,
-                textAlignVertical: "top",
-                marginBottom: 24,
-              }}
-            />
-          </KeyboardAwareScrollView>
-
+        </>
+      )}
+      footer={(
+        <>
           <View
             style={{
               padding: 20,
-              paddingBottom: 30,
+              paddingBottom: 0,
               borderTopWidth: 1,
               borderTopColor: C.peach,
               backgroundColor: C.cream,
@@ -341,8 +163,181 @@ export default function VaccineRoutineModal({
               </Text>
             </TouchableOpacity>
           </View>
+        </>
+      )}
+    >
+      <Text
+        style={{
+          fontSize: 15,
+          fontWeight: "700",
+          color: C.warmBrown,
+          marginBottom: 12,
+        }}
+      >
+        {t("routinesUi.vaccine.vaccineName")}
+      </Text>
+      <TextInput
+        value={vaccineName}
+        onChangeText={setVaccineName}
+        placeholder={t("health.reminders.vaccine.namePlaceholder")}
+        placeholderTextColor={C.mutedBrown}
+        style={{
+          backgroundColor: C.card,
+          borderRadius: 12,
+          padding: 12,
+          fontSize: 15,
+          color: C.warmBrown,
+          borderWidth: 1,
+          borderColor: C.peach,
+          marginBottom: 20,
+        }}
+      />
+
+      {/* Stacked (not side-by-side) so the inline calendar has full width */}
+      <View style={{ gap: 12, marginBottom: 20 }}>
+        <View>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: "600",
+              color: C.mutedBrown,
+              marginBottom: 8,
+            }}
+          >
+            {t("routinesUi.vaccine.lastGiven")}
+          </Text>
+          <DateField value={lastGiven} onChange={setLastGiven} maximumDate={new Date()} />
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+        <View>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: "600",
+              color: C.mutedBrown,
+              marginBottom: 8,
+            }}
+          >
+            {t("routinesUi.vaccine.nextDue")}
+          </Text>
+          <DateField value={nextDue} onChange={setNextDue} />
+        </View>
+      </View>
+
+      <Text
+        style={{
+          fontSize: 15,
+          fontWeight: "700",
+          color: C.warmBrown,
+          marginBottom: 12,
+        }}
+      >
+        {t("routinesUi.vaccine.vetClinic")}
+      </Text>
+      <TextInput
+        value={vetClinic}
+        onChangeText={setVetClinic}
+        placeholder={t("health.reminders.vaccine.clinicPlaceholder")}
+        placeholderTextColor={C.mutedBrown}
+        style={{
+          backgroundColor: C.card,
+          borderRadius: 12,
+          padding: 12,
+          fontSize: 15,
+          color: C.warmBrown,
+          borderWidth: 1,
+          borderColor: C.peach,
+          marginBottom: 20,
+        }}
+      />
+
+      <View
+        style={{
+          backgroundColor: C.card,
+          borderRadius: 16,
+          padding: 16,
+          borderWidth: 1,
+          borderColor: C.peach,
+          marginBottom: 16,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 14,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 15,
+              fontWeight: "600",
+              color: C.warmBrown,
+            }}
+          >
+            {t("routinesUi.vaccine.reminderEnabled")}
+          </Text>
+          <Switch
+            value={reminderEnabled}
+            onValueChange={setReminderEnabled}
+            trackColor={{ false: C.sand, true: C.sage + "60" }}
+            thumbColor={reminderEnabled ? C.sage : C.peach}
+          />
+        </View>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 15,
+              fontWeight: "600",
+              color: C.warmBrown,
+            }}
+          >
+            {t("routinesUi.vaccine.timeSensitive")}
+          </Text>
+          <Switch
+            value={timeSensitive}
+            onValueChange={setTimeSensitive}
+            trackColor={{ false: C.sand, true: C.coral + "60" }}
+            thumbColor={timeSensitive ? C.coral : C.peach}
+          />
+        </View>
+      </View>
+
+      <Text
+        style={{
+          fontSize: 15,
+          fontWeight: "700",
+          color: C.warmBrown,
+          marginBottom: 12,
+        }}
+      >
+        {t("routinesUi.vaccine.notesOptional")}
+      </Text>
+      <TextInput
+        value={notes}
+        onChangeText={setNotes}
+        placeholder={t("health.reminders.vaccine.notesPlaceholder")}
+        placeholderTextColor={C.mutedBrown}
+        multiline
+        numberOfLines={3}
+        style={{
+          backgroundColor: C.card,
+          borderRadius: 12,
+          padding: 12,
+          fontSize: 14,
+          color: C.warmBrown,
+          borderWidth: 1,
+          borderColor: C.peach,
+          textAlignVertical: "top",
+          marginBottom: 24,
+        }}
+      />
+    </KeyboardSafeSheet>
   );
 }

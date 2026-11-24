@@ -13,9 +13,8 @@ import {
 import { X, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { ROUTINE_TYPES, ROUTINE_FREQUENCY } from "@/data/routinesData";
-import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 import TimeField from "@/components/TimeField";
-import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import KeyboardSafeSheet from "@/components/KeyboardSafeSheet";
 
 const C = {
   cream: COLORS.cream,
@@ -340,207 +339,302 @@ export default function FeedingRoutineModal({
 
   // Step 2: Details with meal-specific schedules
   return (
-    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
-      <KeyboardAvoidingAnimatedView
-        style={{ flex: 1, backgroundColor: C.cream }}
-        behavior="padding"
-      >
-        {/* Header */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: 20,
-            paddingTop: 60,
-            borderBottomWidth: 1,
-            borderBottomColor: C.peach,
-          }}
-        >
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                fontSize: 20,
-                fontWeight: "800",
-                color: C.warmBrown,
-                marginBottom: 4,
-              }}
-            >
-              {editingRoutine
-                ? t("routinesUi.feeding.titleEdit")
-                : t("routinesUi.feeding.titleCreate")}
-            </Text>
-            <Text style={{ fontSize: 14, color: C.mutedBrown }}>
-              {t("routinesUi.feeding.setMealSpecificSchedules")}
-            </Text>
-          </View>
-          <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            onPress={onClose}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: C.sand,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <X size={20} color={C.warmBrown} />
-          </TouchableOpacity>
-        </View>
-
-        <KeyboardAwareScrollView
-          contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Meals Section */}
+    <KeyboardSafeSheet
+      visible={visible}
+      onRequestClose={onClose}
+      variant="screen"
+      backgroundColor={C.cream}
+      contentContainerStyle={{ padding: 20, paddingBottom: 24 }}
+      header={(
+        <>
+          {/* Header */}
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
+              padding: 20,
+              paddingTop: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: C.peach,
+            }}
+          >
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: "800",
+                  color: C.warmBrown,
+                  marginBottom: 4,
+                }}
+              >
+                {editingRoutine
+                  ? t("routinesUi.feeding.titleEdit")
+                  : t("routinesUi.feeding.titleCreate")}
+              </Text>
+              <Text style={{ fontSize: 14, color: C.mutedBrown }}>
+                {t("routinesUi.feeding.setMealSpecificSchedules")}
+              </Text>
+            </View>
+            <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              onPress={onClose}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: C.sand,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <X size={20} color={C.warmBrown} />
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+      footer={(
+        <>
+          {/* Save Button - Fixed at bottom */}
+          <View
+            style={{
+              padding: 20,
+              borderTopWidth: 1,
+              borderTopColor: C.peach,
+              backgroundColor: C.cream,
+            }}
+          >
+            <TouchableOpacity
+              onPress={handleSave}
+              style={{
+                backgroundColor: C.coral,
+                borderRadius: 14,
+                paddingVertical: 16,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}>
+                {editingRoutine
+                  ? t("routinesUi.shared.saveChanges")
+                  : t("routinesUi.shared.createRoutine")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+    >
+      {/* Meals Section */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 12,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 15,
+            fontWeight: "700",
+            color: C.warmBrown,
+          }}
+        >
+          {t("routinesUi.feeding.meals")}
+        </Text>
+        <Text style={{ fontSize: 13, color: C.mutedBrown }}>
+          {t("routinesUi.feeding.tapToExpand")}
+        </Text>
+      </View>
+
+      {/* Meal Cards */}
+      {meals.map((meal, index) => {
+        const isExpanded = expandedMeal === index;
+        return (
+          <View
+            key={index}
+            style={{
+              backgroundColor: C.card,
+              borderRadius: 16,
+              padding: 16,
+              borderWidth: 1.5,
+              borderColor: isExpanded ? C.coral : C.peach,
               marginBottom: 12,
             }}
           >
-            <Text
+            {/* Meal Header - Always Visible */}
+            <TouchableOpacity
+              onPress={() => setExpandedMeal(isExpanded ? -1 : index)}
               style={{
-                fontSize: 15,
-                fontWeight: "700",
-                color: C.warmBrown,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
               }}
             >
-              {t("routinesUi.feeding.meals")}
-            </Text>
-            <Text style={{ fontSize: 13, color: C.mutedBrown }}>
-              {t("routinesUi.feeding.tapToExpand")}
-            </Text>
-          </View>
-
-          {/* Meal Cards */}
-          {meals.map((meal, index) => {
-            const isExpanded = expandedMeal === index;
-            return (
-              <View
-                key={index}
-                style={{
-                  backgroundColor: C.card,
-                  borderRadius: 16,
-                  padding: 16,
-                  borderWidth: 1.5,
-                  borderColor: isExpanded ? C.coral : C.peach,
-                  marginBottom: 12,
-                }}
-              >
-                {/* Meal Header - Always Visible */}
-                <TouchableOpacity
-                  onPress={() => setExpandedMeal(isExpanded ? -1 : index)}
+              <View style={{ flex: 1 }}>
+                <Text
                   style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
+                    fontSize: 16,
+                    fontWeight: "700",
+                    color: C.warmBrown,
+                    marginBottom: 2,
                   }}
                 >
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={{
-                        fontSize: 16,
-                        fontWeight: "700",
-                        color: C.warmBrown,
-                        marginBottom: 2,
-                      }}
-                    >
-                      {meal.name || t("healthDataUi.ui.mealN", { n: index + 1 })}
-                    </Text>
-                    <Text style={{ fontSize: 13, color: C.mutedBrown }}>
-                      {meal.time} •{" "}
-                      {meal.frequency === ROUTINE_FREQUENCY.DAILY
-                        ? t("routinesUi.feeding.everyDay")
-                        : meal.frequency === ROUTINE_FREQUENCY.WEEKDAYS
-                          ? t("routinesUi.feeding.weekdays")
-                          : meal.frequency === ROUTINE_FREQUENCY.WEEKENDS
-                            ? t("routinesUi.feeding.weekends")
-                            : t("routinesUi.feeding.customDays")}
-                    </Text>
-                  </View>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
+                  {meal.name || t("healthDataUi.ui.mealN", { n: index + 1 })}
+                </Text>
+                <Text style={{ fontSize: 13, color: C.mutedBrown }}>
+                  {meal.time} •{" "}
+                  {meal.frequency === ROUTINE_FREQUENCY.DAILY
+                    ? t("routinesUi.feeding.everyDay")
+                    : meal.frequency === ROUTINE_FREQUENCY.WEEKDAYS
+                      ? t("routinesUi.feeding.weekdays")
+                      : meal.frequency === ROUTINE_FREQUENCY.WEEKENDS
+                        ? t("routinesUi.feeding.weekends")
+                        : t("routinesUi.feeding.customDays")}
+                </Text>
+              </View>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                {meals.length > 1 && (
+                  <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    onPress={() => handleRemoveMeal(index)}
+                    style={{ padding: 4 }}
                   >
-                    {meals.length > 1 && (
-                      <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                        onPress={() => handleRemoveMeal(index)}
-                        style={{ padding: 4 }}
-                      >
-                        <Trash2 size={18} color={C.coral} />
-                      </TouchableOpacity>
-                    )}
-                    {isExpanded ? (
-                      <ChevronUp size={20} color={C.mutedBrown} />
-                    ) : (
-                      <ChevronDown size={20} color={C.mutedBrown} />
-                    )}
-                  </View>
-                </TouchableOpacity>
+                    <Trash2 size={18} color={C.coral} />
+                  </TouchableOpacity>
+                )}
+                {isExpanded ? (
+                  <ChevronUp size={20} color={C.mutedBrown} />
+                ) : (
+                  <ChevronDown size={20} color={C.mutedBrown} />
+                )}
+              </View>
+            </TouchableOpacity>
 
-                {/* Expanded Content */}
-                {isExpanded && (
-                  <View style={{ marginTop: 16 }}>
-                    {/* Meal Name */}
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        fontWeight: "600",
-                        color: C.mutedBrown,
-                        marginBottom: 6,
-                      }}
-                    >
-                      {t("routinesUi.feeding.mealName")}
-                    </Text>
-                    <TextInput
-                      value={meal.name}
-                      onChangeText={(text) =>
-                        handleMealChange(index, "name", text)
+            {/* Expanded Content */}
+            {isExpanded && (
+              <View style={{ marginTop: 16 }}>
+                {/* Meal Name */}
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "600",
+                    color: C.mutedBrown,
+                    marginBottom: 6,
+                  }}
+                >
+                  {t("routinesUi.feeding.mealName")}
+                </Text>
+                <TextInput
+                  value={meal.name}
+                  onChangeText={(text) =>
+                    handleMealChange(index, "name", text)
+                  }
+                  placeholder={t("routinesUi.feeding.exampleBreakfast")}
+                  placeholderTextColor={C.mutedBrown}
+                  style={{
+                    backgroundColor: C.sand,
+                    borderRadius: 12,
+                    padding: 12,
+                    fontSize: 15,
+                    color: C.warmBrown,
+                    marginBottom: 12,
+                  }}
+                />
+
+                {/* Meal Time */}
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "600",
+                    color: C.mutedBrown,
+                    marginBottom: 6,
+                  }}
+                >
+                  {t("routinesUi.feeding.time")}
+                </Text>
+                <View style={{ marginBottom: 16 }}>
+                  <TimeField
+                    value={meal.time}
+                    onChange={(time) =>
+                      handleMealChange(index, "time", time)
+                    }
+                    fieldStyle={{
+                      backgroundColor: C.sand,
+                      borderWidth: 0,
+                    }}
+                  />
+                </View>
+
+                {/* Repeat Frequency */}
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "600",
+                    color: C.mutedBrown,
+                    marginBottom: 8,
+                  }}
+                >
+                  {t("routinesUi.feeding.repeat")}
+                </Text>
+                <View style={{ gap: 8, marginBottom: 12 }}>
+                  {[
+                    { value: ROUTINE_FREQUENCY.DAILY, label: t("routinesUi.feeding.everyDay") },
+                    {
+                      value: ROUTINE_FREQUENCY.WEEKDAYS,
+                      label: t("routinesUi.feeding.weekdays"),
+                    },
+                    {
+                      value: ROUTINE_FREQUENCY.WEEKENDS,
+                      label: t("routinesUi.feeding.weekends"),
+                    },
+                    {
+                      value: ROUTINE_FREQUENCY.CUSTOM,
+                      label: t("routinesUi.feeding.customDays"),
+                    },
+                  ].map((option) => (
+                    <TouchableOpacity
+                      key={option.value}
+                      onPress={() =>
+                        handleMealChange(index, "frequency", option.value)
                       }
-                      placeholder={t("routinesUi.feeding.exampleBreakfast")}
-                      placeholderTextColor={C.mutedBrown}
                       style={{
-                        backgroundColor: C.sand,
+                        backgroundColor:
+                          meal.frequency === option.value
+                            ? C.sage + "20"
+                            : C.sand,
                         borderRadius: 12,
                         padding: 12,
-                        fontSize: 15,
-                        color: C.warmBrown,
-                        marginBottom: 12,
-                      }}
-                    />
-
-                    {/* Meal Time */}
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        fontWeight: "600",
-                        color: C.mutedBrown,
-                        marginBottom: 6,
+                        borderWidth: 1.5,
+                        borderColor:
+                          meal.frequency === option.value
+                            ? C.sage
+                            : C.peach,
                       }}
                     >
-                      {t("routinesUi.feeding.time")}
-                    </Text>
-                    <View style={{ marginBottom: 16 }}>
-                      <TimeField
-                        value={meal.time}
-                        onChange={(time) =>
-                          handleMealChange(index, "time", time)
-                        }
-                        fieldStyle={{
-                          backgroundColor: C.sand,
-                          borderWidth: 0,
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          fontWeight:
+                            meal.frequency === option.value ? "700" : "600",
+                          color:
+                            meal.frequency === option.value
+                              ? C.sage
+                              : C.warmBrown,
                         }}
-                      />
-                    </View>
+                      >
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
 
-                    {/* Repeat Frequency */}
+                {/* Custom Days Selection */}
+                {meal.frequency === ROUTINE_FREQUENCY.CUSTOM && (
+                  <View style={{ marginBottom: 16 }}>
                     <Text
                       style={{
                         fontSize: 12,
@@ -549,276 +643,179 @@ export default function FeedingRoutineModal({
                         marginBottom: 8,
                       }}
                     >
-                      {t("routinesUi.feeding.repeat")}
+                      {t("routinesUi.feeding.selectDays")}
                     </Text>
-                    <View style={{ gap: 8, marginBottom: 12 }}>
-                      {[
-                        { value: ROUTINE_FREQUENCY.DAILY, label: t("routinesUi.feeding.everyDay") },
-                        {
-                          value: ROUTINE_FREQUENCY.WEEKDAYS,
-                          label: t("routinesUi.feeding.weekdays"),
-                        },
-                        {
-                          value: ROUTINE_FREQUENCY.WEEKENDS,
-                          label: t("routinesUi.feeding.weekends"),
-                        },
-                        {
-                          value: ROUTINE_FREQUENCY.CUSTOM,
-                          label: t("routinesUi.feeding.customDays"),
-                        },
-                      ].map((option) => (
-                        <TouchableOpacity
-                          key={option.value}
-                          onPress={() =>
-                            handleMealChange(index, "frequency", option.value)
-                          }
-                          style={{
-                            backgroundColor:
-                              meal.frequency === option.value
-                                ? C.sage + "20"
-                                : C.sand,
-                            borderRadius: 12,
-                            padding: 12,
-                            borderWidth: 1.5,
-                            borderColor:
-                              meal.frequency === option.value
-                                ? C.sage
-                                : C.peach,
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 14,
-                              fontWeight:
-                                meal.frequency === option.value ? "700" : "600",
-                              color:
-                                meal.frequency === option.value
-                                  ? C.sage
-                                  : C.warmBrown,
-                            }}
-                          >
-                            {option.label}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-
-                    {/* Custom Days Selection */}
-                    {meal.frequency === ROUTINE_FREQUENCY.CUSTOM && (
-                      <View style={{ marginBottom: 16 }}>
-                        <Text
-                          style={{
-                            fontSize: 12,
-                            fontWeight: "600",
-                            color: C.mutedBrown,
-                            marginBottom: 8,
-                          }}
-                        >
-                          {t("routinesUi.feeding.selectDays")}
-                        </Text>
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            flexWrap: "wrap",
-                            gap: 8,
-                          }}
-                        >
-                          {[
-                            "mon",
-                            "tue",
-                            "wed",
-                            "thu",
-                            "fri",
-                            "sat",
-                            "sun",
-                          ].map((dayId, dayIndex) => {
-                            const isSelected = (meal.days || []).includes(
-                              dayIndex,
-                            );
-                            return (
-                              <TouchableOpacity
-                                key={dayIndex}
-                                onPress={() => toggleDay(index, dayIndex)}
-                                style={{
-                                  width: 45,
-                                  height: 45,
-                                  borderRadius: 23,
-                                  backgroundColor: isSelected ? C.sage : C.sand,
-                                  justifyContent: "center",
-                                  alignItems: "center",
-                                  borderWidth: 1,
-                                  borderColor: isSelected ? C.sage : C.peach,
-                                }}
-                              >
-                                <Text
-                                  style={{
-                                    fontSize: 11,
-                                    fontWeight: "700",
-                                    color: isSelected ? "#FFF" : C.mutedBrown,
-                                  }}
-                                >
-                                  {t(`walkItem.days.${dayId}`)}
-                                </Text>
-                              </TouchableOpacity>
-                            );
-                          })}
-                        </View>
-                      </View>
-                    )}
-
-                    {/* Reminder Settings */}
                     <View
                       style={{
-                        backgroundColor: C.sand,
-                        borderRadius: 12,
-                        padding: 12,
-                        marginBottom: 12,
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        gap: 8,
                       }}
                     >
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          marginBottom: 10,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 14,
-                            fontWeight: "600",
-                            color: C.warmBrown,
-                          }}
-                        >
-                          {t("routinesUi.feeding.reminderEnabled")}
-                        </Text>
-                        <Switch
-                          value={meal.reminderEnabled}
-                          onValueChange={(value) =>
-                            handleMealChange(index, "reminderEnabled", value)
-                          }
-                          trackColor={{ false: C.peach, true: C.sage + "60" }}
-                          thumbColor={meal.reminderEnabled ? C.sage : C.peach}
-                        />
-                      </View>
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 14,
-                            fontWeight: "600",
-                            color: C.warmBrown,
-                          }}
-                        >
-                          {t("routinesUi.feeding.timeSensitive")}
-                        </Text>
-                        <Switch
-                          value={meal.timeSensitive}
-                          onValueChange={(value) =>
-                            handleMealChange(index, "timeSensitive", value)
-                          }
-                          trackColor={{ false: C.peach, true: C.coral + "60" }}
-                          thumbColor={meal.timeSensitive ? C.coral : C.peach}
-                        />
-                      </View>
+                      {[
+                        "mon",
+                        "tue",
+                        "wed",
+                        "thu",
+                        "fri",
+                        "sat",
+                        "sun",
+                      ].map((dayId, dayIndex) => {
+                        const isSelected = (meal.days || []).includes(
+                          dayIndex,
+                        );
+                        return (
+                          <TouchableOpacity
+                            key={dayIndex}
+                            onPress={() => toggleDay(index, dayIndex)}
+                            style={{
+                              width: 45,
+                              height: 45,
+                              borderRadius: 23,
+                              backgroundColor: isSelected ? C.sage : C.sand,
+                              justifyContent: "center",
+                              alignItems: "center",
+                              borderWidth: 1,
+                              borderColor: isSelected ? C.sage : C.peach,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 11,
+                                fontWeight: "700",
+                                color: isSelected ? "#FFF" : C.mutedBrown,
+                              }}
+                            >
+                              {t(`walkItem.days.${dayId}`)}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
                     </View>
-
-                    {/* Notes */}
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        fontWeight: "600",
-                        color: C.mutedBrown,
-                        marginBottom: 6,
-                      }}
-                    >
-                      {t("routinesUi.feeding.notesOptional")}
-                    </Text>
-                    <TextInput
-                      value={meal.notes}
-                      onChangeText={(text) =>
-                        handleMealChange(index, "notes", text)
-                      }
-                      placeholder={t("routinesUi.feeding.exampleMorningKibbleWithSupplement")}
-                      placeholderTextColor={C.mutedBrown}
-                      multiline
-                      numberOfLines={2}
-                      style={{
-                        backgroundColor: C.sand,
-                        borderRadius: 12,
-                        padding: 12,
-                        fontSize: 14,
-                        color: C.warmBrown,
-                        textAlignVertical: "top",
-                        minHeight: 60,
-                      }}
-                    />
                   </View>
                 )}
+
+                {/* Reminder Settings */}
+                <View
+                  style={{
+                    backgroundColor: C.sand,
+                    borderRadius: 12,
+                    padding: 12,
+                    marginBottom: 12,
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: 10,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: "600",
+                        color: C.warmBrown,
+                      }}
+                    >
+                      {t("routinesUi.feeding.reminderEnabled")}
+                    </Text>
+                    <Switch
+                      value={meal.reminderEnabled}
+                      onValueChange={(value) =>
+                        handleMealChange(index, "reminderEnabled", value)
+                      }
+                      trackColor={{ false: C.peach, true: C.sage + "60" }}
+                      thumbColor={meal.reminderEnabled ? C.sage : C.peach}
+                    />
+                  </View>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: "600",
+                        color: C.warmBrown,
+                      }}
+                    >
+                      {t("routinesUi.feeding.timeSensitive")}
+                    </Text>
+                    <Switch
+                      value={meal.timeSensitive}
+                      onValueChange={(value) =>
+                        handleMealChange(index, "timeSensitive", value)
+                      }
+                      trackColor={{ false: C.peach, true: C.coral + "60" }}
+                      thumbColor={meal.timeSensitive ? C.coral : C.peach}
+                    />
+                  </View>
+                </View>
+
+                {/* Notes */}
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "600",
+                    color: C.mutedBrown,
+                    marginBottom: 6,
+                  }}
+                >
+                  {t("routinesUi.feeding.notesOptional")}
+                </Text>
+                <TextInput
+                  value={meal.notes}
+                  onChangeText={(text) =>
+                    handleMealChange(index, "notes", text)
+                  }
+                  placeholder={t("routinesUi.feeding.exampleMorningKibbleWithSupplement")}
+                  placeholderTextColor={C.mutedBrown}
+                  multiline
+                  numberOfLines={2}
+                  style={{
+                    backgroundColor: C.sand,
+                    borderRadius: 12,
+                    padding: 12,
+                    fontSize: 14,
+                    color: C.warmBrown,
+                    textAlignVertical: "top",
+                    minHeight: 60,
+                  }}
+                />
               </View>
-            );
-          })}
+            )}
+          </View>
+        );
+      })}
 
-          {/* Add Meal Button */}
-          <TouchableOpacity
-            onPress={handleAddMeal}
-            style={{
-              backgroundColor: C.sand,
-              borderRadius: 14,
-              paddingVertical: 14,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              borderWidth: 1,
-              borderColor: C.peach,
-              marginBottom: 24,
-            }}
-          >
-            <Plus size={18} color={C.mutedBrown} />
-            <Text
-              style={{ fontSize: 15, fontWeight: "600", color: C.mutedBrown }}
-            >
-              {t("routinesUi.feeding.addAnotherMeal")}
-            </Text>
-          </TouchableOpacity>
-        </KeyboardAwareScrollView>
-
-        {/* Save Button - Fixed at bottom */}
-        <View
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            padding: 20,
-            borderTopWidth: 1,
-            borderTopColor: C.peach,
-            backgroundColor: C.cream,
-          }}
+      {/* Add Meal Button */}
+      <TouchableOpacity
+        onPress={handleAddMeal}
+        style={{
+          backgroundColor: C.sand,
+          borderRadius: 14,
+          paddingVertical: 14,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          borderWidth: 1,
+          borderColor: C.peach,
+          marginBottom: 24,
+        }}
+      >
+        <Plus size={18} color={C.mutedBrown} />
+        <Text
+          style={{ fontSize: 15, fontWeight: "600", color: C.mutedBrown }}
         >
-          <TouchableOpacity
-            onPress={handleSave}
-            style={{
-              backgroundColor: C.coral,
-              borderRadius: 14,
-              paddingVertical: 16,
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFF" }}>
-              {editingRoutine
-                ? t("routinesUi.shared.saveChanges")
-                : t("routinesUi.shared.createRoutine")}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingAnimatedView>
-    </Modal>
+          {t("routinesUi.feeding.addAnotherMeal")}
+        </Text>
+      </TouchableOpacity>
+    </KeyboardSafeSheet>
   );
 }
