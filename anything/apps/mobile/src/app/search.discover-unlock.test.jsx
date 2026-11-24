@@ -88,6 +88,12 @@ test("posting refetches Discover so a previously-locked tile opens without leavi
   );
   await waitFor(() => expect(client.getQueryData(["discover", 12]).moments[0].locked).toBeUndefined());
 
+  // The cache is updated, but react-query notifies subscribers on a later macrotask: flush it so the tile has RE-RENDERED with the
+  // unlocked moment before we press (on a slow CI runner the press otherwise hit the stale, still-locked handler → flaky).
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
   // ...so the same mounted tile now opens the pet profile instead of prompting.
   fireEvent.press(getByTestId("discover-moment"));
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/pet-profile", params: { petId: "2" } });
