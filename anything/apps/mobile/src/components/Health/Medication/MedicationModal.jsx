@@ -55,6 +55,7 @@ import {
   useDeletePreventiveTreatment,
 } from "@/hooks/usePetPreventiveTreatments";
 import DateField from "@/components/DateField";
+import { canonicalizeDateValue } from "@/utils/canonicalDateTime";
 import { friendlyErrorMessage } from "@/utils/appAlert";
 
 const C = {
@@ -185,7 +186,7 @@ function RowActions({ onEdit, onDelete, editLabel, deleteLabel }) {
   );
 }
 
-const canonical = (v) => (v ? String(v).slice(0, 10) : "");
+const canonical = (v) => canonicalizeDateValue(v);
 
 export default function MedicationModal({
   visible,

@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { View, Text, Pressable, Platform } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Calendar } from "lucide-react-native";
 import {
   formatDisplayDate,
   initialPickerDate,
-  toCanonicalDate,
+  normalizePickerBound,
+  pickedDateToCanonical,
 } from "../utils/canonicalDateTime";
 import { COLORS, MATERIALS, RADIUS, SPACING, TYPE } from "@/constants/theme";
 import { useTranslation } from "react-i18next";
@@ -29,8 +30,14 @@ const C = {
  * Opens on the current value if set, otherwise on today.
  *
  * `value` accepts canonical "YYYY-MM-DD" plus legacy stored values
- * ("MM/DD/YYYY", ISO datetimes). Displays as "21 April 2025".
- * `onChange` ALWAYS receives canonical "YYYY-MM-DD".
+ * ("MM/DD/YYYY", ISO datetimes). Displays localized ("21 April 2025" / "21 de
+ * abril de 2025"). `onChange` ALWAYS receives canonical "YYYY-MM-DD".
+ *
+ * Hardened (night run 2026-11-23): null / undefined / "" / 0 / Invalid Date / an
+ * epoch (1969-1970) value all read as EMPTY (placeholder, picker opens on today);
+ * the picker is only ever handed a valid Date; a dismissed, empty, invalid or
+ * epoch-timestamp pick is ignored and keeps the previous value; min/max are
+ * normalised (valid + stable per day) before they reach the native picker.
  */
 export default function DateField({
   value,
@@ -58,12 +65,34 @@ export default function DateField({
   };
   const display = formatDisplayDate(value);
 
+  // Stable, valid bounds (a bare `new Date()` prop would change every render).
+  const minMs = normalizePickerBound(minimumDate, "start")?.getTime();
+  const maxMs = normalizePickerBound(maximumDate, "end")?.getTime();
+  const minDate = useMemo(
+    () => (minMs === undefined ? undefined : new Date(minMs)),
+    [minMs],
+  );
+  const maxDate = useMemo(
+    () => (maxMs === undefined ? undefined : new Date(maxMs)),
+    [maxMs],
+  );
+  const pickerValue = useMemo(
+    () =>
+      initialPickerDate(value, new Date(), {
+        minimumDate: minDate,
+        maximumDate: maxDate,
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [value, minMs, maxMs, isOpen],
+  );
+
   const handleChange = (event, selected) => {
     // Android's calendar is a dialog: it closes itself, and "dismissed"
     // means the user cancelled. iOS inline commits on day tap; close then.
     setOpen(false);
-    if (event?.type === "dismissed" || !selected) return;
-    onChange(toCanonicalDate(selected));
+    // null → dismissed / no date / Invalid Date / epoch timestamp: keep the old value.
+    const canonical = pickedDateToCanonical(event, selected);
+    if (canonical) onChange(canonical);
   };
 
   return (
@@ -101,12 +130,12 @@ export default function DateField({
       {isOpen && (
         <DateTimePicker
           testID={testID ? `${testID}-picker` : undefined}
-          value={initialPickerDate(value)}
+          value={pickerValue}
           mode="date"
           display={Platform.OS === "ios" ? "inline" : "calendar"}
           onChange={handleChange}
-          minimumDate={minimumDate}
-          maximumDate={maximumDate}
+          minimumDate={minDate}
+          maximumDate={maxDate}
           accentColor={accentColor}
           themeVariant="light"
         />

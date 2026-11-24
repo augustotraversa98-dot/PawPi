@@ -19,6 +19,7 @@ import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useSearch, useDebouncedValue } from "@/hooks/useSearch";
 import { visibilityForToggle, isValidCoord } from "@/utils/walkBuddies";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import { combineDateTimeToISO } from "@/utils/canonicalDateTime";
 
 const C = {
   cream: COLORS.cream,
@@ -34,11 +35,7 @@ const C = {
 
 function combineDateTime(dateStr, timeStr) {
   // canonical "YYYY-MM-DD" + "HH:MM" → local Date → ISO. Returns null if incomplete.
-  if (!dateStr || !timeStr) return null;
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const [hh, mm] = timeStr.split(":").map(Number);
-  if ([y, m, d, hh, mm].some((n) => Number.isNaN(n))) return null;
-  return new Date(y, m - 1, d, hh, mm).toISOString();
+  return combineDateTimeToISO(dateStr, timeStr);
 }
 
 export default function CreateWalkPage() {

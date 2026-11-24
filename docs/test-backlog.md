@@ -24,6 +24,18 @@ Reasoning, the exact expected residual (`supabase_admin:r|S|f` only) and when to
 
 ---
 
+## 📱 To test — date picker "1969" fix (mobile JS only)
+
+**Needs EAS build 33** (merged + CI-green; **not device-verified**; the fix could not be reproduced on the Simulator, so the real iPhone check matters). Set the phone to Argentina time (UTC-3).
+
+- [ ] **1. Health → Track → Medications & care → Vaccines → Add vaccine.** Both date fields show "Select date" / "Elegí una fecha" (not a 1969 date). Tap the expiration date: the calendar opens on **today**.
+- [ ] **2. Pick a future date** (e.g. 30 Nov next year): the field shows that exact day (not 29, not 1969); Save; reopen the vaccine, the date is the same.
+- [ ] **3. Repeat open → pick → open → pick 5-6 times** (and tap outside to dismiss): no crash, no 1969, a dismissed picker keeps the previous date.
+- [ ] **4. Same in the Preventive tab (next due), Vet Record → add vaccine/visit, a vet appointment and the pet birthday.**
+- [ ] **5. Spanish:** switch the app to Spanish; dates read "30 de noviembre de 2030".
+
+---
+
 ## 📱 To test — #747 "Family & caregivers sent me to onboarding" fix (mobile JS only)
 
 **Needs a new EAS build** (merged + CI-green; **not device-verified** — only the iOS Simulator under Expo Go with a local server). Use a **brand-new account** for steps 1–3 (the bug needed the onboarding screen still underneath the app).

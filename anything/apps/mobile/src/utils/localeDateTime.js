@@ -1,4 +1,5 @@
 import { getI18n } from "react-i18next";
+import { toValidDate } from "./canonicalDateTime";
 
 // AUDIT A-34 — locale-aware display formatting for the Argentine audience.
 //
@@ -10,7 +11,8 @@ import { getI18n } from "react-i18next";
 //   • English  → en-GB  (dd/MM/yyyy, 24h, English month/day names — Argentine
 //                        date order kept, only the language of the names changes)
 //
-// Pass a Date or any value `new Date(...)` accepts. Options mirror the standard
+// Pass a Date or any value `new Date(...)` accepts. null / undefined / "" / 0 / an
+// Invalid Date / the 1969-1970 epoch return "" (never "31 Dec 1969" or "Invalid Date"). Options mirror the standard
 // Intl option bags so callers keep their existing weekday/month/day choices;
 // hourCycle is forced to h23 (0–23) so a stray hour12:true can't reintroduce AM/PM
 // and midnight renders 00:00, never 24:00.
@@ -33,7 +35,8 @@ function without12h(options) {
 }
 
 export function formatLocalTime(value, options) {
-  const d = value instanceof Date ? value : new Date(value);
+  const d = toValidDate(value);
+  if (!d) return "";
   return d.toLocaleTimeString(currentDateLocale(), {
     hour: "2-digit",
     minute: "2-digit",
@@ -43,7 +46,8 @@ export function formatLocalTime(value, options) {
 }
 
 export function formatLocalDate(value, options) {
-  const d = value instanceof Date ? value : new Date(value);
+  const d = toValidDate(value);
+  if (!d) return "";
   return d.toLocaleDateString(currentDateLocale(), {
     day: "2-digit",
     month: "short",
@@ -53,7 +57,8 @@ export function formatLocalDate(value, options) {
 }
 
 export function formatLocalDateTime(value, options) {
-  const d = value instanceof Date ? value : new Date(value);
+  const d = toValidDate(value);
+  if (!d) return "";
   return d.toLocaleString(currentDateLocale(), {
     day: "2-digit",
     month: "short",

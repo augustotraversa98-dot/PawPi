@@ -20,6 +20,7 @@ import BirthdayOrAgeField from "@/components/Pets/BirthdayOrAgeField";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
 import { defaultWeightUnit } from "@/utils/weightUnit";
+import { parseDateValue } from "@/utils/canonicalDateTime";
 
 export default function EditMedicalProfileModal({
   visible,
@@ -128,8 +129,7 @@ export default function EditMedicalProfileModal({
 
   const validateDate = (dateStr) => {
     if (!dateStr) return true;
-    const date = new Date(dateStr);
-    return !isNaN(date.getTime());
+    return parseDateValue(dateStr) !== null;
   };
 
   const handleSave = async () => {
