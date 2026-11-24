@@ -24,6 +24,17 @@ Reasoning, the exact expected residual (`supabase_admin:r|S|f` only) and when to
 
 ---
 
+## 📱 To test — Care Ring pills stay tappable (mobile JS only)
+
+**Needs EAS build 33** (merged + CI-green; not device-verified).
+
+- [ ] **1. Health → Today, ring at 0/3.** Tap the **Walk** pill: the quick walk log opens. Close it. Tap **Care**: the quick check opens. Tap **Moment**: goes to the feed.
+- [ ] **2. Do one (e.g. log a walk) so the ring is 1/3.** The other two pills still open their quick log / quick check / feed. Same at 2/3.
+- [ ] **3. At 3/3 (ring closed)** every pill still opens its screen (so you can log another walk or another quick check); nothing is "dead".
+- [ ] **4. Tapping a coloured arc of the ring** does the same as its pill. Spanish: same behaviour.
+
+---
+
 ## 📱 To test — date picker "1969" fix (mobile JS only)
 
 **Needs EAS build 33** (merged + CI-green; **not device-verified**; the fix could not be reproduced on the Simulator, so the real iPhone check matters). Set the phone to Argentina time (UTC-3).
