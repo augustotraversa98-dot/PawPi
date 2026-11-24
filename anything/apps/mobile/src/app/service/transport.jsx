@@ -35,6 +35,7 @@ import {
   removeSurfaceEventFromCalendar,
 } from "@/utils/calendarIntegration";
 import { friendlyErrorMessage } from "@/utils/appAlert";
+import { combineDateTimeToISO } from "@/utils/canonicalDateTime";
 
 const statusLabel = (tr, status) =>
   ({
@@ -125,11 +126,13 @@ export default function TransportScreen() {
 
   const submit = async () => {
     if (!canBook) return;
+    const scheduledAt = combineDateTimeToISO(date, time);
+    if (!scheduledAt) return; // never throw on an incomplete / invalid date-time
     try {
       await book.mutateAsync({
         providerId: provider.id,
         petId: currentPet.id,
-        scheduled_at: new Date(`${date}T${time}:00`).toISOString(),
+        scheduled_at: scheduledAt,
         pickup_address: pickupAddr.trim(),
         pickup_lat: pickupCoord?.lat ?? null,
         pickup_lng: pickupCoord?.lng ?? null,

@@ -2,7 +2,7 @@ import React from "react";
 import TestRenderer, { act } from "react-test-renderer";
 import { Text } from "react-native";
 import DateField from "./DateField";
-import { toCanonicalDate } from "../utils/canonicalDateTime";
+import { toCanonicalDate, isValidDate } from "../utils/canonicalDateTime";
 
 // Resolve t() against the real English catalog.
 jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
@@ -98,5 +98,80 @@ describe("DateField", () => {
     );
     expect(onChange).not.toHaveBeenCalled();
     expect(findPickers(r)).toHaveLength(0);
+  });
+
+  describe("hardening (1969 bug)", () => {
+    const BROKEN = [null, undefined, "", 0, NaN, new Date(NaN), "garbage", "1969-12-31", "1970-01-01"];
+
+    it.each(BROKEN.map((v) => [String(v), v]))(
+      "value %s shows the placeholder and opens the picker on today with a VALID Date",
+      (_l, value) => {
+        const r = render({ value, onChange: jest.fn(), testID: "f" });
+        expect(fieldText(r)).toBe("Select date");
+        press(r, "f");
+        const [picker] = findPickers(r);
+        expect(isValidDate(picker.props.value)).toBe(true);
+        expect(toCanonicalDate(picker.props.value)).toBe(toCanonicalDate(new Date()));
+      },
+    );
+
+    it("a future date is committed as the same calendar day (no 1969 jump)", () => {
+      const onChange = jest.fn();
+      const r = render({ value: "", onChange, testID: "f" });
+      press(r, "f");
+      act(() => findPickers(r)[0].props.onChange({ type: "set" }, new Date(2031, 11, 5, 23, 59)));
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledWith("2031-12-05");
+    });
+
+    it("30 Nov stays 30 Nov (day-edge times)", () => {
+      const onChange = jest.fn();
+      const r = render({ value: "", onChange, testID: "f" });
+      press(r, "f");
+      act(() => findPickers(r)[0].props.onChange({ type: "set" }, new Date(2026, 10, 30, 0, 0, 0)));
+      expect(onChange).toHaveBeenLastCalledWith("2026-11-30");
+    });
+
+    it.each([
+      ["undefined date", { type: "set" }, undefined],
+      ["Invalid Date", { type: "set" }, new Date(NaN)],
+      ["epoch timestamp 0", { type: "set" }, new Date(0)],
+      ["dismissed with a date", { type: "dismissed" }, new Date(2031, 0, 1)],
+    ])("ignores %s and keeps the previous value", (_l, event, selected) => {
+      const onChange = jest.fn();
+      const r = render({ value: "2026-12-01", onChange, testID: "f" });
+      press(r, "f");
+      act(() => findPickers(r)[0].props.onChange(event, selected));
+      expect(onChange).not.toHaveBeenCalled();
+      expect(fieldText(r)).toBe("1 December 2026");
+    });
+
+    it("survives repeated open / pick / dismiss cycles without throwing", () => {
+      const onChange = jest.fn();
+      const r = render({ value: "", onChange, testID: "f" });
+      for (let i = 0; i < 5; i++) {
+        press(r, "f");
+        act(() => findPickers(r)[0].props.onChange({ type: "set" }, new Date(2031, 0, 1 + i)));
+        press(r, "f");
+        act(() => findPickers(r)[0].props.onChange({ type: "dismissed" }, undefined));
+      }
+      expect(onChange).toHaveBeenCalledTimes(5);
+      expect(onChange).toHaveBeenLastCalledWith("2031-01-05");
+    });
+
+    it("hands the native picker valid, stable min/max bounds (a bare new Date() max is normalised)", () => {
+      const r = render({
+        value: "",
+        onChange: jest.fn(),
+        testID: "f",
+        maximumDate: new Date(),
+        minimumDate: new Date(NaN),
+      });
+      press(r, "f");
+      const [picker] = findPickers(r);
+      expect(isValidDate(picker.props.maximumDate)).toBe(true);
+      expect(toCanonicalDate(picker.props.maximumDate)).toBe(toCanonicalDate(new Date()));
+      expect(picker.props.minimumDate).toBeUndefined();
+    });
   });
 });

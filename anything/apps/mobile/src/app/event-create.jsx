@@ -24,6 +24,7 @@ import LocationField from "@/components/Map/LocationField";
 import { useCreateEvent } from "@/hooks/useEvents";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { friendlyErrorMessage } from "@/utils/appAlert";
+import { combineDateTimeToISO } from "@/utils/canonicalDateTime";
 
 // Create an event / meetup (ticket 2.74). Title + description + date/time (canonical DateField/
 // TimeField) + location via the 2.68 LocationField (Apple map) + optional capacity. The host is the
@@ -45,8 +46,9 @@ export default function EventCreateScreen() {
 
   const submit = async () => {
     if (!canSubmit) return;
+    const startsAt = combineDateTimeToISO(date, time);
+    if (!startsAt) return; // never throw on an incomplete / invalid date-time
     try {
-      const startsAt = new Date(`${date}T${time}:00`).toISOString();
       await create.mutateAsync({
         title: title.trim(),
         description: description.trim() || null,

@@ -1,3 +1,5 @@
+import { parseDateValue } from "@/utils/canonicalDateTime";
+
 // Medications & Care — PURE constants + display helpers only.
 //
 // NR4 (docs/night-run-2026-08-18.md): the in-memory mock store (seeded with fake meds
@@ -28,11 +30,7 @@ export function getPreventiveTypeEmoji(typeKey) {
 // Parse a backend date value (a `date` column serialized to an ISO string, or a canonical
 // YYYY-MM-DD) into a Date at local midnight. Returns null for empty values.
 function parseDbDate(value) {
-  if (!value) return null;
-  const s = String(value).slice(0, 10); // YYYY-MM-DD
-  const [y, m, d] = s.split("-").map((n) => parseInt(n, 10));
-  if (!y || !m || !d) return null;
-  return new Date(y, m - 1, d);
+  return parseDateValue(value);
 }
 
 // Format a backend date value as dd/MM/yyyy (Argentine convention). Empty → "".

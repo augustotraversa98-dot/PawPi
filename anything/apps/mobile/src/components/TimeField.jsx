@@ -59,12 +59,14 @@ export default function TimeField({
       // Android spinner is a dialog with OK/Cancel; it closes itself.
       setOpen(false);
       if (event?.type === "dismissed" || !selected) return;
-      onChange(toCanonicalTime(selected));
+      const canonical = toCanonicalTime(selected);
+      if (canonical) onChange(canonical);
       return;
     }
     // iOS spinner stays open (tap the field again to collapse); every wheel
     // settle commits the canonical value.
-    if (selected) onChange(toCanonicalTime(selected));
+    const canonical = selected ? toCanonicalTime(selected) : "";
+    if (canonical) onChange(canonical);
   };
 
   return (

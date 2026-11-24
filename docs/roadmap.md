@@ -18,6 +18,16 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-23 — Date picker hardening (the "1969" bug) — client-only, needs EAS build 33
+
+Reported on a live iPhone (UTC-3): Health → Track → Medications & care → Vaccine → Add vaccine, expiration date opened on Dec 1969, a picked future date jumped back to 31 Dec 1969, repeating it crashed.
+- **Root cause (partly verified).** I could not reproduce it on the Simulator with the current shared `DateField` in isolation (opens on today, picks work), so the exact native trigger is **not proven**. What the code audit and tests do prove: 1969 is what null / "" / 0 / an Invalid Date / a native timestamp of 0 turn into in UTC-3, and several paths let those through (`formatLocal*` helpers with `new Date(null)`, `toCanonicalDate` on an invalid Date, an unfiltered picker callback, a `new Date()` max bound that changes every render, un-guarded `new Date(...).toISOString()` in event/transport booking).
+- **Fix: one shared layer in `utils/canonicalDateTime.js`.** Empty-ish values and the 31 Dec 1969 / 1 Jan 1970 epoch read as "no date" everywhere (never displayed, picked or saved); the picker is only handed a valid, in-bounds Date; dismiss / empty / invalid / epoch picks keep the previous value; min/max bounds are normalised and stable; `combineDateTimeToISO` replaces three throwing `toISOString()` call sites; `formatLocalDate/Time/DateTime` return "" instead of "31 Dec 1969"; date-only strings no longer shift a day in UTC-3.
+- **Audit result:** every date input already goes through `DateField` (25 files); no typed dates. Fixed the leftover paths above (Medications & Care, vet appointment + medical profile validation, event/transport/walk booking).
+- Tests: new util tests (run in Rome AND Buenos Aires), new `DateField` tests, vaccine + preventive form component tests (`MedicationModal.dates.test.jsx`).
+
+---
+
 ## 2026-11-23 — Family & caregivers series — PR4: sharing LIFECYCLE (leave, resend, notifications, account deletion) — OPEN, NOT merged (builds on merged #752; migration **0142** after 0141)
 
 Owner decision 1 (account deletion) and the lifecycle half of the audit (Q10: B4 no leave, B9 respond 500, C6 double revoke).

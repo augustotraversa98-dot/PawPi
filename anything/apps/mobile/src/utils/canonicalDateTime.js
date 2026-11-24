@@ -65,34 +65,78 @@ function buildLocalDate(year, month, day) {
   return date;
 }
 
+/** True for a real, finite Date instance (never an Invalid Date). */
+export function isValidDate(value) {
+  return value instanceof Date && Number.isFinite(value.getTime());
+}
+
+/**
+ * "Epoch artifact": 1 Jan 1970 / 31 Dec 1969 (local calendar date). A timestamp of 0
+ * (what null / "" / 0 / an Invalid Date turn into via new Date(x) or a native picker
+ * default) lands on one of these two days depending on the time zone (UTC-3 shows
+ * 31 Dec 1969). No pet-care date is ever legitimately on those two days, so they are
+ * treated as "no date" everywhere: never displayed, never picked, never stored.
+ */
+export function isEpochArtifact(date) {
+  if (!isValidDate(date)) return false;
+  const y = date.getFullYear();
+  const m = date.getMonth();
+  const d = date.getDate();
+  return (y === 1969 && m === 11 && d === 31) || (y === 1970 && m === 0 && d === 1);
+}
+
 /**
  * Parse any supported date value into a local Date (at midnight), or null.
  * Accepts: Date, "YYYY-MM-DD", "MM/DD/YYYY", ISO datetime "YYYY-MM-DDT...".
  * Date-only strings are parsed as LOCAL dates (never via new Date(string),
  * which would treat them as UTC and shift the day in negative-offset zones).
+ * null / undefined / "" / 0 / numbers / Invalid Date / epoch artifacts → null.
  */
 export function parseDateValue(value) {
+  let date = null;
   if (value instanceof Date) {
-    return isNaN(value.getTime())
-      ? null
-      : new Date(value.getFullYear(), value.getMonth(), value.getDate());
+    date = isValidDate(value)
+      ? new Date(value.getFullYear(), value.getMonth(), value.getDate())
+      : null;
+  } else if (typeof value === "string" && value.trim()) {
+    const str = value.trim();
+    // YYYY-MM-DD, optionally followed by a time part (ISO datetime from JSON)
+    let m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T ].*)?$/);
+    if (m) {
+      date = buildLocalDate(Number(m[1]), Number(m[2]), Number(m[3]));
+    } else {
+      // Legacy MM/DD/YYYY
+      m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (m) date = buildLocalDate(Number(m[3]), Number(m[1]), Number(m[2]));
+    }
   }
-  if (typeof value !== "string" || !value.trim()) return null;
-  const str = value.trim();
-
-  // YYYY-MM-DD, optionally followed by a time part (ISO datetime from JSON)
-  let m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T ].*)?$/);
-  if (m) return buildLocalDate(Number(m[1]), Number(m[2]), Number(m[3]));
-
-  // Legacy MM/DD/YYYY
-  m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (m) return buildLocalDate(Number(m[3]), Number(m[1]), Number(m[2]));
-
-  return null;
+  return date && !isEpochArtifact(date) ? date : null;
 }
 
-/** Format a Date as canonical "YYYY-MM-DD" (local calendar date). */
+/**
+ * Any date-ish value (Date, date-only string, ISO datetime, epoch-ms number) → a VALID
+ * Date, or null. Unlike `new Date(x)` this never yields an Invalid Date and never turns
+ * null / "" / 0 into 1970. Date-only strings stay on their local calendar day.
+ * Use before any toLocale*String / toISOString call on a value that may be empty.
+ */
+export function toValidDate(value) {
+  let date = null;
+  if (value instanceof Date) {
+    date = value;
+  } else if (typeof value === "number") {
+    date = value !== 0 ? new Date(value) : null;
+  } else if (typeof value === "string" && value.trim()) {
+    const str = value.trim();
+    date = /^\d{4}-\d{1,2}-\d{1,2}$|^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str)
+      ? parseDateValue(str)
+      : new Date(str);
+  }
+  return isValidDate(date) && !isEpochArtifact(date) ? date : null;
+}
+
+/** Format a Date as canonical "YYYY-MM-DD" (local calendar date). "" if not a valid Date. */
 export function toCanonicalDate(date) {
+  if (!isValidDate(date)) return "";
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
@@ -125,9 +169,56 @@ export function formatDisplayDate(value) {
   return `${day} ${MONTH_NAMES[date.getMonth()]} ${year}`;
 }
 
-/** Date the picker should open on: the field's value if set, else today. */
-export function initialPickerDate(value, now = new Date()) {
-  return parseDateValue(value) || now;
+/**
+ * Normalise a picker min/max bound: a valid Date, or undefined. `edge` snaps it to the
+ * start ("start") or end ("end") of its local day so a bound built from `new Date()`
+ * is stable across renders (no native prop churn) and "today" stays selectable.
+ */
+export function normalizePickerBound(value, edge) {
+  const date = toValidDate(value);
+  if (!date) return undefined;
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  if (edge === "end") d.setHours(23, 59, 59, 0);
+  return d;
+}
+
+/**
+ * Date the picker should open on: the field's value if set, else today. ALWAYS a valid
+ * Date (the native picker invariant-crashes / shows 1969 otherwise), clamped into
+ * [minimumDate, maximumDate] when those are valid.
+ */
+export function initialPickerDate(value, now = new Date(), bounds = {}) {
+  const fallback = isValidDate(now) ? now : new Date();
+  let date = parseDateValue(value) || fallback;
+  const min = normalizePickerBound(bounds.minimumDate, "start");
+  const max = normalizePickerBound(bounds.maximumDate, "end");
+  if (min && date < min) date = min;
+  if (max && date > max) date = max;
+  return date;
+}
+
+/**
+ * Turn a native picker callback (event, selected) into a canonical "YYYY-MM-DD", or
+ * null when nothing should be committed: Android/iOS dismiss, no date, an Invalid Date,
+ * or an epoch artifact (the picker reporting timestamp 0). The caller keeps the
+ * previous value on null.
+ */
+export function pickedDateToCanonical(event, selected) {
+  if (event?.type === "dismissed") return null;
+  if (!isValidDate(selected) || isEpochArtifact(selected)) return null;
+  return toCanonicalDate(selected) || null;
+}
+
+/**
+ * Canonical "YYYY-MM-DD" + "HH:MM" → ISO instant string (local time), or null if either
+ * part is missing / invalid. Never throws (new Date(bad).toISOString() does).
+ */
+export function combineDateTimeToISO(dateStr, timeStr) {
+  const date = parseDateValue(dateStr);
+  const time = parseTimeValue(timeStr);
+  if (!date || !time) return null;
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate(), time.hours, time.minutes);
+  return isValidDate(d) ? d.toISOString() : null;
 }
 
 /**
@@ -146,6 +237,7 @@ export function parseTimeValue(value) {
 
 /** Format a Date (or {hours, minutes}) as canonical "HH:MM" (24h). */
 export function toCanonicalTime(value) {
+  if (value instanceof Date && !isValidDate(value)) return "";
   const hours = value instanceof Date ? value.getHours() : value.hours;
   const minutes = value instanceof Date ? value.getMinutes() : value.minutes;
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
@@ -181,6 +273,7 @@ export function formatDisplayTime(value, _legacyHour12) {
 
 /** Date the time picker should open on: the field's value if set, else now. */
 export function initialPickerTime(value, now = new Date()) {
+  if (!isValidDate(now)) now = new Date();
   const time = parseTimeValue(value);
   if (!time) return now;
   const date = new Date(now.getFullYear(), now.getMonth(), now.getDate());
