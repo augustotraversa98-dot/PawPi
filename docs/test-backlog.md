@@ -13,6 +13,10 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ## 📌 Night run #6 — checks (build 34 candidates; add each item's section as its PR lands)
 
+### Item 4 — former members (design only, nothing to test)
+
+- [ ] **1.** Read [`former-member-contributions-design.md`](former-member-contributions-design.md) §4–§6 and say go / no-go on building option D after build 33.
+
 ### Item 3 — caregiver who also owns a dog (client-only, next EAS build)
 
 Needs two accounts: **A** owns a dog (Rex) and shares another dog (Luna) with **B** as **Caregiver**; **B** also owns a dog (Mia). Do it on a day when nobody in B's household has posted. In B's app make **Luna** the active dog (the dog switcher; accepting the invite also selects it).

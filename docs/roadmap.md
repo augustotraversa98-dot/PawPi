@@ -18,6 +18,11 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-26 — Night run #6 · item 4: former members and the "also delete my posts" switch — design only, DRAFT PR (not merged)
+- [`former-member-contributions-design.md`](former-member-contributions-design.md): the server's `app_delete_my_account(true)` already deletes a former member's posts on others' dogs (0142 acts on posts, not grants); only the app's knowledge is missing. Recommended: `GET /api/account/contributions` → `{ posts_on_others_dogs: n }`, caller-only, no ids/names, no migration (server code → draft, needs your go-ahead). Nothing built.
+
+---
+
 ## 2026-11-26 — Night run #6 · item 3: a caregiver who also owns a dog gets a post button — client-only, needs the next EAS build
 - Server rule checked first, **not widened**: `POST /api/posts` rejects a caregiver on the shared dog (403) but allows a daily moment on a dog the person OWNS; `dailyMomentsGate.js` counts a daily moment today on any pet they own or hold an active grant on (or one they authored), so a post for their OWN dog does open the Feed for them. The same applies to the household's other members.
 - Fix: new `utils/feed/postingPet.js` picks the dog the Feed posts for: the active dog if the role may post, else the person's OWN dog (never "family on another dog"), else none. `useFeedData` follows it (prompt name, "already posted today", the composer, `handlePost`) and exposes `canPostMoment`; the Feed and the dog profile's locked-moments button use it. A caregiver with no dog of their own is unchanged: explanation, no button.
