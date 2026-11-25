@@ -11,6 +11,15 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ---
 
+## 📌 Night run #6 — checks (build 34 candidates; add each item's section as its PR lands)
+
+### Item 1 — consent version bump (docs only, nothing to test on a phone)
+
+- [ ] **1.** After you merge #782 and Railway deploys: in the Railway web service check that `NEXT_PUBLIC_TERMS_VERSION` / `NEXT_PUBLIC_PRIVACY_VERSION` are **unset** (or both `2026-11-25`). Sign up a throwaway email account on the web form and run the query in [`consent-version-bump.md`](consent-version-bump.md) §4: newest `legal_consents` row must read `2026-11-25` / `2026-11-25`.
+- [ ] **2.** An existing account opens the app after the deploy: no prompt, no sign-out (expected, nothing reads the version).
+
+---
+
 ## 📱 To test — Night run #4 / item 8 DRAFT: the owner deletes any moment (needs migration 0145 applied, PR merged, then a build)
 
 - [ ] **0.** Apply `0145`, run `verify_0145.sql` (5 PASS), merge the PR.

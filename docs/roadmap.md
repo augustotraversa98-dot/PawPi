@@ -18,6 +18,13 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-26 — Night run #6 · item 1: what bumping `PRIVACY_VERSION` / `TERMS_VERSION` does — docs only
+- Answer for draft #782: **safe to merge, yes.** The constants are read only by `POST /api/legal/consent` (server) to stamp NEW `legal_consents` rows. Nothing compares a stored version to them (app, API, auth, mobile), so no re-consent prompt, no blocked app, no forced sign-out. A re-consent gate does not exist.
+- `NEXT_PUBLIC_TERMS_VERSION` / `NEXT_PUBLIC_PRIVACY_VERSION` override the defaults (server reads them at runtime); only the Railway web service matters. Whether production sets them was not checked. Details + the post-deploy SQL check: [`consent-version-bump.md`](consent-version-bump.md).
+- #782 itself untouched.
+
+---
+
 ## 2026-11-25 — Night run #5 summary — report: `night-run/2026-11-25/REPORT.md`
 
 - **Merged (app, in build 33):** #778 (delete-account screen, Option B), #780 (Feed lock never covers your own household's dogs).
