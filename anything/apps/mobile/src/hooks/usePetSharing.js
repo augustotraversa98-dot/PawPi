@@ -1,5 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Alert } from "react-native";
+import { getI18n } from "react-i18next";
 import { alertError, alertText } from "@/utils/appAlert";
+import useInviteCooldownStore from "@/store/inviteCooldownStore";
 
 // Family/caregiver sharing (ticket 2.47): person↔person pet access grants.
 
@@ -100,5 +103,70 @@ export function useLeaveGrant() {
       qc.invalidateQueries({ queryKey: ["household"] });
     },
     onError: (e) => alertError(e, "sharedDog.leaveError"),
+  });
+}
+
+// The server allows one resend per invite per hour.
+export const RESEND_COOLDOWN_MS = 60 * 60 * 1000;
+
+function say(titleKey, bodyKey, params) {
+  const t = (key) => {
+    try {
+      return getI18n()?.t?.(key, params) ?? key;
+    } catch {
+      return key;
+    }
+  };
+  Alert.alert(t(titleKey), t(bodyKey));
+}
+
+// The owner resends a PENDING invite (POST /api/pet-caregivers/[id]/resend). Every answer is explained in the person's
+// language from the server's CODE; the server's own English sentence is never shown.
+export function useResendInvite(petId) {
+  const qc = useQueryClient();
+  const startCooldown = useInviteCooldownStore((s) => s.startCooldown);
+  return useMutation({
+    mutationFn: async (grantId) => {
+      const res = await fetch(`/api/pet-caregivers/${grantId}/resend`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) return body;
+      const error = new Error("resend failed");
+      error.code = body?.code;
+      error.retryAfterSeconds = body?.retry_after_seconds;
+      throw error;
+    },
+    onSuccess: (_data, grantId) => {
+      startCooldown(grantId, RESEND_COOLDOWN_MS);
+      say("sharedDog.resendSentTitle", "sharedDog.resendSentBody");
+    },
+    onError: (error, grantId) => {
+      switch (error?.code) {
+        case "resend_too_soon": {
+          const seconds = Number(error.retryAfterSeconds) || RESEND_COOLDOWN_MS / 1000;
+          startCooldown(grantId, seconds * 1000);
+          say("sharedDog.resendTooSoonTitle", "sharedDog.resendTooSoonBody", {
+            minutes: Math.max(1, Math.ceil(seconds / 60)),
+          });
+          return;
+        }
+        case "resend_limit":
+          say("sharedDog.resendLimitTitle", "sharedDog.resendLimitBody");
+          return;
+        case "invite_not_pending":
+        case "grant_not_found":
+          qc.invalidateQueries({ queryKey: ["pet-grants", petId] });
+          say("sharedDog.resendAnsweredTitle", "sharedDog.resendAnsweredBody");
+          return;
+        case "sharing_lifecycle_unavailable":
+          say("sharedDog.resendFailedTitle", "sharedDog.resendUnavailable");
+          return;
+        default:
+          say("sharedDog.resendFailedTitle", "sharedDog.resendFailed");
+      }
+    },
   });
 }
