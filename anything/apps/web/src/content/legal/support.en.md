@@ -36,6 +36,11 @@ Record**. You can add, edit, or remove records there.
 Go to **Settings → Delete account**. This permanently removes your account and the data
 you own (your profile, pets, and associated records), subject to limited legal retention.
 Deleting your account is different from logging out.
+For dogs that others shared with you, you can choose to delete the posts you published about them.
+Health logs and vet-record entries you added are part of that dog's care history: they stay with its
+owner, no longer linked to you and shown as "Former member". If you delete your account and you had
+shared a dog, the dog and everything recorded about it is deleted, including what the people you
+shared it with added. We tell them before it happens.
 
 **The app is asking for camera, photos, or location — why?**
 PawPi asks for these only to power features you use: the camera and photo library let you

@@ -18,6 +18,13 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-25 — Night run #5 · item 2: legal + support wording about account deletion — docs only
+- Privacy §9 and §11, Terms §10 and the support answer "How do I delete my account?" (EN + ES; website source `anything/apps/web/src/content/legal/` and the `docs/legal/` mirrors incl. `support.html`) now say what really happens: a member can choose to delete their posts about shared dogs; health logs and vet-record entries stay with the owner as "Former member"; an owner who shared a dog deletes it for everyone (members are told first). "Last updated" → November 25, 2026. `app-store-privacy-data-map.md` needed no change (it has no retention text for these records).
+- New check `src/app/legal-deleteAccountWording.test.jsx`: markdown, mirrors and rendered pages carry the same sentences; web file and mirror agree.
+- Not legal advice; for Augusto's review. `PRIVACY_VERSION` / `TERMS_VERSION` bump is a separate open PR (server-read file).
+
+---
+
 ## 2026-11-25 — Night run #5 · item 1: delete-account screen, Option B — client-only, needs EAS build 33
 - The confirmation no longer says deletion removes "all your pets, health records, posts and other data". New body (EN + ES) per `delete-account-contributions-options.md` Option B.
 - A member of someone else's dog gets the switch "Also delete my posts about dogs shared with me" (default OFF; ON sends `delete_contributions=1` to the existing route). Hidden for everyone else, and hidden when the app cannot tell. The owner of a shared dog sees the owner sentence with the real dog name(s). No server, migration or SQL change.

@@ -8,7 +8,7 @@
   ley aplicable.
 -->
 
-**Última actualización:** 16 de octubre de 2026
+**Última actualización:** 25 de noviembre de 2026
 
 Esta Política de Privacidad explica cómo Augusto Traversa ("PawPi", "nosotros") recopila, usa y
 comparte información cuando usás la aplicación móvil PawPi y los servicios relacionados (el
@@ -248,6 +248,13 @@ de pagos conserva sus propios registros de pago según su propia política. Los 
 cuando desactivás las notificaciones o eliminás tu cuenta. Las copias de seguridad se rotan de forma
 periódica.
 
+En los perros que otras personas compartieron con vos, podés elegir borrar las publicaciones que
+hiciste sobre ellos. Los registros de salud y las entradas de la historia clínica que agregaste son
+parte del historial de cuidado de ese perro: quedan con quien lo tiene a cargo, sin vínculo con vos
+y como "Ex integrante". Si eliminás tu cuenta y habías compartido un perro, se borra el perro y todo
+lo registrado sobre él, incluido lo que agregaron las personas con quienes lo compartiste. Les
+avisamos antes.
+
 ## 10. Tus opciones y derechos
 
 Según dónde vivas, podés tener derechos de acceso, rectificación, exportación o eliminación de tu
@@ -270,6 +277,13 @@ Podés eliminar tu cuenta de forma permanente desde **Ajustes → Eliminar cuent
 de forma irreversible tu cuenta y los datos que te pertenecen (tu perfil, tus mascotas y los registros
 asociados), salvo la conservación legal limitada descrita en la Sección 9. Esto es distinto de cerrar
 sesión o restablecer los datos locales de la app.
+
+En los perros que otras personas compartieron con vos, podés elegir borrar las publicaciones que
+hiciste sobre ellos. Los registros de salud y las entradas de la historia clínica que agregaste son
+parte del historial de cuidado de ese perro: quedan con quien lo tiene a cargo, sin vínculo con vos
+y como "Ex integrante". Si eliminás tu cuenta y habías compartido un perro, se borra el perro y todo
+lo registrado sobre él, incluido lo que agregaron las personas con quienes lo compartiste. Les
+avisamos antes.
 
 ## 12. Privacidad de menores
 

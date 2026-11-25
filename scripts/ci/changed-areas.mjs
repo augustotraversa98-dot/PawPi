@@ -44,6 +44,7 @@ export const RULES = Object.freeze([
   { re: /^supabase\//, areas: ['web', 'integration'], why: 'migrations / verify SQL (integration boots them; unit tests read them)' },
   { re: /^(observability|scripts)\//, areas: ['web'], why: 'alerts/dashboards as code and repo scripts (web unit tests lint and run them)' },
   { re: /^docs\/(observability|ops)\//, areas: ['web'], why: 'docs that web unit tests read (telemetry contract, cron runbook)' },
+  { re: /^docs\/legal\//, areas: ['web'], why: 'legal/support mirrors that a web test compares with the served pages (legal-deleteAccountWording.test.jsx)' },
   // --- no job needs these -------------------------------------------------------------------------------------------------
   { re: /^docs\//, areas: 'ignore', why: 'documentation' },
   { re: /^anything\/docs\//, areas: 'ignore', why: 'documentation' },

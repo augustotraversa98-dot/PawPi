@@ -35,6 +35,19 @@ Use a **throwaway** member account (a second phone/account that was invited to a
 
 ---
 
+## 📱 To test — Night run #5 / item 2: legal + support wording about account deletion (docs only, live on the website after deploy)
+
+Wording is **not legal advice — for Augusto's review**. Sentences are verbatim from [`delete-account-contributions-options.md`](delete-account-contributions-options.md) (Option B + owner sentence).
+
+- [ ] **1.** Phone browser → `www.pawpi.info/privacy`, in **ES and EN**: §9 "Conservación de datos / Data retention" and §11 "Eliminar tu cuenta / Deleting your account" each end with the new paragraph (posts about shared dogs can be deleted; health logs and vet-record entries stay with the owner as "Ex integrante / Former member"; if you shared a dog it is deleted for everyone, and we tell them first). "Last updated" reads **November 25, 2026 / 25 de noviembre de 2026**.
+- [ ] **2.** `www.pawpi.info/terms`, ES and EN: §10 has the same paragraph between the deletion sentence and the suspension sentence; date updated.
+- [ ] **3.** `www.pawpi.info/support`, ES and EN: "How do I delete my account? / ¿Cómo borro mi cuenta?" has the new sentences.
+- [ ] **4.** In the app: Settings → Privacy Policy / Terms of Service / Help Center open those same pages.
+- [ ] **5.** Read the wording once for tone and accuracy against what the app really does (item 1). Nothing says photo files are erased, on purpose: that was never verified.
+- [ ] **6. Follow-up needing you:** `PRIVACY_VERSION` / `TERMS_VERSION` in `anything/apps/web/src/constants/legal.js` still say `2026-10-16` while the documents now say November 25, 2026 (that file is server-read code, so it is a separate PR left open for you). Merge it together with this change.
+
+---
+
 ## 🔐 Accepted database leftover — `supabase_admin` default privileges (decision 2026-10-20)
 
 `verify_0126.sql` **row 8** and `verify_0134_default_acl.sql` **row 1** are a **KNOWN ACCEPTED FAIL** on production. The owner ran the three
