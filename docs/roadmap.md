@@ -18,6 +18,16 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-24 — Night run #4 · PR5b Phase 1C: alarm budget (soonest ~48 across all dogs) — client-only, needs EAS build 33
+
+- One arming pass (`remindersStore.syncAlarms`, pure rule `utils/alarmBudget.js`) arms the soonest 48 routine reminders across all dogs; running snoozes, the daily-return nudge and other notifications are never evicted and the total stays under iOS's 64.
+- Every dog is read once per launch and on each return to the foreground, then alarms are topped up (also offline).
+- Alarms carry an `alertKey`, so unchanged ones are not re-scheduled.
+- Trade-off (accepted, decision 8): without opening the app, a busy household is covered for days rather than 14 — documented in `pr5b-reminder-sync-design.md` §9b.
+- The pending-alarm count telemetry is a separate PR (it needs a server allow-list change).
+
+---
+
 ## 2026-11-24 — Night run #4 · PR5b Phase 1B: reconcile reminders on foreground and dog select — client-only, needs EAS build 33
 
 - `ReminderReconciler` (tab layout) re-reads the selected dog's routines on dog select and on return from the background (at most every 15 s), and reads a newly seen shared dog once so its alarms are armed without opening Health.

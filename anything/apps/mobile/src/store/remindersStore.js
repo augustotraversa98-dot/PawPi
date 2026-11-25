@@ -12,7 +12,9 @@ import {
   resolveReminderTiming,
   resolveLeadTimeMs,
   getScheduledNotifications,
+  reminderAlertKey,
 } from "@/utils/notifications";
+import { selectAlarmsToArm } from "@/utils/alarmBudget";
 
 // The OS notification id for a reminder. Notifications are now scheduled with the reminder's own
 // (deterministic) id, so `reminder.id` is a valid cancel handle even after an app restart, when the
@@ -28,6 +30,108 @@ const sameAlert = (a, b) =>
   a.timeSensitive === b.timeSensitive &&
   (a.reminderTiming ?? null) === (b.reminderTiming ?? null) &&
   a.status !== REMINDER_STATUS.DISABLED; // paused earlier, active again now
+
+// One alarm pass at a time. A request made while one is running gets ONE follow-up pass (it sees the latest store).
+let alarmRun = null;
+let alarmNext = null;
+
+function requestAlarmPass(pass) {
+  if (!alarmRun) {
+    alarmRun = pass().finally(() => {
+      alarmRun = null;
+    });
+    return alarmRun;
+  }
+  if (!alarmNext) {
+    const again = () => {
+      alarmNext = null;
+      return requestAlarmPass(pass);
+    };
+    alarmNext = alarmRun.then(again, again);
+  }
+  return alarmNext;
+}
+
+const isQuiet = (r) =>
+  r.status === REMINDER_STATUS.COMPLETED || r.status === REMINDER_STATUS.DISABLED;
+
+// Should this stored reminder ring, and if so when and how? null = it must not have an alarm.
+function alarmFor(reminder, snoozes, now) {
+  if (!reminder?.notificationEnabled || isQuiet(reminder) || isPetLost(reminder.petId)) return null;
+  // A running snooze is the alert: at the snoozed time, with no early heads-up.
+  const snoozedUntil = snoozes[reminder.id];
+  const snoozed = new Date(snoozedUntil ?? 0).getTime() > now;
+  const { reminderTiming, ...instance } = reminder;
+  const target = snoozed ? { ...instance, nextTriggerAt: snoozedUntil } : instance;
+  const timing = snoozed ? null : reminderTiming ?? null;
+  const fireAt = new Date(target.nextTriggerAt).getTime() - resolveLeadTimeMs(timing);
+  if (!(fireAt > now)) return null;
+  return { id: reminder.id, fireAt, snoozed, target, timing };
+}
+
+// Arm the soonest reminders across all dogs (utils/alarmBudget) and take away the ones that must not ring.
+async function runAlarmPass(set, get) {
+  // The identity this pass works for: if it changes while we await the OS, undo what we armed.
+  const epoch = getSessionEpoch();
+  let pending;
+  try {
+    pending = (await getScheduledNotifications()) ?? [];
+  } catch {
+    pending = [];
+  }
+  if (epoch !== getSessionEpoch()) return;
+
+  const now = Date.now();
+  const { reminders, snoozes } = get();
+  const candidates = reminders.map((r) => alarmFor(r, snoozes, now)).filter(Boolean);
+  const { arm, cancel } = selectAlarmsToArm({
+    candidates,
+    pending,
+    knownIds: new Set(reminders.map((r) => r.id)),
+    snoozedIds: new Set(
+      Object.keys(snoozes).filter((id) => new Date(snoozes[id]).getTime() > now),
+    ),
+  });
+
+  // Cancel first, so the phone is never over its limit while the new ones go in.
+  for (const id of cancel) await cancelNotification(id);
+
+  const pendingById = new Map(pending.map((n) => [n.identifier, n]));
+  const armed = new Map();
+  const undo = async () => {
+    for (const notificationId of armed.values()) await cancelNotification(notificationId);
+  };
+  for (const candidate of arm) {
+    if (epoch !== getSessionEpoch()) return undo();
+    // The store may have moved while we were scheduling the previous one.
+    const reminder = get().reminders.find((r) => r.id === candidate.id);
+    const alarm = reminder && alarmFor(reminder, get().snoozes, Date.now());
+    if (!alarm) continue;
+    const existing = pendingById.get(alarm.id);
+    if (existing && existing.content?.data?.alertKey === reminderAlertKey(alarm.target, alarm.timing)) {
+      continue; // already armed exactly like this
+    }
+    const notificationId = await scheduleReminderNotification(alarm.target, alarm.timing);
+    if (!notificationId) continue;
+    armed.set(alarm.id, notificationId);
+    if (epoch !== getSessionEpoch()) return undo();
+    // Done, or the dog lost, while the OS was scheduling: take the alert back.
+    const current = get().reminders.find((r) => r.id === alarm.id);
+    if (!current || isQuiet(current) || isPetLost(current.petId)) {
+      await cancelNotification(notificationId);
+      armed.delete(alarm.id);
+    }
+  }
+  if (armed.size === 0 || epoch !== getSessionEpoch()) return undefined;
+  set((state) => ({
+    reminders: state.reminders.map((r) =>
+      armed.has(r.id) && r.scheduledNotificationId !== armed.get(r.id)
+        ? { ...r, scheduledNotificationId: armed.get(r.id) }
+        : r,
+    ),
+  }));
+  return undefined;
+}
 
 const useRemindersStore = create(
   persist(
@@ -45,20 +149,7 @@ const useRemindersStore = create(
 
   // Actions
   addReminder: async (reminder) => {
-    // Schedule notification if enabled and not disabled
-    let scheduledNotificationId = null;
-    if (
-      reminder.notificationEnabled &&
-      reminder.status !== REMINDER_STATUS.DISABLED
-    ) {
-      scheduledNotificationId = await scheduleReminderNotification(reminder);
-    }
-
-    const newReminder = {
-      ...reminder,
-      scheduledNotificationId:
-        scheduledNotificationId || reminder.scheduledNotificationId,
-    };
+    const newReminder = { ...reminder };
 
     set((state) => ({
       reminders: [...state.reminders, newReminder],
@@ -66,49 +157,56 @@ const useRemindersStore = create(
 
     // Create in-app notification
     get().createReminderNotification(newReminder);
+    await get().syncAlarms();
 
     return newReminder;
   },
 
   // Add reminder from routine (without notification creation)
   addReminderFromRoutine: async (reminder) => {
+    const [added] = await get().addRemindersFromRoutine([reminder]);
+    return added;
+  },
+
+  // Add a routine's generated instances (after create / edit / re-enable) in ONE commit, then arm.
+  addRemindersFromRoutine: async (list) => {
     // Check for duplicates — id-based de-dup keeps refetch/sync from
     // double-scheduling the (early) notification.
-    const existing = get().reminders.find((r) => r.id === reminder.id);
-    if (existing) return;
-
-    // Resolve the early-reminder lead-time off the source routine (the instance
-    // doesn't carry it), then let scheduleReminderNotification fire the OS alert
-    // at (event − leadTime). The stored instance stays pinned to the event time.
-    const routine = useRoutinesStore
-      .getState()
-      .routines.find((r) => r.id === reminder.routineId);
-    const reminderTiming = resolveReminderTiming(reminder, routine);
-
-    // Schedule notification if enabled
-    let scheduledNotificationId = null;
-    if (
-      reminder.notificationEnabled &&
-      reminder.status !== REMINDER_STATUS.DISABLED
-    ) {
-      scheduledNotificationId = await scheduleReminderNotification(
-        reminder,
-        reminderTiming,
-      );
+    const seen = new Set(get().reminders.map((r) => r.id));
+    const added = [];
+    for (const reminder of list) {
+      if (seen.has(reminder.id)) continue;
+      seen.add(reminder.id);
+      // Resolve the early-reminder lead-time off the source routine (the instance
+      // doesn't carry it); the alarm fires at (event − leadTime). The stored
+      // instance stays pinned to the event time.
+      const routine = useRoutinesStore
+        .getState()
+        .routines.find((r) => r.id === reminder.routineId);
+      added.push({
+        ...reminder,
+        reminderTiming: resolveReminderTiming(reminder, routine) ?? null,
+      });
     }
-
-    const newReminder = {
-      ...reminder,
-      reminderTiming: reminderTiming ?? null,
-      scheduledNotificationId,
-    };
+    if (added.length === 0) return added;
 
     set((state) => ({
-      reminders: [...state.reminders, newReminder],
+      reminders: [...state.reminders, ...added],
     }));
+    await get().syncAlarms();
 
-    return newReminder;
+    return added;
   },
+
+  // THE arming path: bring the OS alarms in line with the store (all dogs, soonest first, within the budget). Safe to
+  // call as often as wanted; concurrent calls share a pass. Never throws.
+  syncAlarms: () =>
+    requestAlarmPass(() =>
+      runAlarmPass(set, get).catch((error) => {
+        // Arming is housekeeping: it must never turn a successful load or save into an error.
+        console.warn("[remindersStore] arming reminders failed:", error?.message);
+      }),
+    ),
 
   // Bring ONE dog's reminders in line with a fresh read of its routines (routinesStore.loadRoutines: launch, pet
   // select, app foreground, a newly shared dog, pull-to-refresh), then arm the alarms that are missing or changed.
@@ -138,7 +236,6 @@ const useRemindersStore = create(
     const now = Date.now();
     const { reminders: before, snoozes } = get();
     const isSnoozed = (r) => new Date(snoozes[r.id] ?? 0).getTime() > now;
-    const changed = new Set(); // ids whose alarm must be (re)armed even if one is pending
     const dropped = [];
     const next = [];
     for (const old of before) {
@@ -152,7 +249,6 @@ const useRemindersStore = create(
         if (sameAlert(old, replacement)) {
           next.push(old);
         } else {
-          changed.add(old.id);
           next.push(
             old.status === REMINDER_STATUS.SNOOZED
               ? {
@@ -173,86 +269,14 @@ const useRemindersStore = create(
         dropped.push(old);
       }
     }
-    // New to this launch: arm even if an alarm with this id is pending (it may carry an older time or text).
-    for (const added of fresh.values()) {
-      changed.add(added.id);
-      next.push(added);
-    }
+    for (const added of fresh.values()) next.push(added);
 
     if (next.length !== before.length || next.some((r, i) => r !== before[i])) {
       set({ reminders: next });
     }
     for (const reminder of dropped) await cancelNotification(notificationIdOf(reminder));
     if (epoch !== getSessionEpoch()) return;
-
-    const snoozedHere = next
-      .filter((r) => pid != null && String(r.petId) === pid && isSnoozed(r))
-      .map((r) => r.id);
-    try {
-      await get().armReminders(
-        [...new Set([...generated.map((g) => g.id), ...snoozedHere])],
-        changed,
-        epoch,
-      );
-    } catch (error) {
-      // Arming is housekeeping: it must never turn a successful routines load into an error state.
-      console.warn("[remindersStore] arming reminders failed:", error?.message);
-    }
-  },
-
-  // Schedule the OS alarm of each of these stored reminders that has none pending (or whose alert changed).
-  armReminders: async (ids, changed, epoch) => {
-    let pending;
-    try {
-      pending = new Set(((await getScheduledNotifications()) ?? []).map((n) => n.identifier));
-    } catch {
-      pending = new Set();
-    }
-    const scheduled = new Map();
-    const undo = async () => {
-      for (const notificationId of scheduled.values()) await cancelNotification(notificationId);
-    };
-    // The user may log out / switch account, or lose the dog, while we await the OS: never leave that alert armed.
-    for (const id of ids) {
-      if (epoch !== getSessionEpoch()) return undo();
-      const reminder = get().reminders.find((r) => r.id === id);
-      if (!reminder || !reminder.notificationEnabled || isPetLost(reminder.petId)) continue;
-      if (
-        reminder.status === REMINDER_STATUS.COMPLETED ||
-        reminder.status === REMINDER_STATUS.DISABLED
-      ) {
-        continue;
-      }
-      if (pending.has(id) && !changed.has(id)) continue;
-
-      // A running snooze is the alert to re-arm: at the snoozed time, with no early heads-up.
-      const snoozedUntil = get().snoozes[id];
-      const snoozed = new Date(snoozedUntil ?? 0).getTime() > Date.now();
-      const target = snoozed ? { ...reminder, nextTriggerAt: snoozedUntil } : reminder;
-      const timing = snoozed ? null : reminder.reminderTiming ?? null;
-      const fireAt = new Date(target.nextTriggerAt).getTime() - resolveLeadTimeMs(timing);
-      if (!(fireAt > Date.now())) continue;
-
-      const notificationId = await scheduleReminderNotification(target, timing);
-      if (!notificationId) continue;
-      scheduled.set(id, notificationId);
-      const current = get().reminders.find((r) => r.id === id);
-      if (epoch !== getSessionEpoch()) return undo();
-      // Done (or the dog lost) while the OS was scheduling: take the alert back.
-      if (!current || current.status === REMINDER_STATUS.COMPLETED || isPetLost(current.petId)) {
-        await cancelNotification(notificationId);
-        scheduled.delete(id);
-      }
-    }
-    if (scheduled.size === 0 || epoch !== getSessionEpoch()) return undefined;
-    set((state) => ({
-      reminders: state.reminders.map((r) =>
-        scheduled.has(r.id) && r.scheduledNotificationId !== scheduled.get(r.id)
-          ? { ...r, scheduledNotificationId: scheduled.get(r.id) }
-          : r,
-      ),
-    }));
-    return undefined;
+    await get().syncAlarms();
   },
 
   // Remove future reminders by routine (keeps completed)
@@ -280,6 +304,7 @@ const useRemindersStore = create(
           new Date(r.scheduledAt) < now,
       ),
     }));
+    get().syncAlarms(); // the freed slots go to the next reminders
   },
 
   // Disable future reminders by routine
@@ -314,22 +339,12 @@ const useRemindersStore = create(
     const currentReminder = get().reminders.find((r) => r.id === id);
     if (!currentReminder) return;
 
-    // If time changed, reschedule notification
+    // If time changed, the old alert is wrong: drop it, the pass below arms the new one.
     if (
       updates.nextTriggerAt &&
       updates.nextTriggerAt !== currentReminder.nextTriggerAt
     ) {
       await cancelNotification(notificationIdOf(currentReminder));
-      if (
-        updates.notificationEnabled !== false &&
-        updates.status !== REMINDER_STATUS.DISABLED
-      ) {
-        const newNotificationId = await scheduleReminderNotification({
-          ...currentReminder,
-          ...updates,
-        });
-        updates.scheduledNotificationId = newNotificationId;
-      }
     }
 
     set((state) => ({
@@ -342,6 +357,7 @@ const useRemindersStore = create(
 
     // Update in-app notification
     get().updateReminderNotification(id, { ...currentReminder, ...updates });
+    await get().syncAlarms();
   },
 
   deleteReminder: async (id) => {
@@ -442,12 +458,6 @@ const useRemindersStore = create(
       socialStore.markNotificationRead(oldNotification.id);
     }
 
-    // Schedule new notification
-    const newNotificationId = await scheduleReminderNotification({
-      ...reminder,
-      nextTriggerAt: snoozeUntil.toISOString(),
-    });
-
     set((state) => ({
       reminders: state.reminders.map((reminder) =>
         reminder.id === id
@@ -456,12 +466,13 @@ const useRemindersStore = create(
               snoozedUntil: snoozeUntil.toISOString(),
               nextTriggerAt: snoozeUntil.toISOString(),
               status: REMINDER_STATUS.SNOOZED,
-              scheduledNotificationId: newNotificationId,
+              scheduledNotificationId: null,
               updatedAt: new Date().toISOString(),
             }
           : reminder,
       ),
     }));
+    await get().syncAlarms(); // a snooze is never evicted by the budget
   },
 
   rescheduleReminder: async (id, newDateTime) => {
@@ -473,24 +484,19 @@ const useRemindersStore = create(
       await cancelNotification(reminder.scheduledNotificationId);
     }
 
-    // Schedule new notification
-    const newNotificationId = await scheduleReminderNotification({
-      ...reminder,
-      nextTriggerAt: newDateTime,
-    });
-
     set((state) => ({
       reminders: state.reminders.map((reminder) =>
         reminder.id === id
           ? {
               ...reminder,
               nextTriggerAt: newDateTime,
-              scheduledNotificationId: newNotificationId,
+              scheduledNotificationId: null,
               updatedAt: new Date().toISOString(),
             }
           : reminder,
       ),
     }));
+    await get().syncAlarms();
   },
 
   toggleReminderEnabled: async (id) => {
@@ -505,16 +511,6 @@ const useRemindersStore = create(
     if (newStatus === REMINDER_STATUS.DISABLED) {
       // Cancel notification
       await cancelNotification(notificationIdOf(reminder));
-    } else {
-      // Re-schedule notification
-      const newNotificationId = await scheduleReminderNotification(reminder);
-      set((state) => ({
-        reminders: state.reminders.map((r) =>
-          r.id === id
-            ? { ...r, scheduledNotificationId: newNotificationId }
-            : r,
-        ),
-      }));
     }
 
     set((state) => ({
@@ -528,6 +524,7 @@ const useRemindersStore = create(
           : reminder,
       ),
     }));
+    await get().syncAlarms();
   },
 
   // Auto-complete reminder when tracker action happens
