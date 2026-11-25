@@ -24,6 +24,18 @@ Reasoning, the exact expected residual (`supabase_admin:r|S|f` only) and when to
 
 ---
 
+## 📱 To test — Night run #4 / 1E: no ring for what the household already logged (mobile JS only)
+
+**Needs EAS build 33** (merged + CI-green; not device-verified). Owner + Partner, one shared dog with a wellness check, a photo check and a care item due later today.
+- [ ] **1.** Owner logs the wellness check early. Partner opens the app (or brings it to the front), then closes it: no alarm for that check; the later feeding / walk alarms still ring.
+- [ ] **2.** Same with a photo check (photo of that body area) and a care item marked given from its reminder card.
+- [ ] **3.** Weight check: a weigh-in today silences today's weight check only.
+- [ ] **4.** Owner deletes the log (undo). Partner reopens: the alarm is back.
+- [ ] **5.** Feeding / walk / medication-type routines: Owner logs one, Partner's phone still rings (expected until Phase 2).
+- [ ] **6.** Partner never opens the app between the log and the alarm: it rings (known limit, nothing can cancel it remotely).
+
+---
+
 ## 📱 To test — Night run #4 / 1D: "Remind me about this dog" (mobile JS only)
 
 **Needs EAS build 33** (merged + CI-green; not device-verified). More → Reminders & routines → **Settings** tab → "Which dogs to remind you about".

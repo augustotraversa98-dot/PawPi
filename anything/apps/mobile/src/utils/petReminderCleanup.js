@@ -27,7 +27,7 @@ function removeFromStores(petIds) {
     useRoutinesStore.setState({ routines: routines.filter((r) => !ofLostPet(r)) });
   }
 
-  const { reminders = [], snoozes = {} } = useRemindersStore.getState();
+  const { reminders = [], snoozes = {}, resolvedByPet = {} } = useRemindersStore.getState();
   const reminderIds = new Set(reminders.filter(ofLostPet).map((r) => r.id));
   const isLostId = (id) =>
     reminderIds.has(id) || lostRoutineIds.some((rid) => String(id).startsWith(`reminder_${rid}_`));
@@ -35,6 +35,9 @@ function removeFromStores(petIds) {
   useRemindersStore.setState({
     reminders: reminders.filter((r) => !ofLostPet(r)),
     snoozes: nextSnoozes,
+    resolvedByPet: Object.fromEntries(
+      Object.entries(resolvedByPet).filter(([petId]) => !petIds.has(petId)),
+    ),
   });
 
   const rows = useSocialPetStore.getState().notifications ?? [];

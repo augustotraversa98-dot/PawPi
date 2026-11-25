@@ -6,6 +6,7 @@ import { queryClient } from "@/utils/queryClient";
 import { reconcileRoutineNotifications } from "@/utils/notifications";
 import { isPetLost } from "./petAccessStore";
 import { liveSnoozedIds } from "@/utils/snoozedAlarms";
+import { fetchResolvedIds, resolutionCandidates } from "@/utils/householdResolution";
 import { routinesQueryKey, fetchRoutinesRaw } from "@/utils/routinesQuery";
 
 // A database routine row in the shape the app (cards, generators) uses.
@@ -71,6 +72,20 @@ const toAppRoutine = (routine) => ({
   deletedAt: routine.deleted_at ?? null,
 });
 
+// After the alarms are in step with the routines, take away those the household has already done (PR5b 1E). Runs after
+// arming so a slow or failed log read can never delay or lose an alarm.
+async function dropAlarmsAlreadyLogged(petId, generated, routines, epoch) {
+  try {
+    const { setResolved, snoozes } = useRemindersStore.getState();
+    const instances = resolutionCandidates(generated, routines, snoozes);
+    const { resolved, complete } = await fetchResolvedIds(petId, instances);
+    if (epoch !== getSessionEpoch() || isPetLost(petId)) return;
+    await setResolved(petId, resolved, { merge: !complete });
+  } catch (error) {
+    console.warn("[routinesStore] resolved-instances check failed:", error?.message);
+  }
+}
+
 async function runRoutinesLoad(set, get, petId, { epoch, background, silent }) {
   const quiet = background || silent;
   // Is this still the dog whose routines the screens should show?
@@ -134,6 +149,9 @@ async function runRoutinesLoad(set, get, petId, { epoch, background, silent }) {
       } catch (sweepError) {
         // Housekeeping only — it must never turn a successful routines load into an error state.
         console.warn("[routinesStore] notification sweep failed:", sweepError?.message);
+      }
+      if (petId != null) {
+        await dropAlarmsAlreadyLogged(petId, allReminders, activeRoutines, epoch);
       }
     }
 

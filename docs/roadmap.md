@@ -18,6 +18,14 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-24 — Night run #4 · PR5b Phase 1E: alarms already resolved by household logs are cancelled — client-only, needs EAS build 33
+
+- After each routines read the phone reads the wellness / weight / care / photo logs it needs and drops the alarms of instances the household already logged (same matching rules as the Today list). A deleted log arms it again; a failed read keeps ringing.
+- Feeding, walk and medication routines are unchanged (no server link between a log and an instance — Phase 2). Vet appointments from the appointments list never armed a local alarm, so there was nothing to cancel there.
+- No server or SQL change.
+
+---
+
 ## 2026-11-24 — Night run #4 · PR5b Phase 1D: "Remind me about this dog" switch — client-only, needs EAS build 33
 
 - More → Reminders & routines → Settings: one switch per dog (own and shared), default on, stored on the phone per signed-in person (`store/reminderMuteStore.js`, persisted).
