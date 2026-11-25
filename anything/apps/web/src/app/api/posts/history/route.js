@@ -30,6 +30,9 @@ async function GET(request) {
     }
     const viewer = await getViewerDailyStatus(session.user.id, {
       targetOwnerId: petRows[0].owner_user_id,
+      // A family/caregiver on THIS dog is part of its household, not a stranger: never lock them out of its history
+      // (same as GET /api/pets/[id]/profile).
+      targetPetId: petId,
     });
     if (!viewer?.isOwner && !viewer?.hasPostedToday) {
       return Response.json({ posts: [], locked: true });

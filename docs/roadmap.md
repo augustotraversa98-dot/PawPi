@@ -205,6 +205,12 @@ Not in any PR yet. The pattern "`<t>_owner_all` checks WHO wrote a row, never WH
 
 ---
 
+## 2026-11-24 — Night run #4 · bug fix: shared dog's photo history was locked for its own household — server, MERGE when ready (no SQL)
+
+- `GET /api/posts/history` did not tell the daily-moments gate which dog was being read, so a family member or caregiver was treated as a stranger until someone posted today. One argument added; unit + real-Postgres tests.
+
+---
+
 ## 2026-11-23 — Family & caregivers series — PR3/7: shared pets (opt-in list) + grantee read paths + caregiver logging + moment lock + expiry — OPEN, NOT merged
 
 PR1 (#749) and PR2 (#750) are MERGED. This PR makes the shared dog **usable by the server for the partner who owns no dog**, with **zero behaviour change for builds 30–32**.
