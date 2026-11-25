@@ -134,6 +134,7 @@
     "spanish": "Español",
     "deleteFailed": "No se pudo eliminar la cuenta",
     "deleteErrorTitle": "No se pudo eliminar la cuenta",
+    "deleteErrorBody": "No se pudo eliminar tu cuenta. Probá de nuevo.",
     "deleteAccountTitle": "¿Eliminar cuenta?",
     "deleteAccountBody": "Esto elimina para siempre tu cuenta, tus perros y sus registros. No se puede deshacer.",
     "deleteContributionsLabel": "Borrar también mis publicaciones sobre perros compartidos conmigo",
