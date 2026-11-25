@@ -44,6 +44,11 @@ export function whenReminderMutesReady() {
   return new Promise((resolve) => waiters.push(resolve));
 }
 
+/** Are the stored choices in memory yet? (Before that, "not muted" is only the default, so a caller that wants to SKIP work for a muted dog must not trust it.) */
+export function reminderMutesKnown() {
+  return hydrated;
+}
+
 /** The key of the signed-in person ("anon" when nobody is). */
 export function reminderUserKey() {
   // Required lazily: the auth store imports the session cleanup, which imports the reminder stores.

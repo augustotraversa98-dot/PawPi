@@ -127,3 +127,28 @@ it("the dog's own nudges are not armed while it is off", async () => {
   ).resolves.toEqual([]);
   expect(mockPending).toEqual([]);
 });
+
+describe("reminderMutesKnown (the reminder refresh skips a muted dog only once the stored choices are in memory)", () => {
+  test("false until the stored value was read, true after (and after a failed read)", async () => {
+    let release;
+    let store;
+    jest.isolateModules(() => {
+      jest.doMock("@react-native-async-storage/async-storage", () => ({
+        __esModule: true,
+        default: {
+          getItem: jest.fn(() => new Promise((resolve) => { release = () => resolve(null); })),
+          setItem: jest.fn(async () => {}),
+          removeItem: jest.fn(async () => {}),
+        },
+      }));
+      store = require("./reminderMuteStore");
+    });
+    expect(store.reminderMutesKnown()).toBe(false);
+    // The default "not muted" must not be trusted yet, even for a dog that is muted in storage.
+    expect(store.isDogMuted(7, "1")).toBe(false);
+    release();
+    await store.whenReminderMutesReady();
+    expect(store.reminderMutesKnown()).toBe(true);
+    jest.dontMock("@react-native-async-storage/async-storage");
+  });
+});

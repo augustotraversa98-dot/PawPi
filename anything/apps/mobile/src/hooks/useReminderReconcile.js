@@ -13,6 +13,7 @@ import { AppState } from "react-native";
 import { useCurrentPet, usePetProfile } from "./usePetProfile";
 import useRoutinesStore from "@/store/routinesStore";
 import useRemindersStore from "@/store/remindersStore";
+import { isDogMuted, reminderMutesKnown } from "@/store/reminderMuteStore";
 
 // Quick app switches in a row must not each re-read the routines.
 export const FOREGROUND_MIN_GAP_MS = 15 * 1000;
@@ -22,6 +23,12 @@ const refreshShownDog = (petId) =>
 
 const refreshOtherDog = (petId) =>
   useRoutinesStore.getState().loadRoutines(petId, { background: true, coalesce: true });
+
+// A dog this person switched "Remind me about this dog" OFF for, and that is not the one on screen, has nothing to refresh: a background
+// read only feeds reminders and alarms, and a muted dog arms none (remindersStore). Reading it cost 1-5 requests per return to the app
+// (utils/householdResolution) for no visible effect. The shown dog is always read (the screens use it); switching a dog back ON reads it
+// again (DogReminderSwitches), and selecting it reads it (effect below). Until the stored choices are in memory nothing is skipped.
+const skipMutedOther = (petId) => reminderMutesKnown() && isDogMuted(petId);
 
 export function useReminderReconcile() {
   const { data: pets } = usePetProfile();
@@ -44,6 +51,7 @@ export function useReminderReconcile() {
     for (const id of seen.current) if (!listed.has(id)) seen.current.delete(id);
     for (const pet of pets) {
       if (seen.current.has(pet.id)) continue;
+      if (pet.id !== petId && skipMutedOther(pet.id)) continue; // not marked seen: it is read if it is ever unmuted while still unseen
       seen.current.add(pet.id);
       if (pet.id === petId) continue; // the selected dog is loaded by the effect above
       Promise.resolve(refreshOtherDog(pet.id)).then((routines) => {
@@ -66,7 +74,9 @@ export function useReminderReconcile() {
     if (Date.now() - lastRun.current < FOREGROUND_MIN_GAP_MS) return;
     lastRun.current = Date.now();
     const { petId: shown, pets: all } = latest.current;
-    const reads = (all ?? []).filter((p) => p.id !== shown).map((p) => refreshOtherDog(p.id));
+    const reads = (all ?? [])
+      .filter((p) => p.id !== shown && !skipMutedOther(p.id))
+      .map((p) => refreshOtherDog(p.id));
     if (shown != null) reads.push(refreshShownDog(shown));
     // Even when every read fails (offline), alarms that fired have freed slots for the next ones.
     Promise.allSettled(reads).then(() => useRemindersStore.getState().syncAlarms());

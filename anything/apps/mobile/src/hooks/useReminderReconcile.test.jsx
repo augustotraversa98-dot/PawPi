@@ -20,6 +20,8 @@ jest.mock("@/store/remindersStore", () => ({
 }));
 
 import { useReminderReconcile, FOREGROUND_MIN_GAP_MS } from "./useReminderReconcile";
+import useReminderMuteStore, { whenReminderMutesReady } from "@/store/reminderMuteStore";
+import { useAuthStore } from "@/utils/auth/store";
 
 const OWN = { id: 1, name: "Mango", is_shared: false };
 const SHARED = { id: 7, name: "Luna", is_shared: true };
@@ -153,4 +155,52 @@ test("no dog, nothing to read", async () => {
   mount();
   await foreground();
   expect(calls()).toEqual([]);
+});
+
+describe("a dog the person switched reminders OFF for (night run #7: no useless reads)", () => {
+  const MUTED = { id: 2, name: "Rex", is_shared: false };
+  beforeEach(async () => {
+    useAuthStore.setState({ auth: { jwt: "a", user: { id: 1 } } });
+    useReminderMuteStore.setState({ mutedByUser: { 1: ["2"] } });
+    await useReminderMuteStore.persist.rehydrate(); // the stored choices are now "known" to the hook
+    await whenReminderMutesReady();
+    useReminderMuteStore.setState({ mutedByUser: { 1: ["2"] } });
+  });
+  afterEach(() => useReminderMuteStore.setState({ mutedByUser: {} }));
+
+  test("at launch a muted dog that is not on screen is not read; the others are", async () => {
+    mockPets = [OWN, MUTED, SHARED];
+    mount();
+    await act(async () => {});
+    expect(calls()).toEqual([[1, SHOWN], [7, OTHER]]);
+  });
+
+  test("on return to the app a muted dog that is not on screen is not re-read; the alarms are still topped up", async () => {
+    mockPets = [OWN, MUTED, SHARED];
+    mount();
+    await act(async () => {});
+    mockLoad.mockClear();
+    await foreground();
+    expect(calls()).toEqual([[7, OTHER], [1, SHOWN]]);
+    expect(mockSyncAlarms).toHaveBeenCalledTimes(1);
+  });
+
+  test("a muted dog that IS on screen is still read (the screens use it)", async () => {
+    mockPets = [OWN, MUTED];
+    mockCurrent = MUTED;
+    mount();
+    await act(async () => {});
+    expect(calls()).toEqual([[2, SHOWN], [1, OTHER]]);
+    mockLoad.mockClear();
+    await foreground();
+    expect(calls()).toEqual([[1, OTHER], [2, SHOWN]]);
+  });
+
+  test("another person's mute on the same phone does not hide the dog", async () => {
+    useAuthStore.setState({ auth: { jwt: "b", user: { id: 2 } } });
+    mockPets = [OWN, MUTED];
+    mount();
+    await act(async () => {});
+    expect(calls()).toEqual([[1, SHOWN], [2, OTHER]]);
+  });
 });
