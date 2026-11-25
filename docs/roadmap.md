@@ -94,6 +94,13 @@ Reported: Quick Check on iPhone, keyboard open, the notes box under Ears hidden 
 
 ---
 
+## 2026-11-24 — Night run #4 · item 6: confirm step before a rest day — client-only, needs EAS build 33
+
+- Turning a rest day ON now asks first (EN + ES); turning it off is still one tap. Spanish link fixed to voseo ("¿Te tomás un día de descanso?").
+- Follow-up from #756 (pet 27 looked stuck on a rest day). No server or SQL change.
+
+---
+
 ## 2026-11-23 — Care Ring arcs no longer all turn green on a rest day — client-only, needs EAS build 33
 
 Reported on a live iPhone: pet 27's ring showed all three arcs green while the card said "2 of 3", and no moment was uploaded (one had been posted then deleted).

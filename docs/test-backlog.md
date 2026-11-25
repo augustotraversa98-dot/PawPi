@@ -111,6 +111,16 @@ Reasoning, the exact expected residual (`supabase_admin:r|S|f` only) and when to
 
 ---
 
+## 📱 To test — Night run #4 / item 6: rest day asks first (mobile JS only)
+
+**Needs EAS build 33** (merged + CI-green; not device-verified).
+- [ ] **1.** Health → Today → **Taking a rest day?** shows "Rest day for <dog>?"; **Not today** changes nothing; **Yes, rest day** turns it on.
+- [ ] **2.** **It's not a rest day** turns it off with no question.
+- [ ] **3.** Spanish: "¿Te tomás un día de descanso?" → "Hoy no" / "Sí, a descansar".
+- [ ] **4.** Dog 27 (stuck on rest day): open it, tap "It's not a rest day", the ring is normal again.
+
+---
+
 ## 📱 To test — Care Ring arcs on a rest day (mobile JS only)
 
 **Needs EAS build 33** (merged + CI-green; not device-verified).

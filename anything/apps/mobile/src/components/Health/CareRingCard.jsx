@@ -5,7 +5,7 @@
 // pause-until date). A rest/paused day keeps the ring and streak intact — the copy stays gentle.
 
 import React, { useEffect, useState } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { Alert, View, Text, Pressable, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { maybeScheduleStreakSave } from "@/utils/engagementNotifications";
 import { useDeleteGeneralCheck } from "@/hooks/useHealthReinforcement";
@@ -78,6 +78,25 @@ export function CareRingCard({ petId, petName, onPressSegment }) {
   // Walk / Care pills there was a silent no-op — they now open their quick log in place.
   // A completed segment behaves the same way (log another walk / another quick check), so
   // a tap is never swallowed. Moment lives on the feed tab, so it still navigates there.
+  // Turning a rest day ON asks first (it was a one-tap link, easy to hit by accident and quiet about it). Turning it
+  // off is a plain tap.
+  const toggleRestDay = () => {
+    if (s.rest_day) {
+      setRest.mutate(false);
+      return;
+    }
+    Alert.alert(
+      name
+        ? t("health.careRing.restConfirmTitle", { name })
+        : t("health.careRing.restConfirmTitleGeneric"),
+      t("health.careRing.restConfirmBody"),
+      [
+        { text: t("health.careRing.restConfirmNo"), style: "cancel" },
+        { text: t("health.careRing.restConfirmYes"), onPress: () => setRest.mutate(true) },
+      ],
+    );
+  };
+
   const handleSegment = (seg) => {
     if (seg === "walk") setWalkOpen(true);
     else if (seg === "care") setCheckOpen(true);
@@ -212,7 +231,7 @@ export function CareRingCard({ petId, petName, onPressSegment }) {
         ) : (
           <>
             <Pressable
-              onPress={() => setRest.mutate(!s.rest_day)}
+              onPress={toggleRestDay}
               accessibilityRole="switch"
               accessibilityState={{ checked: s.rest_day }}
             >
