@@ -29,6 +29,7 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { defaultWeightUnit } from "@/utils/weightUnit";
 import { formatLocalDate } from "@/utils/localeDateTime";
 import { friendlyErrorMessage } from "@/utils/appAlert";
+import LoggedByLine from "@/components/Health/LoggedByLine";
 
 const C = {
   cream: COLORS.cream,
@@ -626,6 +627,7 @@ export default function WeightModal({ visible, onClose }) {
                                 {formatDate(entry.logged_at)}
                               </Text>
                             </View>
+                            <LoggedByLine name={entry.logged_by_name} />
                           </View>
                           <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                             onPress={() => handleDelete(entry.id)}

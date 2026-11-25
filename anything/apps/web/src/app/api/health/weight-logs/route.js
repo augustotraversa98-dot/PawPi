@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 import { recordBusinessEvent } from "@/lib/telemetry/business";
+import { withLoggedByNames } from "@/app/api/utils/loggedBy";
 
 async function GET(request) {
   try {
@@ -43,7 +44,7 @@ async function GET(request) {
       LIMIT ${limit}
     `;
 
-    return Response.json({ logs: withNormalizedWeightUnit(logs) });
+    return Response.json({ logs: await withLoggedByNames(withNormalizedWeightUnit(logs)) });
   } catch (error) {
     console.error("Error fetching weight logs:", error);
     return Response.json(

@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 import { recordBusinessEvent } from "@/lib/telemetry/business";
+import { withLoggedByNames } from "@/app/api/utils/loggedBy";
 
 async function POST(request) {
   try {
@@ -131,7 +132,7 @@ async function GET(request) {
       `;
     }
 
-    return Response.json({ logs }, { status: 200 });
+    return Response.json({ logs: await withLoggedByNames(logs) }, { status: 200 });
   } catch (error) {
     console.error("[health/food-logs] Error fetching logs:", error);
     return Response.json(

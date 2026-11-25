@@ -163,6 +163,7 @@
     "madeWith": "Hecho con 🐾 para amantes de perros"
   },
   "health": {
+    "loggedBy": "Registrado por {{name}}",
     "title": "Salud",
     "hubTitle": "Centro de Salud",
     "nutritionButton": "Nutrición",

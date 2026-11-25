@@ -20,6 +20,7 @@ import PrivateImage from "@/components/ui/PrivateImage";
 import { BODY_AREA_LABELS } from "@/data/photoCheckData";
 import { usePhotoChecks } from "@/hooks/useFetchHealthData";
 import { formatLocalDate, formatLocalTime } from "@/utils/localeDateTime";
+import LoggedByLine from "@/components/Health/LoggedByLine";
 
 const C = {
   cream: COLORS.cream,
@@ -65,6 +66,7 @@ export function groupPhotoChecksByArea(rows) {
       imageUrl: row.image_url ?? row.imageUrl ?? null,
       notes: row.notes ?? null,
       createdAt: row.created_at ?? row.createdAt,
+      loggedByName: row.logged_by_name ?? null,
       includedInVetSummary: Boolean(
         row.included_in_vet_summary ?? row.includedInVetSummary,
       ),
@@ -352,6 +354,7 @@ export default function PhotoHistory() {
                             >
                               {formatTime(photo.createdAt)}
                             </Text>
+                            <LoggedByLine name={photo.loggedByName} style={{ fontSize: 10, marginTop: -2, marginBottom: 6 }} />
                             {photo.notes && (
                               <Text
                                 style={{

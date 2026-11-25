@@ -308,6 +308,17 @@ Merged + CI-green, **not device-verified** (the runs could not see the app). Det
 - [ ] **VoiceOver:** back/close/delete buttons announce their names; Lost & Found / Emergency card show a retry (not "empty") when offline.
 - [ ] **Block** someone: they can't follow/paw/message/invite you via a stale screen, and you get no notification.
 
+## 📱 To test — Night run #4 / PR7 DRAFT: who logged each entry (needs migration 0144 applied, PR merged, then a build)
+
+- [ ] **0.** Apply `0144`, run `verify_0144.sql` (7 PASS), merge the PR.
+- [ ] **1.** Owner and Partner each log a weight for the shared dog: Health → Weight → History shows "Logged by <name>" on each new entry.
+- [ ] **2.** Same for a wellness check (its history tab) and a photo check (photo history).
+- [ ] **3.** Entries made before the migration show no name. A person with no display name shows no line (never a username or e-mail).
+- [ ] **4.** Delete a test member account: their entries read "Logged by Former member" / "Registrado por Ex integrante".
+- Not shown: food, walk, pee, poo, vomit and general checks have no history list in the app today (the server already sends the name).
+
+---
+
 ## ⚙️ ACTION 1 — Apply Phase 2 migrations to Supabase (in order, after the merges)
 
 > **Historical list.** Several entries below carry no ✅ mark but are applied (later notes show the live DB at 0064, then 0110, 0119 …). The current list of what is NOT confirmed applied is [`db-migration-inventory.md`](db-migration-inventory.md).
