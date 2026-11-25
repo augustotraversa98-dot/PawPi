@@ -81,7 +81,7 @@ export function cleanUpAfterIdentityChange(previousAuth) {
     const useSocialPetStore = require("@/store/socialPetStore").default;
     useSocialPetStore.setState({ notifications: [], unreadNotificationCount: 0 });
     useRoutinesStore.setState({ routines: [], initialized: false, loading: false, error: null });
-    useRemindersStore.setState({ reminders: [], snoozes: {} });
+    useRemindersStore.setState({ reminders: [], snoozes: {}, resolvedByPet: {} });
   } catch (error) {
     warn("stores", error);
   }

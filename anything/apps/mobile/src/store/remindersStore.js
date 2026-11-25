@@ -86,10 +86,17 @@ async function runAlarmPass(set, get) {
 
   const now = Date.now();
   const { reminders, snoozes } = get();
-  const candidates = reminders.map((r) => alarmFor(r, snoozes, now)).filter(Boolean);
-  // A switched-off dog loses every alert tagged with it, also those of a dog not read yet and its nudges.
+  const done = new Set(Object.values(get().resolvedByPet).flat());
+  const candidates = reminders
+    .filter((r) => !done.has(r.id)) // someone in the household already logged it
+    .map((r) => alarmFor(r, snoozes, now))
+    .filter(Boolean);
+  // A switched-off dog loses every alert tagged with it, also those of a dog not read yet and its nudges. A snoozed
+  // past instance the household has logged goes too (it is not among the stored reminders after a relaunch).
   const muted = new Set(
-    pending.filter((n) => isDogMuted(n.content?.data?.petId)).map((n) => n.identifier),
+    pending
+      .filter((n) => isDogMuted(n.content?.data?.petId) || done.has(n.identifier))
+      .map((n) => n.identifier),
   );
   const { arm, cancel } = selectAlarmsToArm({
     candidates,
@@ -112,6 +119,7 @@ async function runAlarmPass(set, get) {
     if (epoch !== getSessionEpoch()) return undo();
     // The store may have moved while we were scheduling the previous one.
     const reminder = get().reminders.find((r) => r.id === candidate.id);
+    if (Object.values(get().resolvedByPet).some((ids) => ids.includes(candidate.id))) continue;
     const alarm = reminder && alarmFor(reminder, get().snoozes, Date.now());
     if (!alarm) continue;
     const existing = pendingById.get(alarm.id);
@@ -153,6 +161,20 @@ const useRemindersStore = create(
   // (AUDIT A-25) PERSISTED (only this slice) so a snooze survives an app restart
   // — previously a restart resurrected every snoozed reminder into Today.
   snoozes: {},
+
+  // Instances the household has already logged (utils/householdResolution), per dog: { [petId]: [reminderId] }. They
+  // arm no alarm on this phone. In memory only; the Today list derives the same from the logs on its own.
+  resolvedByPet: {},
+
+  setResolved: async (petId, resolvedIds, { merge = false } = {}) => {
+    const key = String(petId);
+    const before = get().resolvedByPet[key] ?? [];
+    // `merge`: some log read failed, so keep what was already known to be done.
+    const next = [...new Set(merge ? [...before, ...resolvedIds] : resolvedIds)].sort();
+    if (next.join() === before.join()) return;
+    set((state) => ({ resolvedByPet: { ...state.resolvedByPet, [key]: next } }));
+    await get().syncAlarms();
+  },
 
   // Actions
   addReminder: async (reminder) => {
