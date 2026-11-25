@@ -285,6 +285,12 @@ Fixes audit gap **B8** (a retry / double tap / lost response created a second ro
 
 ---
 
+## 2026-11-24 — Night run #4 · bug fix: simultaneous invite answers could notify the owner several times — server, MERGE when ready (no SQL)
+
+- The respond route now takes a per-invite transaction lock before reading the grant. This race is also why the main-branch integration job has been failing at random since #753.
+
+---
+
 ## 2026-11-23 — Family & caregivers (couples sharing ONE dog) — audit + fix series PR1/7 (tests + ring caller check) — MERGED #749 (2026-11-23)
 
 Audit: [`family-sharing-audit-2026-11.md`](family-sharing-audit-2026-11.md) (verdict table, permission matrix, release map, lifecycle, UI-vs-RLS, ranked gaps). Owner decisions 2026-11-23: members' posts/logs are **anonymized** (not deleted) when a member deletes their account; an owner deleting theirs takes the pet with it **after notifying members**; **caregiver** reads feeding/routines/meds/emergency/health logs and can LOG/complete but not edit; **family** reads+writes everything except managing sharing and deleting the pet (API **and** RLS, UI to match); a nullable `logged_by` on health logs + routine completions; a hashed one-time **invite link/code** table (migration written, hand-applied by the owner).

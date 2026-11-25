@@ -32,6 +32,11 @@ async function POST(request, { params }) {
       return Response.json({ error: "Invalid grant" }, { status: 400 });
     }
 
+    // One answer at a time per grant: two simultaneous taps must not both see "pending" (the DEFINER function takes no
+    // row lock, and the grantee may not lock the row under RLS), or the owner is told twice. Held until this request's
+    // transaction commits; it must be its own statement so the read below sees what the earlier answer committed.
+    await sql`SELECT pg_advisory_xact_lock(hashtext('pet_grant_respond'), ${grantId})`;
+
     // The grantee can read their own grants under RLS, so a grant that is not theirs simply is not found.
     const rows = await sql`
       SELECT pc.id, pc.status, pc.expires_at, pc.owner_user_id, pc.pet_id, p.name AS pet_name
