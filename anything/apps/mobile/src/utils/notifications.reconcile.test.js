@@ -28,6 +28,7 @@ jest.mock("expo-notifications", () => ({
 import {
   scheduleReminderNotification,
   selectStaleRoutineNotifications,
+  selectAlarmsToCancel,
   reconcileRoutineNotifications,
 } from "./notifications";
 
@@ -101,5 +102,76 @@ describe("reconcileRoutineNotifications", () => {
     const removed = await reconcileRoutineNotifications({ petId: 1, validReminderIds: new Set(["reminder_5_0_d1"]) });
     expect(removed).toBe(2);
     expect(mockPending.map((p) => p.identifier)).toEqual(["reminder_5_0_d1"]);
+  });
+});
+
+describe("selectAlarmsToCancel (the one cancellation rule)", () => {
+  const pend = (identifier, data) => ({ identifier, content: { data } });
+  const routine = (rid, petId, identifier = rid) => pend(identifier, { reminderId: rid, petId });
+  const pending = [
+    routine("reminder_5_0_d1", 7), // lost / scoped dog
+    routine("reminder_5_0_d2", "7"), // petId may arrive as a string
+    pend("streak-uuid", { category: "streak", petId: 7 }),
+    pend("nudge-uuid", { nudge: "reminder_setup", petId: 7 }),
+    routine("reminder_9_0_d1", 1), // the OTHER dog
+    pend("pawpi-daily-return", { kind: "daily_return" }),
+    pend("telehealth_3_1", { reminderId: "telehealth_3_1", petId: null }),
+  ];
+
+  it("a lost pet: every alarm tagged with that dog, whatever its kind; nothing else", () => {
+    expect(selectAlarmsToCancel(pending, { lostPetIds: [7] })).toEqual([
+      "reminder_5_0_d1",
+      "reminder_5_0_d2",
+      "streak-uuid",
+      "nudge-uuid",
+    ]);
+  });
+
+  it("a deleted routine: only that routine's instances of the scoped dog", () => {
+    const list = [routine("reminder_5_0_d1", 7), routine("reminder_6_0_d1", 7), routine("reminder_9_0_d1", 1)];
+    expect(
+      selectAlarmsToCancel(list, { validIds: ["reminder_5_0_d1"], scopePetIds: [7] }),
+    ).toEqual(["reminder_6_0_d1"]);
+  });
+
+  it("the LAST routine removed (no valid id at all) still cancels the dog's alarms, and only the dog's", () => {
+    expect(selectAlarmsToCancel(pending, { validIds: new Set(), scopePetIds: ["7"] })).toEqual([
+      "reminder_5_0_d1",
+      "reminder_5_0_d2",
+    ]);
+  });
+
+  it("another dog is untouched when it is not in scope, even with an empty valid set", () => {
+    expect(selectAlarmsToCancel([routine("reminder_9_0_d1", 1)], { validIds: [], scopePetIds: [7] })).toEqual([]);
+    expect(selectAlarmsToCancel([routine("reminder_9_0_d1", 1)], { validIds: [] })).toEqual([]);
+  });
+
+  it("legacy ids: a random-id duplicate is cancelled by a load sweep and by its known reminder id", () => {
+    const legacy = [
+      routine("reminder_5_0_d1", undefined, "UUID-OLD"), // old build: random id, no petId
+      routine("reminder_8_0_d1", undefined), // deterministic id, no petId: the pet is unknown
+    ];
+    expect(selectAlarmsToCancel(legacy, { validIds: ["reminder_5_0_d1"], scopePetIds: [7] })).toEqual(["UUID-OLD"]);
+    expect(selectAlarmsToCancel(legacy, { lostPetIds: [7], resolvedKeys: ["reminder_5_0_d1"] })).toEqual(["UUID-OLD"]);
+    expect(selectAlarmsToCancel(legacy, { lostPetIds: [7] })).toEqual([]);
+  });
+
+  it("resolved keys cancel exactly those instances", () => {
+    expect(selectAlarmsToCancel(pending, { resolvedKeys: new Set(["reminder_9_0_d1"]) })).toEqual(["reminder_9_0_d1"]);
+  });
+
+  it("no criteria cancels nothing; junk is ignored", () => {
+    expect(selectAlarmsToCancel(pending)).toEqual([]);
+    expect(selectAlarmsToCancel(undefined, { lostPetIds: [7] })).toEqual([]);
+    expect(selectAlarmsToCancel([null, {}], { lostPetIds: [7] })).toEqual([]);
+  });
+});
+
+describe("reconcileRoutineNotifications with no reminder left", () => {
+  it("cancels the dog's orphan alarms and keeps the other dog's", async () => {
+    await scheduleReminderNotification(mk("reminder_5_0_d1", 1));
+    await scheduleReminderNotification(mk("reminder_9_0_d1", 2));
+    await expect(reconcileRoutineNotifications({ petId: 1, validReminderIds: new Set() })).resolves.toBe(1);
+    expect(mockPending.map((p) => p.identifier)).toEqual(["reminder_9_0_d1"]);
   });
 });

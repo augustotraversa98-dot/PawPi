@@ -7,7 +7,7 @@
 //
 // Never throws: a cache housekeeping problem must not break the request or the screen it rode in on.
 
-import usePetAccessStore, { noteAccessVersion } from "@/store/petAccessStore";
+import usePetAccessStore, { noteAccessVersion, markPetLost } from "@/store/petAccessStore";
 
 export { noteAccessVersion };
 import useSelectedPetStore from "@/store/selectedPetStore";
@@ -50,12 +50,22 @@ export function refetchAccessLists(queryClient) {
 
 /**
  * The person has lost access to a shared pet `pet` ({ id, name }), as seen by the pets list no longer containing it. Clear what
- * belongs to it, forget a persisted selection that points at it, and queue the friendly notice (shown once).
+ * belongs to it (caches, routines, reminders, this phone's pending alarms), forget a persisted selection that points at it, and
+ * queue the friendly notice (shown once). Returns a promise that settles when the alarms are cancelled (callers need not await).
  */
 export function handleAccessLost(queryClient, pet, { refetchPets = true } = {}) {
+  let cleanup = Promise.resolve();
   try {
-    if (pet?.id == null) return;
+    if (pet?.id == null) return cleanup;
     const petId = Number(pet.id);
+    markPetLost(petId);
+    try {
+      // Required lazily: the reminder stores and the notification layer stay out of the launch import graph.
+      const { purgePetReminders } = require("@/utils/petReminderCleanup");
+      cleanup = purgePetReminders([petId]).catch(() => {});
+    } catch {
+      // best effort
+    }
     dropPetScopedCaches(queryClient, petId);
     if (useSelectedPetStore.getState().selectedPetId === petId) {
       useSelectedPetStore.getState().setSelectedPetId(null);
@@ -69,6 +79,7 @@ export function handleAccessLost(queryClient, pet, { refetchPets = true } = {}) 
   } catch {
     // best effort
   }
+  return cleanup;
 }
 
 /**

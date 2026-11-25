@@ -18,6 +18,16 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-24 — Night run #4 · PR5b Phase 1A: losing access to a shared dog stops its alarms — client-only, needs EAS build 33
+
+- `handleAccessLost` now also removes that dog's routines, reminders, snoozes and in-app reminder rows and cancels every pending local notification tagged with it (`utils/petReminderCleanup.js`). Other dogs are untouched.
+- A loss that happened while the app was closed is caught too: after a successful pets read, alarms armed for a dog that is no longer listed are cancelled (an empty list must be seen twice, so a one-off blank answer cannot silence everything).
+- Sweep hole fixed: removing a dog's LAST active routine now cancels its orphan alarms; running snoozes of still-active routines are protected from the sweep.
+- One cancellation rule, `selectAlarmsToCancel(pending, {resolvedKeys, lostPetIds, validIds, scopePetIds})`. The streak nudge now carries the pet id so it is cancelled with the dog.
+- No server or SQL change.
+
+---
+
 ## 2026-11-24 — Family & caregivers series — PR5b design: reminders across household members — DOCS ONLY, nothing built
 
 New proposal doc [`pr5b-reminder-sync-design.md`](pr5b-reminder-sync-design.md) for you to decide on. Problem: a member's phone arms its own local alarms for the shared dog, but when one person logs a task the other phone's already-armed alarm is not cancelled (and an ex-member's alarms are not cleared when access ends).

@@ -52,6 +52,17 @@ export async function fetchPets({ signal } = {}) {
   // A shared pet that was listed before and is gone now = this person lost access to it (revoked / left / expired): drop what belongs
   // to it, forget a selection that points at it and queue the friendly notice. Required lazily to keep the launch graph light.
   const lost = reconcileSharedPets(data.pets);
+  // The in-memory comparison above only sees a loss that happens while the app is running. A dog removed while the app was
+  // closed still has alarms armed on this phone: compare them with the list itself. Only when the server answered the
+  // opt-in (access_version present), so the list is authoritative about shared dogs too.
+  if (typeof data?.access_version === "string") {
+    try {
+      const { purgeUnlistedPetReminders } = require("@/utils/petReminderCleanup");
+      purgeUnlistedPetReminders(data.pets).catch(() => {});
+    } catch {
+      // housekeeping only
+    }
+  }
   if (lost.length > 0) {
     try {
       const { handleAccessLost } = require("@/utils/petAccess");

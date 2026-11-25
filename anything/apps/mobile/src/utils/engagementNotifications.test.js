@@ -57,6 +57,19 @@ describe("maybeScheduleStreakSave", () => {
     const arg = Notifications.scheduleNotificationAsync.mock.calls[0][0];
     expect(arg.content.title).toContain("Rex");
     expect(arg.content.data.category).toBe("streak");
+    expect(arg.content.data.petId).toBeUndefined();
+  });
+
+  it("tags the nudge with the dog, so losing access to that dog can cancel it", async () => {
+    await maybeScheduleStreakSave({
+      t,
+      ring: AT_RISK,
+      streakCount: 12,
+      petName: "Rex",
+      petId: 7,
+      now: new Date("2026-08-14T09:00:00"),
+    });
+    expect(Notifications.scheduleNotificationAsync.mock.calls[0][0].content.data.petId).toBe(7);
   });
 
   it("does not schedule twice in one day", async () => {

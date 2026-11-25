@@ -24,6 +24,18 @@ Reasoning, the exact expected residual (`supabase_admin:r|S|f` only) and when to
 
 ---
 
+## 📱 To test — Night run #4 / 1A: a lost shared dog stops ringing (mobile JS only)
+
+**Needs EAS build 33** (merged + CI-green; not device-verified). Two accounts, two phones (or phone + Simulator): **Owner** and **Partner** (Family or Caregiver) on one dog with at least one routine due in the next hour. Partner also has an OWN dog with a routine, to prove it is untouched.
+- [ ] **1. Revoke while the partner's app is open.** Partner opens Health so the shared dog's routines load. Owner removes the partner. Partner: pull to refresh. One "Access ended" message; at the routine's time the shared dog does NOT ring; the partner's own dog still rings.
+- [ ] **2. Revoke while the partner's app is closed.** Load the routines, swipe the app away, Owner removes the partner, then open the app once (any screen) before the routine time and leave it again. It must not ring for the shared dog.
+- [ ] **3. Leave.** Partner → Family & caregivers → Shared with me → Leave. The shared dog stops ringing.
+- [ ] **4. Last routine removed on another phone.** Owner deletes (or pauses) the dog's ONLY routine. Partner opens Health for that dog (pull to refresh). The old alarm does not ring.
+- [ ] **5. Snooze survives.** Snooze a reminder for 1 hour, pull to refresh on Health → Today: it still rings after the hour.
+- Known limit: a phone that is not opened at all after the removal can still ring (nothing can cancel a local alarm remotely; Phase 2).
+
+---
+
 ## 📱 To test — Family & caregivers: the shared dog in the app (PR5a; mobile JS only)
 
 **Needs EAS build 33** (merged + CI-green; not device-verified; the server side has been live since #749–#753 / migrations 0137–0142). You need TWO accounts on two phones (or phone + Simulator): **Owner** (has the dog) and **Partner** (signs in with their OWN account, ideally Apple "Hide My Email"). The partner must have a username/name you can find by search (invite link/code is PR6).
