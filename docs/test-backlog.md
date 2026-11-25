@@ -24,6 +24,17 @@ Reasoning, the exact expected residual (`supabase_admin:r|S|f` only) and when to
 
 ---
 
+## 📱 To test — Night run #4 / 1C: the soonest ~48 alarms across all dogs (mobile JS only)
+
+**Needs EAS build 33** (merged + CI-green; not device-verified). Use an account with two dogs (or an own dog + a shared one) and a busy schedule: several meals, walks and doses a day (more than 48 reminders in 14 days).
+- [ ] **1. Nothing near is missing.** Open the app, wait ~10 s, close it. Over the next day every reminder of BOTH dogs rings on time, including the dog you did not open.
+- [ ] **2. Top-up.** After a day, open the app once: reminders further out are armed again (check one 3 days ahead the next day).
+- [ ] **3. Snooze + daily nudge.** With the busy schedule, snooze a reminder to "tomorrow" and keep the daily "come back" nudge on: both still arrive.
+- [ ] **4. Horizon.** Note how many days the phone keeps ringing if the app is NOT opened (expected: about 6–7 days with ~7 reminders a day; this is the accepted trade-off, `pr5b-reminder-sync-design.md` 9b).
+- [ ] **5. Edit / delete.** Edit a time and delete a routine: old alarms stop, new ones ring.
+
+---
+
 ## 📱 To test — Night run #4 / 1B: alarms refresh on foreground and dog switch (mobile JS only)
 
 **Needs EAS build 33** (merged + CI-green; not device-verified). Owner + Partner on one shared dog.

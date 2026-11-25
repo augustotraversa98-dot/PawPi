@@ -13,6 +13,11 @@ jest.mock("@/store/routinesStore", () => ({
   __esModule: true,
   default: { getState: () => ({ loadRoutines: mockLoad }) },
 }));
+const mockSyncAlarms = jest.fn(async () => {});
+jest.mock("@/store/remindersStore", () => ({
+  __esModule: true,
+  default: { getState: () => ({ syncAlarms: mockSyncAlarms }) },
+}));
 
 import { useReminderReconcile, FOREGROUND_MIN_GAP_MS } from "./useReminderReconcile";
 
@@ -24,6 +29,7 @@ const OTHER = { background: true, coalesce: true };
 let appState;
 beforeEach(() => {
   mockLoad.mockClear();
+  mockSyncAlarms.mockClear();
   mockLoad.mockImplementation(async () => []);
   mockPets = [OWN];
   mockCurrent = OWN;
@@ -62,11 +68,11 @@ test("a newly shared dog is read once, in the background, without selecting it",
   expect(calls()).toHaveLength(2); // once
 });
 
-test("an own dog that is not selected is not read on mount", async () => {
+test("an own dog that is not selected is read too: every dog competes for the alarm budget", async () => {
   mockPets = [OWN, { id: 2, is_shared: false }];
   mount();
   await act(async () => {});
-  expect(calls()).toEqual([[1, SHOWN]]);
+  expect(calls()).toEqual([[1, SHOWN], [2, OTHER]]);
 });
 
 test("the selected shared dog is read once (not twice)", async () => {
@@ -98,11 +104,23 @@ test("a dog that was lost and shared again is read again", async () => {
   expect(calls().filter(([id]) => id === 7)).toHaveLength(2);
 });
 
-test("coming back to the foreground re-reads the selected dog", async () => {
+test("coming back to the foreground re-reads every dog and tops the alarms up", async () => {
+  mockPets = [OWN, SHARED];
   mount();
+  await act(async () => {});
   mockLoad.mockClear();
   await foreground();
-  expect(calls()).toEqual([[1, SHOWN]]);
+  expect(calls()).toEqual([[7, OTHER], [1, SHOWN]]);
+  expect(mockSyncAlarms).toHaveBeenCalledTimes(1);
+});
+
+test("the alarms are topped up even when every read fails (offline)", async () => {
+  mount();
+  mockLoad.mockImplementation(async () => {
+    throw new Error("offline");
+  });
+  await foreground();
+  expect(mockSyncAlarms).toHaveBeenCalledTimes(1);
 });
 
 test("pulling down the notification centre (inactive → active) does nothing", async () => {

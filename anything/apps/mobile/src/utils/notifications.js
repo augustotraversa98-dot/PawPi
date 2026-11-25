@@ -233,6 +233,15 @@ export function buildReminderNotificationContent(
 }
 
 /**
+ * Pure: what a pending alarm says and when it rings, as one string. Stored on the notification (data.alertKey) so a later
+ * pass can tell "already armed exactly like this" from "armed with an old time or text".
+ */
+export function reminderAlertKey(reminder, reminderTiming) {
+  const fireAt = new Date(reminder?.nextTriggerAt).getTime() - resolveLeadTimeMs(reminderTiming);
+  return [fireAt, reminder?.title ?? "", reminder?.description ?? ""].join("|");
+}
+
+/**
  * Schedule a local notification for a reminder
  * @param {Object} reminder - The reminder object
  * @param {string} [reminderTiming] - Early-reminder lead-time option (e.g. "1h").
@@ -292,6 +301,7 @@ export async function scheduleReminderNotification(reminder, reminderTiming) {
           type: reminder.type,
           relatedTracker: reminder.relatedTracker,
           relatedBodyArea: reminder.relatedBodyArea,
+          alertKey: reminderAlertKey(reminder, reminderTiming),
         },
         sound: true,
         priority: reminder.timeSensitive

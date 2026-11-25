@@ -125,9 +125,12 @@ async function runRoutinesLoad(set, get, petId, { epoch, background, silent }) {
         validReminderIds.add(id);
       }
       try {
+        let swept = 0;
         for (const id of petIds) {
-          await reconcileRoutineNotifications({ petId: id, validReminderIds });
+          swept += (await reconcileRoutineNotifications({ petId: id, validReminderIds })) || 0;
         }
+        // Orphans took room in the alarm budget: hand it to the next reminders.
+        if (swept > 0) await useRemindersStore.getState().syncAlarms();
       } catch (sweepError) {
         // Housekeeping only — it must never turn a successful routines load into an error state.
         console.warn("[routinesStore] notification sweep failed:", sweepError?.message);
@@ -206,9 +209,7 @@ const useRoutinesStore = create((set, get) => ({
 
     activeRoutines.forEach((routine) => {
       const reminders = generateRemindersFromRoutine(routine);
-      reminders.forEach((reminder) => {
-        remindersStore.addReminderFromRoutine(reminder);
-      });
+      remindersStore.addRemindersFromRoutine(reminders);
     });
 
     set({ initialized: true });
@@ -344,11 +345,9 @@ const useRoutinesStore = create((set, get) => ({
       }));
 
       // Generate reminders from this routine
-      const remindersStore = useRemindersStore.getState();
-      const reminders = generateRemindersFromRoutine(transformedRoutine);
-      reminders.forEach((reminder) => {
-        remindersStore.addReminderFromRoutine(reminder);
-      });
+      useRemindersStore
+        .getState()
+        .addRemindersFromRoutine(generateRemindersFromRoutine(transformedRoutine));
 
       return transformedRoutine;
     } catch (error) {
@@ -515,10 +514,9 @@ const useRoutinesStore = create((set, get) => ({
       const remindersStore = useRemindersStore.getState();
       await remindersStore.removeFutureRemindersByRoutine(id);
 
-      const reminders = generateRemindersFromRoutine(transformedRoutine);
-      for (const reminder of reminders) {
-        await remindersStore.addReminderFromRoutine(reminder);
-      }
+      await remindersStore.addRemindersFromRoutine(
+        generateRemindersFromRoutine(transformedRoutine),
+      );
 
       // Editing rebuilds the occurrences fresh, so a previously-Closed heads-up
       // for an affected (still-future) occurrence must reappear. Photo/wellness
@@ -652,10 +650,9 @@ const useRoutinesStore = create((set, get) => ({
         // updateRoutine call above, so the regenerated occurrences surface.)
         await remindersStore.removeFutureRemindersByRoutine(id);
         const updatedRoutine = { ...routine, isActive: true };
-        const reminders = generateRemindersFromRoutine(updatedRoutine);
-        for (const reminder of reminders) {
-          await remindersStore.addReminderFromRoutine(reminder);
-        }
+        await remindersStore.addRemindersFromRoutine(
+          generateRemindersFromRoutine(updatedRoutine),
+        );
       } else {
         // Disable: disable future reminders
         remindersStore.disableFutureRemindersByRoutine(id);

@@ -1,6 +1,6 @@
 # PR5b design — reminders and routines across household members (2026-11-24)
 
-**Status: proposal only. Nothing in this document is built.** Augusto decides; the decisions are listed in section 9.
+**Status: decisions 1–11 accepted 2026-11-24 (decision 7: no native change yet). Phase 1 is being built (see 9b); Phases 2 and 3 are not built.** The decisions are listed in section 9.
 Written from the code on `main` after PR5a (#758) and the server work of #749–#753 (migrations 0137–0142). Anything I could
 not confirm from code is collected in section 10 — please read that part before trusting any number here.
 
@@ -203,6 +203,28 @@ Phase 2:
 9. **Time zones:** **not supported for members in different zones in v1** (anchor to the owner's zone, document it).
 10. **Accept one hand-applied migration (the completions table) in Phase 2?** **Yes** (small, additive, RLS-forced, with verify script).
 11. **Phase 3 go/no-go (server single-sender):** **decide later, after four weeks of Phase 2 data.** Not now.
+
+## 9b. Phase 1 as built: the alarm budget and its trade-off
+
+**What is armed.** One pass (`remindersStore.syncAlarms`, rule in `utils/alarmBudget.js`) arms the **soonest 48 routine
+reminders across all dogs**. It runs after every routines read, after local edits and snoozes, and on every return to the
+foreground (every dog's routines are re-read then). The generator still builds 14 days; only the soonest 48 get an OS alarm.
+
+**Never evicted:** a running snooze, the daily-return nudge, consult and setup nudges. If many of those are pending, the
+routine share shrinks so the total stays at or under iOS's 64.
+
+**The trade-off (accepted, decision 8).** A person who does **not open the app** for several days gets fewer future alarms
+than before. With 48 alarms, one dog with 3 meals + 2 walks + 2 doses a day (7 a day) is covered for about **6–7 days**;
+two such dogs for about **3 days**. After that the phone is silent until the app is opened once. Before this change iOS was
+already dropping everything past 64 without telling anyone, so for busy households the horizon was never really 14 days.
+Light schedules (a few reminders a day) still reach the full 14 days.
+
+**Other limits.** A dog whose routines could not be read this launch (offline) keeps the alarms it already had, and they
+count against the 48. Re-arming needs the app to run: nothing happens while it is closed (no background task, decision 7).
+
+**Numbers.** The pending-alarm count telemetry (separate server + app change) is what will show whether 48 is enough.
+
+---
 
 ## 10. What I could not verify
 
