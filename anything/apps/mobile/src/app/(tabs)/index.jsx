@@ -31,6 +31,7 @@ export default function FeedScreen() {
   const { t } = useTranslation();
   const {
     petProfile,
+    canPostMoment: canPostMomentFromFeed,
     ownedPetIds,
     householdPetIds,
     petName,
@@ -69,8 +70,9 @@ export default function FeedScreen() {
 
   // Modal states — each isolated from the other
   const [composerVisible, setComposerVisible] = useState(false);
-  // A caregiver on a shared dog cannot post its moments (owner + family can): every "post" entry explains that instead of opening the composer.
-  const canPostMoment = canDoOnPetOrUnknown(petProfile, "postMoment");
+  // A caregiver on a shared dog cannot post its moments (owner + family can): every "post" entry explains that instead of opening the composer
+  // — unless they also own a dog: the Feed then posts for THAT dog (useFeedData → postingPet), which also opens the Feed.
+  const canPostMoment = canPostMomentFromFeed ?? canDoOnPetOrUnknown(petProfile, "postMoment");
   // …so the locked Feed and the daily prompt tell them what opens it instead of asking them to post.
   const waitingFor = canPostMoment ? null : petName;
   const openComposer = useCallback(() => {

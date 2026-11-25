@@ -18,6 +18,14 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-26 — Night run #6 · item 3: a caregiver who also owns a dog gets a post button — client-only, needs the next EAS build
+- Server rule checked first, **not widened**: `POST /api/posts` rejects a caregiver on the shared dog (403) but allows a daily moment on a dog the person OWNS; `dailyMomentsGate.js` counts a daily moment today on any pet they own or hold an active grant on (or one they authored), so a post for their OWN dog does open the Feed for them. The same applies to the household's other members.
+- Fix: new `utils/feed/postingPet.js` picks the dog the Feed posts for: the active dog if the role may post, else the person's OWN dog (never "family on another dog"), else none. `useFeedData` follows it (prompt name, "already posted today", the composer, `handlePost`) and exposes `canPostMoment`; the Feed and the dog profile's locked-moments button use it. A caregiver with no dog of their own is unchanged: explanation, no button.
+- Tests: `postingPet.test.js` (owner / family / caregiver-only / caregiver-who-owns, list order, unknown role, old server), `useFeedData.householdLock.test.jsx` (pet_id actually sent), `index.feedLock.roles.test.jsx` (role matrix now has "caregiver who owns a dog", button opens the composer for the right dog), `pet-profile.test.jsx`.
+- Device checks: `test-backlog.md` → "Night run #6 / item 3".
+
+---
+
 ## 2026-11-26 — Night run #6 · item 2: delete-account failure copy says "delete", not "save" — client-only, needs the next EAS build
 - The alert after a failed deletion read "Could not save. Please try again." (`common.couldNotSave`). Now `settings.deleteErrorBody`: "Could not delete your account. Please try again." / "No se pudo eliminar tu cuenta. Probá de nuevo." (title unchanged). The server's own message is still never shown.
 - Tests: `AppSettings.deleteAccount.test.jsx` (exact EN sentence, no "save"), `DeleteAccountModal.es.test.jsx` (exact ES sentence, voseo, no "guardar"); `localeParity` passes.

@@ -13,6 +13,16 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ## 📌 Night run #6 — checks (build 34 candidates; add each item's section as its PR lands)
 
+### Item 3 — caregiver who also owns a dog (client-only, next EAS build)
+
+Needs two accounts: **A** owns a dog (Rex) and shares another dog (Luna) with **B** as **Caregiver**; **B** also owns a dog (Mia). Do it on a day when nobody in B's household has posted. In B's app make **Luna** the active dog (the dog switcher; accepting the invite also selects it).
+
+- [ ] **1.** B opens Feed with Luna active: other people's posts are blurred and the cards show **"Post today's photo"** (a post button), not "Opens as soon as today's moment for Luna is posted."
+- [ ] **2.** B taps it: the composer opens and says **Mia** (B's own dog), not Luna. B posts. The Feed opens for B (nothing blurred) after the usual refresh; Mia's moment is in the Feed. (Luna still has no moment from B.)
+- [ ] **3.** B's daily card at the top says Mia posted, not "waiting for Luna".
+- [ ] **4.** B on Luna's dog profile (Daily moments locked): the "post" button opens the composer for Mia too.
+- [ ] **5.** Control: a caregiver with **no** dog of their own (C) still sees "Opens as soon as today's moment for Luna is posted." and no button. Owner and Family accounts: unchanged (button, composer names the active dog).
+
 ### Item 2 — delete-account failure copy (client-only, next EAS build)
 
 - [ ] **1.** Throwaway account, **airplane mode** on: Settings → Delete account → confirm → "Delete forever". The alert title is "Couldn't delete account" and the message reads **"Could not delete your account. Please try again."** (no "save"). You stay signed in. Same in Spanish: **"No se pudo eliminar tu cuenta. Probá de nuevo."**

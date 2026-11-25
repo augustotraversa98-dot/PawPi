@@ -7,10 +7,12 @@
 //
 //   household posted today = YES → the Feed is open for every role: nothing blurred anywhere.
 //   household posted today = NO  → other people's posts are blurred (server redaction); a post of ANY household dog is NOT;
-//                                  owner + family get the post button, a caregiver gets the explanation and no button.
+//                                  owner + family get the post button, a caregiver gets the explanation and no button —
+//                                  UNLESS that caregiver also owns a dog (night run #6, item 3): posting for their OWN dog is allowed
+//                                  by the server and opens the Feed, so they get the button and the composer posts for that dog.
 
 import React from "react";
-import { render, waitFor } from "@testing-library/react-native";
+import { render, waitFor, fireEvent } from "@testing-library/react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 let mockPets;
@@ -45,7 +47,11 @@ jest.mock("@/hooks/useFeedSuggestions", () => ({ useFeedSuggestions: () => ({ da
 jest.mock("@/components/Home/GettingStartedCard", () => ({ GettingStartedCard: () => null }));
 jest.mock("@/components/Feed/FeedHeader", () => ({ FeedHeader: () => null }));
 jest.mock("@/components/Feed/MilestoneEventCard", () => ({ FollowedMilestones: () => null }));
-jest.mock("@/components/Feed/PostComposerModal", () => ({ PostComposerModal: () => null }));
+// Shows WHICH dog the composer posts for, so the tests can see it.
+jest.mock("@/components/Feed/PostComposerModal", () => {
+  const { Text } = require("react-native");
+  return { PostComposerModal: ({ visible, petName }) => (visible ? <Text testID="composer-open">{petName}</Text> : null) };
+});
 jest.mock("@/components/Feed/BarkModal", () => ({ BarkModal: () => null }));
 jest.mock("@/components/Feed/PostDetailModal", () => ({ PostDetailModal: () => null }));
 jest.mock("@/hooks/useBottomClearance", () => () => 0);
@@ -108,7 +114,10 @@ const renderFeed = () =>
 const ROLES = [
   ["owner", [OWN, FAMILY_DOG, CAREGIVER_DOG]],
   ["family", [FAMILY_DOG, OWN, CAREGIVER_DOG]],
-  ["caregiver", [CAREGIVER_DOG, OWN, FAMILY_DOG]],
+  // a caregiver with no dog of their own (their other shared dog, as family, is NOT a dog they own)
+  ["caregiver", [CAREGIVER_DOG, FAMILY_DOG]],
+  // a caregiver on the active dog who also owns a dog
+  ["caregiver who owns a dog", [CAREGIVER_DOG, OWN, FAMILY_DOG]],
 ];
 const DOGS = [
   ["own dog", 1],
@@ -123,7 +132,8 @@ const blurredCards = (screen) => [
 const lockedCaptions = (screen) => screen.queryAllByTestId("feed-post-caption-locked");
 
 describe.each(ROLES)("viewer is %s on the active dog", (role, pets) => {
-  describe.each(DOGS)("older post of %s", (_label, petId) => {
+  // only the dogs that are in this person's household (a dog they have no access to is a stranger's dog)
+  describe.each(DOGS.filter(([, id]) => pets.some((p) => p.id === id)))("older post of %s", (_label, petId) => {
     it("household has NOT posted today: that post is never blurred or hidden; another person's still is", async () => {
       mockPets = pets;
       mockPosts = [moment(100 + petId, petId), moment(200, STRANGER_DOG_ID)];
@@ -163,6 +173,21 @@ describe.each(ROLES)("viewer is %s on the active dog", (role, pets) => {
     } else {
       expect(screen.queryAllByText(WAITING)).toHaveLength(0);
       expect(screen.getAllByTestId("feed-post-locked-cta").length).toBeGreaterThan(0);
+    }
+  });
+
+  it("the post button opens the composer for the dog the person may post for (own dog for a caregiver who owns one); none for a caregiver alone", async () => {
+    mockPets = pets;
+    mockPosts = [moment(200, STRANGER_DOG_ID)];
+    const screen = renderFeed();
+    await waitFor(() => expect(blurredCards(screen)).toHaveLength(1));
+    if (role === "caregiver") {
+      expect(screen.queryAllByTestId("feed-post-locked-cta")).toHaveLength(0);
+      expect(screen.queryByTestId("composer-open")).toBeNull();
+    } else {
+      fireEvent.press(screen.getAllByTestId("feed-post-locked-cta")[0]);
+      const expected = role === "family" ? "Luna" : "Rex"; // family: the active shared dog; owner / caregiver-who-owns: Rex (own)
+      expect(screen.getByTestId("composer-open").props.children).toBe(expected);
     }
   });
 });

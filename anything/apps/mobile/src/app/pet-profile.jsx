@@ -78,7 +78,7 @@ export default function PetProfileScreen({ embedded = false }) {
   // Daily moments stay hidden until the viewer has posted their own today; the server
   // withholds them too (GET /api/pets/[id]/profile → momentsLocked, posts: []), so this
   // screen only RENDERS the lock the API reports. The viewer's own pets are never gated.
-  const { feedUnlocked, handlePost, petName: viewerPetName } = useFeedData();
+  const { feedUnlocked, handlePost, petName: viewerPetName, canPostMoment: viewerCanPostMoment } = useFeedData();
   const [composerVisible, setComposerVisible] = useState(false);
 
   // Identity params are instant placeholders only while the fetch is in flight;
@@ -663,7 +663,7 @@ export default function PetProfileScreen({ embedded = false }) {
               <PressableScale
                 testID="pet-profile-moments-locked-cta"
                 onPress={() => {
-                  if (!canDoOnPetOrUnknown(currentPet, "postMoment")) {
+                  if (!(viewerCanPostMoment ?? canDoOnPetOrUnknown(currentPet, "postMoment"))) {
                     Alert.alert(t("sharedDog.cannotPostTitle"), t("sharedDog.cannotPostBody", { name: viewerPetName }));
                     return;
                   }

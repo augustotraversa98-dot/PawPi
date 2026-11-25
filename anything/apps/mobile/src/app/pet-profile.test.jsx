@@ -85,11 +85,13 @@ jest.mock("@/hooks/useDMs", () => ({
 // The daily-post unlock comes from the SAME hook the Feed uses (useFeedData): its
 // owner-level `feedUnlocked` + `handlePost`. Stubbed so the test drives both.
 let mockFeedUnlocked = false;
+let mockCanPostMoment; // undefined = the hook does not say (older shape): the screen falls back to the active dog's role
 const mockHandlePost = jest.fn();
 jest.mock("@/hooks/useFeedData", () => ({
   useFeedData: () => ({
     feedUnlocked: mockFeedUnlocked,
     handlePost: mockHandlePost,
+    canPostMoment: mockCanPostMoment,
     petName: "Mango",
   }),
 }));
@@ -109,6 +111,7 @@ import PetProfileScreen from "./pet-profile";
 
 beforeEach(() => {
   mockFeedUnlocked = false;
+  mockCanPostMoment = undefined;
   mockHandlePost.mockReset();
   mockPush.mockReset();
   mockNavigate.mockReset();
@@ -345,6 +348,26 @@ describe("daily moments gate", () => {
 
     fireEvent.press(getByTestId("composer-submit"));
     expect(mockHandlePost).toHaveBeenCalledWith({ uri: "file://x.jpg" });
+  });
+
+  test("a caregiver on their active dog gets the explanation, no composer (unchanged)", () => {
+    mockViewer = { id: 4, is_shared: true, access_role: "caregiver" };
+    mockProfile = { ...mockProfile, posts: [], momentsLocked: true };
+    const alertSpy = jest.spyOn(require("react-native").Alert, "alert").mockImplementation(() => {});
+    const { getByTestId, queryByTestId } = render(<PetProfileScreen />);
+    fireEvent.press(getByTestId("pet-profile-moments-locked-cta"));
+    expect(queryByTestId("composer-open")).toBeNull();
+    expect(alertSpy).toHaveBeenCalled();
+    alertSpy.mockRestore();
+  });
+
+  test("a caregiver who also owns a dog (Feed says it can post, for the own dog): the CTA opens the composer", () => {
+    mockViewer = { id: 4, is_shared: true, access_role: "caregiver" };
+    mockCanPostMoment = true;
+    mockProfile = { ...mockProfile, posts: [], momentsLocked: true };
+    const { getByTestId, queryByTestId } = render(<PetProfileScreen />);
+    fireEvent.press(getByTestId("pet-profile-moments-locked-cta"));
+    expect(getByTestId("composer-open")).toBeTruthy();
   });
 
   test("viewer HAS posted: the moments grid renders (no lock)", () => {
