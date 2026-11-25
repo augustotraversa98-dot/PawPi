@@ -20,6 +20,7 @@ import {
 } from "lucide-react-native";
 import * as Notifications from "expo-notifications";
 import useBottomClearance from "@/hooks/useBottomClearance";
+import DogReminderSwitches from "./DogReminderSwitches";
 import { useTranslation } from "react-i18next";
 
 const C = {
@@ -340,6 +341,9 @@ export default function SettingsTab() {
           )}
         </Text>
       </View>
+
+      {/* Per dog, on this phone only (PR5b 1D) */}
+      <DogReminderSwitches />
 
       {/* Notification Settings */}
       <Text

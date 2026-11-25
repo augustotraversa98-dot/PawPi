@@ -3599,7 +3599,11 @@
     "snooze": "Snooze",
     "snoozeDurationTitle": "Default Snooze Duration",
     "snoozeDurationOptions": "10 minutes, 30 minutes, 1 hour, Tonight, Tomorrow",
-    "tip": "💡 Time-sensitive reminders will show countdown cards and appear at the top of your notifications"
+    "tip": "💡 Time-sensitive reminders will show countdown cards and appear at the top of your notifications",
+    "dogsTitle": "Which dogs to remind you about",
+    "dogsHint": "Only changes this phone. Other people who care for a shared dog keep their own choice.",
+    "dogSwitch": "Remind me about {{name}}",
+    "dogOffHint": "No reminder alerts on this phone. Today still lists everything."
   },
   "routines": {
     "toast": {

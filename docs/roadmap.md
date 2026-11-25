@@ -18,6 +18,15 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-24 — Night run #4 · PR5b Phase 1D: "Remind me about this dog" switch — client-only, needs EAS build 33
+
+- More → Reminders & routines → Settings: one switch per dog (own and shared), default on, stored on the phone per signed-in person (`store/reminderMuteStore.js`, persisted).
+- Off: no local alert is armed for that dog (reminders, snoozes, its streak/setup nudges) and pending ones are cancelled; Today is unaffected; other members are unaffected. On: re-reads the dog and re-arms.
+- Chosen placement: reminder settings (where a member looks for "stop ringing"), not Dog Profile.
+- EN + ES. No server or SQL change.
+
+---
+
 ## 2026-11-24 — Night run #4 · PR5b Phase 1C: alarm budget (soonest ~48 across all dogs) — client-only, needs EAS build 33
 
 - One arming pass (`remindersStore.syncAlarms`, pure rule `utils/alarmBudget.js`) arms the soonest 48 routine reminders across all dogs; running snoozes, the daily-return nudge and other notifications are never evicted and the total stays under iOS's 64.
