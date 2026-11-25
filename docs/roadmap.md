@@ -143,6 +143,12 @@ Reported on a live iPhone: once 1 of 3 ring pills was done, tapping the other pi
 
 ---
 
+## 2026-11-24 — Night run #4 · item 8 follow-up: the dog's owner may delete any daily moment — DRAFT, NOT merged, migration 0145 NOT applied (human-applied)
+
+- One DELETE-only RLS policy plus the route condition; edit stays author-only. The app shows the owner the trash icon on a member's daily moment.
+
+---
+
 ## 2026-11-23 — Date picker hardening (the "1969" bug) — client-only, needs EAS build 33
 
 Reported on a live iPhone (UTC-3): Health → Track → Medications & care → Vaccine → Add vaccine, expiration date opened on Dec 1969, a picked future date jumped back to 31 Dec 1969, repeating it crashed.

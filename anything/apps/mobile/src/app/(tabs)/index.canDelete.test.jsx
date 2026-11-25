@@ -167,3 +167,12 @@ describe("authorship", () => {
     expect(openDetailFlags({ posts: [{ id: 32, pet_id: 1, user_id: 20 }] })).toBe("del=false|edit=false");
   });
 });
+
+// Migration 0145: the dog's owner may delete (not edit) a member's DAILY moment.
+test("owner on a member's daily moment of their dog: delete, no edit", () => {
+  mockMyProfileId = 10;
+  expect(openDetailFlags({ posts: [{ id: 40, pet_id: 1, user_id: 20, is_daily_update: true }] })).toBe(
+    "del=true|edit=false",
+  );
+  mockMyProfileId = undefined;
+});

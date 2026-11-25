@@ -11,6 +11,14 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ---
 
+## 📱 To test — Night run #4 / item 8 DRAFT: the owner deletes any moment (needs migration 0145 applied, PR merged, then a build)
+
+- [ ] **0.** Apply `0145`, run `verify_0145.sql` (5 PASS), merge the PR.
+- [ ] **1.** Owner opens a Family member's daily moment of their dog: trash shows (no caption edit), report is still offered → delete → gone on both phones, the member can post again today.
+- [ ] **2.** The member still cannot delete the owner's moment; a caregiver cannot delete anyone's except their own.
+
+---
+
 ## 🔐 Accepted database leftover — `supabase_admin` default privileges (decision 2026-10-20)
 
 `verify_0126.sql` **row 8** and `verify_0134_default_acl.sql` **row 1** are a **KNOWN ACCEPTED FAIL** on production. The owner ran the three
