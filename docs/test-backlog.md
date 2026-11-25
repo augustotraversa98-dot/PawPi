@@ -13,6 +13,10 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ## 📌 Night run #7 — checks (add each item's section as its PR lands)
 
+### Item 4 — docs (nothing to test on a phone)
+
+- [ ] **1.** Nothing on a device. Device checks for migrations 0143 / 0144 / 0145 now sit in the **Build 33** list below (they are applied and verified; they only need the build and two accounts).
+
 ### Item 2 — alarm refresh skips dogs whose reminders are off (client-only, next EAS build)
 
 Needs two dogs on one account (**Rex** shown, **Luna** not shown) with a reminder routine each (a meal 20 minutes from now is enough), notifications allowed.
@@ -51,9 +55,9 @@ Needs two accounts: **A** owns a dog (Rex) and shares another dog (Luna) with **
 
 ---
 
-## 📱 To test — Night run #4 / item 8 DRAFT: the owner deletes any moment (needs migration 0145 applied, PR merged, then a build)
+## 📱 To test — Night run #4 / item 8: the owner deletes any moment (migration 0145 APPLIED + VERIFIED, PR merged; needs EAS build 33)
 
-- [ ] **0.** Apply `0145`, run `verify_0145.sql` (5 PASS), merge the PR.
+- [x] **0.** `0145` applied on Supabase and `verify_0145.sql` verified (5 PASS), PR merged. (Recorded from the owner's word in night run #7; I did not query Supabase.)
 - [ ] **1.** Owner opens a Family member's daily moment of their dog: trash shows (no caption edit), report is still offered → delete → gone on both phones, the member can post again today.
 - [ ] **2.** The member still cannot delete the owner's moment; a caregiver cannot delete anyone's except their own.
 
@@ -70,6 +74,12 @@ Report: [`night-run/2026-11-25/REPORT.md`](night-run/2026-11-25/REPORT.md). Use 
 - [ ] **Spanish on a small screen**: the delete dialog fits and scrolls; voseo copy (item 1, step 7). Airplane mode shows only the friendly error (step 8).
 - [ ] **Legal pages** show the new paragraph in ES and EN: `/privacy` §9 + §11, `/terms` §10, `/support` (item 2).
 - [ ] **Caregiver Feed**: caregiver has no post button and the explanation; owner and family keep the button; nobody sees their own household's older posts blurred; a household post opens the Feed for all (item 3).
+
+Also in build 33, from night run #4: migrations **0143, 0144 and 0145 are applied and verified** on Supabase (recorded in night run #7), so these three need only the build and two accounts:
+
+- [ ] **Invite code with a Hide My Email partner** (0143): owner creates a Family code; a brand-new Apple + Hide My Email account taps "I have an invite code" on the first onboarding screen, joins, and lands on the shared dog with no new dog created. Used / cancelled / too-many-tries codes show their messages (section "PR6: invite codes", steps 1-6).
+- [ ] **Who logged it** (0144): Owner and Partner each log a weight; a wellness check and a photo check too: the history shows "Logged by <name>"; older entries show no name; a deleted member reads "Former member" / "Ex integrante" (section "PR7: who logged each entry", steps 1-4). Food, walk, pee, poo, vomit and general checks have no list: nothing to check there.
+- [ ] **Owner deletes any moment** (0145): the owner deletes a Family member's daily moment of their dog (trash, no caption edit, report still offered), it disappears on both phones and the member can post again today; a member still cannot delete the owner's moment, a caregiver only their own (section "item 8: the owner deletes any moment", steps 1-2).
 
 ---
 
@@ -347,9 +357,9 @@ On build 33, three phones or accounts: Owner, Family, Caregiver (no dog of their
 
 ---
 
-## 📱 To test — Night run #4 / PR6 DRAFT: invite codes (needs migration 0143 applied, PR merged, then a build)
+## 📱 To test — Night run #4 / PR6: invite codes (migration 0143 APPLIED + VERIFIED, PR merged; needs EAS build 33)
 
-- [ ] **0.** Apply `0143`, run `verify_0143.sql` (9 PASS), merge the PR.
+- [x] **0.** `0143` applied on Supabase and `verify_0143.sql` verified (9 PASS), PR merged. (Recorded from the owner's word in night run #7; I did not query Supabase.)
 - [ ] **1.** Owner → Family & caregivers → pick Family → Create a code → Share: the message has the code and instructions.
 - [ ] **2.** A brand-new account (Apple + Hide My Email): on the first onboarding screen tap **I have an invite code** → enter it → Join → the app opens on the shared dog, no new dog is created.
 - [ ] **3.** Enter the same code on a third account: "already used". Cancel a waiting code, then try it: "cancelled".
@@ -411,14 +421,14 @@ Merged + CI-green, **not device-verified** (the runs could not see the app). Det
 - [ ] **VoiceOver:** back/close/delete buttons announce their names; Lost & Found / Emergency card show a retry (not "empty") when offline.
 - [ ] **Block** someone: they can't follow/paw/message/invite you via a stale screen, and you get no notification.
 
-## 📱 To test — Night run #4 / PR7 DRAFT: who logged each entry (needs migration 0144 applied, PR merged, then a build)
+## 📱 To test — Night run #4 / PR7: who logged each entry (migration 0144 APPLIED + VERIFIED, PR merged; needs EAS build 33)
 
-- [ ] **0.** Apply `0144`, run `verify_0144.sql` (7 PASS), merge the PR.
+- [x] **0.** `0144` applied on Supabase and `verify_0144.sql` verified (7 PASS), PR merged. (Recorded from the owner's word in night run #7; I did not query Supabase.)
 - [ ] **1.** Owner and Partner each log a weight for the shared dog: Health → Weight → History shows "Logged by <name>" on each new entry.
 - [ ] **2.** Same for a wellness check (its history tab) and a photo check (photo history).
 - [ ] **3.** Entries made before the migration show no name. A person with no display name shows no line (never a username or e-mail).
 - [ ] **4.** Delete a test member account: their entries read "Logged by Former member" / "Registrado por Ex integrante".
-- Not shown: food, walk, pee, poo, vomit and general checks have no history list in the app today (the server already sends the name).
+- Not shown: food, walk, pee, poo, vomit and general checks have no history list in the app today (the server already sends the name). Parked in [`todo-future.md`](todo-future.md) §2.
 
 ---
 
