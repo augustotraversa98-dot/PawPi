@@ -190,12 +190,12 @@ test("2. business logout", async () => {
 
 test("3. account deletion", async () => {
   const spy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
-  const { getByTestId } = render(<AppSettings />);
+  const { getByTestId, findByTestId } = render(<AppSettings />);
   fireEvent.press(getByTestId("delete-account"));
-  // two-step confirm: first dialog → second dialog → "Delete forever"
-  spy.mock.calls[0][2].find((b) => b.style === "destructive").onPress();
+  // two-step confirm: delete-account dialog (modal) → native "This is permanent" alert → "Delete forever"
+  fireEvent.press(await findByTestId("delete-account-confirm"));
   await act(async () => {
-    await spy.mock.calls[1][2].find((b) => b.style === "destructive").onPress();
+    await spy.mock.calls[0][2].find((b) => b.style === "destructive").onPress();
   });
   await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/welcome"));
   await expectDeviceCleanedFor(JWT_A);

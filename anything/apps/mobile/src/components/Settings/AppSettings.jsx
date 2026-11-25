@@ -66,7 +66,8 @@ import {
 import { readTelemetryEnabled, setTelemetryEnabled } from "@/telemetry/telemetryControl";
 import { markExpectedNavigation } from "@/telemetry/navExpect";
 import { clearAccountStorage } from "@/utils/accountStorage";
-import { friendlyErrorMessage } from "@/utils/appAlert";
+import DeleteAccountModal from "@/components/Settings/DeleteAccountModal";
+import { loadDeleteAccountContext, accountDeletionRequest } from "@/utils/deleteAccountContext";
 
 const C = {
   coral: COLORS.coral,
@@ -636,48 +637,54 @@ export default function AppSettings({ mode = "petOwner" }) {
   const { t } = useTranslation();
   const { setAuth } = useAuth();
   const [deleting, setDeleting] = useState(false);
+  const [preparingDelete, setPreparingDelete] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  // What the confirmation may show (docs/delete-account-contributions-options.md, Option B): the "also delete my posts" switch only for a
+  // member of a dog that is not their own, the owner sentence only for the owner of a dog shared with others. Unknown → neither.
+  const [deleteCtx, setDeleteCtx] = useState({ isMember: false, sharedDogNames: [] });
 
-  // In-app account deletion (App Store 5.1.1(v)). Two-step confirm → DELETE /api/account
-  // (irreversibly removes the account + owner-scoped data server-side) → clear local session → welcome.
-  const performDelete = async () => {
+  // In-app account deletion (App Store 5.1.1(v)). Confirm (modal, with the member's choice) → permanent-confirm Alert →
+  // DELETE /api/account (irreversibly removes the account + owner-scoped data server-side; ?delete_contributions=1 only when the
+  // member switched it on) → clear local session → welcome.
+  const performDelete = async (deleteContributions = false) => {
     try {
       setDeleting(true);
-      const res = await fetch("/api/account", { method: "DELETE" });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e.error || t("settings.deleteFailed"));
-      }
+      const { url, init } = accountDeletionRequest(deleteContributions);
+      const res = await fetch(url, init);
+      if (!res.ok) throw new Error("account deletion failed");
       await clearAccountStorage(); // account data only; language / notification prefs / telemetry opt-out stay
       if (setAuth) setAuth(null);
       markExpectedNavigation(); // anonymous telemetry: this landing on Welcome is a user action
       router.replace("/welcome");
-    } catch (e) {
+    } catch {
       setDeleting(false);
-      Alert.alert(t("settings.deleteErrorTitle"), friendlyErrorMessage(e, "common.pleaseTryAgain"));
+      // Never a technical message: one friendly sentence.
+      Alert.alert(t("settings.deleteErrorTitle"), t("common.couldNotSave"));
     }
   };
 
-  const confirmDeleteAccount = () => {
-    Alert.alert(
-      t("settings.deleteAccountTitle"),
-      t("settings.deleteAccountBody"),
-      [
-        { text: t("common.cancel"), style: "cancel" },
-        {
-          text: t("settings.deleteAccountCta"),
-          style: "destructive",
-          onPress: () =>
-            Alert.alert(
-              t("settings.deletePermanentTitle"),
-              t("settings.deletePermanentBody"),
-              [
-                { text: t("settings.keepAccount"), style: "cancel" },
-                { text: t("settings.deleteForever"), style: "destructive", onPress: performDelete },
-              ],
-            ),
-        },
-      ],
-    );
+  const confirmDeleteAccount = async () => {
+    if (preparingDelete || deleting) return;
+    setPreparingDelete(true);
+    try {
+      // Never throws: if the app cannot tell, the switch and the owner sentence are simply not shown.
+      setDeleteCtx(await loadDeleteAccountContext());
+    } finally {
+      setPreparingDelete(false);
+    }
+    setDeleteModalOpen(true);
+  };
+
+  const onDeleteModalConfirm = (deleteContributions) => {
+    setDeleteModalOpen(false);
+    Alert.alert(t("settings.deletePermanentTitle"), t("settings.deletePermanentBody"), [
+      { text: t("settings.keepAccount"), style: "cancel" },
+      {
+        text: t("settings.deleteForever"),
+        style: "destructive",
+        onPress: () => performDelete(deleteContributions),
+      },
+    ]);
   };
 
   // Contact Us → opens the user's mail app to the support address (Guideline 1.2 / App Store
@@ -933,12 +940,12 @@ export default function AppSettings({ mode = "petOwner" }) {
           <TouchableOpacity
             testID="delete-account"
             onPress={confirmDeleteAccount}
-            disabled={deleting}
+            disabled={deleting || preparingDelete}
             style={{
               flexDirection: "row",
               alignItems: "center",
               paddingVertical: 14,
-              opacity: deleting ? 0.5 : 1,
+              opacity: deleting || preparingDelete ? 0.5 : 1,
             }}
           >
             <View
@@ -966,6 +973,14 @@ export default function AppSettings({ mode = "petOwner" }) {
             </View>
           </TouchableOpacity>
         </SectionCard>
+
+        <DeleteAccountModal
+          visible={deleteModalOpen}
+          isMember={deleteCtx.isMember}
+          sharedDogNames={deleteCtx.sharedDogNames}
+          onCancel={() => setDeleteModalOpen(false)}
+          onConfirm={onDeleteModalConfirm}
+        />
 
         <View style={{ alignItems: "center", marginTop: 12, gap: 6 }}>
           <PawPrint size={20} color={C.peach} />

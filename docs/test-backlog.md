@@ -19,6 +19,22 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ---
 
+## 📱 To test — Night run #5 / item 1: delete-account screen, Option B (client-only, needs EAS build 33)
+
+Use a **throwaway** member account (a second phone/account that was invited to a dog), never your real one. Wording: [`delete-account-contributions-options.md`](delete-account-contributions-options.md), Option B.
+
+- [ ] **1.** Throwaway **member** (an active Family or Caregiver on someone's dog): More → Settings → Delete account → the dialog shows the Option B body, the switch **"Also delete my posts about dogs shared with me"** is there and **OFF**, and the hint under it says they stay as "Former member".
+- [ ] **2.** Turn the switch on: the hint changes to "Your posts will be deleted…". Turn it off again, close the dialog and reopen it: the switch is **OFF** again.
+- [ ] **3.** Switch **OFF** → Delete account → "Delete forever": the deletion completes and you land on Welcome. On the dog's owner phone the member's old posts show "Former member".
+- [ ] **4.** Repeat with a second throwaway member and the switch **ON**: the deletion completes, and that member's posts/daily moments on the shared dog are gone for the owner. Care logs and vet-record entries are still there as "Former member".
+- [ ] **5.** An account that is **not** a member of any dog (only has its own dogs): the dialog has **no switch** and no hint.
+- [ ] **6.** An **owner** with a dog that has an active Family/Caregiver: the dialog shows "{dog name} is shared with others. Deleting your account also deletes {dog name} for them, with everything they added." with the real dog name. With two or three shared dogs it lists the names ("Rex, Luna and Mia are shared with others…"). An owner whose dog is not shared sees no such sentence. (Cancel here unless it is a throwaway owner.)
+- [ ] **7.** **Spanish on a small screen** (iPhone SE size, or large text on): the dialog text, the switch row and both buttons fit and scroll, nothing is cut off; copy is in voseo ("Borrar también mis publicaciones sobre perros compartidos conmigo", "Ex integrante").
+- [ ] **8.** Airplane mode → confirm → "Delete forever": the friendly "Could not save. Please try again." (ES: "No se pudo guardar…"), no technical text, and you are still signed in.
+- [ ] **9.** Not testable on a device, known limit: someone who **left or was removed** from a dog is not recognised as a member (the app only sees current grants), so they do not get the switch.
+
+---
+
 ## 🔐 Accepted database leftover — `supabase_admin` default privileges (decision 2026-10-20)
 
 `verify_0126.sql` **row 8** and `verify_0134_default_acl.sql` **row 1** are a **KNOWN ACCEPTED FAIL** on production. The owner ran the three
