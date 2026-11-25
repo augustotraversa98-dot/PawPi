@@ -58,8 +58,10 @@ it("two-step confirm deletes the account, clears auth, and returns to welcome", 
     destructive?.onPress?.();
   });
 
-  const { getByTestId } = render(<SettingsScreen />);
+  const { getByTestId, findByTestId } = render(<SettingsScreen />);
   fireEvent.press(getByTestId("delete-account"));
+  // First confirmation is the delete-account dialog (Option B); the second is the native "This is permanent" alert.
+  fireEvent.press(await findByTestId("delete-account-confirm"));
 
   await waitFor(() =>
     expect(global.fetch).toHaveBeenCalledWith("/api/account", { method: "DELETE" }),

@@ -18,6 +18,13 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-25 — Night run #5 · item 1: delete-account screen, Option B — client-only, needs EAS build 33
+- The confirmation no longer says deletion removes "all your pets, health records, posts and other data". New body (EN + ES) per `delete-account-contributions-options.md` Option B.
+- A member of someone else's dog gets the switch "Also delete my posts about dogs shared with me" (default OFF; ON sends `delete_contributions=1` to the existing route). Hidden for everyone else, and hidden when the app cannot tell. The owner of a shared dog sees the owner sentence with the real dog name(s). No server, migration or SQL change.
+- Device checks: `test-backlog.md` → "Night run #5 / item 1".
+
+---
+
 ## 2026-11-25 — Night run #4 summary — report: `night-run/2026-11-24/REPORT.md`
 
 - **Merged (app, in build 33):** #760–#762, #764, #768 (PR5b Phase 1), #765 (rest day), #766 (delete own moment), #767 (resend invite), #769 (feed-lock tests), #772 (caregiver locked Feed).
