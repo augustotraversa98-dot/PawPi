@@ -15,6 +15,7 @@ import { Platform } from "react-native";
 import { getLocalPostDateString, normalizePostDate } from "@/utils/dateUtils";
 import useUser from "@/utils/auth/useUser";
 import { householdPetIdSet } from "@/utils/feed/householdPosts";
+import { pickPostingPet } from "@/utils/feed/postingPet";
 
 export function useFeedData() {
   // Load current pet from database instead of AsyncStorage
@@ -40,8 +41,15 @@ export function useFeedData() {
   // (the server never withholds them either): see utils/feed/householdPosts.
   const householdPetIds = useMemo(() => householdPetIdSet(allPets), [allPets]);
 
-  const petId = currentPet?.id;
-  const petName = currentPet?.name || "your pup";
+  // The dog the Feed posts FOR. Normally the active dog; a caregiver on the active (shared) dog who also owns a dog posts for that
+  // one instead (utils/feed/postingPet). null = cannot post a moment at all (caregiver with no dog of their own). The daily prompt,
+  // the "already posted today" check and the composer all follow this dog, so they never disagree with the post that is sent.
+  const postingPet = useMemo(() => pickPostingPet(currentPet, allPets), [currentPet, allPets]);
+  const promptPet = postingPet ?? currentPet;
+  const canPostMoment = !currentPet || !!postingPet;
+
+  const petId = promptPet?.id;
+  const petName = promptPet?.name || "your pup";
 
   // Fetch posts from database
   const {
@@ -131,7 +139,7 @@ export function useFeedData() {
       console.log("[useFeedData] ========================================");
 
       // Step 1: Check if pet exists
-      if (!currentPet?.id) {
+      if (!promptPet?.id) {
         console.error("[useFeedData] ERROR: No pet profile found");
         alertText("common.error", "appAlerts.needPetProfile");
         return;
@@ -213,7 +221,7 @@ export function useFeedData() {
           }
 
           postData = {
-            pet_id: currentPet.id,
+            pet_id: promptPet.id,
             media_type: "video",
             video_url: mediaUrl,
             video_thumbnail_url: videoThumbnailUrl,
@@ -223,7 +231,7 @@ export function useFeedData() {
           };
         } else {
           postData = {
-            pet_id: currentPet.id,
+            pet_id: promptPet.id,
             image_url: mediaUrl,
             caption: caption || null,
             is_daily_update: true,
@@ -253,7 +261,7 @@ export function useFeedData() {
       }
     },
     [
-      currentPet,
+      promptPet,
       hasPostedToday,
       effectiveTodayDailyUpdate,
       upload,
@@ -290,6 +298,8 @@ export function useFeedData() {
 
   return {
     petProfile: currentPet, // Return database pet instead of AsyncStorage
+    postingPet, // the dog "post today's moment" posts for (the active dog, or the person's own dog when they are a caregiver on the active one)
+    canPostMoment, // false only for a caregiver with no dog of their own
     ownedPetIds, // Set<string> of every pet id the user owns (delete/edit gating)
     householdPetIds, // Set<string> of every dog the user owns OR is an active family/caregiver on (never locked)
     petName,

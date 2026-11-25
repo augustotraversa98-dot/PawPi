@@ -8,17 +8,19 @@ import { getLocalPostDateString } from "@/utils/dateUtils";
 
 let mockPets;
 let mockPosts;
+const mockCreatePost = jest.fn();
+const mockUpload = jest.fn();
 jest.mock("./usePetProfile", () => ({
   useCurrentPet: () => ({ data: mockPets[0], isLoading: false, hasPet: mockPets.length > 0 }),
   usePetProfile: () => ({ data: mockPets }),
 }));
 jest.mock("./useFeedPosts", () => ({
   useFeedPosts: () => ({ data: mockPosts, isLoading: false, isError: false, refetch: jest.fn() }),
-  useCreatePost: () => ({ mutateAsync: jest.fn() }),
+  useCreatePost: () => ({ mutateAsync: mockCreatePost }),
   useDeletePost: () => ({ mutateAsync: jest.fn() }),
   useTogglePaw: () => ({ mutateAsync: jest.fn() }),
 }));
-jest.mock("@/utils/useUpload", () => ({ useUpload: () => [jest.fn(), { loading: false }] }));
+jest.mock("@/utils/useUpload", () => ({ useUpload: () => [mockUpload, { loading: false }] }));
 jest.mock("@/utils/auth/useUser", () => () => ({ data: null }));
 jest.mock("expo-video-thumbnails", () => ({}));
 
@@ -33,6 +35,8 @@ const momentOf = (petId) => ({ id: 100 + petId, pet_id: petId, is_daily_update: 
 let householdPosted;
 let qc;
 beforeEach(() => {
+  mockCreatePost.mockReset().mockResolvedValue({});
+  mockUpload.mockReset().mockResolvedValue({ url: "https://example.com/new.jpg" });
   mockPets = [caregiver];
   mockPosts = [];
   householdPosted = false;
@@ -110,4 +114,60 @@ test("shared dogs are not offered for owner-only post actions", async () => {
   const { result } = render();
   await settled(result);
   expect(result.current.ownedPetIds.size).toBe(0);
+});
+
+// ── Night run #6, item 3: a caregiver who ALSO owns a dog posts for that dog ───────────────────────────────────────────────────────
+// Server rule (verified in api/posts/route.js + api/utils/dailyMomentsGate.js): a caregiver cannot post a moment on the shared dog (403),
+// but a post on a dog they OWN is allowed and counts for the whole household, so it opens the Feed.
+const ownB = { id: 7, name: "Luna", is_shared: false, access_role: "owner" };
+const sharedCaregiver = { id: 3, name: "Mia", is_shared: true, access_role: "caregiver" };
+const sharedFamily = { id: 4, name: "Zeus", is_shared: true, access_role: "family" };
+
+test.each([
+  ["owner", [ownB, sharedCaregiver], ownB.id],
+  ["family on the active dog", [sharedFamily, ownB], sharedFamily.id],
+  ["caregiver on the active dog who also owns a dog", [sharedCaregiver, ownB], ownB.id],
+  ["caregiver who owns a dog, shared dog listed last", [ownB, sharedCaregiver], ownB.id],
+])("%s: can post, and the moment is for the right dog", async (_label, pets, expectedPetId) => {
+  mockPets = pets;
+  const { result } = render();
+  await settled(result);
+  expect(result.current.canPostMoment).toBe(true);
+  expect(result.current.postingPet.id).toBe(expectedPetId);
+  await act(async () => {
+    await result.current.handlePost({ uri: "file:///tmp/photo.jpg", caption: "hi" });
+  });
+  expect(mockCreatePost).toHaveBeenCalledTimes(1);
+  expect(mockCreatePost.mock.calls[0][0]).toMatchObject({ pet_id: expectedPetId, is_daily_update: true, caption: "hi" });
+});
+
+test("caregiver with NO dog of their own (or only another shared dog): cannot post; nothing is offered or sent", async () => {
+  mockPets = [sharedCaregiver, { ...sharedFamily, access_role: "caregiver" }];
+  const { result } = render();
+  await settled(result);
+  expect(result.current.canPostMoment).toBe(false);
+  expect(result.current.postingPet).toBeNull();
+});
+
+test("a caregiver who owns a dog: the prompt follows the OWN dog (name), the active dog stays the shared one", async () => {
+  mockPets = [sharedCaregiver, ownB];
+  const { result } = render();
+  await settled(result);
+  expect(result.current.petName).toBe("Luna");
+  expect(result.current.petProfile.id).toBe(sharedCaregiver.id);
+});
+
+test("a caregiver who owns a dog: today's moment of the OWN dog in the feed marks the prompt as posted and opens the Feed", async () => {
+  mockPets = [sharedCaregiver, ownB];
+  mockPosts = [momentOf(ownB.id)];
+  const { result } = render();
+  await waitFor(() => expect(result.current.feedUnlocked).toBe(true));
+  expect(result.current.hasPostedToday).toBe(true);
+});
+
+test("no pet yet: the post entry is not blocked (unchanged behaviour)", async () => {
+  mockPets = [];
+  const { result } = render();
+  expect(result.current.canPostMoment).toBe(true);
+  expect(result.current.postingPet).toBeNull();
 });
