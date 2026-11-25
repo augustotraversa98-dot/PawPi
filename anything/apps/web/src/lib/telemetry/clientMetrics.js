@@ -31,6 +31,11 @@ const funnelSteps = meter.createCounter('pawpi_funnel_step_total', {
 const authDiag = meter.createCounter('pawpi_client_auth_diag_total', {
   description: 'Anonymous session / Keychain diagnostics by kind and app version',
 });
+// Exact counts (0..64 on iOS), so the buckets show how close phones get to the limit and to the app's 48 budget.
+const pendingAlarms = meter.createHistogram('pawpi_client_pending_alarms', {
+  description: 'Local notifications pending on a phone (count only), by platform and app version',
+  advice: { explicitBucketBoundaries: [0, 8, 16, 24, 32, 40, 48, 56, 63, 64] },
+});
 const ingestTotal = meter.createCounter('pawpi_telemetry_ingest_total', {
   description: 'Client telemetry events (or requests, for rate_limited) by ingest result',
 });
@@ -128,6 +133,9 @@ export function recordClientEvent(event, envelope) {
         break;
       case 'auth_diag':
         authDiag.add(1, { diag: props.kind, app_version });
+        break;
+      case 'reminder_alarms':
+        pendingAlarms.record(Number(props.count), { platform: envelope.platform, app_version });
         break;
       case 'funnel_step':
         funnelSteps.add(1, { funnel: props.funnel, step: props.step });

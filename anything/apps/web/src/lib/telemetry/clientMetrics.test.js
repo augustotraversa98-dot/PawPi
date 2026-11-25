@@ -184,3 +184,19 @@ describe('auth_diag', () => {
     expect(only('pawpi_client_auth_diag_total')[0].attrs).toEqual({ diag: 'keychain_write_failed', app_version: '1.4.2' });
   });
 });
+
+describe('reminder_alarms', () => {
+  it('records the pending-alarm COUNT in a histogram, labelled only by platform and app version', () => {
+    expect(validateEvent(ev('reminder_alarms', { count: '47' })).result).toBe('accepted');
+    recordClientEvent(ev('reminder_alarms', { count: '47' }), ENV);
+    const [call] = only('pawpi_client_pending_alarms');
+    expect(call.v).toBe(47);
+    expect(call.attrs).toEqual({ platform: 'ios', app_version: '1.4.2' });
+  });
+
+  it('accepts nothing but a short number', () => {
+    for (const props of [{ count: 'many' }, { count: '1234' }, { count: 12 }, { count: '12', petId: '7' }, {}]) {
+      expect(validateEvent(ev('reminder_alarms', props)).result).not.toBe('accepted');
+    }
+  });
+});

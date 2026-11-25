@@ -29,6 +29,7 @@ export const EVENT_NAMES = [
   'funnel_step',
   'opt_out',
   'auth_diag',
+  'reminder_alarms',
 ];
 
 // -- screens -------------------------------------------------------------------------------------------
@@ -331,6 +332,9 @@ export const AUTH_DIAG_KINDS = [
   'token_refreshed',
 ];
 
+// reminder_alarms.count: how many local notifications are pending on the phone (a bare number; no id, no text).
+// iOS keeps at most 64, so three digits are plenty.
+export const ALARM_COUNT_PATTERN = '^[0-9]{1,3}$';
 // error.code: a short machine code (HTTP status, error class name, ...), never a message.
 export const ERROR_CODE_PATTERN = '^[A-Za-z0-9_.-]{1,32}$';
 // api_call.route: a ROUTE TEMPLATE ("/api/pets/:id/profile", params spelled :id) or a bounded fallback token.
@@ -380,6 +384,7 @@ export const PROP_SCHEMA = {
   },
   opt_out: {},
   auth_diag: { kind: { type: 'enum', values: AUTH_DIAG_KINDS } },
+  reminder_alarms: { count: { type: 'pattern', pattern: ALARM_COUNT_PATTERN } },
 };
 
 // -- envelope patterns -------------------------------------------------------------------------------
