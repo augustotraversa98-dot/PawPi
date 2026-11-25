@@ -19,6 +19,18 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ---
 
+## 📱 To test — Night run #5 / item 3: the Feed lock never covers your own household's dogs (client-only, needs EAS build 33)
+
+Two phones help: the owner of a dog, and a Family and a Caregiver account on it. Do this on a day when the household has **not** posted yet.
+
+- [ ] **1.** **Owner**, nobody in the household has posted today: open Feed. Posts of **your own dog** (older ones) show their photo and caption, with the paw and comments working. Other people's dogs' posts are still blurred, with the "Post today's photo" button. (This is the "post to unlock" mechanic and is meant to stay for owners and family.)
+- [ ] **2.** **Family** on the dog: same as 1. Older posts of the shared dog and of any dog of your own are clear; strangers' posts are blurred; you still get the post button.
+- [ ] **3.** **Caregiver** on the dog: older posts of the shared dog are clear; strangers' posts are blurred and say "Opens as soon as today's moment for {dog} is posted." with **no** post button.
+- [ ] **4.** Someone in the household posts today's moment: all three phones open the whole Feed within the usual refresh (pull to refresh), nothing blurred.
+- [ ] **5.** A person who is Caregiver on one dog **and** owns another: still sees their own dog's older posts clear. (Known limit, see report: if the active dog is the shared one they get the "opens when ... posts" text instead of a post button, even though posting for their own dog would unlock the Feed.)
+
+---
+
 ## 📱 To test — Night run #5 / item 1: delete-account screen, Option B (client-only, needs EAS build 33)
 
 Use a **throwaway** member account (a second phone/account that was invited to a dog), never your real one. Wording: [`delete-account-contributions-options.md`](delete-account-contributions-options.md), Option B.

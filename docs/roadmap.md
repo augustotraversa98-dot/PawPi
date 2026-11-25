@@ -18,6 +18,15 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-25 — Night run #5 · item 3: the Feed lock no longer blurs your own household's dogs — client-only, needs EAS build 33
+- Bug: a locked Feed blurred every card, including older posts of the person's OWN dog (and of a dog shared with them), although the server never withholds those (`dailyMomentsGate.js` → `applyDailyMomentsLock`, `householdPetIds`). Fix: posts of any dog in the viewer's pets list (owned + active family/caregiver) render as normal cards on the locked Feed; only other people's posts are blurred.
+- Roles verified, no change needed: only a caregiver gets the "opens when {dog} posts" text and no post button; owner and family keep the post button. When the household has posted today nobody sees a blur.
+- Not done on purpose: removing the "post to unlock" blur of OTHER people's posts for owner/family. It is the product's core mechanic and the server withholds that media, so it would need a server change; see the night-run report.
+- Tests: `index.feedLock.roles.test.jsx` (role × dog × household-posted matrix on the real Feed screen), `householdPosts.test.js`; #769's tests unchanged and passing.
+- Device checks: `test-backlog.md` → "Night run #5 / item 3".
+
+---
+
 ## 2026-11-25 — Night run #5 · item 2: legal + support wording about account deletion — docs only
 - Privacy §9 and §11, Terms §10 and the support answer "How do I delete my account?" (EN + ES; website source `anything/apps/web/src/content/legal/` and the `docs/legal/` mirrors incl. `support.html`) now say what really happens: a member can choose to delete their posts about shared dogs; health logs and vet-record entries stay with the owner as "Former member"; an owner who shared a dog deletes it for everyone (members are told first). "Last updated" → November 25, 2026. `app-store-privacy-data-map.md` needed no change (it has no retention text for these records).
 - New check `src/app/legal-deleteAccountWording.test.jsx`: markdown, mirrors and rendered pages carry the same sentences; web file and mirror agree.
