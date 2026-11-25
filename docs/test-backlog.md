@@ -269,6 +269,13 @@ On build 33, three phones or accounts: Owner, Family, Caregiver (no dog of their
 - [ ] **Telemetry sanity (no PII):** in the telemetry events nothing but the `kind` value appears for `auth_diag` — no token, e-mail or id.
 - [ ] Optional (iOS 26 device): sign in with the device in Low Power Mode / right after a reboot before first unlock — the app must not crash even if the Keychain write is refused.
 
+## 📱 To test — Night run #4 / bug: members see the shared dog's history (server; after merging that PR)
+
+- [ ] **1.** Merge the PR (deploys the API). A Family or Caregiver member who has NOT posted today opens the shared dog's memories / "on this day": the photos are there.
+- [ ] **2.** A stranger who has not posted still sees it locked.
+
+---
+
 ## 📱 To test — next build (night runs 2026-10-16 / 2026-10-17)
 
 Merged + CI-green, **not device-verified** (the runs could not see the app). Details per item are in [`qa/runs/2026-10-17_fix-log.md`](qa/runs/2026-10-17_fix-log.md).

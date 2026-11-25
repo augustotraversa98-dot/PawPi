@@ -77,6 +77,17 @@ describe("daily-moments gate (another owner's pet)", () => {
     expect(body.posts).toHaveLength(1);
   });
 
+  it("a dog SHARED with the viewer is never gated, even before anyone posted", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PET_OWNER_7])
+      .mockResolvedValueOnce([{ ...OTHER_VIEWER, posted_today: false, pet_ids: [5] }]) // active grant on pet 5
+      .mockResolvedValueOnce([{ id: 1, image_url: "a.png", caption: null, post_date: "2025-06-18" }]);
+    const body = await (await GET(new Request("http://localhost/api/posts/history?petId=5"))).json();
+    expect(body.locked).toBeUndefined();
+    expect(body.posts).toHaveLength(1);
+  });
+
   it("the viewer's own pet is never gated", async () => {
     auth.mockResolvedValue(SESSION);
     sql
