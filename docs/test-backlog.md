@@ -11,6 +11,14 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ---
 
+## 📌 Night run #7 — checks (add each item's section as its PR lands)
+
+### Item 1 — flaky tests (test-only, nothing to test on a phone)
+
+- [ ] **1.** Nothing on a device: no app, server or migration code changed. After merge, watch the next few `main` runs: the integration job and mobile job should not fail on `single-flight`, `day-card`, `usePetProfile.shared` or `index.deadSession`. If one does, the failure is real: send me the run link.
+
+---
+
 ## 📌 Night run #6 — checks (build 34 candidates; add each item's section as its PR lands)
 
 ### Item 3 — caregiver who also owns a dog (client-only, next EAS build)

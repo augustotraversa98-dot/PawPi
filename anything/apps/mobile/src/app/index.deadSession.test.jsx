@@ -24,6 +24,14 @@ jest.mock("@react-native-async-storage/async-storage", () => ({ setItem: jest.fn
 jest.mock("../../__create/boot-trace", () => ({ markBootStep: jest.fn(), markBootComplete: jest.fn() }));
 jest.mock("@/utils/notificationDeepLink", () => ({ markNavigationReady: jest.fn() }));
 jest.mock("@/components/ui", () => ({ PawMark: () => null }));
+// Signing out runs the identity-change cleanup, which lazily loads the whole notifications module (expo-notifications): ~3.4 s on a cold
+// Jest cache or a loaded machine, spent INSIDE the first test's 1 s findByText, so it failed there and passed on a warm cache. This
+// file proves the Keychain item is deleted and the user lands on Welcome; the cleanup's own behaviour has its own tests
+// (sessionCleanup.test.js), so it is stubbed here exactly as index.launch.test.jsx does.
+jest.mock("@/utils/auth/sessionCleanup", () => ({
+  ...jest.requireActual("@/utils/auth/sessionCleanup"),
+  cleanUpAfterIdentityChange: jest.fn(),
+}));
 
 import * as SecureStore from "expo-secure-store";
 import { useAuthStore, authKey, secureStoreOptions } from "@/utils/auth/store";

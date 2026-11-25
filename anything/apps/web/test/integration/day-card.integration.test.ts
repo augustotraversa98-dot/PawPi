@@ -19,9 +19,15 @@ const OWNER = { authUserId: 1, profileId: 1, username: "owner", fullName: "owner
 const CARE = { authUserId: 2, profileId: 2, username: "caregiver", fullName: "caregiver" };
 const VIEWER = { authUserId: 3, profileId: 3, username: "viewer" };
 const STRANGER = { authUserId: 4, profileId: 4, username: "stranger" };
-// The route caps against the pet's LOCAL "today" (owner timezone, default America/Buenos_Aires), not the UTC date — computing it in UTC made
-// this test fail every day between 21:00 and 24:00 Buenos Aires time (when UTC is already tomorrow).
-const TODAY = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Buenos_Aires' });
+// The route caps and groups by the owner's LOCAL calendar day (their `user_profiles.timezone`, default America/Buenos_Aires), never the UTC
+// date. Twice this suite failed for a few hours every night (the UTC date is already "tomorrow" from 21:00 in Buenos Aires) because the test
+// computed "today" in the wrong zone, and any fixed zone only exercises that case during the hours the suite happens to run in.
+//
+// So the test does not depend on the hour it runs at: it puts every user in a zone whose local date DIFFERS from the UTC date right now
+// (UTC+14 from 10:00 UTC, UTC-11 before it - one of the two always differs), and asks the DATABASE for that zone's today, with the same
+// expression the route uses. A route that fell back to the UTC date fails here at any hour, and a correct route passes at any hour.
+const TZ = new Date().getUTCHours() >= 10 ? "Pacific/Kiritimati" : "Pacific/Pago_Pago";
+let TODAY = "";
 
 let raw: Sql;
 let api: any;
@@ -54,6 +60,10 @@ beforeEach(async () => {
   await seedUser(raw, CARE);
   await seedUser(raw, VIEWER);
   await seedUser(raw, STRANGER);
+  await raw`update user_profiles set timezone = ${TZ} where id in (${OWNER.profileId}, ${CARE.profileId}, ${VIEWER.profileId}, ${STRANGER.profileId})`;
+  TODAY = (await raw`select (now() at time zone ${TZ})::date::text as d`)[0].d;
+  // The scenario this file exists for: the local day is not the UTC day. If this ever fails the zone choice above is wrong, not the route.
+  expect(TODAY).not.toBe(new Date().toISOString().slice(0, 10));
   await seedPetCaregiver(raw, {
     id: 1, petId: OWNER.petId, ownerUserId: OWNER.profileId, granteeUserId: CARE.profileId,
     role: "family", status: "active",

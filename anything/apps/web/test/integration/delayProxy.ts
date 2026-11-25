@@ -21,35 +21,57 @@ export interface DelayProxy {
   /** Client->server chunks since the last reset() (0 means the database was never touched). */
   clientChunks(): number;
   reset(): void;
+  /** Client connections open right now = the size of the app's pool as the network sees it. */
+  connections(): number;
+  /**
+   * Resolves once NOTHING is in flight: no delayed chunk is waiting to be delivered and every connection's last burst has been
+   * answered, and it stays that way for a few polls in a row. Use it instead of a fixed sleep to "let a deferred COMMIT finish":
+   * a sleep is a guess about how long a flight takes, and a loaded CI runner outruns it (a next request then finds its connection
+   * busy and lands on another one). This waits for the actual event. Rejects after `timeoutMs` so a stuck connection fails loudly.
+   */
+  idle(timeoutMs?: number): Promise<void>;
   close(): Promise<void>;
 }
 
 export async function startDelayProxy(targetPort: number, delayMs = 12, targetHost = '127.0.0.1'): Promise<DelayProxy> {
   let flights = 0;
   let clientChunks = 0;
+  // Delayed chunks scheduled but not yet written to their destination (both directions).
+  let pending = 0;
   // Per connection: has the server answered since the client's last burst?
   const sockets = new Set<net.Socket>();
+  const conns = new Set<{ answered: boolean }>();
 
   const server = net.createServer((client) => {
     const upstream = net.connect(targetPort, targetHost);
     sockets.add(client);
     sockets.add(upstream);
-    let answered = true;
+    const state = { answered: true };
+    conns.add(state);
+    // One place that schedules a delayed write, so `pending` is exact (it is what idle() waits on).
+    const later = (fn: () => void) => {
+      pending += 1;
+      setTimeout(() => {
+        pending -= 1;
+        fn();
+      }, delayMs);
+    };
 
     client.on('data', (chunk) => {
       clientChunks += 1;
-      if (answered) {
+      if (state.answered) {
         flights += 1;
-        answered = false;
+        state.answered = false;
       }
-      setTimeout(() => !upstream.destroyed && upstream.write(chunk), delayMs);
+      later(() => !upstream.destroyed && upstream.write(chunk));
     });
     upstream.on('data', (chunk) => {
-      answered = true;
-      setTimeout(() => !client.destroyed && client.write(chunk), delayMs);
+      state.answered = true;
+      later(() => !client.destroyed && client.write(chunk));
     });
 
     const kill = () => {
+      conns.delete(state);
       client.destroy();
       upstream.destroy();
       sockets.delete(client);
@@ -71,6 +93,17 @@ export async function startDelayProxy(targetPort: number, delayMs = 12, targetHo
     reset: () => {
       flights = 0;
       clientChunks = 0;
+    },
+    connections: () => conns.size,
+    idle: async (timeoutMs = 15_000) => {
+      const deadline = Date.now() + timeoutMs;
+      let quiet = 0;
+      // A few quiet polls in a row, not one: the client may be about to write its next burst on the very next tick.
+      while (quiet < 3) {
+        if (Date.now() > deadline) throw new Error(`delay proxy still busy after ${timeoutMs} ms (pending chunks: ${pending})`);
+        await new Promise((r) => setTimeout(r, 10));
+        quiet = pending === 0 && [...conns].every((c) => c.answered) ? quiet + 1 : 0;
+      }
     },
     close: () =>
       new Promise<void>((resolve) => {
