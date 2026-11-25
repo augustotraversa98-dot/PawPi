@@ -13,6 +13,15 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ## 📌 Night run #7 — checks (add each item's section as its PR lands)
 
+### Item 2 — alarm refresh skips dogs whose reminders are off (client-only, next EAS build)
+
+Needs two dogs on one account (**Rex** shown, **Luna** not shown) with a reminder routine each (a meal 20 minutes from now is enough), notifications allowed.
+
+- [ ] **1.** Health → Reminders settings → "Remind me about this dog": switch **Luna OFF**. Put the app in the background for 20 s, come back. Nothing visibly changes; Rex's alarm still rings on time; Luna's never rings (as before).
+- [ ] **2.** Switch **Luna back ON**: her reminder alarm is armed again at once (check it rings), without opening her profile. (This is the existing switch-on read; the skip must not break it.)
+- [ ] **3.** With Luna OFF, **select Luna** as the active dog: her routines and Today list show normally (the dog on screen is always read), and her alarms stay off.
+- [ ] **4.** Kill and reopen the app with Luna OFF: Rex's alarms are still there, Luna's still off. Rex's reminders after a background trip of 30 s+ still refresh (change a routine time on another phone/account, return: the new time rings).
+
 ### Item 1 — flaky tests (test-only, nothing to test on a phone)
 
 - [ ] **1.** Nothing on a device: no app, server or migration code changed. After merge, watch the next few `main` runs: the integration job and mobile job should not fail on `single-flight`, `day-card`, `usePetProfile.shared` or `index.deadSession`. If one does, the failure is real: send me the run link.
