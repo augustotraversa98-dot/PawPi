@@ -244,6 +244,8 @@ describe('the limit catalog', () => {
       'emergency_relay',
       'follow_toggle',
       'handle_check',
+      'invite_create',
+      'invite_redeem',
       'pack_request',
       'paw_toggle',
       'post_create',

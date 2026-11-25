@@ -28,7 +28,7 @@ async function POST(request) {
     const session = await auth();
     if (!session?.user?.id) return Response.json({ error: "Unauthorized" }, { status: 401 });
     const userId = await resolveOrCreateUserId(session);
-    if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
+    if (!userId) return Response.json({ error: "User profile not found" }, { status: 404 });
 
     const body = await request.json().catch(() => ({}));
     const canonical = normalizeInviteCode(body?.code);

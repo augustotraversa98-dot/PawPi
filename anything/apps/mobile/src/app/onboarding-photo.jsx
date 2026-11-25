@@ -9,6 +9,7 @@ import * as ExpoCamera from "expo-camera";
 import { COLORS, TYPE, SPACING } from "@/constants/theme";
 import { Button, PressableScale } from "@/components/ui";
 import UseDifferentAccountLink from "@/components/onboarding/UseDifferentAccountLink";
+import HaveInviteCodeLink from "@/components/onboarding/HaveInviteCodeLink";
 import { useLeaveOnboardingIfHasPets } from "@/utils/onboardingGuard";
 import { trackFunnel } from "@/telemetry/track";
 
@@ -319,6 +320,7 @@ export default function OnboardingPhotoScreen() {
         {t("onboarding.photoChangeLater")}
       </Text>
 
+      <HaveInviteCodeLink style={{ marginTop: SPACING.sm, paddingVertical: 4 }} />
       <UseDifferentAccountLink style={{ marginTop: SPACING.sm }} />
     </View>
   );

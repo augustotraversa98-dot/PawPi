@@ -12,7 +12,8 @@ let mockShared;
 let mockLeave;
 const mockRouter = { back: jest.fn(), push: jest.fn(), replace: jest.fn(), navigate: jest.fn() };
 
-jest.mock("expo-router", () => ({ useRouter: () => mockRouter }));
+jest.mock("expo-router", () => ({ useRouter: () => mockRouter,
+  useLocalSearchParams: () => globalThis.__sharingParams ?? {} }));
 jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
 jest.mock("react-native-safe-area-context", () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
 // The language is chosen per describe block through this global, so ONE module serves EN and ES.
@@ -25,6 +26,9 @@ jest.mock("@/hooks/useSearch", () => ({
   useDebouncedValue: (v) => v,
   useSearch: () => ({ data: { owners: [] }, isFetching: false }),
 }));
+// Invite codes have their own tests (components/Pets/inviteCode.test.jsx).
+jest.mock("@/components/Pets/InviteCodePanel", () => () => null);
+jest.mock("@/components/Pets/RedeemInviteCard", () => () => null);
 jest.mock("@/hooks/usePetSharing", () => ({
   usePetGrants: (petId) => (petId ? mockGrants : { data: undefined, isLoading: false }),
   useSharedWithMe: () => mockShared,
