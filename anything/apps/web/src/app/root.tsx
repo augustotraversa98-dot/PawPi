@@ -33,6 +33,10 @@ import { serializeError } from 'serialize-error';
 import { Toaster, toast } from 'sonner';
 import { useDevServerHeartbeat } from '../__create/useDevServerHeartbeat';
 import '../__create/design-mode';
+// @ts-expect-error -- plain JS component, no type declarations
+import PublicHead from '@/components/brand/PublicHead';
+// @ts-expect-error -- plain JS module, no type declarations
+import { documentLang } from '@/lib/home/meta';
 import type { Route } from './+types/root';
 
 export const links = () => [];
@@ -409,6 +413,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const pathname = location?.pathname;
+  const search = location?.search;
   const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -435,13 +440,14 @@ export function Layout({ children }: { children: ReactNode }) {
     }
   }, [pathname]);
   return (
-    <html lang="en">
+    <html lang={documentLang(pathname, search)}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
         <Links />
         <link rel="icon" href="/favicon.png" />
+        <PublicHead pathname={pathname} search={search} />
         {LoadFontsSSR ? <LoadFontsSSR /> : null}
       </head>
       <body>

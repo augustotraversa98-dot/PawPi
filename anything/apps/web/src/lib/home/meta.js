@@ -1,26 +1,69 @@
-import { buildPageMeta, langFromSearch } from "@/lib/legal/lang";
-import { SITE_URL } from "@/lib/brand/tokens";
+import { langFromSearch } from "@/lib/legal/lang";
+import { APP_STORE_ID, SITE_URL, appStoreUrl } from "@/lib/brand/tokens";
+import { HOME_COPY } from "@/lib/home/copy";
 
-// Homepage <head>: the shared title/description/canonical/hreflang set plus
-// Open Graph + Twitter card tags for social sharing. Applied client-side by
-// useDocumentHead (this app doesn't wire route-module meta). No og:image yet —
-// there's no hosted raster brand asset, and an SVG/broken image is worse than a
-// clean summary card; add one later and set og:image + twitter:card=summary_large_image.
-export function buildHomeMeta({ search, titles, descriptions }) {
+// <head> data for the public pages that must be in the SERVER-rendered HTML: link-preview crawlers and
+// Safari's smart banner read the raw document and never run our scripts. components/brand/PublicHead.jsx
+// renders it from root.tsx. Title/description/canonical/hreflang stay client-managed (useDocumentHead),
+// so each tag has exactly one owner.
+
+// The public marketing/legal pages.
+const PUBLIC_PATHS = ["/", "/privacy", "/terms", "/eula", "/support"];
+
+export function isPublicPath(pathname) {
+  const path = String(pathname || "").replace(/(.)\/+$/, "$1");
+  return PUBLIC_PATHS.includes(path);
+}
+
+// <html lang> for a public page; the rest of the web app is English.
+export function documentLang(pathname, search) {
+  if (!isPublicPath(pathname)) return "en";
+  return langFromSearch(search) === "en" ? "en" : "es-AR";
+}
+
+export function appleItunesAppContent() {
+  return `app-id=${APP_STORE_ID}`;
+}
+
+// Homepage Open Graph + Twitter card tags, with the self-hosted 1200x630 card.
+export function buildHomeSocialMeta({ search }) {
   const lang = langFromSearch(search);
-  const base = buildPageMeta({ path: "/", search, titles, descriptions });
+  const { title, description, hero } = HOME_COPY[lang];
   const url = lang === "en" ? `${SITE_URL}/?lang=en` : `${SITE_URL}/`;
+  const image = `${SITE_URL}/images/home/og-${lang}.jpg`;
 
   return [
-    ...base,
     { property: "og:type", content: "website" },
     { property: "og:site_name", content: "PawPi" },
-    { property: "og:title", content: titles[lang] },
-    { property: "og:description", content: descriptions[lang] },
+    { property: "og:title", content: title },
+    { property: "og:description", content: description },
     { property: "og:url", content: url },
     { property: "og:locale", content: lang === "en" ? "en_US" : "es_AR" },
-    { name: "twitter:card", content: "summary" },
-    { name: "twitter:title", content: titles[lang] },
-    { name: "twitter:description", content: descriptions[lang] },
+    { property: "og:image", content: image },
+    { property: "og:image:width", content: "1200" },
+    { property: "og:image:height", content: "630" },
+    { property: "og:image:alt", content: hero.title.join(" ") },
+    { name: "twitter:card", content: "summary_large_image" },
+    { name: "twitter:title", content: title },
+    { name: "twitter:description", content: description },
+    { name: "twitter:image", content: image },
   ];
+}
+
+// schema.org SoftwareApplication for the homepage, serialized for an inline JSON-LD block. Only facts we
+// can stand behind: no ratings, reviews, prices or counts.
+export function buildHomeJsonLd({ search }) {
+  const lang = langFromSearch(search);
+  const data = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "PawPi",
+    description: HOME_COPY[lang].description,
+    operatingSystem: "iOS",
+    applicationCategory: "LifestyleApplication",
+    url: lang === "en" ? `${SITE_URL}/?lang=en` : `${SITE_URL}/`,
+    downloadUrl: appStoreUrl(lang),
+  };
+  // "<" is escaped so no value can ever close the surrounding <script> element.
+  return JSON.stringify(data).replace(/</g, "\\u003c");
 }

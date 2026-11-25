@@ -15,11 +15,12 @@ The fastest way to reach us is by email. We read every message and aim to reply 
 
 - **Create an account** — open PawPi and sign up with your email, or use Sign in with
   Apple or Google. You must be at least 16 to use PawPi.
-- **Add your dog** — go to **More → My Dog** to create your dog's profile (name, breed,
-  age, photo, and more). Your dog's information is linked across the app.
-- **Set up reminders** — open **More → Reminders & Routines** to create feeding, walk,
-  photo-check, medical-care, wellness-check, and vet-appointment routines. Due items show
-  up under **Health → Today**.
+- **Add your dog** — PawPi asks you to create your dog's profile (name, breed, age, photo,
+  and more) when you first sign up. To add another dog, open the **Profile** tab, tap the
+  menu, then **My Dogs → Add a dog**. Your dog's information is linked across the app.
+- **Set up reminders** — in the **Profile** tab menu, open **Reminders & Routines** to
+  create feeding, walk, photo-check, medical-care, wellness-check, and vet-appointment
+  routines. Due items show up under **Health → Today**.
 
 ## Common questions
 
@@ -28,13 +29,13 @@ On the sign-in screen, choose "Forgot password" and follow the email instruction
 signed up with Apple or Google, sign in with that same provider instead of a password.
 
 **How do I edit or delete my dog's information?**
-Open the dog's profile under **More → My Dog** (social profile) or your private
-**Dog Profile** to edit details. Health and medical records live under **Health → Vet
-Record**. You can add, edit, or remove records there.
+The **Profile** tab shows your dog's social profile. To edit details, open its menu and
+choose **Dog Profile**. Health and medical records live under **Health → Vet Record**. You
+can add, edit, or remove records there.
 
 **How do I delete my account?**
-Go to **Settings → Delete account**. This permanently removes your account and the data
-you own (your profile, pets, and associated records), subject to limited legal retention.
+Open the **Profile** tab menu and go to **Settings → Delete account**. This permanently
+removes your account and the data you own (your profile, pets, and associated records), subject to limited legal retention.
 Deleting your account is different from logging out.
 For dogs that others shared with you, you can choose to delete the posts you published about them.
 Health logs and vet-record entries you added are part of that dog's care history: they stay with its

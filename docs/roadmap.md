@@ -25,6 +25,14 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-25 — Website content: App Store badges, multi-column footer, screenshot sections, stale copy — web-only, Railway deploy on merge, no EAS build, no migration
+- **App Store:** the app is live, so every "coming soon / próximamente" is gone. One URL source (`appStoreUrl(lang)` in `lib/brand/tokens.js`); one `AppStoreBadge` using Apple's official EN and es-MX artwork, self-hosted and unmodified in `public/badges/`. Badge only in the homepage hero and closing band and once on `/support`; header (360px and up) and footer use a coral "Descargar / Download" button. Also: Safari smart banner (server-rendered), homepage JSON-LD and social card.
+- **Homepage:** device screenshots (WebP derivatives of the untracked `docs/store` set, in `public/images/home/`), feature strip and audiences refreshed against the app, footer anchors `features` / `screenshots` / `audiences`. Copy lives in `lib/home/copy.js` (EN + ES).
+- **Footer** is a 4 → 2 → 1 column grid with Apple's English credit line in both languages (awaiting owner review). `/support` menu paths corrected to the current app. Privacy, terms and EULA text unchanged.
+- `/api/*` untouched. The owner confirmed the screenshots (to be updated over time). Open: the `docs/legal/support.*` mirrors still carry the old menu paths.
+
+---
+
 ## 2026-11-25 — EAS build 33 (v1.0.5) built and uploaded to App Store Connect — NOT submitted for App Review, NOT device-tested
 - **Build:** iOS 1.0.5 (**33**), profile / channel `production`, runtime `1.0.0`, from `main` at `f9241c38` (through #791). https://expo.dev/accounts/augusto-firulais/projects/pawpi/builds/816689b2-ef33-4a23-a928-42db0726c411
 - **App Store Connect upload:** **uploaded** (https://expo.dev/accounts/augusto-firulais/projects/pawpi/submissions/dfb57340-64bb-4b96-8faa-16ff466b2008); Apple processing completion not checked. The first attempt failed on a pending Apple agreement; the owner accepted it and the same build was submitted again (no rebuild).

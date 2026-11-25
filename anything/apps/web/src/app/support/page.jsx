@@ -1,4 +1,5 @@
 import LegalPage from "@/components/legal/LegalPage";
+import GetAppBlock from "@/components/brand/GetAppBlock";
 import contentEs from "../../content/legal/support.es.md?raw";
 import contentEn from "../../content/legal/support.en.md?raw";
 
@@ -17,6 +18,7 @@ export default function SupportPage() {
       titles={TITLES}
       descriptions={DESCRIPTIONS}
       content={{ es: contentEs, en: contentEn }}
+      aside={<GetAppBlock />}
     />
   );
 }
