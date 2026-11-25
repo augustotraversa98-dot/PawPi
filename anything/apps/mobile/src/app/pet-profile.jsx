@@ -9,6 +9,9 @@ import { PetAvatar } from "@/components/Pets/PetAvatar";
 import { OwnerMenu } from "@/components/More/OwnerMenu";
 import { SharedPetBadge } from "@/components/Pets/SharedPetBadge";
 import { canDoOnPetOrUnknown } from "@/utils/petPermissions";
+import { canManageMoment } from "@/utils/postPermissions";
+import { useMyProfileId } from "@/hooks/useUserProfile";
+import { useMomentAuthors } from "@/hooks/useMomentAuthors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { BarkModal } from "@/components/Feed/BarkModal";
 import { PostDetailModal } from "@/components/Feed/PostDetailModal";
@@ -55,11 +58,9 @@ export default function PetProfileScreen({ embedded = false }) {
   const updateCaption = useUpdatePostCaption();
   const deletePost = useDeletePost();
 
-  // Every post on this screen belongs to the profile's pet (petId), so the viewer
-  // may edit/delete them when they OWN that pet — any of their pets, not just the
-  // active one, and String-compared so a number/string id mismatch can't hide the
-  // controls. Mirrors the Feed's owner check; the server DELETE/PATCH stay the
-  // real guard (owner-scoped by user_id). A dog SHARED with the viewer is not theirs to edit/delete posts on.
+  // Every post on this screen belongs to the profile's pet (petId). Whether it is the viewer's OWN dog (any of their
+  // pets, not just the active one, String-compared) drives the screen; who may edit/delete a post follows the server's
+  // author rule (utils/postPermissions, below).
   const { data: allPets } = usePetProfile();
   const ownsProfilePet = useMemo(
     () => new Set((allPets ?? []).filter((p) => !p.is_shared).map((p) => String(p.id))).has(String(petId)),
@@ -158,6 +159,18 @@ export default function PetProfileScreen({ embedded = false }) {
   };
   const ageText = formatAge(ageParts);
   const togglePaw = useTogglePaw(detailPost?.id);
+  // Edit / delete of the open post: the author rule. The profile payload does not carry authors, so for a dog of the
+  // viewer's (own or shared) they are read from the dog's feed while a post is open.
+  const { data: myProfileId } = useMyProfileId({ enabled: !!detailPost });
+  const isMyDog = (allPets ?? []).some((p) => String(p.id) === String(petId));
+  const { data: momentAuthors } = useMomentAuthors(petId, { enabled: !!detailPost && isMyDog });
+  const canManageDetail = canManageMoment(
+    detailPost && {
+      ...detailPost,
+      user_id: detailPost.user_id ?? momentAuthors?.get(detailPost.id),
+    },
+    { myProfileId, ownsPet: ownsProfilePet },
+  );
 
   // Compose the post object the modal expects from a grid item + this pet's
   // fetched identity.
@@ -780,8 +793,8 @@ export default function PetProfileScreen({ embedded = false }) {
         visible={!!detailPost}
         post={detailPost}
         liked={detailPost ? !!likedPosts[detailPost.id] : false}
-        canDelete={!!detailPost && ownsProfilePet}
-        canEdit={!!detailPost && ownsProfilePet}
+        canDelete={canManageDetail}
+        canEdit={canManageDetail}
         onDelete={handleDeletePost}
         onSaveCaption={(caption) =>
           updateCaption.mutateAsync({ postId: detailPost.id, caption })

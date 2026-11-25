@@ -42,8 +42,21 @@ jest.mock("@/components/RefreshableScrollView", () => {
   const { View } = require("react-native");
   return { RefreshableScrollView: ({ children }) => <View>{children}</View> };
 });
-jest.mock("@/components/Feed/PostDetailModal", () => ({
-  PostDetailModal: () => null,
+// The detail modal reports what the screen lets the viewer do with the open post.
+jest.mock("@/components/Feed/PostDetailModal", () => {
+  const { Text } = require("react-native");
+  return {
+    PostDetailModal: ({ visible, canDelete, canEdit }) =>
+      visible ? <Text testID="detail-flags">{`del=${canDelete}|edit=${canEdit}`}</Text> : null,
+  };
+});
+let mockMyProfileId;
+let mockAuthors;
+jest.mock("@/hooks/useUserProfile", () => ({
+  useMyProfileId: () => ({ data: mockMyProfileId }),
+}));
+jest.mock("@/hooks/useMomentAuthors", () => ({
+  useMomentAuthors: () => ({ data: mockAuthors }),
 }));
 jest.mock("@/components/Feed/BarkModal", () => ({ BarkModal: () => null }));
 jest.mock("@/hooks/useFeedPosts", () => ({
@@ -378,5 +391,49 @@ describe("daily moments gate", () => {
     mockProfile = { ...mockProfile, posts: [], momentsLocked: false };
     const { getByText } = render(<PetProfileScreen />);
     expect(getByText("No daily posts yet")).toBeTruthy();
+  });
+});
+
+// Delete / edit follow the server's rule (the author), also on a dog shared with the viewer (night run #4, item 8).
+describe("removing a moment from the dog profile", () => {
+  const MOMENT = { id: 10, image_url: "http://img/10.png", caption: "hi", post_date: "2026-06-10", paw_count: 5 };
+  const openFirstMoment = ({ dog, me, authors }) => {
+    mockViewer = dog;
+    mockMyProfileId = me;
+    mockAuthors = authors;
+    mockProfile = { ...mockProfile, posts: [MOMENT], momentsLocked: false };
+    const screen = render(<PetProfileScreen />);
+    fireEvent.press(screen.getAllByTestId("pet-profile-moment-tile")[0]);
+    return screen.getByTestId("detail-flags").props.children;
+  };
+  const shared = { id: 7, is_shared: true, access_role: "family" };
+  const own = { id: 7, is_shared: false, access_role: "owner" };
+
+  test("a member may remove THEIR OWN moment on a shared dog", () => {
+    expect(openFirstMoment({ dog: shared, me: 20, authors: new Map([[MOMENT.id, 20]]) })).toBe(
+      "del=true|edit=true",
+    );
+  });
+
+  test("a member may not remove someone else's", () => {
+    expect(openFirstMoment({ dog: shared, me: 20, authors: new Map([[MOMENT.id, 10]]) })).toBe(
+      "del=false|edit=false",
+    );
+  });
+
+  test("while the author is unknown, a shared dog offers nothing", () => {
+    expect(openFirstMoment({ dog: shared, me: 20, authors: undefined })).toBe("del=false|edit=false");
+  });
+
+  test("the owner removes their own moment, as before", () => {
+    expect(openFirstMoment({ dog: own, me: 10, authors: new Map([[MOMENT.id, 10]]) })).toBe(
+      "del=true|edit=true",
+    );
+  });
+
+  test("the owner is not offered a delete the server refuses (a member's moment)", () => {
+    expect(openFirstMoment({ dog: own, me: 10, authors: new Map([[MOMENT.id, 20]]) })).toBe(
+      "del=false|edit=false",
+    );
   });
 });

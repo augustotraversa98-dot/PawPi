@@ -21,6 +21,10 @@ jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),
 );
 jest.mock("@/hooks/useFeedData", () => ({ useFeedData: () => mockFeed }));
+let mockMyProfileId;
+jest.mock("@/hooks/useUserProfile", () => ({
+  useMyProfileId: () => ({ data: mockMyProfileId }),
+}));
 jest.mock("@/hooks/useFeedSuggestions", () => ({
   useFeedSuggestions: () => ({ data: [] }),
 }));
@@ -140,4 +144,26 @@ test("delete/edit HIDDEN for a business post with no owned pet_id", () => {
   expect(openDetailFlags({ posts: [{ id: 14, provider_id: 7 }] })).toBe(
     "del=false|edit=false",
   );
+});
+
+// Night run #4 item 8: the server's rule is the AUTHOR, so a member can remove their own moment on a shared dog.
+describe("authorship", () => {
+  afterEach(() => {
+    mockMyProfileId = undefined;
+  });
+
+  test("a member sees delete/edit on THEIR OWN moment of a dog shared with them", () => {
+    mockMyProfileId = 20;
+    expect(openDetailFlags({ posts: [{ id: 30, pet_id: 9, user_id: 20 }] })).toBe("del=true|edit=true");
+  });
+
+  test("not on the owner's moment of that shared dog", () => {
+    mockMyProfileId = 20;
+    expect(openDetailFlags({ posts: [{ id: 31, pet_id: 9, user_id: 10 }] })).toBe("del=false|edit=false");
+  });
+
+  test("an owner is not offered a delete the server refuses on a member's moment of their own dog", () => {
+    mockMyProfileId = 10;
+    expect(openDetailFlags({ posts: [{ id: 32, pet_id: 1, user_id: 20 }] })).toBe("del=false|edit=false");
+  });
 });

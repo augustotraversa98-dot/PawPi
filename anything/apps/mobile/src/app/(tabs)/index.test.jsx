@@ -21,6 +21,9 @@ jest.mock("react-i18next", () =>
 jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),
 );
+jest.mock("@/hooks/useUserProfile", () => ({
+  useMyProfileId: () => ({ data: undefined }),
+}));
 jest.mock("@/hooks/useFeedData", () => ({ useFeedData: () => mockFeed }));
 jest.mock("@/hooks/useFeedSuggestions", () => ({
   useFeedSuggestions: () => ({ data: [] }),

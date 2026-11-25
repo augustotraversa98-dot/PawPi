@@ -120,6 +120,14 @@ Reported on a live iPhone: once 1 of 3 ring pills was done, tapping the other pi
 
 ---
 
+## 2026-11-24 — Night run #4 · item 8: delete / edit a moment follows the author (members can remove their own) — client-only, needs EAS build 33
+
+- `utils/postPermissions.canManageMoment`: the server's rule (DELETE/PATCH match the post's author). A member of a shared dog can now remove or re-caption THEIR OWN moment from the Feed and the dog profile.
+- An owner is no longer shown a trash icon on a member's moment (it always failed). "The owner may delete any moment" needs a database policy change: draft pull request, not applied.
+- Server permissions unchanged. No SQL here.
+
+---
+
 ## 2026-11-23 — Date picker hardening (the "1969" bug) — client-only, needs EAS build 33
 
 Reported on a live iPhone (UTC-3): Health → Track → Medications & care → Vaccine → Add vaccine, expiration date opened on Dec 1969, a picked future date jumped back to 31 Dec 1969, repeating it crashed.
