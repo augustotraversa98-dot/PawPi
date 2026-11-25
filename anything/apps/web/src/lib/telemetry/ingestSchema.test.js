@@ -18,6 +18,7 @@ const VALID = {
   funnel_step: { funnel: 'activation', step: 'auth_done' },
   opt_out: {},
   auth_diag: { kind: 'keychain_readback_mismatch' },
+  reminder_alarms: { count: '47' },
 };
 const ev = (name, props, t = 1200) => ({ name, t, props });
 

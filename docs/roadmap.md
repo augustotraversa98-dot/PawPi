@@ -64,6 +64,14 @@ Server work (#749–#753, migrations 0137–0142) is merged and applied; this is
 
 ---
 
+## 2026-11-24 — Night run #4 · pending-alarm count telemetry (`reminder_alarms {count}`) — server allow-list + mobile, MERGE BEFORE build 33
+
+- A bare number of local notifications pending on the phone, at most once an hour, ~20 s after the app comes to the front; same opt-out and kill switch as the rest of telemetry. No ids, titles or pets.
+- Server: new event in the allow-list (both registry copies) and histogram `pawpi_client_pending_alarms{platform,app_version}`; contract and privacy docs updated.
+- Not client-only, so it was left open for a human merge (merging deploys the API). No SQL.
+
+---
+
 ## 2026-11-24 — Keyboard no longer hides text fields, app-wide (shared KeyboardSafeSheet + CI guard) — client-only, needs EAS build 33
 
 Reported: Quick Check on iPhone, keyboard open, the notes box under Ears hidden and the visible scroll area tiny (it had been "fixed" before, screen by screen).

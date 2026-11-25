@@ -55,6 +55,7 @@ booking_created, order_created, push_token_registered, walk_logged. `method` in:
 | pawpi_client_startup_seconds | histogram | app_version |
 | pawpi_funnel_step_total | counter | funnel, step |
 | pawpi_client_sessions_total | counter | app_version |
+| pawpi_client_pending_alarms | histogram | platform, app_version |
 
 ## Client event taxonomy (batched POST /api/telemetry/events, Loki line per event)
 Envelope: { install_id, session_id, app_version, build, platform, os_major, locale, sent_at, events: [...] }
@@ -71,6 +72,7 @@ Event: { name, t (ms since session start), props }
 - feature_used { feature }
 - funnel_step { funnel, step }
 - auth_diag { kind }   (session cleared + why / Keychain write-verify result / cold launch found a stored token or none; `kind` in the registry `AUTH_DIAG_KINDS`; counted as `pawpi_client_auth_diag_total{diag,app_version}`; never a token, id or email)
+- reminder_alarms { count }   (how many local notifications are pending on the phone: a bare number 0-999 as a string, at most once an hour; never an id, title or pet; recorded as the histogram `pawpi_client_pending_alarms{platform,app_version}`)
 - opt_out {}   (sent once, then everything stops)
 Buckets for durations: <100, <300, <1000, <3000, <10000, >=10000 ms.
 

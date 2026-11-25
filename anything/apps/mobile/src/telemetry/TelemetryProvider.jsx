@@ -19,6 +19,7 @@ import { createNavObserver } from './navObserver';
 import { takeNavigationExpectation } from './navExpect';
 import { setCurrentScreen } from './screenState';
 import { installGlobalErrorHandlers } from './errorHooks';
+import { scheduleAlarmCountReport } from './alarmCount';
 
 export function useTelemetryLifecycle() {
   const pathname = usePathname();
@@ -26,12 +27,17 @@ export function useTelemetryLifecycle() {
   useEffect(() => {
     let subscription = null;
     let uninstall = null;
+    let cancelAlarmCount = scheduleAlarmCountReport();
     try {
       const telemetry = getTelemetry();
       void telemetry.start();
       subscription = AppState.addEventListener('change', (next) => {
         if (next === 'background') telemetry.onBackground();
-        else if (next === 'active') telemetry.onForeground();
+        else if (next === 'active') {
+          telemetry.onForeground();
+          cancelAlarmCount();
+          cancelAlarmCount = scheduleAlarmCountReport();
+        }
       });
       uninstall = installGlobalErrorHandlers({
         report: (kind, err) => trackError(kind, err, kind === 'js' ? 'JsError' : 'PromiseRejection'),
@@ -41,6 +47,7 @@ export function useTelemetryLifecycle() {
     }
     return () => {
       try {
+        cancelAlarmCount();
         subscription?.remove?.();
         uninstall?.();
       } catch {

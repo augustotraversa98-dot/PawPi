@@ -67,6 +67,14 @@ Reasoning, the exact expected residual (`supabase_admin:r|S|f` only) and when to
 
 ---
 
+## 📱 To test — Night run #4 / telemetry: pending-alarm count (server allow-list + mobile; needs this PR MERGED before build 33)
+
+- [ ] **1.** Merge the PR first (Railway deploys the allow-list). Then build 33.
+- [ ] **2.** On the build, open the app with reminders on, wait ~30 s, then send it to the background. In Grafana: `pawpi_client_pending_alarms` has a sample (or a `reminder_alarms` log line in Loki) with a plain number, no ids.
+- [ ] **3.** Settings → turn usage data off: no further samples.
+
+---
+
 ## 📱 To test — Keyboard no longer hides text fields (mobile JS only; shared KeyboardSafeSheet)
 
 **Needs EAS build 33** (merged + CI-green; not device-verified). Layout can only be seen on a real phone. Convention:
