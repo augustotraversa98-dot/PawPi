@@ -78,8 +78,8 @@ Where data-protection law (such as the GDPR) applies, we rely on:
 - **Performance of a contract** — to create your account and provide the features you request
   (feed, health tracking, bookings, messaging, caregivers, etc.).
 - **Consent** — for optional device permissions (location, camera/photos, notifications), for
-  sharing pet health data with a provider, and for leaderboard opt-in. You can withdraw consent at
-  any time (see Section 10).
+  sharing pet health data with a service business (such as a vet), and for leaderboard opt-in. You
+  can withdraw consent at any time (see Section 10).
 - **Legitimate interests** — to secure the Service, prevent abuse and fraud, and operate and improve
   core functionality, balanced against your rights.
 - **Legal obligation** — to keep records the law requires (e.g. certain transaction records) and to
@@ -92,6 +92,8 @@ We use the information to:
 - create and manage your account and your pets' profiles;
 - provide the features you use (feed, health tracking, reminders, vet records, training, community,
   adoption, and the services marketplace);
+- read the documents and document photos you upload to your dog's Vet Record, using an AI service
+  (Anthropic's Claude), to suggest records you can review before anything is added (see Section 8);
 - enable bookings, payments, messaging, reviews, and caregiver sharing;
 - send you the reminders and notifications you have set up or enabled (including push);
 - show location-based content when you grant location permission;
@@ -169,9 +171,11 @@ stop sending.
 
 PawPi helps you **track changes and prepare better conversations with your veterinarian. It does not
 diagnose, prescribe, or replace professional veterinary care.** Health content you enter is stored
-to help you organize records and notice patterns. Any "insights" are informational and behavioural,
-never diagnostic. Prescriptions appear in the app only as records issued by a licensed veterinary
-provider through the Service.
+to help you organize records and notice patterns. Documents you upload to the Vet Record are also
+sent to Anthropic (Claude) to read them and suggest records, which you review before anything is
+added (see Section 8). Any "insights" are informational and behavioural, never diagnostic.
+Prescriptions appear in the app only as records issued by a licensed veterinary provider through the
+Service.
 
 ## 7. How information is shared
 
@@ -183,8 +187,8 @@ We share information only as needed to run the Service:
   users while active. Demo/seed content is excluded from all real users' feeds and discovery.
 - **With service providers you transact with** — when you book, message, review, apply to adopt, or
   request a prescription/insurance quote, the relevant business receives the information needed to
-  serve you. **Sharing of pet health data with a provider happens only through explicit in-app
-  consent**, scoped and revocable.
+  serve you. **Sharing of pet health data with one of these businesses happens only through explicit
+  in-app consent**, scoped and revocable.
 - **With people you invite** — family members or caregivers you grant access to, at the scope and for
   the duration you set; you can revoke access at any time.
 - **With processors and infrastructure providers (subprocessors)** — see Section 8.
@@ -202,6 +206,7 @@ contract, only as needed:
 - **Expo** (push service) — Purpose: Delivering push notifications (Expo passes them to Apple's or Google's push service); Data involved: Device push token, notification content
 - **MercadoPago** — Purpose: Payment processing; Data involved: Transaction amount/status/reference; you provide payment details directly to them
 - **Resend** — Purpose: Transactional email (e.g. password reset, digests); Data involved: Your email address, message content
+- **Anthropic** (Claude, an AI model) — Purpose: Reading the documents and document photos you upload to your dog's Vet Record and suggesting records you can review before anything is added; Data involved: This happens automatically after a document is saved, whether you or a family member you invited uploads it. We send the uploaded file (large photos are resized first), with everything written, shown or embedded in it; its file type; and a fixed instruction from PawPi asking to extract only the records present in the document, with the list of record fields to fill in. PawPi does not add your name, email address, account details, your dog's name or the file name to that request, although the document itself may contain such details. [Anthropic's privacy policy](https://www.anthropic.com/legal/privacy)
 - **Apple** — Purpose: Sign in with Apple, if you choose it; and, on iPhone, the maps and address lookup built into iOS (Apple Maps); Data involved: For sign-in, the basic profile Apple shares with us (name and email, subject to your choices, including Apple's private-relay email). For maps, the area you view and any coordinates you ask to turn into a street address are handled by Apple's system services. [Apple's privacy policy](https://www.apple.com/legal/privacy/)
 - **Google** — Purpose: Sign in with Google, if you choose it; Data involved: The basic profile Google shares with us (name and email, subject to your choices). [Google's privacy policy](https://policies.google.com/privacy)
 - **Grafana Cloud** (Grafana Labs) — Purpose: Hosting and monitoring of the anonymous usage and diagnostics data described in Section 5; Data involved: Anonymous usage and diagnostics events and statistics, tied only to random identifiers — no name, email, account, pet, content, or location data

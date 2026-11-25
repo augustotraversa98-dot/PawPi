@@ -78,6 +78,8 @@ updates), MercadoPago, Resend, Grafana Cloud, Daily.co, Apple/Google sign-in, Ap
 **Bundled-inactive:** RevenueCat, Anthropic document reading (and `ENRICHMENT_LLM_KEY`), Google Maps/Places, Binance Pay.
 **Not used:** Uploadcare, `api.anything.com`, Stripe, Google Fonts, Font Awesome kit.
 
+_Update 2026-11-25: Anthropic document reading is now live and disclosed in the policy; see the data map. This report is otherwise left as written._
+
 ## 5. Left alone, and why (decisions or follow-ups for you)
 
 Product decisions:

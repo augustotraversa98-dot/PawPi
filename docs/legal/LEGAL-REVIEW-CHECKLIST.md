@@ -24,9 +24,12 @@ qualified attorney before launch. Give your lawyer this checklist.
 5. **Location.** Precise location is used (nearby, walks, pet-taxi live-share, lost & found). Confirm
    disclosure + consent language is adequate.
 6. **Subprocessors.** Verify the list (Supabase DB + storage, Railway, Cloudflare, Expo, MercadoPago, Resend,
-   Grafana Cloud, Daily.co, Apple/Google sign-in, Apple Maps on iOS, Expo Updates, OSM Nominatim) is complete
-   and that DPAs are in place with each. Binance Pay, Stripe, Uploadcare, Google Maps Platform, RevenueCat and
-   Anthropic are NOT live and were removed/omitted (see `docs/legal/accuracy-sweep-2026-10-16.md`).
+   Grafana Cloud, Daily.co, Anthropic, Apple/Google sign-in, Apple Maps on iOS, Expo Updates, OSM Nominatim) is
+   complete and that DPAs are in place with each. Binance Pay, Stripe, Uploadcare, Google Maps Platform and
+   RevenueCat are NOT live and were removed/omitted (see `docs/legal/accuracy-sweep-2026-10-16.md`).
+   **Anthropic** (reads uploaded Vet Record documents; added 2026-11-25): confirm the §8 sentence that vendors may
+   not use the data for their own purposes, whether disclosure alone is enough or explicit permission is needed
+   before sending (Apple guideline 5.1.2(i)), and whether retention at Anthropic belongs in §9.
 7. **International transfers.** Data is hosted outside the user's country (Supabase region sa-east-1
    today, plus vendors elsewhere). Confirm transfer mechanism/safeguards.
 8. **Payments.** Confirm refund/cancellation responsibility wording given providers set their own

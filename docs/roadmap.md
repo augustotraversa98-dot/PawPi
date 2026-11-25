@@ -18,6 +18,13 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-25 — Privacy Policy discloses that Anthropic (Claude) reads uploaded vet documents — web-only content change, Railway deploy on merge, no EAS build, no migration
+- `/privacy` EN + ES: new **Anthropic** entry in §8; one new use in §4; one sentence in §6; "provider" in §3/§7 now says it means a service business, so it cannot be read as covering AI or infrastructure vendors. Mirrors in `docs/legal/`, the data map and the legal checklist updated. No code, API, env or consent-version change; the feature itself is unchanged.
+- "Last updated" was already November 25, 2026, so the line and `PRIVACY_VERSION` stay as they are.
+- Open for the owner: in-app permission before sending (Apple 5.1.2(i)), confirm §8's "no own purposes" sentence for Anthropic, App Store Connect "App Privacy" (data map says no new data type).
+
+---
+
 ## 2026-11-25 — EAS build 33 (v1.0.5) built and uploaded to App Store Connect — NOT submitted for App Review, NOT device-tested
 - **Build:** iOS 1.0.5 (**33**), profile / channel `production`, runtime `1.0.0`, from `main` at `f9241c38` (through #791). https://expo.dev/accounts/augusto-firulais/projects/pawpi/builds/816689b2-ef33-4a23-a928-42db0726c411
 - **App Store Connect upload:** **uploaded** (https://expo.dev/accounts/augusto-firulais/projects/pawpi/submissions/dfb57340-64bb-4b96-8faa-16ff466b2008); Apple processing completion not checked. The first attempt failed on a pending Apple agreement; the owner accepted it and the same build was submitted again (no rebuild).
