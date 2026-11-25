@@ -119,6 +119,18 @@ Reasoning, the exact expected residual (`supabase_admin:r|S|f` only) and when to
 
 ---
 
+## 📱 To test — Night run #4 / item 8: a member removes their own moment on a shared dog (mobile JS only)
+
+**Needs EAS build 33** (merged + CI-green; not device-verified). Owner + Partner (Family) on one dog; each posts a daily moment.
+- [ ] **1.** Partner, Feed: open THEIR moment of the shared dog → trash and caption edit are there → delete → it disappears on both phones; Partner can post again today.
+- [ ] **2.** Partner opens the OWNER's moment: no trash (report/block menu instead).
+- [ ] **3.** Partner → dog profile of the shared dog → open their own moment: trash shows after a second; delete works.
+- [ ] **4.** Owner opens the PARTNER's moment on the owner's dog: no trash (the server only lets the author delete; "owner may delete any" is in the draft pull request with migration).
+- [ ] **5.** A partner whose access is now Caregiver can still delete a moment they posted earlier.
+- Known limit: on the dog profile, authors are read from the newest 100 posts of that dog's feed view; a very old moment may show no trash there (it still works from the Feed).
+
+---
+
 ## 📱 To test — date picker "1969" fix (mobile JS only)
 
 **Needs EAS build 33** (merged + CI-green; **not device-verified**; the fix could not be reproduced on the Simulator, so the real iPhone check matters). Set the phone to Argentina time (UTC-3).

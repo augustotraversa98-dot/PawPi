@@ -17,6 +17,8 @@ import { BarkModal } from "@/components/Feed/BarkModal";
 import { PostDetailModal } from "@/components/Feed/PostDetailModal";
 import { useFeedData } from "@/hooks/useFeedData";
 import { canDoOnPetOrUnknown } from "@/utils/petPermissions";
+import { canManageMoment } from "@/utils/postPermissions";
+import { useMyProfileId } from "@/hooks/useUserProfile";
 import { useFeedSuggestions } from "@/hooks/useFeedSuggestions";
 import { usePostingStreak, useUpdatePostCaption, useTogglePaw } from "@/hooks/useFeedPosts";
 import { stashProviderPost } from "@/utils/providerPostHandoff";
@@ -92,15 +94,15 @@ export default function FeedScreen() {
   const detailPostLive = detailPost
     ? posts.find((p) => p.id === detailPost.id) || detailPost
     : null;
-  // The viewer owns (and may edit/delete) the open post when its pet belongs to
-  // the current user — ANY of their pets, not only the active one — matching the
-  // owner-scoped DELETE/PATCH routes. String-compared so a number/string pet_id
-  // mismatch can't wrongly hide the controls. Business posts (no owned pet_id)
-  // fall through to false.
-  const ownsDetailPost =
-    !!detailPostLive &&
-    !!ownedPetIds &&
-    ownedPetIds.has(String(detailPostLive.pet_id));
+  // Edit / delete follow the server's rule: the AUTHOR (utils/postPermissions) — so a member can remove their own
+  // moment on a dog shared with them, and nobody is offered a button the server would refuse. When the author is not
+  // known, the post's pet being the viewer's own (ANY of their pets, string-compared) decides, as before.
+  const { data: myProfileId } = useMyProfileId({ enabled: !!detailPostLive });
+  const ownsDetailPost = canManageMoment(detailPostLive, {
+    myProfileId,
+    ownsPet:
+      !!detailPostLive && !!ownedPetIds && ownedPetIds.has(String(detailPostLive.pet_id)),
+  });
   // Toggle the open post's paw through the SAME mutation the feed card uses, so
   // pawing/un-pawing in the modal updates the shared query and the feed card's
   // fill + count move together.
