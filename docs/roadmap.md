@@ -119,6 +119,13 @@ Reported on a live iPhone: pet 27's ring showed all three arcs green while the c
 
 ---
 
+## 2026-11-24 — Night run #4 · item 7: caregiver feed lock — client tests (no behaviour change)
+
+- `useFeedData.householdLock.test.jsx`: caregiver locked before the household posts, unlocked after; another dog's post and yesterday's post do not unlock; owner and family open once the household has posted.
+- The server half (real Postgres, real router) is a separate pull request left for you to merge (it touches the web test tree).
+
+---
+
 ## 2026-11-23 — Care Ring pills stay tappable at every progress (0/3 to 3/3) — client-only, needs EAS build 33
 
 Reported on a live iPhone: once 1 of 3 ring pills was done, tapping the other pills (to do a quick update) did nothing.
