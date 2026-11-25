@@ -18,6 +18,14 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-25 — EAS build 33 (v1.0.5) built — upload to App Store Connect FAILED (Apple agreement), NOT submitted for App Review, NOT device-tested
+- **Build:** iOS 1.0.5 (**33**), profile / channel `production`, runtime `1.0.0`, from `main` at `f9241c38` (through #791). https://expo.dev/accounts/augusto-firulais/projects/pawpi/builds/816689b2-ef33-4a23-a928-42db0726c411
+- **App Store Connect upload:** **FAILED, the build is not on App Store Connect.** `eas submit` was scheduled and Apple rejected it: a required agreement is missing or expired (https://expo.dev/accounts/augusto-firulais/projects/pawpi/submissions/5db7405f-2839-4728-ba8d-e9ba3d37445a). The Account Holder accepts it, then the same build is submitted again (no rebuild).
+- Carries everything merged to `main` since the earlier builds, including #747 and the client work from night runs #4 to #7. Entries below that say "needs EAS build 33" or "next EAS build" are in it. Build 32 (1.0.5) was never sent.
+- Owner: accept the agreement and submit the upload ([`test-backlog.md`](test-backlog.md) → "EAS build 33" has the command), test from TestFlight, attach build 33 to version 1.0.5, review the store and privacy wording, then Submit for Review by hand. Nothing was released.
+
+---
+
 ## 2026-11-27 — Night run #7 · item 3: members of a shared dog no longer get "Forbidden" on the today's-moment check — SERVER CODE, DRAFT, NOT merged, NO migration, nothing to apply
 - **Finding: a real server permission gap**, not an expected denial the app retries. `GET /api/posts/today-daily-update?pet_id=` accepted only the pet's OWNER (`pets.owner_user_id`). The Feed asks about the active dog (`useFeedData` → `useTodayDailyUpdate(promptPet.id)`), which for a Family member, and for a caregiver who owns no dog, is the shared one: a 403 on every Feed open, focus and refetch, doubled by React Query's single retry (1.5 s). The Feed kept working because it falls back to the posts it already has.
 - **Fix (one route, same gate as the other shared-dog routes):** the owner is unchanged (latest daily moment of the dog today, by anyone); an ACTIVE, UNEXPIRED grantee (family or caregiver) is admitted through `resolvePetLogOwner(..., { allowCaregiver: true })` (`app_user_has_pet_access` underneath; degrades before 0049) and gets back **only their own moment of today, or null**. Outsiders, a member who left or was revoked, an expired grant and an unknown dog still get 403. Not widened: nothing is returned that the caller could not already read; the client is unchanged.
