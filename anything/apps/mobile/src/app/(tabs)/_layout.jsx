@@ -59,6 +59,7 @@ import useRemindersStore from "@/store/remindersStore";
 import { syncLocaleToServer } from "@/i18n/localePreference";
 import { syncTimezoneToServer } from "@/i18n/timezoneSync";
 import { useAuthStore } from "@/utils/auth/store";
+import { ReminderReconciler } from "@/components/Pets/ReminderReconciler";
 
 // popToTopOnBlur (ticket 2.19) only applies to the Android JS bar. On iOS the
 // native tab bar uses Apple's standard behavior (re-tap an active tab to pop its
@@ -227,5 +228,10 @@ export default function TabLayout() {
 
   // Platform split: iOS gets the native Liquid Glass tab bar; Android keeps the
   // existing JS floating-pill bar. Never mix NativeTabs and <Tabs> in one tree.
-  return Platform.OS === "ios" ? <NativeGlassTabs /> : <AndroidGlassTabs />;
+  return (
+    <>
+      <ReminderReconciler />
+      {Platform.OS === "ios" ? <NativeGlassTabs /> : <AndroidGlassTabs />}
+    </>
+  );
 }

@@ -18,6 +18,15 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-24 — Night run #4 · PR5b Phase 1B: reconcile reminders on foreground and dog select — client-only, needs EAS build 33
+
+- `ReminderReconciler` (tab layout) re-reads the selected dog's routines on dog select and on return from the background (at most every 15 s), and reads a newly seen shared dog once so its alarms are armed without opening Health.
+- A re-read now brings reminders in step: edits move the alarm, deleted/paused routines drop their instances, "done" and snooze stay personal. Unchanged pending alarms are not re-scheduled.
+- Loads are queued per dog (no duplicate instances); a background load never replaces the routines on screen; a failed automatic refresh keeps what is shown.
+- No server pushes, no SQL, no native change.
+
+---
+
 ## 2026-11-24 — Night run #4 · PR5b Phase 1A: losing access to a shared dog stops its alarms — client-only, needs EAS build 33
 
 - `handleAccessLost` now also removes that dog's routines, reminders, snoozes and in-app reminder rows and cancels every pending local notification tagged with it (`utils/petReminderCleanup.js`). Other dogs are untouched.
