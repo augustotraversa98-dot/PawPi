@@ -79,6 +79,9 @@ export const PostCard = memo(function PostCard({
   // Position of this card in the locked feed — picks which rotating FOMO CTA to
   // show (feed polish #4). Ignored when unlocked.
   lockedCtaIndex = 0,
+  // The viewer cannot post for their dog (a caregiver): the dog's name. The locked card then says what opens the feed
+  // instead of asking them to post, and offers no post button.
+  waitingFor = null,
 }) {
   const togglePawMutation = useTogglePaw(post.id);
   const reduceTransparency = useReduceTransparency();
@@ -157,10 +160,11 @@ export const PostCard = memo(function PostCard({
   // subline rotates the FOMO/reciprocity line by card position (feed polish #4)
   // so a wall of teases never reads as one repeated line.
   const lockedHeadline = t("feed.lockedHeadline", { petName: dogName });
-  const lockedCtaMessage = t(
-    LOCKED_CTA_KEYS[(lockedCtaIndex || 0) % LOCKED_CTA_KEYS.length],
-    { petName: dogName },
-  );
+  const lockedCtaMessage = waitingFor
+    ? t("feed.lockedWaiting", { petName: waitingFor })
+    : t(LOCKED_CTA_KEYS[(lockedCtaIndex || 0) % LOCKED_CTA_KEYS.length], {
+        petName: dogName,
+      });
   const lockedPostCta = t("feed.lockedPostCta");
   const pulses = !reduceMotion && (lockedCtaIndex || 0) < LOCKED_PULSE_CARDS;
 
@@ -409,39 +413,43 @@ export const PostCard = memo(function PostCard({
                 {lockedCtaMessage}
               </Text>
 
-              {/* Gentle pulse to draw the eye — disabled under Reduce Motion. */}
-              <MotiView
-                from={{ scale: 1 }}
-                animate={{ scale: pulses ? 1.04 : 1 }}
-                transition={{
-                  type: "timing",
-                  duration: 1100,
-                  loop: pulses,
-                  repeatReverse: true,
-                }}
-              >
-                <PressableScale
-                  testID="feed-post-locked-cta"
-                  onPress={handleLockedCtaPress}
-                  accessibilityRole="button"
-                  accessibilityLabel={lockedPostCta}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: SPACING.sm,
-                    backgroundColor: COLORS.coral,
-                    paddingVertical: SPACING.sm + 2,
-                    paddingHorizontal: SPACING.lg,
-                    borderRadius: RADIUS.chip,
-                    ...ELEVATION.md,
-                  }}
-                >
-                  <Camera size={18} color={COLORS.cream} />
-                  <Text style={[TYPE.subhead, { color: COLORS.cream, fontWeight: "800" }]}>
-                    {lockedPostCta}
-                  </Text>
-                </PressableScale>
-              </MotiView>
+              {waitingFor ? null : (
+                <>
+                  {/* Gentle pulse to draw the eye — disabled under Reduce Motion. */}
+                  <MotiView
+                    from={{ scale: 1 }}
+                    animate={{ scale: pulses ? 1.04 : 1 }}
+                    transition={{
+                      type: "timing",
+                      duration: 1100,
+                      loop: pulses,
+                      repeatReverse: true,
+                    }}
+                  >
+                    <PressableScale
+                      testID="feed-post-locked-cta"
+                      onPress={handleLockedCtaPress}
+                      accessibilityRole="button"
+                      accessibilityLabel={lockedPostCta}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: SPACING.sm,
+                        backgroundColor: COLORS.coral,
+                        paddingVertical: SPACING.sm + 2,
+                        paddingHorizontal: SPACING.lg,
+                        borderRadius: RADIUS.chip,
+                        ...ELEVATION.md,
+                      }}
+                    >
+                      <Camera size={18} color={COLORS.cream} />
+                      <Text style={[TYPE.subhead, { color: COLORS.cream, fontWeight: "800" }]}>
+                        {lockedPostCta}
+                      </Text>
+                    </PressableScale>
+                  </MotiView>
+                </>
+              )}
             </View>
           </View>
         </Pressable>

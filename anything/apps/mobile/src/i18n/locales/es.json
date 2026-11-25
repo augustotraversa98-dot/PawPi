@@ -2521,6 +2521,7 @@
     "lockedBodyEmpty": "Posteá el momento diario de {{petName}} para ver qué hacen tus amigos peludos.",
     "lockedEmptyTitle": "Todavía no postearon tus amigos peludos",
     "lockedEmptyBody": "¡Sé el primero! Posteá el momento diario de {{petName}} para empezar el feed de hoy.",
+    "lockedWaiting": "Se abre apenas publiquen el momento de hoy de {{petName}}.",
     "lockedPostToday": "Postear la foto de hoy",
     "lockedCard1": "Publicá el momento de hoy para ver qué anda haciendo {{petName}} 🐾",
     "lockedCard2": "Compartí el día de tu mascota para desbloquear el momento de {{petName}}",

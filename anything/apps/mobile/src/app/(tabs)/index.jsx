@@ -70,6 +70,8 @@ export default function FeedScreen() {
   const [composerVisible, setComposerVisible] = useState(false);
   // A caregiver on a shared dog cannot post its moments (owner + family can): every "post" entry explains that instead of opening the composer.
   const canPostMoment = canDoOnPetOrUnknown(petProfile, "postMoment");
+  // …so the locked Feed and the daily prompt tell them what opens it instead of asking them to post.
+  const waitingFor = canPostMoment ? null : petName;
   const openComposer = useCallback(() => {
     if (!canPostMoment) {
       Alert.alert(t("sharedDog.cannotPostTitle"), t("sharedDog.cannotPostBody", { name: petName }));
@@ -329,6 +331,7 @@ export default function FeedScreen() {
                 todayPostId={todayPostId}
                 onPostPress={openComposer}
                 onViewTodayPost={handleViewTodayPost}
+                waitingFor={waitingFor}
               />
             </View>
 
@@ -351,6 +354,7 @@ export default function FeedScreen() {
                 onPostPress={openComposer}
                 onOpenProfile={openProfile}
                 onOpenBusinessPost={openBusinessPost}
+                waitingFor={waitingFor}
               />
             ) : (
               <UnlockedFeed

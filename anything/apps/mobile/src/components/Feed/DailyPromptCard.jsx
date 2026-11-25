@@ -18,6 +18,8 @@ export function DailyPromptCard({
   todayPostId,
   onPostPress,
   onViewTodayPost,
+  // The viewer cannot post for this dog (a caregiver): its name. No post button, only what is going on.
+  waitingFor = null,
 }) {
   const { t } = useTranslation();
   return (
@@ -60,7 +62,16 @@ export function DailyPromptCard({
         </View>
       </View>
 
-      {!hasPostedToday ? (
+      {!hasPostedToday && waitingFor ? (
+        <View
+          testID="daily-prompt-waiting"
+          style={{ padding: SPACING.md, backgroundColor: COLORS.sand, borderRadius: RADIUS.control }}
+        >
+          <Text style={[TYPE.footnote, { color: COLORS.terracotta, fontWeight: "600", textAlign: "center" }]}>
+            {t("feed.lockedWaiting", { petName: waitingFor })}
+          </Text>
+        </View>
+      ) : !hasPostedToday ? (
         <>
           <PressableScale
             onPress={onPostPress}
