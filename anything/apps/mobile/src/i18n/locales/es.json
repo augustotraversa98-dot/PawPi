@@ -3599,7 +3599,11 @@
     "snooze": "Posponer",
     "snoozeDurationTitle": "Duración predeterminada",
     "snoozeDurationOptions": "10 minutos, 30 minutos, 1 hora, esta noche, mañana",
-    "tip": "💡 Los recordatorios urgentes muestran contadores y aparecen arriba de tus notificaciones"
+    "tip": "💡 Los recordatorios urgentes muestran contadores y aparecen arriba de tus notificaciones",
+    "dogsTitle": "De qué perros te avisamos",
+    "dogsHint": "Solo cambia este teléfono. Las otras personas que cuidan un perro compartido eligen lo suyo.",
+    "dogSwitch": "Avisame sobre {{name}}",
+    "dogOffHint": "Sin avisos de recordatorios en este teléfono. En Hoy seguís viendo todo."
   },
   "routines": {
     "toast": {

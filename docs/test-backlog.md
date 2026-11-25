@@ -24,6 +24,19 @@ Reasoning, the exact expected residual (`supabase_admin:r|S|f` only) and when to
 
 ---
 
+## 📱 To test — Night run #4 / 1D: "Remind me about this dog" (mobile JS only)
+
+**Needs EAS build 33** (merged + CI-green; not device-verified). More → Reminders & routines → **Settings** tab → "Which dogs to remind you about".
+- [ ] **1.** One switch per dog (own + shared, shared ones show the Family/Caregiver badge); all on by default.
+- [ ] **2.** Switch the shared dog off: its next reminder does not ring; the other dog's still does; Health → Today still lists the shared dog's tasks.
+- [ ] **3.** Kill and relaunch the app: the switch is still off and nothing rings for that dog.
+- [ ] **4.** The OTHER person's phone still rings for the same dog.
+- [ ] **5.** Switch it on again: the next reminder rings (also try it for a dog you have not selected today).
+- [ ] **6.** Snooze something, then switch the dog off: the snoozed alert does not arrive.
+- [ ] **7.** Spanish: "De qué perros te avisamos" / "Avisame sobre …".
+
+---
+
 ## 📱 To test — Night run #4 / 1C: the soonest ~48 alarms across all dogs (mobile JS only)
 
 **Needs EAS build 33** (merged + CI-green; not device-verified). Use an account with two dogs (or an own dog + a shared one) and a busy schedule: several meals, walks and doses a day (more than 48 reminders in 14 days).

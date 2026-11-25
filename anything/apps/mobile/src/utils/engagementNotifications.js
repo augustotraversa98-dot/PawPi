@@ -34,6 +34,7 @@ import {
   recordSent,
 } from "./notificationPreferences";
 import { getLocalPostDateString } from "./dateUtils";
+import { isDogMuted, whenReminderMutesReady } from "@/store/reminderMuteStore";
 
 const STREAK_SAVE_SENT_KEY_PREFIX = "pawpi.streakSaveSent."; // + YYYY-MM-DD
 
@@ -138,6 +139,8 @@ export async function scheduleStreakSaveNotification({ content, hour, petId, now
  * @param {Date}   [args.now]
  */
 export async function maybeScheduleStreakSave({ t, ring = {}, streakCount, petName, petId, now = new Date() }) {
+  await whenReminderMutesReady();
+  if (isDogMuted(petId)) return null; // "Remind me about this dog" is off
   const prefs = await getNotificationPrefs();
   const dayKey = getLocalPostDateString(now);
 
@@ -300,6 +303,8 @@ export async function maybeArmReminderSetupNudge({
       return [];
     }
     if (hasReminder !== false) return [];
+    await whenReminderMutesReady();
+    if (isDogMuted(petId)) return []; // "Remind me about this dog" is off
 
     const state = await readNudgeState(petId);
     if (state?.done) return [];

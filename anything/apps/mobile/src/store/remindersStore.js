@@ -5,6 +5,7 @@ import { getReminderStatus, REMINDER_STATUS } from "@/data/remindersData";
 import useSocialPetStore from "./socialPetStore";
 import useRoutinesStore from "./routinesStore";
 import { isPetLost } from "./petAccessStore";
+import { isDogMuted, whenReminderMutesReady } from "./reminderMuteStore";
 import { getSessionEpoch } from "@/utils/auth/sessionEpoch";
 import {
   scheduleReminderNotification,
@@ -58,6 +59,7 @@ const isQuiet = (r) =>
 // Should this stored reminder ring, and if so when and how? null = it must not have an alarm.
 function alarmFor(reminder, snoozes, now) {
   if (!reminder?.notificationEnabled || isQuiet(reminder) || isPetLost(reminder.petId)) return null;
+  if (isDogMuted(reminder.petId)) return null; // "Remind me about this dog" is off
   // A running snooze is the alert: at the snoozed time, with no early heads-up.
   const snoozedUntil = snoozes[reminder.id];
   const snoozed = new Date(snoozedUntil ?? 0).getTime() > now;
@@ -73,6 +75,7 @@ function alarmFor(reminder, snoozes, now) {
 async function runAlarmPass(set, get) {
   // The identity this pass works for: if it changes while we await the OS, undo what we armed.
   const epoch = getSessionEpoch();
+  await whenReminderMutesReady(); // nothing is armed before the person's choices are known
   let pending;
   try {
     pending = (await getScheduledNotifications()) ?? [];
@@ -84,9 +87,13 @@ async function runAlarmPass(set, get) {
   const now = Date.now();
   const { reminders, snoozes } = get();
   const candidates = reminders.map((r) => alarmFor(r, snoozes, now)).filter(Boolean);
+  // A switched-off dog loses every alert tagged with it, also those of a dog not read yet and its nudges.
+  const muted = new Set(
+    pending.filter((n) => isDogMuted(n.content?.data?.petId)).map((n) => n.identifier),
+  );
   const { arm, cancel } = selectAlarmsToArm({
     candidates,
-    pending,
+    pending: pending.filter((n) => !muted.has(n.identifier)),
     knownIds: new Set(reminders.map((r) => r.id)),
     snoozedIds: new Set(
       Object.keys(snoozes).filter((id) => new Date(snoozes[id]).getTime() > now),
@@ -94,7 +101,7 @@ async function runAlarmPass(set, get) {
   });
 
   // Cancel first, so the phone is never over its limit while the new ones go in.
-  for (const id of cancel) await cancelNotification(id);
+  for (const id of [...muted, ...cancel]) await cancelNotification(id);
 
   const pendingById = new Map(pending.map((n) => [n.identifier, n]));
   const armed = new Map();
