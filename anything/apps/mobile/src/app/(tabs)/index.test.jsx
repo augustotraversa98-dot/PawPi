@@ -45,10 +45,11 @@ jest.mock("@/components/Feed/DailyPromptCard", () => ({
 // The locked overlay is stubbed to two tap targets that forward to the props the
 // screen wires: a pet name/avatar tap (onOpenProfile) and the post CTA (onPostPress).
 jest.mock("@/components/Feed/LockedFeedOverlay", () => {
-  const { Pressable } = require("react-native");
+  const { Pressable, Text } = require("react-native");
   return {
-    LockedFeedOverlay: ({ posts, onOpenProfile, onPostPress }) => (
+    LockedFeedOverlay: ({ posts, onOpenProfile, onPostPress, waitingFor }) => (
       <>
+        <Text testID="locked-waiting">{String(waitingFor)}</Text>
         <Pressable testID="locked-name" onPress={() => onOpenProfile(posts[0])} />
         <Pressable testID="locked-post-cta" onPress={onPostPress} />
       </>
@@ -212,6 +213,13 @@ describe("post entry points by role on the active dog", () => {
     expect(queryByTestId("composer-open")).toBeNull();
     expect(alertSpy).toHaveBeenCalledTimes(1);
     expect(alertSpy.mock.calls[0][1]).toContain("Rocky");
+  });
+
+  test("the locked feed is told to explain (not to ask) only for a caregiver", () => {
+    withRole({ id: 8, name: "Rocky", is_shared: true, access_role: "caregiver" });
+    expect(render(<FeedScreen />).getByTestId("locked-waiting").props.children).toBe("Rocky");
+    withRole({ id: 7, name: "Luna", is_shared: true, access_role: "family" });
+    expect(render(<FeedScreen />).getByTestId("locked-waiting").props.children).toBe("null");
   });
 
   test("caregiver arriving with the ?compose= deep link also gets the explanation, not the composer", () => {

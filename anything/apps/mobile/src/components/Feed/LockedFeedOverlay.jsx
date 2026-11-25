@@ -54,7 +54,7 @@ const WARM_BUTTON = {
 
 // The "be the first" empty locked state — brand-new account or no friends have
 // posted yet today. Friendly message + CTA; never crashes with zero posts.
-function EmptyLockedState({ petName, onPostPress }) {
+function EmptyLockedState({ petName, onPostPress, waitingFor }) {
   const { t } = useTranslation();
   return (
     <View
@@ -90,9 +90,11 @@ function EmptyLockedState({ petName, onPostPress }) {
           marginBottom: 20,
         }}
       >
-        {t("feed.lockedEmptyBody", { petName })}
+        {waitingFor
+          ? t("feed.lockedWaiting", { petName: waitingFor })
+          : t("feed.lockedEmptyBody", { petName })}
       </Text>
-      <UnlockCTA onPostPress={onPostPress} centered />
+      {waitingFor ? null : <UnlockCTA onPostPress={onPostPress} centered />}
     </View>
   );
 }
@@ -121,6 +123,7 @@ const LockedPostRow = memo(function LockedPostRow({
   lockedCtaIndex,
   onPostPress,
   onOpenProfile,
+  waitingFor,
 }) {
   return (
     <PostCard
@@ -130,6 +133,7 @@ const LockedPostRow = memo(function LockedPostRow({
       lockedCtaIndex={lockedCtaIndex}
       onLockedPress={onPostPress}
       onOpenProfile={() => onOpenProfile?.(post)}
+      waitingFor={waitingFor}
     />
   );
 });
@@ -140,11 +144,14 @@ export function LockedFeedOverlay({
   onPostPress,
   onOpenProfile,
   onOpenBusinessPost,
+  waitingFor = null,
 }) {
   const list = Array.isArray(posts) ? posts : [];
 
   if (list.length === 0) {
-    return <EmptyLockedState petName={petName} onPostPress={onPostPress} />;
+    return (
+      <EmptyLockedState petName={petName} onPostPress={onPostPress} waitingFor={waitingFor} />
+    );
   }
 
   // Render the WHOLE feed — the enclosing ScrollView scrolls it (feed polish #4).
@@ -174,6 +181,7 @@ export function LockedFeedOverlay({
             lockedCtaIndex={lockedCtaIndex}
             onPostPress={onPostPress}
             onOpenProfile={onOpenProfile}
+            waitingFor={waitingFor}
           />
         );
       })}

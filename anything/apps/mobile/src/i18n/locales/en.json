@@ -2522,6 +2522,7 @@
     "lockedEmptyTitle": "No pet friends have posted yet",
     "lockedEmptyBody": "Be the first! Post {{petName}}'s daily moment to start today's feed.",
     "lockedPostToday": "Post today's photo",
+    "lockedWaiting": "Opens as soon as today's moment for {{petName}} is posted.",
     "lockedCard1": "Post today's moment to see what {{petName}} is up to 🐾",
     "lockedCard2": "Share your pet's day to unlock {{petName}}'s moment",
     "lockedCard3": "{{petName}} posted today — share yours to peek 👀",

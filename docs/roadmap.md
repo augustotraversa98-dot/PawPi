@@ -227,6 +227,12 @@ PR1 (#749) and PR2 (#750) are MERGED. This PR makes the shared dog **usable by t
 
 ---
 
+## 2026-11-24 — Night run #4 · bug fix: the locked Feed no longer asks a caregiver to post — client-only, needs EAS build 33
+
+- A caregiver cannot post a moment but saw "Post today's photo" on the daily card and every locked card. They now see what opens the Feed. Owner and family unchanged. EN + ES.
+
+---
+
 ## 2026-11-23 — Family & caregivers series — PR2/7: duplicate-pet guard on `POST /api/pets` — MERGED #750 (2026-11-23)
 
 Fixes audit gap **B8** (a retry / double tap / lost response created a second row for the same real dog). PR1 ([#749](https://github.com/augustotraversa98-dot/PawPi/pull/749)) is **MERGED** (squash `2bbf8425`): journey tests + migration 0137 (`app_pet_ring_segments` caller check — hand-apply, ACTION 9) + two CI-harness fixes (checkpointing the throwaway Postgres, explicit heap for the single integration fork; CI had been failing on file-slot exhaustion and then heap OOM — `main`'s own run after #748 was red for the same reason).

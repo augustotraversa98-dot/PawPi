@@ -181,6 +181,15 @@ Reasoning, the exact expected residual (`supabase_admin:r|S|f` only) and when to
 
 ---
 
+## 📱 To test — Night run #4 / bug: a caregiver is no longer asked to post (mobile JS only)
+
+**Needs EAS build 33** (merged + CI-green; not device-verified). Caregiver account on a shared dog, nobody posted today.
+- [ ] **1.** Feed: the daily card and the blurred cards say "Opens as soon as today's moment for <dog> is posted." with no "Post today's photo" button.
+- [ ] **2.** Owner posts; the Caregiver's Feed opens.
+- [ ] **3.** Owner and Family still see the post buttons. Spanish: "Se abre apenas publiquen el momento de hoy de …".
+
+---
+
 ## 📱 To test — v1.0.5 (auth refresh #733 + keyboard #734; server #732 already live)
 
 **Needs the 1.0.5 build** (next EAS build number: 31, iOS). Merged + CI-green, **not device-verified** — the keyboard fix in particular could not be exercised in the Simulator. Full checklist with the 12-screen table: [`release-1.0.5.md`](release-1.0.5.md) §5.
