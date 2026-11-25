@@ -18,6 +18,14 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-27 — Night run #7 · item 3: members of a shared dog no longer get "Forbidden" on the today's-moment check — SERVER CODE, DRAFT, NOT merged, NO migration, nothing to apply
+- **Finding: a real server permission gap**, not an expected denial the app retries. `GET /api/posts/today-daily-update?pet_id=` accepted only the pet's OWNER (`pets.owner_user_id`). The Feed asks about the active dog (`useFeedData` → `useTodayDailyUpdate(promptPet.id)`), which for a Family member, and for a caregiver who owns no dog, is the shared one: a 403 on every Feed open, focus and refetch, doubled by React Query's single retry (1.5 s). The Feed kept working because it falls back to the posts it already has.
+- **Fix (one route, same gate as the other shared-dog routes):** the owner is unchanged (latest daily moment of the dog today, by anyone); an ACTIVE, UNEXPIRED grantee (family or caregiver) is admitted through `resolvePetLogOwner(..., { allowCaregiver: true })` (`app_user_has_pet_access` underneath; degrades before 0049) and gets back **only their own moment of today, or null**. Outsiders, a member who left or was revoked, an expired grant and an unknown dog still get 403. Not widened: nothing is returned that the caller could not already read; the client is unchanged.
+- Tests: `test/integration/today-daily-update-shared.integration.test.ts` on real Postgres as `pawpi_app` (owner unchanged; family 200 + own moment only; caregiver 200 null; outsider / left / expired / unknown dog 403; signed out 401; own dog and the no-`pet_id` call unchanged). 2 of the 6 fail on the old route. `posts-owner-local-day` and `day-card` still pass.
+- Device checks: `test-backlog.md` → "Night run #7 / item 3". Merge = Railway deploy; no SQL.
+
+---
+
 ## 2026-11-27 — Night run #7 · item 4: parked decisions written down; migrations 0143-0145 recorded as applied — DOCS ONLY
 - New [`docs/todo-future.md`](todo-future.md): (1) **rule 3b** ("owner and family never see a blur, including on other people's posts") as a **PARKED product decision** that needs a server change and is **not planned for build 33**; (2) food, walk, pee, poo, vomit and general checks have **no history list**, so "who logged it" (0144) cannot show there; (3) the **former-member endpoint** (`GET /api/account/contributions`, from `docs/former-member-contributions-design.md`, which is in draft PR #786 and not on `main` yet) as a later task.
 - `docs/test-backlog.md`: **0143, 0144 and 0145 recorded as APPLIED + VERIFIED** (on the owner's word; Supabase was not queried), and their device checks (invite code with a Hide My Email partner, who logged it, owner deleting any moment) added to the build 33 checklist. The three "Night run #4" roadmap entries further down still say "DRAFT, NOT merged / NOT applied": that was true when written and is left as history.

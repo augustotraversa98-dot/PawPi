@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { ownerTodayFrom } from "@/app/api/utils/ownerLocalDay";
+import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 
 /**
  * GET /api/posts/today-daily-update
@@ -10,6 +11,11 @@ import { ownerTodayFrom } from "@/app/api/utils/ownerLocalDay";
  *
  * Query params:
  * - pet_id: The pet's database ID (optional, uses first pet if not provided)
+ *
+ * Who may ask about a pet_id: its OWNER (unchanged: the latest daily moment of the pet today, by anyone), or a person with an ACTIVE,
+ * unexpired grant on it (family or caregiver - the same gate as the other shared-dog routes, resolvePetLogOwner / app_user_has_pet_access).
+ * A grantee only ever gets THEIR OWN moment of today back (or null): nothing is read that they could not read before, and "have I posted
+ * for this dog today" is the right question for them anyway (one moment per author per day, migration 0103). Anyone else still gets 403.
  *
  * Returns:
  * - post: Today's daily update post (if exists)
@@ -58,6 +64,7 @@ async function GET(request) {
     // Get pet_id from query params or use first pet
     const { searchParams } = new URL(request.url);
     let petId = searchParams.get("pet_id");
+    let onlyOwnPost = false; // a grantee of someone else's dog sees only the moment they posted themselves
 
     if (!petId) {
       const pets = await sql`
@@ -79,14 +86,11 @@ async function GET(request) {
     } else {
       petId = parseInt(petId);
 
-      // Validate pet ownership
-      const pet = await sql`
-        SELECT id FROM pets 
-        WHERE id = ${petId} AND owner_user_id = ${userId}
-        LIMIT 1
-      `;
+      // The owner, or an active grantee of a dog shared with them. (This used to be an owner-only check, so every member of a shared dog
+      // got a 403 on each Feed open, focus and retry.)
+      const access = await resolvePetLogOwner(userId, petId, { allowCaregiver: true });
 
-      if (pet.length === 0) {
+      if (access.error) {
         console.error(
           "[GET /api/posts/today-daily-update] ERROR: Pet not found or unauthorized",
         );
@@ -95,6 +99,7 @@ async function GET(request) {
           { status: 403 },
         );
       }
+      onlyOwnPost = !access.isOwner;
     }
 
     // Query for today's daily update
@@ -124,6 +129,7 @@ async function GET(request) {
       WHERE p.pet_id = ${petId}
         AND p.is_daily_update = true
         AND p.post_date = ${todayDate}
+        AND (${onlyOwnPost}::boolean = false OR p.user_id = ${userId})
       ORDER BY p.created_at DESC
       LIMIT 1
     `;
