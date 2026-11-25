@@ -176,6 +176,12 @@ On build 33, three phones or accounts: Owner, Family, Caregiver (no dog of their
 
 ---
 
+## 📱 To test — Night run #4 / bug: double "accept" tells the owner once (server; after merging that PR)
+
+- [ ] **1.** Merge the PR. Owner invites; Partner taps Accept twice quickly: the owner gets ONE "accepted your invitation" notification.
+
+---
+
 ## 📱 To test — date picker "1969" fix (mobile JS only)
 
 **Needs EAS build 33** (merged + CI-green; **not device-verified**; the fix could not be reproduced on the Simulator, so the real iPhone check matters). Set the phone to Argentina time (UTC-3).
