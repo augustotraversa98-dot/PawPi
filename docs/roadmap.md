@@ -18,6 +18,15 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-25 — Night run #4 summary — report: `night-run/2026-11-24/REPORT.md`
+
+- **Merged (app, in build 33):** #760–#762, #764, #768 (PR5b Phase 1), #765 (rest day), #766 (delete own moment), #767 (resend invite), #769 (feed-lock tests), #772 (caregiver locked Feed).
+- **Open, not merged:** #776 (accept race, merge first), #763 (alarm-count telemetry, merge before building), #771 and #770 (history fix, server tests).
+- **Draft, migration NOT applied:** #773 (`0143`), #774 (`0144`), #775 (`0145`).
+- **Docs only:** `delete-account-contributions-options.md` — wording to review; today's confirmation is inaccurate for members.
+
+---
+
 ## 2026-11-24 — Night run #4 · PR5b Phase 1E: alarms already resolved by household logs are cancelled — client-only, needs EAS build 33
 
 - After each routines read the phone reads the wellness / weight / care / photo logs it needs and drops the alarms of instances the household already logged (same matching rules as the Today list). A deleted log arms it again; a failed read keeps ringing.
