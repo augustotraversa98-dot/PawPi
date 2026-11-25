@@ -1,4 +1,4 @@
-**Last updated:** October 16, 2026
+**Last updated:** November 25, 2026
 
 This Privacy Policy explains how Augusto Traversa ("PawPi," "we," "us") collects, uses, and
 shares information when you use the PawPi mobile app and related services (the "Service"). PawPi is
@@ -228,6 +228,12 @@ resolve disputes or enforce our Terms, and our payment processor keeps its own p
 its own policy. Push tokens are removed when you disable notifications or delete your account.
 Backups are rotated on a routine schedule.
 
+For dogs that others shared with you, you can choose to delete the posts you published about them.
+Health logs and vet-record entries you added are part of that dog's care history: they stay with its
+owner, no longer linked to you and shown as "Former member". If you delete your account and you had
+shared a dog, the dog and everything recorded about it is deleted, including what the people you
+shared it with added. We tell them before it happens.
+
 ## 10. Your choices and rights
 
 Depending on where you live, you may have rights to access, correct, export, or delete your personal
@@ -249,6 +255,12 @@ You can permanently delete your account from **Settings → Delete account**. Th
 your account and the data you own (your profile, pets, and the records associated with them), subject
 to the limited legal retention described in Section 9. This is separate from logging out or resetting
 local app data.
+
+For dogs that others shared with you, you can choose to delete the posts you published about them.
+Health logs and vet-record entries you added are part of that dog's care history: they stay with its
+owner, no longer linked to you and shown as "Former member". If you delete your account and you had
+shared a dog, the dog and everything recorded about it is deleted, including what the people you
+shared it with added. We tell them before it happens.
 
 ## 12. Children's privacy
 

@@ -37,6 +37,12 @@ Ahí podés agregar, editar o eliminar registros.
 Andá a **Ajustes → Eliminar cuenta**. Esto elimina de forma permanente tu cuenta y los datos que
 te pertenecen (tu perfil, tus mascotas y los registros asociados), sujeto a la retención legal
 limitada que corresponda. Eliminar tu cuenta es distinto de cerrar sesión.
+En los perros que otras personas compartieron con vos, podés elegir borrar las publicaciones que
+hiciste sobre ellos. Los registros de salud y las entradas de la historia clínica que agregaste son
+parte del historial de cuidado de ese perro: quedan con quien lo tiene a cargo, sin vínculo con vos
+y como "Ex integrante". Si eliminás tu cuenta y habías compartido un perro, se borra el perro y todo
+lo registrado sobre él, incluido lo que agregaron las personas con quienes lo compartiste. Les
+avisamos antes.
 
 **La app me pide cámara, fotos o ubicación, ¿por qué?**
 PawPi los pide solo para funciones que usás: la cámara y la galería te permiten agregar fotos de

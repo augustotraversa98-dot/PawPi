@@ -6,7 +6,7 @@
 > aplicable y resolución de disputas) antes de usarlo públicamente.
 
 _Réplica de la versión publicada en https://www.pawpi.info/terms (fuente: `anything/apps/web/src/content/legal/terms.es.md`): editá primero el archivo web y después copialo acá._
-**Última actualización:** 16 de octubre de 2026
+**Última actualización:** 25 de noviembre de 2026
 
 Estos Términos del Servicio ("Términos") rigen tu uso de la aplicación móvil PawPi y los servicios
 relacionados (el "Servicio"), provistos por Augusto Traversa ("PawPi", "nosotros"). Al crear una
@@ -129,7 +129,16 @@ funciones son opcionales y podés desactivarlas en la app o en la configuración
 
 Podés eliminar tu cuenta en cualquier momento desde **Ajustes → Eliminar cuenta**, lo que elimina
 de forma irreversible tu cuenta y los datos que te pertenecen (salvo la conservación legal limitada
-descrita en la Política de Privacidad). Podemos suspender o cerrar tu acceso si violás estos Términos o
+descrita en la Política de Privacidad).
+
+En los perros que otras personas compartieron con vos, podés elegir borrar las publicaciones que
+hiciste sobre ellos. Los registros de salud y las entradas de la historia clínica que agregaste son
+parte del historial de cuidado de ese perro: quedan con quien lo tiene a cargo, sin vínculo con vos
+y como "Ex integrante". Si eliminás tu cuenta y habías compartido un perro, se borra el perro y todo
+lo registrado sobre él, incluido lo que agregaron las personas con quienes lo compartiste. Les
+avisamos antes.
+
+Podemos suspender o cerrar tu acceso si violás estos Términos o
 para proteger el Servicio y a sus personas usuarias.
 
 ## 11. Renuncias de garantía

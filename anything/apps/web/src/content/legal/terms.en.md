@@ -1,4 +1,4 @@
-**Last updated:** October 16, 2026
+**Last updated:** November 25, 2026
 
 These Terms of Service ("Terms") govern your use of the PawPi mobile app and related services (the
 "Service"), provided by Augusto Traversa ("PawPi," "we," "us"). By creating an account or using
@@ -114,6 +114,13 @@ and you can disable them in the app or your device settings.
 
 You may delete your account at any time from **Settings → Delete account**, which irreversibly removes
 your account and the data you own (subject to limited legal retention described in the Privacy Policy).
+
+For dogs that others shared with you, you can choose to delete the posts you published about them.
+Health logs and vet-record entries you added are part of that dog's care history: they stay with its
+owner, no longer linked to you and shown as "Former member". If you delete your account and you had
+shared a dog, the dog and everything recorded about it is deleted, including what the people you
+shared it with added. We tell them before it happens.
+
 We may suspend or terminate your access if you violate these Terms or to protect the Service and its
 users.
 
