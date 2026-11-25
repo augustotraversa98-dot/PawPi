@@ -40,6 +40,7 @@ const TOP_LEVEL_AREA = Object.freeze({
   pets: 'pets',
   household: 'pets',
   'pet-caregivers': 'pets',
+  'pet-invite-codes': 'pets',
   'care-access': 'pets',
   'lost-reports': 'pets',
   // social feed

@@ -77,6 +77,10 @@ export const RATE_LIMITS = {
   // Pet-handle availability + suggestions (debounced typeahead). A READ, limited only to stop
   // handle enumeration/scraping; 90/min is far above a person typing (~1 check per 400 ms pause).
   handle_check: { limit: 90, windowSeconds: 60 },
+  // Pet invite codes (0143). Redeeming is a guess at a secret: 10 tries per 10 minutes is plenty for a typo and
+  // useless for guessing a 12-character code. Creating is capped too (and at 5 live codes per pet).
+  invite_redeem: { limit: 10, windowSeconds: 600 },
+  invite_create: { limit: 20, windowSeconds: 3600 },
   // Pack-streak invites notify another owner; 10/hour is far above a person starting streaks with friends.
   pack_request: { limit: 10, windowSeconds: 3600 },
   // People/pet/provider search is a typeahead (debounced) READ that can be scripted to enumerate accounts;
