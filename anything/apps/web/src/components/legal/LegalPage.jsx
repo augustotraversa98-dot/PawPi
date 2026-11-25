@@ -4,14 +4,15 @@ import LegalArticle from "@/components/legal/LegalArticle";
 import { useLang } from "@/lib/legal/useLang";
 import { buildPageMeta } from "@/lib/legal/lang";
 import { useDocumentHead, useBrandFonts, usePublicChrome } from "@/lib/legal/head";
-import { BRAND, FONT_MONO, FONT_SANS } from "@/lib/brand/tokens";
+import { BRAND, FONT_MONO, FONT_SANS, PAGE_MAX_WIDTH } from "@/lib/brand/tokens";
 
 // Shared long-form page shell for /privacy /terms /eula /support. Branded header
 // (lockup + ES/EN toggle), a mono eyebrow + big title, the ported markdown body,
 // and the shared footer. es-AR is the default; the toggle swaps the copy in place.
 // Also owns the per-page <head> (title/description/canonical/hreflang) since this
 // app doesn't wire route-module meta — see lib/legal/head.js.
-export default function LegalPage({ eyebrows, titles, descriptions, path, content }) {
+// `aside` (optional) renders between the title and the markdown body.
+export default function LegalPage({ eyebrows, titles, descriptions, path, content, aside }) {
   const { lang } = useLang();
 
   useBrandFonts();
@@ -38,7 +39,10 @@ export default function LegalPage({ eyebrows, titles, descriptions, path, conten
     >
       <SiteHeader />
       <main style={{ flex: 1, width: "100%" }}>
-        <div style={{ maxWidth: 760, margin: "0 auto", padding: "36px 20px 56px" }}>
+        {/* Same container as the header and footer so the left edges line up; the text keeps a
+            comfortable measure inside it. */}
+        <div style={{ maxWidth: PAGE_MAX_WIDTH, margin: "0 auto", padding: "36px 20px 56px" }}>
+         <div style={{ maxWidth: 720 }}>
           <p
             style={{
               fontFamily: FONT_MONO,
@@ -63,7 +67,9 @@ export default function LegalPage({ eyebrows, titles, descriptions, path, conten
           >
             {titles[lang]}
           </h1>
+          {aside}
           <LegalArticle content={content[lang]} />
+         </div>
         </div>
       </main>
       <SiteFooter />

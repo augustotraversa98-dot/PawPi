@@ -5,7 +5,12 @@ import { BRAND, FONT_SANS } from "@/lib/brand/tokens";
 // The PawPi lockup: mark + "PawPi" wordmark typeset live in Nunito ExtraBold
 // (the shipped SVG is mark-only). Gap = 0.35 × mark width, wordmark cap height
 // ≈ 0.55 × mark height, letter-spacing -0.02em, warm brown — per brand §6.
-export default function BrandLockup({ markWidth = 32, to = "/", color = BRAND.brown }) {
+export default function BrandLockup({
+  markWidth = 32,
+  to = "/",
+  color = BRAND.brown,
+  label = "PawPi — home",
+}) {
   const content = (
     <span
       style={{
@@ -33,7 +38,7 @@ export default function BrandLockup({ markWidth = 32, to = "/", color = BRAND.br
 
   if (!to) return content;
   return (
-    <Link to={to} aria-label="PawPi — home" style={{ textDecoration: "none" }}>
+    <Link to={to} aria-label={label} className="pp-focus" style={{ textDecoration: "none" }}>
       {content}
     </Link>
   );

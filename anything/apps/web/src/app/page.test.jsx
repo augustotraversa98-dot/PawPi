@@ -41,14 +41,16 @@ describe("/ homepage (session-aware, WEB1 PR2)", () => {
     expect(navigateSpy).not.toHaveBeenCalled();
   });
 
-  it("logged out: App Store CTA is honest 'coming soon' text, NOT a dead link", () => {
+  it("logged out: the App Store badges link to the live listing", () => {
     renderPage();
-    // The coming-soon copy is present…
-    expect(
-      screen.getAllByText(/Próximamente en el App Store/).length,
-    ).toBeGreaterThan(0);
-    // …and there is no App Store link at all (no dead/placeholder link).
-    expect(screen.queryByRole("link", { name: /Próximamente|App Store/i })).toBeNull();
+    const badges = screen.getAllByRole("link", { name: "Descárgalo en el App Store" });
+    expect(badges.length).toBeGreaterThan(0);
+    for (const badge of badges) {
+      expect(badge).toHaveAttribute(
+        "href",
+        "https://apps.apple.com/ar/app/pawpi/id6785949610?l=es",
+      );
+    }
   });
 
   it("logged out: footer carries the four legal cross-links + support email", () => {
@@ -73,7 +75,9 @@ describe("/ homepage (session-aware, WEB1 PR2)", () => {
     fireEvent.click(screen.getByRole("button", { name: "EN" }));
     const h1 = screen.getByRole("heading", { level: 1 });
     expect(h1.textContent).toContain("Your dog's whole life.");
-    expect(screen.getAllByText(/Coming soon on the App Store/).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole("link", { name: "Download on the App Store" }).length,
+    ).toBeGreaterThan(0);
   });
 
   it("honors ?lang=en on initial load", () => {
