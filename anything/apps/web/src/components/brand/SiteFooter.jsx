@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import AppStoreBadge from "@/components/brand/AppStoreBadge";
+import AppStoreButton from "@/components/brand/AppStoreButton";
 import BrandLockup from "@/components/brand/BrandLockup";
 import { BRAND, FONT_SANS, PAGE_MAX_WIDTH, SUPPORT_EMAIL } from "@/lib/brand/tokens";
 import { SECTION_IDS } from "@/lib/home/copy";
@@ -21,8 +21,6 @@ const LABELS = {
     terms: "Términos",
     eula: "EULA",
     support: "Soporte",
-    apple:
-      "Apple y el logotipo de Apple son marcas comerciales de Apple Inc., registradas en EE. UU. y en otros países. App Store es una marca de servicio de Apple Inc.",
   },
   en: {
     tagline: "Your dog's whole life. In one place.",
@@ -39,10 +37,12 @@ const LABELS = {
     terms: "Terms",
     eula: "EULA",
     support: "Support",
-    apple:
-      "Apple and the Apple logo are trademarks of Apple Inc., registered in the U.S. and other countries. App Store is a service mark of Apple Inc.",
   },
 };
+
+// Apple's standard English credit lines, shown as they are in both languages: no translation of our own.
+const APPLE_CREDIT =
+  "Apple and the Apple logo are trademarks of Apple Inc., registered in the U.S. and other countries. App Store is a service mark of Apple Inc.";
 
 // Links are underlined warm brown (coral text fails AA), never coral.
 const linkStyle = {
@@ -95,7 +95,7 @@ function Column({ id, title, items }) {
   );
 }
 
-// Shared footer for the public pages: brand + App Store badge, homepage anchors, business entry points,
+// Shared footer for the public pages: brand + download button, homepage anchors, business entry points,
 // legal & help; then the copyright and Apple credit lines. Every link keeps the language.
 export default function SiteFooter() {
   const { lang } = useLang();
@@ -134,7 +134,7 @@ export default function SiteFooter() {
               <p style={{ color: BRAND.muted, margin: 0, fontSize: 14, lineHeight: 1.55 }}>
                 {t.tagline}
               </p>
-              <AppStoreBadge height={40} />
+              <AppStoreButton />
             </div>
             <Column
               id="footer-explore"
@@ -188,7 +188,9 @@ export default function SiteFooter() {
           }}
         >
           <p style={{ margin: 0, fontSize: 13 }}>© 2026 PawPi · Augusto Traversa</p>
-          <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>{t.apple}</p>
+          <p lang="en" style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>
+            {APPLE_CREDIT}
+          </p>
         </div>
       </div>
     </footer>

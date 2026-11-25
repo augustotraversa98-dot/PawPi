@@ -62,8 +62,7 @@ describe.each(LANGS)("public pages (%s)", (lang, search) => {
               ["EULA", `/eula${search}`],
               ["Support", `/support${search}`],
             ],
-            badge: "Download on the App Store",
-            credit: /App Store is a service mark of Apple Inc\./,
+            download: "Download",
           }
         : {
             groups: ["Explorá", "Negocios", "Legal y ayuda"],
@@ -78,8 +77,7 @@ describe.each(LANGS)("public pages (%s)", (lang, search) => {
               ["EULA", "/eula"],
               ["Soporte", "/support"],
             ],
-            badge: "Descárgalo en el App Store",
-            credit: /App Store es una marca de servicio de Apple Inc\./,
+            download: "Descargar",
           };
 
     for (const name of L.groups) {
@@ -88,7 +86,7 @@ describe.each(LANGS)("public pages (%s)", (lang, search) => {
     for (const [name, href] of L.links) {
       expect(footer.getByRole("link", { name })).toHaveAttribute("href", href);
     }
-    expect(footer.getByRole("link", { name: L.badge })).toHaveAttribute(
+    expect(footer.getByRole("link", { name: L.download })).toHaveAttribute(
       "href",
       appStoreUrl(lang),
     );
@@ -97,7 +95,28 @@ describe.each(LANGS)("public pages (%s)", (lang, search) => {
       "mailto:support@pawpi.info",
     );
     expect(footer.getByText(/© 2026 PawPi · Augusto Traversa/)).toBeInTheDocument();
-    expect(footer.getByText(L.credit)).toBeInTheDocument();
+    // Apple's own English credit lines, in both languages.
+    expect(
+      footer.getByText(
+        "Apple and the Apple logo are trademarks of Apple Inc., registered in the U.S. and other countries. App Store is a service mark of Apple Inc.",
+      ),
+    ).toHaveAttribute("lang", "en");
+  });
+
+  it.each(PAGES)("%s: official badges only where allowed; header and footer use the button", (path, Page) => {
+    renderAt(Page, `${path}${search}`);
+    const badges = (scope) => [...scope.querySelectorAll('img[src^="/badges/"]')];
+    const expected = { "/": 2, "/support": 1 }[path] ?? 0;
+    expect(badges(document.body)).toHaveLength(expected);
+
+    const label = lang === "en" ? "Download" : "Descargar";
+    for (const landmark of [screen.getByRole("banner"), screen.getByRole("contentinfo")]) {
+      expect(badges(landmark)).toHaveLength(0);
+      expect(within(landmark).getByRole("link", { name: label })).toHaveAttribute(
+        "href",
+        appStoreUrl(lang),
+      );
+    }
   });
 
   it("homepage: anchor sections exist", () => {
@@ -110,8 +129,8 @@ describe.each(LANGS)("public pages (%s)", (lang, search) => {
   it("homepage: every image has alt text, fixed dimensions and a self-hosted file", () => {
     const { container } = renderAt(HomePage, `/${search}`);
     const images = [...container.querySelectorAll("img")];
-    // 9 screenshots + badges.
-    expect(images.length).toBeGreaterThan(Object.keys(HOME_IMAGES).length);
+    // 9 screenshots + the 2 badges.
+    expect(images).toHaveLength(Object.keys(HOME_IMAGES).length + 2);
     for (const img of images) {
       expect(img.getAttribute("alt")?.trim()).toBeTruthy();
       expect(Number(img.getAttribute("width"))).toBeGreaterThan(0);
@@ -150,7 +169,7 @@ describe.each(LANGS)("public pages (%s)", (lang, search) => {
   it("homepage: every App Store link is the one for this language", () => {
     const { container } = renderAt(HomePage, `/${search}`);
     const links = [...container.querySelectorAll('a[href*="apps.apple.com"]')];
-    // header, hero, dog-owner card, closing band, footer
+    // header button, hero badge, dog-owner card, closing badge, footer button
     expect(links).toHaveLength(5);
     for (const a of links) expect(a).toHaveAttribute("href", appStoreUrl(lang));
   });

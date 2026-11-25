@@ -19,10 +19,10 @@ commits. Keep this file in step with the master plan every time priorities chang
 ---
 
 ## 2026-11-25 — Website content: App Store badges, multi-column footer, screenshot sections, stale copy — web-only, Railway deploy on merge, no EAS build, no migration
-- **App Store:** the app is live, so every "coming soon / próximamente" is gone. One URL source (`appStoreUrl(lang)` in `lib/brand/tokens.js`); one `AppStoreBadge` using Apple's official EN and es-MX artwork, self-hosted and unmodified in `public/badges/`. Header (480px and up), hero, dog-owner card, closing band, footer, `/support` block, Safari smart banner (server-rendered), homepage JSON-LD and social card.
+- **App Store:** the app is live, so every "coming soon / próximamente" is gone. One URL source (`appStoreUrl(lang)` in `lib/brand/tokens.js`); one `AppStoreBadge` using Apple's official EN and es-MX artwork, self-hosted and unmodified in `public/badges/`. Badge only in the homepage hero and closing band and once on `/support`; header (360px and up) and footer use a coral "Descargar / Download" button. Also: Safari smart banner (server-rendered), homepage JSON-LD and social card.
 - **Homepage:** device screenshots (WebP derivatives of the untracked `docs/store` set, in `public/images/home/`), feature strip and audiences refreshed against the app, footer anchors `features` / `screenshots` / `audiences`. Copy lives in `lib/home/copy.js` (EN + ES).
-- **Footer** is a 4 → 2 → 1 column grid with the Apple credit line (EN + ES, awaiting owner review). `/support` menu paths corrected to the current app. Privacy, terms and EULA text unchanged.
-- `/api/*` untouched. Open for the owner: Apple's "one badge per layout" guideline, screenshot content (see the PR), and the `docs/legal/support.*` mirrors still carry the old menu paths.
+- **Footer** is a 4 → 2 → 1 column grid with Apple's English credit line in both languages (awaiting owner review). `/support` menu paths corrected to the current app. Privacy, terms and EULA text unchanged.
+- `/api/*` untouched. The owner confirmed the screenshots (to be updated over time). Open: the `docs/legal/support.*` mirrors still carry the old menu paths.
 
 ---
 

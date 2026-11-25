@@ -53,17 +53,17 @@
 @tailwind utilities;
 
 /* Public pages: their components use inline styles, which can express neither a pseudo-class nor a
-   media query. Visible keyboard focus (warm brown), and the header App Store badge only where it fits
+   media query. Visible keyboard focus (warm brown), and the header download button only where it fits
    beside the lockup and the ES/EN toggle. */
 .pp-focus:focus-visible {
   outline: 3px solid #3B241B;
   outline-offset: 3px;
 }
-.pp-header-badge {
+.pp-header-cta {
   display: none;
 }
-@media (min-width: 480px) {
-  .pp-header-badge {
+@media (min-width: 360px) {
+  .pp-header-cta {
     display: inline-flex;
   }
 }
