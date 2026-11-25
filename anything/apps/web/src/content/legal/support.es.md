@@ -15,27 +15,29 @@ dentro de **2 días hábiles**.
 
 - **Creá tu cuenta** — abrí PawPi y registrate con tu email, o usá Iniciar sesión con Apple
   o Google. Tenés que tener al menos 16 años para usar PawPi.
-- **Agregá a tu perro** — andá a **Más → Mi Perro** para crear el perfil de tu perro (nombre,
-  raza, edad, foto y más). La información de tu perro se vincula en toda la app.
-- **Configurá recordatorios** — abrí **Más → Recordatorios y Rutinas** para crear rutinas de
-  comida, paseo, control con foto, cuidados médicos, chequeo de bienestar y turnos con el
-  veterinario. Lo que vence aparece en **Salud → Hoy**.
+- **Agregá a tu perro** — cuando te registrás por primera vez, PawPi te pide crear el perfil de
+  tu perro (nombre, raza, edad, foto y más). Para agregar otro, abrí la pestaña **Perfil**, tocá
+  el menú y elegí **Mis perros → Agregar un perro**. La información de tu perro se vincula en toda
+  la app.
+- **Configurá recordatorios** — en el menú de la pestaña **Perfil**, abrí **Recordatorios y
+  rutinas** para crear rutinas de comida, paseo, control con foto, cuidados médicos, chequeo de
+  bienestar y turnos con el veterinario. Lo que vence aparece en **Salud → Hoy**.
 
 ## Preguntas frecuentes
 
 **¿Cómo restablezco mi contraseña?**
-En la pantalla de inicio de sesión, elegí "Olvidé mi contraseña" y seguí las instrucciones del
-correo. Si te registraste con Apple o Google, iniciá sesión con ese mismo proveedor en lugar de
+En la pantalla de inicio de sesión, elegí "¿Olvidaste tu contraseña?" y seguí las
+instrucciones del correo. Si te registraste con Apple o Google, iniciá sesión con ese mismo proveedor en lugar de
 una contraseña.
 
 **¿Cómo edito o borro la información de mi perro?**
-Abrí el perfil del perro en **Más → Mi Perro** (perfil social) o tu **Perfil del Perro** privado
-para editar los datos. La salud y los registros médicos están en **Salud → Historia Clínica**.
+La pestaña **Perfil** muestra el perfil social de tu perro. Para editar los datos, abrí su menú y
+elegí **Perfil del perro**. La salud y los registros médicos están en **Salud → Historia clínica**.
 Ahí podés agregar, editar o eliminar registros.
 
 **¿Cómo borro mi cuenta?**
-Andá a **Ajustes → Eliminar cuenta**. Esto elimina de forma permanente tu cuenta y los datos que
-te pertenecen (tu perfil, tus mascotas y los registros asociados), sujeto a la retención legal
+Abrí el menú de la pestaña **Perfil** y andá a **Configuración → Eliminar cuenta**. Esto
+elimina de forma permanente tu cuenta y los datos que te pertenecen (tu perfil, tus mascotas y los registros asociados), sujeto a la retención legal
 limitada que corresponda. Eliminar tu cuenta es distinto de cerrar sesión.
 En los perros que otras personas compartieron con vos, podés elegir borrar las publicaciones que
 hiciste sobre ellos. Los registros de salud y las entradas de la historia clínica que agregaste son

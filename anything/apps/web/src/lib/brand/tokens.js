@@ -28,6 +28,17 @@ export const FONT_MONO =
 // augusto@pawpi.info inbox — WEB2 unifies every surface on this single address.
 export const SUPPORT_EMAIL = "support@pawpi.info";
 
+// The live App Store listing (Argentine storefront). Single source of truth: never hardcode this URL
+// anywhere else — call appStoreUrl(lang).
+export const APP_STORE_ID = "6785949610";
+export function appStoreUrl(lang) {
+  const locale = lang === "en" ? "en-GB" : "es";
+  return `https://apps.apple.com/ar/app/pawpi/id${APP_STORE_ID}?l=${locale}`;
+}
+
+// Content width shared by the public header, page sections and footer, so their left edges line up.
+export const PAGE_MAX_WIDTH = 1040;
+
 // Canonical public origin (Railway custom domain). The apex pawpi.info carries MX
 // (email) so it can't point at Railway; www.pawpi.info is the canonical web host.
 // The brand Google Fonts (Nunito + JetBrains Mono) are injected client-side by
