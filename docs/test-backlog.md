@@ -131,6 +131,16 @@ Reasoning, the exact expected residual (`supabase_admin:r|S|f` only) and when to
 
 ---
 
+## 📱 To test — Night run #4 / item 7: the caregiver feed lock (tests added; behaviour unchanged)
+
+On build 33, three phones or accounts: Owner, Family, Caregiver (no dog of their own).
+- [ ] **1.** Morning, nobody posted: the Caregiver's Feed shows other dogs blurred.
+- [ ] **2.** A stranger / followed dog posting changes nothing.
+- [ ] **3.** Owner (or Family) posts the dog's moment: within ~30 s (or on reopen / pull to refresh) the Caregiver's Feed opens. Family and Owner open too.
+- [ ] **4.** Known today, fixed in separate pull requests: the shared dog's photo history stays locked for members before anyone posts; the Caregiver is offered "Post today's photo" although they cannot post.
+
+---
+
 ## 📱 To test — Care Ring pills stay tappable (mobile JS only)
 
 **Needs EAS build 33** (merged + CI-green; not device-verified).
