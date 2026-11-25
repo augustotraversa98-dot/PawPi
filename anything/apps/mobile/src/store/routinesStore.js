@@ -8,6 +8,172 @@ import { isPetLost } from "./petAccessStore";
 import { liveSnoozedIds } from "@/utils/snoozedAlarms";
 import { routinesQueryKey, fetchRoutinesRaw } from "@/utils/routinesQuery";
 
+// A database routine row in the shape the app (cards, generators) uses.
+const toAppRoutine = (routine) => ({
+  id: routine.id.toString(),
+  petId: routine.pet_id.toString(),
+  type: routine.routine_type,
+  isActive: routine.is_active,
+  title: routine.title,
+  description: routine.description,
+
+  // Feeding-specific: feeding_schedule JSON array
+  meals: routine.feeding_schedule || [],
+
+  // Walk-specific: walk_schedule JSON array
+  walks: routine.walk_schedule || [],
+
+  // Medication-specific
+  medicationName: routine.medication_details?.medicationName,
+  dose: routine.medication_details?.dose,
+  prescribedBy: routine.medication_details?.prescribedBy,
+  instructions: routine.medication_details?.instructions,
+  startDate: routine.medication_details?.startDate,
+  endDate: routine.medication_details?.endDate,
+
+  // Photo check specific - support both new multi-area and legacy single-area
+  photoCheckSchedule:
+    routine.photo_check_details?.photoCheckSchedule ||
+    (routine.photo_check_details?.bodyArea
+      ? [
+          {
+            bodyArea: routine.photo_check_details.bodyArea,
+            frequency: routine.frequency,
+            preferredDay: routine.preferred_day,
+            preferredTime: routine.times?.[0] || "10:00",
+            reminderEnabled: routine.notification_enabled,
+            timeSensitive: routine.time_sensitive,
+            notes: routine.notes || "",
+          },
+        ]
+      : null),
+  bodyArea: routine.photo_check_details?.bodyArea, // Legacy field
+
+  // Medical Care specific - multi-item schedule
+  medicalCareItems: routine.medical_care_details?.medicalCareItems || [],
+
+  // Wellness Check specific - multi-item schedule (use camelCase to match RoutineCard expectations)
+  wellnessCheckItems: routine.wellness_check_schedule || [],
+
+  // General fields
+  frequency: routine.frequency,
+  preferredDay: routine.preferred_day,
+  times: routine.times || [],
+  days: routine.days || [],
+  notificationEnabled: routine.notification_enabled,
+  timeSensitive: routine.time_sensitive,
+  notes: routine.notes,
+  createdAt: routine.created_at,
+  updatedAt: routine.updated_at,
+  // Soft-delete marker. The backend already excludes deleted routines from
+  // this fetch, so this is normally null; carried so the listing/generators
+  // can defensively skip any soft-deleted routine that ever reaches state.
+  deletedAt: routine.deleted_at ?? null,
+});
+
+async function runRoutinesLoad(set, get, petId, { epoch, background, silent }) {
+  const quiet = background || silent;
+  // Is this still the dog whose routines the screens should show?
+  const isShown = () => !background && latestShownPet === String(petId);
+  try {
+    if (!quiet) set({ loading: true, error: null });
+
+    // Always a LIVE read (staleTime 0: callers rely on it after edits and on pull-to-refresh), but
+    // through the shared ["routines", petId] entry so a request already in flight for this pet —
+    // e.g. the Feed's "first reminder" checklist read at launch — is joined, not repeated, and
+    // its result refreshes that checklist too. No retry: a failure surfaces as before.
+    const data = await queryClient.fetchQuery({
+      queryKey: routinesQueryKey(petId),
+      queryFn: () => fetchRoutinesRaw(petId),
+      staleTime: 0,
+      retry: false,
+    });
+    const transformedRoutines = (data.routines || []).map(toAppRoutine);
+
+    // The user this load was for may have logged out / switched while we awaited the network: drop it.
+    if (epoch !== getSessionEpoch()) return [];
+    // Same for the dog: access to it was lost while we were loading (utils/petAccess already cleared it).
+    if (isPetLost(petId)) {
+      if (!quiet) set({ loading: false });
+      return [];
+    }
+
+    if (isShown()) {
+      set({ routines: transformedRoutines, loading: false, error: null, initialized: true });
+    }
+
+    // Generate reminders from active routines. (AUDIT A-17) The store commits them in ONE
+    // batch so loading N routines fires a single reminders-store commit, not N
+    // (each of which re-rendered every subscriber, e.g. HealthToday).
+    const activeRoutines = transformedRoutines.filter((r) => r.isActive);
+    const allReminders = activeRoutines.flatMap((routine) =>
+      generateRemindersFromRoutine(routine),
+    );
+    await useRemindersStore.getState().syncPetReminders(petId, allReminders, transformedRoutines);
+
+    // Cancel duplicate/orphan OS notifications left by earlier launches or other devices (F1-01).
+    // Scoped to the pet that was loaded (plus the pets generated for), so it ALSO runs when the load generated nothing:
+    // removing a dog's last active routine must not leave its alarms armed. An active snooze of a still-active routine
+    // is a wanted alarm even though its (past) instance is not generated any more.
+    if (epoch === getSessionEpoch()) {
+      const petIds = new Set(
+        allReminders.map((r) => r.petId).filter((x) => x != null).map(String),
+      );
+      if (petId != null) petIds.add(String(petId));
+      const validReminderIds = new Set(allReminders.map((r) => r.id));
+      for (const id of liveSnoozedIds(useRemindersStore.getState().snoozes, activeRoutines)) {
+        validReminderIds.add(id);
+      }
+      try {
+        for (const id of petIds) {
+          await reconcileRoutineNotifications({ petId: id, validReminderIds });
+        }
+      } catch (sweepError) {
+        // Housekeeping only — it must never turn a successful routines load into an error state.
+        console.warn("[routinesStore] notification sweep failed:", sweepError?.message);
+      }
+    }
+
+    return transformedRoutines;
+  } catch (error) {
+    if (epoch !== getSessionEpoch()) return [];
+    if (background) {
+      console.warn("[routinesStore] background routines load failed:", error?.message);
+      return null;
+    }
+    console.error("[routinesStore] Error loading routines:", error);
+    if (!isShown()) return [];
+    // An automatic refresh that fails must not blank the routines already shown for this dog.
+    if (silent && get().routines.some((r) => String(r.petId) === String(petId))) {
+      return get().routines;
+    }
+    // No mock fallback (AUDIT_2026-09 A-13): a failed load must surface as an error +
+    // empty state, never as phantom sample routines generating phantom reminders.
+    set({ error: error.message, loading: false, routines: [], initialized: true });
+    return [];
+  }
+}
+
+// One routines load at a time PER DOG: two overlapping loads would both see "this reminder is new" and store it twice.
+// `coalesce` (the automatic triggers: pet select, app foreground, a newly shared dog) joins a load already on its way;
+// everything else (after an edit, pull-to-refresh) queues a fresh read behind it, so it can never get a stale answer.
+const loadQueues = new Map();
+
+function enqueueLoad(key, run, coalesce) {
+  const queued = loadQueues.get(key);
+  if (coalesce && queued) return queued;
+  const tail = queued ? queued.then(run, run) : run();
+  loadQueues.set(key, tail);
+  const done = () => {
+    if (loadQueues.get(key) === tail) loadQueues.delete(key);
+  };
+  tail.then(done, done);
+  return tail;
+}
+
+// The dog the person asked for last. A slower answer about a previously selected dog must not replace its routines.
+let latestShownPet = null;
+
 const useRoutinesStore = create((set, get) => ({
   // State
   routines: [],
@@ -15,141 +181,20 @@ const useRoutinesStore = create((set, get) => ({
   loading: false,
   error: null,
 
-  // Load routines from database
-  loadRoutines: async (petId) => {
-    // The signed-in identity this load is FOR. If it changes mid-flight (logout / account switch)
-    // the result belongs to a user who is gone: never put it in the store or schedule from it.
+  // Load a dog's routines from the database, keep its reminders in step with them and arm its alarms.
+  //   background  the dog is NOT the one on screen (a newly shared dog, the other dogs on foreground): reminders and
+  //               alarms only; `routines`, `loading` and `error` are left alone. Resolves null if the read failed.
+  //   silent      an automatic refresh of the dog on screen: no spinner, and a failed read keeps what is shown.
+  //   coalesce    join a load of this dog that is already on its way.
+  loadRoutines: (petId, { background = false, silent = false, coalesce = false } = {}) => {
+    // The signed-in identity this load is FOR, captured when it is ASKED for (it may be queued behind another one).
     const epoch = getSessionEpoch();
-    try {
-      set({ loading: true, error: null });
-
-      // Always a LIVE read (staleTime 0: callers rely on it after edits and on pull-to-refresh), but
-      // through the shared ["routines", petId] entry so a request already in flight for this pet —
-      // e.g. the Feed's "first reminder" checklist read at launch — is joined, not repeated, and
-      // its result refreshes that checklist too. No retry: a failure surfaces as before.
-      const data = await queryClient.fetchQuery({
-        queryKey: routinesQueryKey(petId),
-        queryFn: () => fetchRoutinesRaw(petId),
-        staleTime: 0,
-        retry: false,
-      });
-      const routines = data.routines || [];
-
-      // Transform database routines to app format
-      const transformedRoutines = routines.map((routine) => ({
-        id: routine.id.toString(),
-        petId: routine.pet_id.toString(),
-        type: routine.routine_type,
-        isActive: routine.is_active,
-        title: routine.title,
-        description: routine.description,
-
-        // Feeding-specific: feeding_schedule JSON array
-        meals: routine.feeding_schedule || [],
-
-        // Walk-specific: walk_schedule JSON array
-        walks: routine.walk_schedule || [],
-
-        // Medication-specific
-        medicationName: routine.medication_details?.medicationName,
-        dose: routine.medication_details?.dose,
-        prescribedBy: routine.medication_details?.prescribedBy,
-        instructions: routine.medication_details?.instructions,
-        startDate: routine.medication_details?.startDate,
-        endDate: routine.medication_details?.endDate,
-
-        // Photo check specific - support both new multi-area and legacy single-area
-        photoCheckSchedule:
-          routine.photo_check_details?.photoCheckSchedule ||
-          (routine.photo_check_details?.bodyArea
-            ? [
-                {
-                  bodyArea: routine.photo_check_details.bodyArea,
-                  frequency: routine.frequency,
-                  preferredDay: routine.preferred_day,
-                  preferredTime: routine.times?.[0] || "10:00",
-                  reminderEnabled: routine.notification_enabled,
-                  timeSensitive: routine.time_sensitive,
-                  notes: routine.notes || "",
-                },
-              ]
-            : null),
-        bodyArea: routine.photo_check_details?.bodyArea, // Legacy field
-
-        // Medical Care specific - multi-item schedule
-        medicalCareItems: routine.medical_care_details?.medicalCareItems || [],
-
-        // Wellness Check specific - multi-item schedule (use camelCase to match RoutineCard expectations)
-        wellnessCheckItems: routine.wellness_check_schedule || [],
-
-        // General fields
-        frequency: routine.frequency,
-        preferredDay: routine.preferred_day,
-        times: routine.times || [],
-        days: routine.days || [],
-        notificationEnabled: routine.notification_enabled,
-        timeSensitive: routine.time_sensitive,
-        notes: routine.notes,
-        createdAt: routine.created_at,
-        updatedAt: routine.updated_at,
-        // Soft-delete marker. The backend already excludes deleted routines from
-        // this fetch, so this is normally null; carried so the listing/generators
-        // can defensively skip any soft-deleted routine that ever reaches state.
-        deletedAt: routine.deleted_at ?? null,
-      }));
-
-      // The user this load was for may have logged out / switched while we awaited the network: drop it.
-      if (epoch !== getSessionEpoch()) return [];
-      // Same for the dog: access to it was lost while we were loading (utils/petAccess already cleared it).
-      if (isPetLost(petId)) {
-        set({ loading: false });
-        return [];
-      }
-
-      set({ routines: transformedRoutines, loading: false, initialized: true });
-
-      // Generate reminders from active routines. (AUDIT A-17) Commit them in ONE
-      // batch so loading N routines fires a single reminders-store commit, not N
-      // (each of which re-rendered every subscriber, e.g. HealthToday).
-      const remindersStore = useRemindersStore.getState();
-      const activeRoutines = transformedRoutines.filter((r) => r.isActive);
-      const allReminders = activeRoutines.flatMap((routine) =>
-        generateRemindersFromRoutine(routine),
-      );
-      await remindersStore.addRemindersFromRoutines(allReminders);
-
-      // Cancel duplicate/orphan OS notifications left by earlier launches or other devices (F1-01).
-      // Scoped to the pet that was loaded (plus the pets generated for), so it ALSO runs when the load generated nothing:
-      // removing a dog's last active routine must not leave its alarms armed. An active snooze of a still-active routine
-      // is a wanted alarm even though its (past) instance is not generated any more.
-      if (epoch === getSessionEpoch()) {
-        const petIds = new Set(
-          allReminders.map((r) => r.petId).filter((x) => x != null).map(String),
-        );
-        if (petId != null) petIds.add(String(petId));
-        const validReminderIds = new Set(allReminders.map((r) => r.id));
-        for (const id of liveSnoozedIds(useRemindersStore.getState().snoozes, activeRoutines)) {
-          validReminderIds.add(id);
-        }
-        try {
-          for (const petId of petIds) {
-            await reconcileRoutineNotifications({ petId, validReminderIds });
-          }
-        } catch (sweepError) {
-          // Housekeeping only — it must never turn a successful routines load into an error state.
-          console.warn("[routinesStore] notification sweep failed:", sweepError?.message);
-        }
-      }
-
-      return transformedRoutines;
-    } catch (error) {
-      if (epoch !== getSessionEpoch()) return [];
-      console.error("[routinesStore] Error loading routines:", error);
-      // No mock fallback (AUDIT_2026-09 A-13): a failed load must surface as an error +
-      // empty state, never as phantom sample routines generating phantom reminders.
-      set({ error: error.message, loading: false, routines: [], initialized: true });
-      return [];
-    }
+    if (!background) latestShownPet = String(petId);
+    return enqueueLoad(
+      String(petId),
+      () => runRoutinesLoad(set, get, petId, { epoch, background, silent }),
+      coalesce,
+    );
   },
 
   // Initialize reminders (call once on app start)

@@ -21,6 +21,9 @@ jest.mock("@/utils/notifications", () => ({
   scheduleReminderNotification: jest.fn(async () => null),
   cancelNotification: jest.fn(async () => {}),
   resolveReminderTiming: jest.fn(() => null),
+  resolveLeadTimeMs: jest.fn(() => 0),
+  getScheduledNotifications: jest.fn(async () => []),
+  reconcileRoutineNotifications: jest.fn(async () => 0),
 }));
 
 import useRoutinesStore from "@/store/routinesStore";

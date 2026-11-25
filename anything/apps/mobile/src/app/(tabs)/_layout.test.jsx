@@ -57,6 +57,8 @@ jest.mock("@/hooks/usePetProfile", () => ({
   useCurrentPet: () => ({ data: null }),
 }));
 jest.mock("@/components/Pets/PetAvatar", () => ({ PetAvatar: () => null }));
+// Keeps the reminder alarms current (its own tests: useReminderReconcile.test.jsx); renders nothing.
+jest.mock("@/components/Pets/ReminderReconciler", () => ({ ReminderReconciler: () => null }));
 jest.mock("@/store/routinesStore", () => ({
   __esModule: true,
   default: { getState: () => ({ routines: [] }) },

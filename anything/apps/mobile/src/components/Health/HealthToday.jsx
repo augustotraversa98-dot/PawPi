@@ -138,7 +138,7 @@ export default function HealthToday() {
   // pet switch rebuilds Today's reminders without needing the More tab.
   useEffect(() => {
     if (currentPet?.id && currentPet.id !== loadedPetId) {
-      loadRoutines(currentPet.id);
+      loadRoutines(currentPet.id, { coalesce: true });
       setLoadedPetId(currentPet.id);
     }
   }, [currentPet?.id, loadedPetId, loadRoutines]);

@@ -24,6 +24,18 @@ Reasoning, the exact expected residual (`supabase_admin:r|S|f` only) and when to
 
 ---
 
+## 📱 To test — Night run #4 / 1B: alarms refresh on foreground and dog switch (mobile JS only)
+
+**Needs EAS build 33** (merged + CI-green; not device-verified). Owner + Partner on one shared dog.
+- [ ] **1. Foreground.** Partner leaves the app on any tab. Owner changes a meal time of the shared dog (a few minutes ahead). Partner backgrounds the app, waits 20 s, reopens (shared dog selected), leaves it: the alarm rings at the NEW time only.
+- [ ] **2. Deleted on the other phone.** Owner deletes a routine; Partner reopens the app: no alarm for it.
+- [ ] **3. New shared dog.** Partner (with an own dog selected) accepts an invite and does NOT open Health for the new dog. Its next reminder still rings.
+- [ ] **4. Dog switch.** Switch dogs from the pet picker on Feed (not Health): the selected dog's reminders ring at their current times.
+- [ ] **5. State survives.** Mark a reminder done and snooze another, background and reopen: the done one does not ring, the snoozed one rings at the snoozed time, Today shows no duplicates.
+- [ ] **6. Offline reopen.** Airplane mode, reopen on Health → routines: the list is still there (no error screen), existing alarms still ring.
+
+---
+
 ## 📱 To test — Night run #4 / 1A: a lost shared dog stops ringing (mobile JS only)
 
 **Needs EAS build 33** (merged + CI-green; not device-verified). Two accounts, two phones (or phone + Simulator): **Owner** and **Partner** (Family or Caregiver) on one dog with at least one routine due in the next hour. Partner also has an OWN dog with a routine, to prove it is untouched.
