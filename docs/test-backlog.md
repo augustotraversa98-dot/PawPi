@@ -13,6 +13,15 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ## 📌 Night run #7 — checks (add each item's section as its PR lands)
 
+### Item 3 — "Forbidden" on the today's-moment check (SERVER, DRAFT: only after the PR is merged and Railway has deployed; no build needed)
+
+Two accounts: **A** owns Rex and shares him with **B** as **Family** and with **C** as **Caregiver** (C owns no dog). Use a day when nobody has posted.
+
+- [ ] **1.** B opens the Feed with Rex active: the Feed loads as before and the server log / Grafana shows **no 403** on `GET /api/posts/today-daily-update` for B (before: one 403 plus a retry on every open and focus).
+- [ ] **2.** A posts today's moment for Rex. B reopens the Feed: B is still offered their **own** moment (the per-author rule is unchanged), and A's post is not described as B's.
+- [ ] **3.** B posts theirs: B's daily card shows B's moment. C (caregiver): Feed unchanged, still no post button, still no 403.
+- [ ] **4.** Control: a stranger who is not a member cannot see anything for Rex (the app never asks; if you call the route by hand with Rex's id you get 403). A account (owner) unchanged.
+
 ### Item 4 — docs (nothing to test on a phone)
 
 - [ ] **1.** Nothing on a device. Device checks for migrations 0143 / 0144 / 0145 now sit in the **Build 33** list below (they are applied and verified; they only need the build and two accounts).
