@@ -24,6 +24,12 @@ Reasoning, the exact expected residual (`supabase_admin:r|S|f` only) and when to
 
 ---
 
+## 📌 Build 33 — what to test from night run #4
+
+Sections below that start "Night run #4": 1A–1E (reminders, two phones), item 6 (rest day), item 7 (feed lock), item 8 (delete own moment), item 9 (resend), caregiver locked Feed. Nothing from that run has been device-tested. Report: [`night-run/2026-11-24/REPORT.md`](night-run/2026-11-24/REPORT.md).
+
+---
+
 ## 📱 To test — Night run #4 / 1E: no ring for what the household already logged (mobile JS only)
 
 **Needs EAS build 33** (merged + CI-green; not device-verified). Owner + Partner, one shared dog with a wellness check, a photo check and a care item due later today.

@@ -1,6 +1,6 @@
 # PR5b design — reminders and routines across household members (2026-11-24)
 
-**Status: decisions 1–11 accepted 2026-11-24 (decision 7: no native change yet). Phase 1 is being built (see 9b); Phases 2 and 3 are not built.** The decisions are listed in section 9.
+**Status: decisions 1–11 accepted 2026-11-24 (decision 7: no native change yet). Phase 1 is built (see 9b); Phases 2 and 3 are not built.** The decisions are listed in section 9.
 Written from the code on `main` after PR5a (#758) and the server work of #749–#753 (migrations 0137–0142). Anything I could
 not confirm from code is collected in section 10 — please read that part before trusting any number here.
 
@@ -223,6 +223,8 @@ Light schedules (a few reminders a day) still reach the full 14 days.
 count against the 48. Re-arming needs the app to run: nothing happens while it is closed (no background task, decision 7).
 
 **Numbers.** The pending-alarm count telemetry (separate server + app change) is what will show whether 48 is enough.
+
+**Shipped.** 1A #760 · 1B #761 · 1C #762 · 1D #764 · 1E #768 (client only, build 33). Telemetry: #763, open until merged.
 
 ---
 
