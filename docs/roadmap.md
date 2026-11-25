@@ -18,6 +18,12 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-27 — Night run #7 · item 4: parked decisions written down; migrations 0143-0145 recorded as applied — DOCS ONLY
+- New [`docs/todo-future.md`](todo-future.md): (1) **rule 3b** ("owner and family never see a blur, including on other people's posts") as a **PARKED product decision** that needs a server change and is **not planned for build 33**; (2) food, walk, pee, poo, vomit and general checks have **no history list**, so "who logged it" (0144) cannot show there; (3) the **former-member endpoint** (`GET /api/account/contributions`, from `docs/former-member-contributions-design.md`, which is in draft PR #786 and not on `main` yet) as a later task.
+- `docs/test-backlog.md`: **0143, 0144 and 0145 recorded as APPLIED + VERIFIED** (on the owner's word; Supabase was not queried), and their device checks (invite code with a Hide My Email partner, who logged it, owner deleting any moment) added to the build 33 checklist. The three "Night run #4" roadmap entries further down still say "DRAFT, NOT merged / NOT applied": that was true when written and is left as history.
+
+---
+
 ## 2026-11-27 — Night run #7 · item 2: requests on app return measured; the refresh skips dogs whose reminders are switched off — client-only, needs the next EAS build
 - **Measured** (real `useReminderReconcile` + routines store + reminders store, counting `fetch`; pinned in `useReminderReconcile.requests.test.jsx`). Per dog, per read: **1 request** (`GET /api/routines?petId=`) for a dog with only feeding routines; up to **5** (routines + wellness-logs + weight-logs + medical-care-logs + photo-checks, one log read per persistent type the dog has, `householdResolution`). Launch reads the selected dog and every other dog once; **each return to the app after a real trip to the background re-reads every dog again** (15 s minimum gap already in place; closer returns send nothing). So N dogs cost N-5N requests per return: 3 dogs, worst case = 15.
 - **Verdict:** mostly fine (the alarm budget needs every dog's reminders, and the 15 s gap already holds quick switches). One part is pure waste: a dog this person switched "Remind me about this dog" **OFF** for and that is not on screen is still read on every return (1-5 requests), although a background read only feeds reminders and alarms and a muted dog arms none.
