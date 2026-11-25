@@ -16,6 +16,7 @@ import { securityHeaders } from '../src/app/api/utils/securityHeaders.js';
 import { apiNotFound } from '../src/app/api/utils/apiNotFound.js';
 import { stampSessionExpired } from '../src/app/api/utils/sessionExpiredCode.js';
 import { blockProbePaths } from '../src/app/api/utils/probePaths.js';
+import { agentDiscovery } from '../src/app/api/utils/agentDiscovery.js';
 import { serializeError } from 'serialize-error';
 import { metrics } from '@opentelemetry/api';
 import NeonAdapter from './adapter';
@@ -134,6 +135,11 @@ app.use('*', securityHeaders());
 // after the metrics middleware above (still counted) and before auth/static/SPA handlers. /api/* and
 // /.well-known/* are never touched. See src/app/api/utils/probePaths.js.
 app.use('*', blockProbePaths());
+
+// Agent discovery on the public website: Link headers, text/markdown versions of the public pages and the
+// /.well-known catalog documents. GET/HEAD on those exact paths only; /api/* is never touched. Must stay
+// ahead of the static-file and React Router handlers. See src/app/api/utils/agentDiscovery.js.
+app.use('*', agentDiscovery());
 
 app.onError((err, c) => {
   // Always log the full error server-side (the console override above tags it

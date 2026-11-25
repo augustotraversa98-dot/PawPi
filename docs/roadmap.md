@@ -18,6 +18,13 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-25 — Website agent discovery (isitagentready.com checks) — web-only, Railway deploy on merge, no EAS build, no migration
+- New `utils/agentDiscovery.js` middleware (GET/HEAD only, exact paths only; `/api/*` byte-identical, pinned by test): RFC 8288 `Link` headers on the five public pages; `text/markdown` versions when `Accept` asks (`Vary: Accept`, `x-markdown-tokens`), built from `lib/home/copy.js` and `content/legal`.
+- `/.well-known/api-catalog` (one real entry: `/api/health/deep`), `/.well-known/agent-skills/index.json` (empty: none published), `/.well-known/ai-catalog.json` (one entry: the API catalog).
+- Skipped on purpose: MCP server card (no MCP server), WebMCP (would expose signed-in actions), DNS-AID + DNSSEC (DNS work, owner). No cache rules, no change to CSP or probe-path exemptions.
+
+---
+
 ## 2026-11-25 — Website content: App Store badges, multi-column footer, screenshot sections, stale copy — web-only, Railway deploy on merge, no EAS build, no migration
 - **App Store:** the app is live, so every "coming soon / próximamente" is gone. One URL source (`appStoreUrl(lang)` in `lib/brand/tokens.js`); one `AppStoreBadge` using Apple's official EN and es-MX artwork, self-hosted and unmodified in `public/badges/`. Badge only in the homepage hero and closing band and once on `/support`; header (360px and up) and footer use a coral "Descargar / Download" button. Also: Safari smart banner (server-rendered), homepage JSON-LD and social card.
 - **Homepage:** device screenshots (WebP derivatives of the untracked `docs/store` set, in `public/images/home/`), feature strip and audiences refreshed against the app, footer anchors `features` / `screenshots` / `audiences`. Copy lives in `lib/home/copy.js` (EN + ES).

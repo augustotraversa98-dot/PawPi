@@ -1,10 +1,11 @@
 import LegalPage from "@/components/legal/LegalPage";
+import { LEGAL_TITLES } from "@/lib/legal/titles";
 import GetAppBlock from "@/components/brand/GetAppBlock";
 import contentEs from "../../content/legal/support.es.md?raw";
 import contentEn from "../../content/legal/support.en.md?raw";
 
 const EYEBROWS = { es: "Ayuda", en: "Help" };
-const TITLES = { es: "Soporte de PawPi", en: "PawPi Support" };
+const TITLES = LEGAL_TITLES.support;
 const DESCRIPTIONS = {
   es: "¿Necesitás ayuda con PawPi? Escribinos y mirá las preguntas frecuentes.",
   en: "Need help with PawPi? Contact us and browse the FAQ.",
