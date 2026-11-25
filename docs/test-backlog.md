@@ -19,6 +19,20 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ---
 
+## 📌 Build 33 — Night run #5 checklist (one list; details in the three sections below)
+
+Report: [`night-run/2026-11-25/REPORT.md`](night-run/2026-11-25/REPORT.md). Use **throwaway** accounts for the deletions.
+
+- [ ] **Delete-account switch is visible only to a member** of someone else's dog, and **default OFF** (item 1, steps 1, 2, 5).
+- [ ] **Switch OFF** completes a deletion on a throwaway member account; the member's posts show as "Former member" for the owner (item 1, step 3).
+- [ ] **Switch ON** completes a deletion on a second throwaway member account; the posts are gone, care logs and vet entries stay (item 1, step 4).
+- [ ] **Owner of a shared dog** sees "{dog} is shared with others…" with the real name(s); an owner with no shared dog does not (item 1, step 6).
+- [ ] **Spanish on a small screen**: the delete dialog fits and scrolls; voseo copy (item 1, step 7). Airplane mode shows only the friendly error (step 8).
+- [ ] **Legal pages** show the new paragraph in ES and EN: `/privacy` §9 + §11, `/terms` §10, `/support` (item 2).
+- [ ] **Caregiver Feed**: caregiver has no post button and the explanation; owner and family keep the button; nobody sees their own household's older posts blurred; a household post opens the Feed for all (item 3).
+
+---
+
 ## 📱 To test — Night run #5 / item 3: the Feed lock never covers your own household's dogs (client-only, needs EAS build 33)
 
 Two phones help: the owner of a dog, and a Family and a Caregiver account on it. Do this on a day when the household has **not** posted yet.
