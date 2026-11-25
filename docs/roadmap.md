@@ -213,6 +213,12 @@ Not in any PR yet. The pattern "`<t>_owner_all` checks WHO wrote a row, never WH
 
 ---
 
+## 2026-11-24 — Night run #4 · PR7: who logged each health entry — DRAFT, NOT merged, migration 0144 NOT applied (human-applied)
+
+- Two columns on the 11 log tables stamped by a trigger from the request identity (cannot be claimed by a client); the API returns the public display name only, "Former member" once the account is gone; shown in weight, wellness and photo histories. No backfill.
+
+---
+
 ## 2026-11-23 — FOLLOW-UP (separate item, NOT fixed in PR3b): provider walk-report and groom-note writes into the owner's health tables look broken (RLS)
 
 **What I found (read-only, 2026-11-23).**

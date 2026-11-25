@@ -4,6 +4,7 @@ import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContex
 import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 import { jsonbWriteValue } from "@/app/api/utils/jsonb";
 import { recordBusinessEvent } from "@/lib/telemetry/business";
+import { withLoggedByNames } from "@/app/api/utils/loggedBy";
 
 const UNDEFINED_COLUMN = "42703"; // pre-0118 DB lacks health_general_checks.areas → degrade cleanly
 
@@ -155,7 +156,7 @@ async function GET(request) {
       `;
     }
 
-    return Response.json({ checks }, { status: 200 });
+    return Response.json({ checks: await withLoggedByNames(checks) }, { status: 200 });
   } catch (error) {
     console.error("[health/general-checks] Error fetching checks:", error);
     return Response.json(

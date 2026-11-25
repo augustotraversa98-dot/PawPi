@@ -24,6 +24,7 @@ import {
   buildWellnessLogPayload,
 } from "@/utils/wellnessLog";
 import { formatLocalDate } from "@/utils/localeDateTime";
+import LoggedByLine from "@/components/Health/LoggedByLine";
 
 const C = {
   cream: COLORS.cream,
@@ -535,6 +536,7 @@ function HistoryList({ isWeight, schema, entries, isLoading, t }) {
                 {formatDate(entry.logged_at)}
               </Text>
             </View>
+            <LoggedByLine name={entry.logged_by_name} />
             {entry.notes ? (
               <View
                 style={{

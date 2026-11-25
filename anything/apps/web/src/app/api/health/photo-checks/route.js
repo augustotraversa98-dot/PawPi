@@ -3,6 +3,7 @@ import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { recordBusinessEvent } from "@/lib/telemetry/business";
+import { withLoggedByNames } from "@/app/api/utils/loggedBy";
 
 async function POST(request) {
   try {
@@ -141,7 +142,7 @@ async function GET(request) {
       `;
     }
 
-    return Response.json({ photoChecks }, { status: 200 });
+    return Response.json({ photoChecks: await withLoggedByNames(photoChecks) }, { status: 200 });
   } catch (error) {
     console.error("[health/photo-checks] Error fetching photo checks:", error);
     return Response.json(

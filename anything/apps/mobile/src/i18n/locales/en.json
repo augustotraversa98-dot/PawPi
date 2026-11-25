@@ -163,6 +163,7 @@
     "madeWith": "Made with 🐾 for dog parents"
   },
   "health": {
+    "loggedBy": "Logged by {{name}}",
     "title": "Health",
     "hubTitle": "Health Hub",
     "nutritionButton": "Nutrition",

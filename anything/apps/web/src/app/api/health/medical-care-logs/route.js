@@ -4,6 +4,7 @@ import { jsonbWriteValue } from "@/app/api/utils/jsonb";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { recordBusinessEvent } from "@/lib/telemetry/business";
+import { withLoggedByNames } from "@/app/api/utils/loggedBy";
 
 // POST - Save a medical care log entry (mark as given / completed / issue reported)
 async function POST(request) {
@@ -195,7 +196,7 @@ async function GET(request) {
       `;
     }
 
-    return Response.json({ logs }, { status: 200 });
+    return Response.json({ logs: await withLoggedByNames(logs) }, { status: 200 });
   } catch (error) {
     console.error("[health/medical-care-logs] Error fetching logs:", error);
     return Response.json(
