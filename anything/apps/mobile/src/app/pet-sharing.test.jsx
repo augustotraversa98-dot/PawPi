@@ -13,6 +13,7 @@ let mockInvite;
 let mockRespond;
 let mockRevoke;
 let mockLeave;
+let mockResend;
 let mockSearch;
 let mockCurrentPet;
 const mockRouter = { back: jest.fn(), push: jest.fn(), replace: jest.fn(), navigate: jest.fn() };
@@ -46,6 +47,7 @@ jest.mock("@/hooks/usePetSharing", () => ({
   useRespondGrant: () => mockRespond,
   useRevokeGrant: () => mockRevoke,
   useLeaveGrant: () => mockLeave,
+  useResendInvite: () => mockResend,
 }));
 
 import PetSharingScreen from "./pet-sharing";
@@ -65,6 +67,7 @@ beforeEach(() => {
   mockRespond = { mutate: jest.fn(), isPending: false };
   mockRevoke = { mutate: jest.fn(), isPending: false };
   mockLeave = { mutate: jest.fn(), isPending: false };
+  mockResend = { mutate: jest.fn(), isPending: false };
   mockSearch = { data: { owners: [{ id: 8, username: "kim" }] }, isFetching: false };
 });
 
@@ -173,5 +176,40 @@ describe("pet-sharing empty-state copy exists in EN and ES", () => {
     expect(en.petSharing[key].length).toBeGreaterThan(0);
     expect(es.petSharing[key].length).toBeGreaterThan(0);
     expect(es.petSharing[key]).not.toBe(en.petSharing[key]);
+  });
+});
+
+// Night run #4 item 9: resend on a pending invite.
+describe("resend invite", () => {
+  const rows = [
+    { id: 10, grantee_username: "jane", role: "family", status: "active" },
+    { id: 11, grantee_username: "leo", role: "caregiver", status: "pending" },
+    { id: 12, grantee_username: "ana", role: "family", status: "expired" },
+  ];
+  beforeEach(() => {
+    mockGrants = { data: rows, isLoading: false };
+    require("@/store/inviteCooldownStore").default.getState().reset();
+  });
+
+  test("only a PENDING row has a Resend button", () => {
+    const { queryByTestId } = render(<PetSharingScreen />);
+    expect(queryByTestId("resend-11")).toBeTruthy();
+    expect(queryByTestId("resend-10")).toBeNull();
+    expect(queryByTestId("resend-12")).toBeNull();
+  });
+
+  test("pressing it resends that invite", () => {
+    const { getByTestId } = render(<PetSharingScreen />);
+    fireEvent.press(getByTestId("resend-11"));
+    expect(mockResend.mutate).toHaveBeenCalledWith(11);
+  });
+
+  test("while cooling down it says Sent and does nothing", () => {
+    require("@/store/inviteCooldownStore").default.getState().startCooldown(11, 60000);
+    const { getByTestId, getByText } = render(<PetSharingScreen />);
+    expect(getByText("sharedDog.resendSent")).toBeTruthy();
+    expect(getByTestId("resend-11").props.accessibilityState.disabled).toBe(true);
+    fireEvent.press(getByTestId("resend-11"));
+    expect(mockResend.mutate).not.toHaveBeenCalled();
   });
 });

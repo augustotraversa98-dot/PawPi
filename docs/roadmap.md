@@ -114,6 +114,14 @@ Reported on a live iPhone (UTC-3): Health → Track → Medications & care → V
 
 ---
 
+## 2026-11-24 — Night run #4 · item 9: resend invite — client-only (server from 0142, already applied), needs EAS build 33
+
+- A **Resend** button on each pending invite (owner only: the server accepts resends from the pet's owner, so family members are not offered it).
+- Friendly EN + ES answer for every server code (sent, too soon with minutes, limit reached, already answered, unavailable, network); after sending the button rests for the server's hour.
+- No server or SQL change.
+
+---
+
 ## 2026-11-23 — Family & caregivers series — PR4: sharing LIFECYCLE (leave, resend, notifications, account deletion) — OPEN, NOT merged (builds on merged #752; migration **0142** after 0141)
 
 Owner decision 1 (account deletion) and the lifecycle half of the audit (Q10: B4 no leave, B9 respond 500, C6 double revoke).

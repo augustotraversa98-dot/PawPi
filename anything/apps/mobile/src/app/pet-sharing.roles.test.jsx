@@ -32,6 +32,7 @@ jest.mock("@/hooks/usePetSharing", () => ({
   useRespondGrant: () => ({ mutate: jest.fn(), isPending: false }),
   useRevokeGrant: () => ({ mutate: jest.fn(), isPending: false }),
   useLeaveGrant: () => mockLeave,
+  useResendInvite: () => ({ mutate: jest.fn(), isPending: false }),
 }));
 
 import PetSharingScreen from "./pet-sharing";

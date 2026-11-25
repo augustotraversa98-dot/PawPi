@@ -131,6 +131,18 @@ Reasoning, the exact expected residual (`supabase_admin:r|S|f` only) and when to
 
 ---
 
+## 📱 To test — Night run #4 / item 9: resend an invite (mobile JS only; server 0142 already applied)
+
+**Needs EAS build 33** (merged + CI-green; not device-verified). Owner invites a Partner and the Partner does not answer.
+- [ ] **1.** More → Family & caregivers: the pending row has **Resend**; active / ended rows do not.
+- [ ] **2.** Tap it: "Invite sent again"; the button changes to **Sent** and rests; the Partner gets the notification again.
+- [ ] **3.** Kill the app, reopen, tap Resend again within the hour: "Already sent … about N min".
+- [ ] **4.** Partner accepts, Owner taps an old row: "Nothing to resend", the list refreshes.
+- [ ] **5.** Airplane mode: a friendly "Not sent" message, no technical text.
+- [ ] **6.** Spanish: "Reenviar", "Invitación enviada de nuevo", "Ya la enviaste".
+
+---
+
 ## 📱 To test — #747 "Family & caregivers sent me to onboarding" fix (mobile JS only)
 
 **Needs a new EAS build** (merged + CI-green; **not device-verified** — only the iOS Simulator under Expo Go with a local server). Use a **brand-new account** for steps 1–3 (the bug needed the onboarding screen still underneath the app).

@@ -34,7 +34,9 @@ import {
   useRespondGrant,
   useRevokeGrant,
   useLeaveGrant,
+  useResendInvite,
 } from "@/hooks/usePetSharing";
+import useInviteCooldownStore from "@/store/inviteCooldownStore";
 import CaregiverLogWalkModal from "@/components/Pets/CaregiverLogWalkModal";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 
@@ -58,6 +60,34 @@ const useRoleLabel = () => {
     caregiver: t("petSharing.roleCaregiverLabel"),
   };
 };
+
+// "Resend" on a pending invite. After sending it rests (the server allows one an hour) and says so.
+function ResendButton({ grant, cooling, busy, onPress }) {
+  const { t } = useTranslation();
+  const disabled = cooling || busy;
+  return (
+    <TouchableOpacity
+      testID={`resend-${grant.id}`}
+      accessibilityRole="button"
+      accessibilityLabel={t("sharedDog.resendA11y", { name: granteeLabel(t, grant.grantee_username) })}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+      style={{
+        borderRadius: 10,
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        backgroundColor: cooling ? C.sand : C.coral + "1A",
+        opacity: busy && !cooling ? 0.6 : 1,
+      }}
+    >
+      <Text style={{ fontSize: 12, fontWeight: "700", color: cooling ? C.mutedBrown : C.coral }}>
+        {cooling ? t("sharedDog.resendSent") : t("sharedDog.resend")}
+      </Text>
+    </TouchableOpacity>
+  );
+}
 
 export default function PetSharingScreen() {
   const insets = useSafeAreaInsets();
@@ -86,6 +116,8 @@ export default function PetSharingScreen() {
   const respond = useRespondGrant();
   const revoke = useRevokeGrant(petId);
   const leave = useLeaveGrant();
+  const resend = useResendInvite(petId);
+  const resendUntil = useInviteCooldownStore((s) => s.until);
 
   const confirmLeave = (g) => {
     Alert.alert(
@@ -279,6 +311,14 @@ export default function PetSharingScreen() {
                     {ROLE_LABEL[g.role]} · {grantStatusLabel(t, g.status)}
                   </Text>
                 </View>
+                {g.status === "pending" ? (
+                  <ResendButton
+                    grant={g}
+                    cooling={(resendUntil[g.id] ?? 0) > Date.now()}
+                    busy={resend.isPending}
+                    onPress={() => resend.mutate(g.id)}
+                  />
+                ) : null}
                 {g.status === "active" || g.status === "pending" ? (
                   <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID={`revoke-${g.id}`} onPress={() => revoke.mutate(g.id)}>
                     <Trash2 size={18} color={C.terracotta} />
