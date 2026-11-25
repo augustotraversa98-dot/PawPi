@@ -223,6 +223,12 @@ Owner decision 2: **family/co-owner reads and writes everything except managing 
 
 ---
 
+## 2026-11-24 — Night run #4 · item 7: caregiver feed lock — server integration tests (tests only)
+
+- Real router + Postgres: caregiver locked before the household posts and cannot post; unlocked after the owner's or family's moment; the household dog is never locked for owner / family / caregiver (feed, profile); another dog's post, yesterday's post and a revoked grant do not unlock.
+
+---
+
 ## 2026-11-23 — FOLLOW-UP (before the next release): sweep migration for the ~30 other pet-linked tables with own-row-only policies
 
 Not in any PR yet. The pattern "`<t>_owner_all` checks WHO wrote a row, never WHICH PET it points at" (found in PR3, closed by 0140 for 21 tables and by 0141 for 3 more) still exists on about **30 other pet-linked tables** — `daycare_stays`, `groom_sessions`, `household_leaderboard_prefs`, `insurance_leads`, `insurance_policies`, `lost_reports`, `nutrition_plans`, `pet_care_days`, `pet_emergency_cards`, `pet_emergency_share_links`, `pet_food_recall_matches`, `pet_leaderboard_weeks`, `pet_streaks`, `reengagement_state`, `rx_fulfillment_orders`, `rx_refill_requests`, `sitting_visits`, `social_walks`, `telehealth_sessions`, `training_programs`, `training_progress`, `training_progress_self`, `transport_trips`, `walk_requests`, `walk_sessions`, `weekly_digest_state`, `provider_reviews` (own-row insert/update), and the update policies of a few more (production catalog query 2026-11-23: only `pet_caregivers_insert` and `care_access_grants_insert` check the pet today).
