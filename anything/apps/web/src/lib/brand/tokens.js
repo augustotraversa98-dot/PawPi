@@ -36,6 +36,13 @@ export function appStoreUrl(lang) {
   return `https://apps.apple.com/ar/app/pawpi/id${APP_STORE_ID}?l=${locale}`;
 }
 
+// The words printed on Apple's badge artwork (public/badges); used as its alt text and wherever the
+// download link is written out as text.
+export const APP_STORE_BADGE_LABELS = {
+  es: "Descárgalo en el App Store",
+  en: "Download on the App Store",
+};
+
 // Content width shared by the public header, page sections and footer, so their left edges line up.
 export const PAGE_MAX_WIDTH = 1040;
 
