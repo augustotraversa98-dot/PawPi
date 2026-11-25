@@ -14,6 +14,7 @@ import * as VideoThumbnails from "expo-video-thumbnails";
 import { Platform } from "react-native";
 import { getLocalPostDateString, normalizePostDate } from "@/utils/dateUtils";
 import useUser from "@/utils/auth/useUser";
+import { householdPetIdSet } from "@/utils/feed/householdPosts";
 
 export function useFeedData() {
   // Load current pet from database instead of AsyncStorage
@@ -34,6 +35,10 @@ export function useFeedData() {
     () => new Set((allPets ?? []).filter((p) => !p.is_shared).map((p) => String(p.id))),
     [allPets],
   );
+
+  // Every dog of the viewer's HOUSEHOLD (owned + shared with them). The post-to-unlock lock never covers a post of one of these
+  // (the server never withholds them either): see utils/feed/householdPosts.
+  const householdPetIds = useMemo(() => householdPetIdSet(allPets), [allPets]);
 
   const petId = currentPet?.id;
   const petName = currentPet?.name || "your pup";
@@ -286,6 +291,7 @@ export function useFeedData() {
   return {
     petProfile: currentPet, // Return database pet instead of AsyncStorage
     ownedPetIds, // Set<string> of every pet id the user owns (delete/edit gating)
+    householdPetIds, // Set<string> of every dog the user owns OR is an active family/caregiver on (never locked)
     petName,
     hasPostedToday, // per active pet (DailyPromptCard prompt)
     feedUnlocked, // per owner (feed lock)

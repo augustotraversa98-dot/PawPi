@@ -6,6 +6,7 @@ import { COLORS, SPACING, RADIUS } from "@/constants/theme";
 import { PawMark, PressableScale } from "@/components/ui";
 import { PostCard } from "./PostCard";
 import { BusinessPostCard } from "./BusinessPostCard";
+import { isHouseholdPost } from "@/utils/feed/householdPosts";
 
 // LockedFeedOverlay — the "post to unlock" FOMO feed (feed polish #4).
 //
@@ -138,6 +139,29 @@ const LockedPostRow = memo(function LockedPostRow({
   );
 });
 
+// A post of the viewer's OWN household (a dog they own, or one they are family / caregiver on) is never part of the lock: the
+// server does not withhold it, so it shows exactly as it does on the unlocked Feed (photo, caption, paw, comments).
+const HouseholdPostRow = memo(function HouseholdPostRow({
+  post,
+  liked,
+  onToggleLike,
+  onOpenBarks,
+  onOpenDetail,
+  onOpenProfile,
+}) {
+  return (
+    <PostCard
+      post={post}
+      liked={liked}
+      locked={false}
+      onToggleLike={() => onToggleLike?.(post.id)}
+      onOpenBarks={() => onOpenBarks?.(post)}
+      onOpenDetail={() => onOpenDetail?.(post)}
+      onOpenProfile={() => onOpenProfile?.(post)}
+    />
+  );
+});
+
 export function LockedFeedOverlay({
   posts,
   petName,
@@ -145,6 +169,12 @@ export function LockedFeedOverlay({
   onOpenProfile,
   onOpenBusinessPost,
   waitingFor = null,
+  // The viewer's household (Set<string> of dog ids) and what its cards need to behave like unlocked ones.
+  householdPetIds = null,
+  likedPosts = {},
+  onToggleLike,
+  onOpenBarks,
+  onOpenDetail,
 }) {
   const list = Array.isArray(posts) ? posts : [];
 
@@ -170,6 +200,19 @@ export function LockedFeedOverlay({
               key={`business-${post.id}`}
               post={post}
               onPress={() => onOpenBusinessPost?.(post)}
+            />
+          );
+        }
+        if (isHouseholdPost(post, householdPetIds)) {
+          return (
+            <HouseholdPostRow
+              key={post.id}
+              post={post}
+              liked={!!likedPosts?.[post.id]}
+              onToggleLike={onToggleLike}
+              onOpenBarks={onOpenBarks}
+              onOpenDetail={onOpenDetail}
+              onOpenProfile={onOpenProfile}
             />
           );
         }

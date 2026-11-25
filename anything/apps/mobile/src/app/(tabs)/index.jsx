@@ -32,6 +32,7 @@ export default function FeedScreen() {
   const {
     petProfile,
     ownedPetIds,
+    householdPetIds,
     petName,
     hasPostedToday,
     feedUnlocked,
@@ -357,6 +358,11 @@ export default function FeedScreen() {
                 onOpenProfile={openProfile}
                 onOpenBusinessPost={openBusinessPost}
                 waitingFor={waitingFor}
+                householdPetIds={householdPetIds}
+                likedPosts={likedPosts}
+                onToggleLike={handleToggleLike}
+                onOpenBarks={setBarkPost}
+                onOpenDetail={setDetailPost}
               />
             ) : (
               <UnlockedFeed
