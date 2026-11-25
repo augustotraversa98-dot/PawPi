@@ -17,7 +17,7 @@ import { BarkModal } from "@/components/Feed/BarkModal";
 import { PostDetailModal } from "@/components/Feed/PostDetailModal";
 import { useFeedData } from "@/hooks/useFeedData";
 import { canDoOnPetOrUnknown } from "@/utils/petPermissions";
-import { canManageMoment } from "@/utils/postPermissions";
+import { canManageMoment, canDeleteMoment } from "@/utils/postPermissions";
 import { useMyProfileId } from "@/hooks/useUserProfile";
 import { useFeedSuggestions } from "@/hooks/useFeedSuggestions";
 import { usePostingStreak, useUpdatePostCaption, useTogglePaw } from "@/hooks/useFeedPosts";
@@ -96,15 +96,17 @@ export default function FeedScreen() {
   const detailPostLive = detailPost
     ? posts.find((p) => p.id === detailPost.id) || detailPost
     : null;
-  // Edit / delete follow the server's rule: the AUTHOR (utils/postPermissions) — so a member can remove their own
-  // moment on a dog shared with them, and nobody is offered a button the server would refuse. When the author is not
-  // known, the post's pet being the viewer's own (ANY of their pets, string-compared) decides, as before.
+  // Edit / delete follow the server's rules (utils/postPermissions): the AUTHOR edits and deletes — so a member can
+  // remove their own moment on a dog shared with them — and the dog's owner may also delete any daily moment of it.
+  // When the author is not known, the post's pet being the viewer's own (ANY of their pets, string-compared) decides.
   const { data: myProfileId } = useMyProfileId({ enabled: !!detailPostLive });
-  const ownsDetailPost = canManageMoment(detailPostLive, {
+  const detailRights = {
     myProfileId,
     ownsPet:
       !!detailPostLive && !!ownedPetIds && ownedPetIds.has(String(detailPostLive.pet_id)),
-  });
+  };
+  const ownsDetailPost = canManageMoment(detailPostLive, detailRights);
+  const canDeleteDetail = canDeleteMoment(detailPostLive, detailRights);
   // Toggle the open post's paw through the SAME mutation the feed card uses, so
   // pawing/un-pawing in the modal updates the shared query and the feed card's
   // fill + count move together.
@@ -398,8 +400,9 @@ export default function FeedScreen() {
         // Fill + count both read from the same live post (feed polish #2).
         liked={!!detailPostLive?.user_has_pawed}
         // The viewer can delete/edit any post they own (any of their pets).
-        canDelete={ownsDetailPost}
+        canDelete={canDeleteDetail}
         canEdit={ownsDetailPost}
+        isOwnPost={ownsDetailPost}
         onSaveCaption={(caption) =>
           updateCaption.mutateAsync({ postId: detailPost.id, caption })
         }

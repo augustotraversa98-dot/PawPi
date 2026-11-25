@@ -3,6 +3,20 @@
 // and nobody is offered a button the server would refuse.
 
 /**
+ * DELETE is wider than edit since migration 0145: the dog's owner may also remove any daily moment of that dog.
+ *
+ * @param {object|null} post
+ * @param {{ myProfileId?: number|string|null, ownsPet?: boolean }} ctx
+ * @returns {boolean}
+ */
+export function canDeleteMoment(post, ctx = {}) {
+  if (canManageMoment(post, ctx)) return true;
+  return !!ctx.ownsPet && post?.is_daily_update === true && post.item_type !== "provider_post";
+}
+
+/**
+ * May the viewer EDIT it? The author only.
+ *
  * @param {object|null} post a feed / profile post (`user_id` = author profile id, when the payload carries it)
  * @param {{ myProfileId?: number|string|null, ownsPet?: boolean }} ctx
  * @returns {boolean}

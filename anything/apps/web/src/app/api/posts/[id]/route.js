@@ -5,10 +5,10 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 /**
  * DELETE /api/posts/[id]
  *
- * Delete the caller's OWN post (ticket 2.36). Owner-only: the post is matched on
- * BOTH its id and `user_id = <caller's user_profiles.id>`, so a user can never
- * delete someone else's post (RLS `posts_author_all` enforces the same at the DB
- * level as defence-in-depth).
+ * Delete the caller's OWN post (ticket 2.36), or — for the owner of a dog — any
+ * DAILY MOMENT of that dog (a household member's included). RLS enforces both at the
+ * DB level: `posts_author_all` (author) and `posts_pet_owner_delete_moment` (0145;
+ * until it is applied the database allows the author only and this answers 404).
  *
  * Hard delete — `posts` has no `deleted_at` column, and `post_paws` / `post_barks`
  * are `ON DELETE CASCADE`, so a delete cleans up its reactions. Deleting TODAY's
@@ -38,10 +38,12 @@ async function DELETE(request, { params }) {
     }
     const userId = userProfile[0].id;
 
-    // Owner-scoped delete: returns the row only if it existed AND belonged to me.
+    // Returns the row only if it existed AND the caller may remove it: their own post, or a daily moment of a dog
+    // they own.
     const deleted = await sql`
       DELETE FROM posts
-      WHERE id = ${postId} AND user_id = ${userId}
+      WHERE id = ${postId}
+        AND (user_id = ${userId} OR (is_daily_update = true AND app_owns_pet(pet_id)))
       RETURNING id, is_daily_update, post_date
     `;
 

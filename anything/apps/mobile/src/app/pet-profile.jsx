@@ -9,7 +9,7 @@ import { PetAvatar } from "@/components/Pets/PetAvatar";
 import { OwnerMenu } from "@/components/More/OwnerMenu";
 import { SharedPetBadge } from "@/components/Pets/SharedPetBadge";
 import { canDoOnPetOrUnknown } from "@/utils/petPermissions";
-import { canManageMoment } from "@/utils/postPermissions";
+import { canManageMoment, canDeleteMoment } from "@/utils/postPermissions";
 import { useMyProfileId } from "@/hooks/useUserProfile";
 import { useMomentAuthors } from "@/hooks/useMomentAuthors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
@@ -164,13 +164,13 @@ export default function PetProfileScreen({ embedded = false }) {
   const { data: myProfileId } = useMyProfileId({ enabled: !!detailPost });
   const isMyDog = (allPets ?? []).some((p) => String(p.id) === String(petId));
   const { data: momentAuthors } = useMomentAuthors(petId, { enabled: !!detailPost && isMyDog });
-  const canManageDetail = canManageMoment(
-    detailPost && {
-      ...detailPost,
-      user_id: detailPost.user_id ?? momentAuthors?.get(detailPost.id),
-    },
-    { myProfileId, ownsPet: ownsProfilePet },
-  );
+  const detailWithAuthor = detailPost && {
+    ...detailPost,
+    user_id: detailPost.user_id ?? momentAuthors?.get(detailPost.id),
+  };
+  const detailRights = { myProfileId, ownsPet: ownsProfilePet };
+  const canManageDetail = canManageMoment(detailWithAuthor, detailRights);
+  const canDeleteDetail = canDeleteMoment(detailWithAuthor, detailRights);
 
   // Compose the post object the modal expects from a grid item + this pet's
   // fetched identity.
@@ -793,8 +793,9 @@ export default function PetProfileScreen({ embedded = false }) {
         visible={!!detailPost}
         post={detailPost}
         liked={detailPost ? !!likedPosts[detailPost.id] : false}
-        canDelete={canManageDetail}
+        canDelete={canDeleteDetail}
         canEdit={canManageDetail}
+        isOwnPost={canManageDetail}
         onDelete={handleDeletePost}
         onSaveCaption={(caption) =>
           updateCaption.mutateAsync({ postId: detailPost.id, caption })

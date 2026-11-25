@@ -39,6 +39,9 @@ export const PostDetailModal = memo(function PostDetailModal({
   post,
   liked,
   canDelete = false,
+  // Did the viewer write it? Decides whether report / block is offered. (A dog's owner may delete a member's moment,
+  // and can still report it.) Defaults to canDelete for callers that do not tell them apart.
+  isOwnPost,
   canEdit = false,
   onDelete,
   onClose,
@@ -176,7 +179,7 @@ export const PostDetailModal = memo(function PostDetailModal({
               targetType="post"
               targetId={post?.id}
               authorUserId={post?.user_id}
-              isOwn={canDelete}
+              isOwn={isOwnPost ?? canDelete}
             />
           </View>
         </View>
