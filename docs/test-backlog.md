@@ -13,6 +13,10 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ## 📌 Night run #6 — checks (build 34 candidates; add each item's section as its PR lands)
 
+### Item 2 — delete-account failure copy (client-only, next EAS build)
+
+- [ ] **1.** Throwaway account, **airplane mode** on: Settings → Delete account → confirm → "Delete forever". The alert title is "Couldn't delete account" and the message reads **"Could not delete your account. Please try again."** (no "save"). You stay signed in. Same in Spanish: **"No se pudo eliminar tu cuenta. Probá de nuevo."**
+
 ### Item 1 — consent version bump (docs only, nothing to test on a phone)
 
 - [ ] **1.** After you merge #782 and Railway deploys: in the Railway web service check that `NEXT_PUBLIC_TERMS_VERSION` / `NEXT_PUBLIC_PRIVACY_VERSION` are **unset** (or both `2026-11-25`). Sign up a throwaway email account on the web form and run the query in [`consent-version-bump.md`](consent-version-bump.md) §4: newest `legal_consents` row must read `2026-11-25` / `2026-11-25`.

@@ -173,15 +173,19 @@ describe("the request that is sent", () => {
     expect(u.getByTestId("delete-contributions-switch").props.value).toBe(false);
   });
 
-  it("failure → the friendly sentence only, and the person stays signed in", async () => {
+  it("failure → the friendly sentence about DELETING (never \"save\"), and the person stays signed in", async () => {
     mockNetwork({ pets: [shared(2, "Luna")], deleteOk: false });
     const u = render(<AppSettings />);
     await openConfirm(u);
     fireEvent.press(u.getByTestId("delete-account-confirm"));
     await pressDeleteForever();
     await waitFor(() =>
-      expect(alertSpy).toHaveBeenLastCalledWith(en.settings.deleteErrorTitle, "Could not save. Please try again."),
+      expect(alertSpy).toHaveBeenLastCalledWith(
+        en.settings.deleteErrorTitle,
+        "Could not delete your account. Please try again.",
+      ),
     );
+    expect(alertSpy.mock.calls[alertSpy.mock.calls.length - 1][1]).not.toMatch(/save/i);
     expect(mockReplace).not.toHaveBeenCalled();
     expect(mockSetAuth).not.toHaveBeenCalled();
   });

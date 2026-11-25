@@ -18,6 +18,12 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-26 — Night run #6 · item 2: delete-account failure copy says "delete", not "save" — client-only, needs the next EAS build
+- The alert after a failed deletion read "Could not save. Please try again." (`common.couldNotSave`). Now `settings.deleteErrorBody`: "Could not delete your account. Please try again." / "No se pudo eliminar tu cuenta. Probá de nuevo." (title unchanged). The server's own message is still never shown.
+- Tests: `AppSettings.deleteAccount.test.jsx` (exact EN sentence, no "save"), `DeleteAccountModal.es.test.jsx` (exact ES sentence, voseo, no "guardar"); `localeParity` passes.
+
+---
+
 ## 2026-11-26 — Night run #6 · item 1: what bumping `PRIVACY_VERSION` / `TERMS_VERSION` does — docs only
 - Answer for draft #782: **safe to merge, yes.** The constants are read only by `POST /api/legal/consent` (server) to stamp NEW `legal_consents` rows. Nothing compares a stored version to them (app, API, auth, mobile), so no re-consent prompt, no blocked app, no forced sign-out. A re-consent gate does not exist.
 - `NEXT_PUBLIC_TERMS_VERSION` / `NEXT_PUBLIC_PRIVACY_VERSION` override the defaults (server reads them at runtime); only the Railway web service matters. Whether production sets them was not checked. Details + the post-deploy SQL check: [`consent-version-bump.md`](consent-version-bump.md).

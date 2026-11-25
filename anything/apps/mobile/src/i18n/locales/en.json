@@ -134,6 +134,7 @@
     "spanish": "Español",
     "deleteFailed": "Failed to delete account",
     "deleteErrorTitle": "Couldn't delete account",
+    "deleteErrorBody": "Could not delete your account. Please try again.",
     "deleteAccountTitle": "Delete account?",
     "deleteAccountBody": "This permanently deletes your account, your dogs and their records. This cannot be undone.",
     "deleteContributionsLabel": "Also delete my posts about dogs shared with me",

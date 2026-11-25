@@ -658,8 +658,8 @@ export default function AppSettings({ mode = "petOwner" }) {
       router.replace("/welcome");
     } catch {
       setDeleting(false);
-      // Never a technical message: one friendly sentence.
-      Alert.alert(t("settings.deleteErrorTitle"), t("common.couldNotSave"));
+      // Never a technical message: one friendly sentence, about deleting (not "saving").
+      Alert.alert(t("settings.deleteErrorTitle"), t("settings.deleteErrorBody"));
     }
   };
 

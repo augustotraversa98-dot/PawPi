@@ -38,3 +38,9 @@ it("no member, no owner: neither the switch nor the owner sentence", () => {
   expect(queryByTestId("delete-contributions-switch")).toBeNull();
   expect(queryByTestId("delete-account-owner-sentence")).toBeNull();
 });
+
+it("failure message is about DELETING, es-AR voseo, never \"guardar\" (night run #6)", () => {
+  const es = require("@/i18n/locales/es.json");
+  expect(es.settings.deleteErrorBody).toBe("No se pudo eliminar tu cuenta. Probá de nuevo.");
+  expect(es.settings.deleteErrorBody).not.toMatch(/guardar/i);
+});
