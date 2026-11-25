@@ -20,6 +20,7 @@ const mockRouter = { back: jest.fn(), push: jest.fn(), replace: jest.fn(), navig
 
 jest.mock("expo-router", () => ({
   useRouter: () => mockRouter,
+  useLocalSearchParams: () => globalThis.__sharingParams ?? {},
   Redirect: () => {
     throw new Error("pet-sharing must never render a <Redirect>");
   },
@@ -40,6 +41,9 @@ jest.mock("@/hooks/useSearch", () => ({
   useDebouncedValue: (v) => v,
   useSearch: () => mockSearch,
 }));
+// Invite codes have their own tests (components/Pets/inviteCode.test.jsx).
+jest.mock("@/components/Pets/InviteCodePanel", () => () => null);
+jest.mock("@/components/Pets/RedeemInviteCard", () => () => null);
 jest.mock("@/hooks/usePetSharing", () => ({
   usePetGrants: () => mockGrants,
   useSharedWithMe: () => mockShared,

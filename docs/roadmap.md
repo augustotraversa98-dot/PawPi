@@ -201,6 +201,12 @@ Owner decision 1 (account deletion) and the lifecycle half of the audit (Q10: B4
 
 ---
 
+## 2026-11-24 — Night run #4 · PR6: invite codes — DRAFT, NOT merged, migration 0143 NOT applied (human-applied)
+
+- Single-use, 3-day, revocable, one-pet codes (only a hash stored, never logged); RLS-forced table + one DEFINER redeem function; endpoints; owner panel, join field, onboarding entry; EN + ES. Design and open decisions: `pr6-invite-code-design.md`.
+
+---
+
 ## 2026-11-23 — Family & caregivers series — PR3b: family / co-owner WRITE paths — MERGED (#752; migration order **0139, 0140, 0141**, all applied + verified)
 
 Owner decision 2: **family/co-owner reads and writes everything except managing sharing and deleting the pet; caregiver stays read + log only.** PR3 delivered the reads; this delivers the writes, in the API **and** RLS.

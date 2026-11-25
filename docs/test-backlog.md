@@ -244,6 +244,18 @@ On build 33, three phones or accounts: Owner, Family, Caregiver (no dog of their
 
 ---
 
+## 📱 To test — Night run #4 / PR6 DRAFT: invite codes (needs migration 0143 applied, PR merged, then a build)
+
+- [ ] **0.** Apply `0143`, run `verify_0143.sql` (9 PASS), merge the PR.
+- [ ] **1.** Owner → Family & caregivers → pick Family → Create a code → Share: the message has the code and instructions.
+- [ ] **2.** A brand-new account (Apple + Hide My Email): on the first onboarding screen tap **I have an invite code** → enter it → Join → the app opens on the shared dog, no new dog is created.
+- [ ] **3.** Enter the same code on a third account: "already used". Cancel a waiting code, then try it: "cancelled".
+- [ ] **4.** Wrong code several times: after ten tries, "Too many tries".
+- [ ] **5.** Tap the `pawpi://` link on a signed-in phone: the field is filled, nothing joins until you tap Join.
+- [ ] **6.** Spanish and a small phone: the field stays above the keyboard.
+
+---
+
 ## 📱 To test — v1.0.5 (auth refresh #733 + keyboard #734; server #732 already live)
 
 **Needs the 1.0.5 build** (next EAS build number: 31, iOS). Merged + CI-green, **not device-verified** — the keyboard fix in particular could not be exercised in the Simulator. Full checklist with the 12-screen table: [`release-1.0.5.md`](release-1.0.5.md) §5.

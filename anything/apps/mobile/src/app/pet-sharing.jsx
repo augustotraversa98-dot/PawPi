@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import {
   ArrowLeft,
   Search,
@@ -38,6 +38,8 @@ import {
 } from "@/hooks/usePetSharing";
 import useInviteCooldownStore from "@/store/inviteCooldownStore";
 import CaregiverLogWalkModal from "@/components/Pets/CaregiverLogWalkModal";
+import InviteCodePanel from "@/components/Pets/InviteCodePanel";
+import RedeemInviteCard from "@/components/Pets/RedeemInviteCard";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 
 const C = {
@@ -104,7 +106,10 @@ export default function PetSharingScreen() {
   // FF2: the shared pet a family caregiver is logging a walk for ({ id, name } | null).
   const [logWalkPet, setLogWalkPet] = useState(null);
 
-  const [tab, setTab] = useState("manage"); // 'manage' | 'shared'
+  // Opened from an invite link (?code=) or from onboarding (?tab=shared): start on "Shared with me".
+  const params = useLocalSearchParams();
+  const linkCode = typeof params?.code === "string" ? params.code : "";
+  const [tab, setTab] = useState(linkCode || params?.tab === "shared" ? "shared" : "manage"); // 'manage' | 'shared'
   const [role, setRole] = useState("family");
   const [query, setQuery] = useState("");
   const debounced = useDebouncedValue(query, 300);
@@ -284,6 +289,9 @@ export default function PetSharingScreen() {
               </TouchableOpacity>
             ))}
 
+            {/* Or invite with a code (someone who cannot be found by name) */}
+            <InviteCodePanel petId={petId} petName={currentPet?.name || t("common.yourPet")} role={role} />
+
             {/* Existing grants */}
             <Text style={styles.sectionLabel}>{t("petSharing.whoHasAccess")}</Text>
             {grantsLoading && <ActivityIndicator color={C.sage} />}
@@ -329,6 +337,7 @@ export default function PetSharingScreen() {
           </>
         ) : (
           <>
+            <RedeemInviteCard key={linkCode} initialCode={linkCode} />
             <Text style={styles.sectionLabel}>{t("petSharing.petsSharedWithMe")}</Text>
             {sharedLoading && <ActivityIndicator color={C.sage} />}
             {!sharedLoading && shared && shared.length === 0 && (
