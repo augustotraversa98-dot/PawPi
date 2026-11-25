@@ -47,7 +47,10 @@ const request = () => new Request('http://localhost/api/anything');
 const setFlag = (on: boolean) => {
   process.env.REQUEST_SINGLE_FLIGHT = on ? 'on' : 'off';
 };
-const settle = () => new Promise((r) => setTimeout(r, DELAY_MS * 3)); // let a deferred COMMIT finish its flight
+// Let a deferred COMMIT finish its flight: wait for the wire to go quiet, never a fixed sleep. (A sleep of 3 x DELAY_MS was a guess at
+// how long a flight takes; a loaded CI runner outruns it, the next request then finds its connection still busy and is served by a
+// different pooled connection - one that has not prepared the statements - which costs an extra flight and fails the budget.)
+const settle = () => proxy.idle();
 
 beforeAll(async () => {
   raw = makeTestSql();
@@ -116,23 +119,32 @@ async function timed<T>(fn: () => Promise<T>) {
 describe('round trips on the wire (latency proxy)', () => {
   /** One lone `select 1` on the pool = one flight, in ms, for this machine right now. */
   async function flightMs() {
-    await pool`select 1`;
+    await settle();
+    // The pool hands connections out round-robin and prepares a statement once PER connection, so run it on every one first.
+    for (let i = 0; i < Math.max(proxy.connections(), 1) + 1; i++) await pool`select 1`;
     const runs: number[] = [];
     for (let i = 0; i < 5; i++) runs.push((await timed(() => pool`select 1`)).ms);
     return runs.sort((a, b) => a - b)[2];
   }
 
   /**
-   * Warm ONE route sequentially, letting each deferred COMMIT finish, so every request reuses the same connection
-   * and its statements are prepared there. (A deferred COMMIT keeps its connection busy for one flight, so a
-   * back-to-back burst fans out over several connections and prepares each statement on only some of them. In
-   * production that is a one-time cost per connection and statement; here it would make the budgets flaky.)
+   * Prepare a route's statements on EVERY pooled connection before measuring it.
+   *
+   * porsager prepares a statement once per connection and hands connections out round-robin, so a measured request is only
+   * "warm" if each connection in the rotation has already run the same statements; one that has not pays an extra Parse
+   * flight (measured on CI: 3 flights where the budget allows 2). So: one request to open the first connection, then one
+   * request per connection currently open (settling in between, so each deferred COMMIT is done and the connection is back
+   * in the rotation), which visits every connection once. `cold` forgets the cached profile id before each request so the
+   * identity-lookup statement (the cache-miss path) is prepared on every connection too, not only on the first.
    */
-  async function warm(authUserId: number, path: string) {
-    for (let i = 0; i < 3; i++) {
+  async function warm(authUserId: number, path: string, { cold = false } = {}) {
+    const once = async () => {
+      if (cold) clearCachedProfileIds();
       await get(authUserId, path);
       await settle();
-    }
+    };
+    await once();
+    for (let i = proxy.connections(); i > 0; i--) await once();
   }
 
   it.each(HOT_ROUTES)('flag ON: GET %s answers in ONE flight; the COMMIT is off the critical path', async (path) => {
@@ -158,7 +170,7 @@ describe('round trips on the wire (latency proxy)', () => {
   });
 
   it('flag ON: a cache MISS (first request of a caller) costs one extra flight, not more', async () => {
-    await warm(B.authUserId, '/pets'); // prepares the statements on the connection
+    await warm(B.authUserId, '/pets', { cold: true }); // prepares the statements (incl. the identity lookup) on every connection
     clearCachedProfileIds();
     const unit = await flightMs();
     await settle();

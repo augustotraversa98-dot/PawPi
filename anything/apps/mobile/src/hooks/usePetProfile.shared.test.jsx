@@ -9,6 +9,16 @@ import usePetAccessStore, { resetPetAccessMemory } from "@/store/petAccessStore"
 import { useCurrentPet, usePetProfile, useCreatePet } from "./usePetProfile";
 import { usePetPermissions } from "./usePetPermissions";
 
+// The alarm housekeeping that runs after a pets read (utils/petReminderCleanup) lazily pulls in expo-notifications and the whole
+// notifications module. That is not what this file tests, and its cold load (a transform + native-module graph, 3-4 s with an empty Jest
+// cache) landed INSIDE the first test's 1 s waitFor, so that test failed on a cold cache or a loaded machine and passed warm. Mocked, the
+// hook never reaches it: nothing here depends on alarms (their own behaviour is covered in petReminderCleanup.test.js and petAccess tests).
+jest.mock("@/utils/petReminderCleanup", () => ({
+  purgePetReminders: jest.fn(async () => 0),
+  purgeUnlistedPetReminders: jest.fn(async () => 0),
+  resetUnlistedPetMemory: jest.fn(),
+}));
+
 const own = { id: 1, name: "Mango", is_shared: false, access_role: "owner" };
 const family = {
   id: 7, name: "Luna", is_shared: true, access_role: "family", grant_id: 3,
@@ -63,7 +73,10 @@ test("an owner of a dog who also has one shared: own pet is the default; picking
   expect(result.current.perms.can("logHealth")).toBe(true);
   expect(result.current.perms.can("editRoutines")).toBe(false);
   // The effect that reconciles the stored choice with the list must NOT revert a shared selection (the household screen used to be reverted).
-  await new Promise((r) => setTimeout(r, 20));
+  // Let every pending effect and query notification run (a flush of the event loop, not a guess at how long that takes).
+  await act(async () => {
+    await new Promise((r) => setImmediate(r));
+  });
   expect(useSelectedPetStore.getState().selectedPetId).toBe(8);
   expect(result.current.cur.data?.id).toBe(8);
 });
@@ -79,11 +92,19 @@ test("a stored selection of a shared dog survives a restart (still in the list)"
 test("a FAILED read does not wipe a stored shared selection (a transient error must not forget the dog)", async () => {
   failing = true;
   useSelectedPetStore.setState({ selectedPetId: 7, hasHydrated: true });
-  const { result } = mount();
-  // the shared client retries once after 1.5 s before reporting the error
-  await waitFor(() => expect(result.current.cur.isError).toBe(true), { timeout: 5000 });
-  expect(result.current.cur.hasPet).toBe(false);
-  expect(useSelectedPetStore.getState().selectedPetId).toBe(7);
+  // The shared client retries once, 1.5 s later, before it reports the error. Keep the retry (that is the behaviour under test) but not the
+  // real 1.5 s wait, which this test used to sit through on a real clock inside a 5 s window.
+  const defaults = queryClient.getDefaultOptions();
+  queryClient.setDefaultOptions({ ...defaults, queries: { ...defaults.queries, retryDelay: 0 } });
+  try {
+    const { result } = mount();
+    await waitFor(() => expect(result.current.cur.isError).toBe(true));
+    expect(global.fetch.mock.calls.filter(([u]) => String(u).startsWith("/api/pets"))).toHaveLength(2); // the read AND its one retry
+    expect(result.current.cur.hasPet).toBe(false);
+    expect(useSelectedPetStore.getState().selectedPetId).toBe(7);
+  } finally {
+    queryClient.setDefaultOptions(defaults);
+  }
 });
 
 test("a person with NO dog at all: no pet, selection cleared, controls are not role-restricted (nothing to act on)", async () => {
