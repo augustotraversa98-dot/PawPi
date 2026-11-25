@@ -93,7 +93,7 @@ export function buildDormantContent(t, { petName, friendPetName } = {}) {
  * already passed, fire a couple of minutes out so the evening nudge still lands today.
  * Returns the scheduled id or null.
  */
-export async function scheduleStreakSaveNotification({ content, hour, now = new Date() } = {}) {
+export async function scheduleStreakSaveNotification({ content, hour, petId, now = new Date() } = {}) {
   try {
     const permissions = await Notifications.getPermissionsAsync();
     if (!isNotificationPermissionGranted(permissions)) return null;
@@ -110,7 +110,8 @@ export async function scheduleStreakSaveNotification({ content, hour, now = new 
         title: content?.title || "PawPi",
         body: content?.body,
         sound: true,
-        data: { category: NOTIF_CATEGORIES.STREAK },
+        // petId: losing access to this dog cancels its nudge too (utils/petReminderCleanup).
+        data: { category: NOTIF_CATEGORIES.STREAK, ...(petId != null ? { petId } : {}) },
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -136,7 +137,7 @@ export async function scheduleStreakSaveNotification({ content, hour, now = new 
  * @param {string} args.petName
  * @param {Date}   [args.now]
  */
-export async function maybeScheduleStreakSave({ t, ring = {}, streakCount, petName, now = new Date() }) {
+export async function maybeScheduleStreakSave({ t, ring = {}, streakCount, petName, petId, now = new Date() }) {
   const prefs = await getNotificationPrefs();
   const dayKey = getLocalPostDateString(now);
 
@@ -159,7 +160,7 @@ export async function maybeScheduleStreakSave({ t, ring = {}, streakCount, petNa
   const openHours = await getAppOpenHours();
   const hour = resolvePersonalizedSendHour(openHours, prefs);
   const content = buildStreakSaveContent(t, { petName, streakCount });
-  const id = await scheduleStreakSaveNotification({ content, hour, now });
+  const id = await scheduleStreakSaveNotification({ content, hour, petId, now });
   if (id) {
     await markStreakSaveSent(dayKey);
     await recordSent(dayKey);

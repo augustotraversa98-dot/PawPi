@@ -1,4 +1,14 @@
 // What the app does when the person's access to a SHARED pet changes or is lost (revoked / left / expired).
+const mockPending = [];
+jest.mock("expo-notifications", () => ({
+  setNotificationHandler: jest.fn(),
+  getAllScheduledNotificationsAsync: jest.fn(async () => mockPending.slice()),
+  cancelScheduledNotificationAsync: jest.fn(async (id) => {
+    const i = mockPending.findIndex((p) => p.identifier === id);
+    if (i >= 0) mockPending.splice(i, 1);
+  }),
+}));
+
 import { QueryClient } from "@tanstack/react-query";
 import usePetAccessStore, { noteAccessVersion, reconcileSharedPets, resetPetAccessMemory } from "@/store/petAccessStore";
 import useSelectedPetStore from "@/store/selectedPetStore";
@@ -120,6 +130,17 @@ describe("handleAccessLost", () => {
     handleAccessLost(qc, { id: 7, name: "Luna" }, { refetchPets: false });
     expect(invalidate).not.toHaveBeenCalledWith({ queryKey: ["pets"] });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["shared-with-me"] });
+  });
+
+  test("cancels only that dog's pending alarms", async () => {
+    mockPending.length = 0;
+    mockPending.push(
+      { identifier: "reminder_5_0_d1", content: { data: { reminderId: "reminder_5_0_d1", petId: "7" } } },
+      { identifier: "reminder_9_0_d1", content: { data: { reminderId: "reminder_9_0_d1", petId: "1" } } },
+      { identifier: "pawpi-daily-return", content: { data: { kind: "daily_return" } } },
+    );
+    await handleAccessLost(newClient(), { id: 7, name: "Luna" });
+    expect(mockPending.map((p) => p.identifier)).toEqual(["reminder_9_0_d1", "pawpi-daily-return"]);
   });
 
   test("a pet with no id is ignored (no notice)", () => {

@@ -4,6 +4,8 @@ import { generateRemindersFromRoutine } from "@/utils/reminderGenerator";
 import useRemindersStore from "./remindersStore";
 import { queryClient } from "@/utils/queryClient";
 import { reconcileRoutineNotifications } from "@/utils/notifications";
+import { isPetLost } from "./petAccessStore";
+import { liveSnoozedIds } from "@/utils/snoozedAlarms";
 import { routinesQueryKey, fetchRoutinesRaw } from "@/utils/routinesQuery";
 
 const useRoutinesStore = create((set, get) => ({
@@ -98,6 +100,11 @@ const useRoutinesStore = create((set, get) => ({
 
       // The user this load was for may have logged out / switched while we awaited the network: drop it.
       if (epoch !== getSessionEpoch()) return [];
+      // Same for the dog: access to it was lost while we were loading (utils/petAccess already cleared it).
+      if (isPetLost(petId)) {
+        set({ loading: false });
+        return [];
+      }
 
       set({ routines: transformedRoutines, loading: false, initialized: true });
 
@@ -112,10 +119,18 @@ const useRoutinesStore = create((set, get) => ({
       await remindersStore.addRemindersFromRoutines(allReminders);
 
       // Cancel duplicate/orphan OS notifications left by earlier launches or other devices (F1-01).
-      // Scoped to the pet(s) just generated; skipped when nothing was generated (unknown pet).
-      if (epoch === getSessionEpoch() && allReminders.length > 0) {
-        const petIds = new Set(allReminders.map((r) => r.petId).filter((x) => x != null));
+      // Scoped to the pet that was loaded (plus the pets generated for), so it ALSO runs when the load generated nothing:
+      // removing a dog's last active routine must not leave its alarms armed. An active snooze of a still-active routine
+      // is a wanted alarm even though its (past) instance is not generated any more.
+      if (epoch === getSessionEpoch()) {
+        const petIds = new Set(
+          allReminders.map((r) => r.petId).filter((x) => x != null).map(String),
+        );
+        if (petId != null) petIds.add(String(petId));
         const validReminderIds = new Set(allReminders.map((r) => r.id));
+        for (const id of liveSnoozedIds(useRemindersStore.getState().snoozes, activeRoutines)) {
+          validReminderIds.add(id);
+        }
         try {
           for (const petId of petIds) {
             await reconcileRoutineNotifications({ petId, validReminderIds });

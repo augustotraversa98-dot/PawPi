@@ -333,48 +333,94 @@ export async function cancelNotification(notificationId) {
 // Routine-instance reminder ids look like `reminder_<routine>_<item>_<date>…` (reminderGenerator).
 const ROUTINE_REMINDER_ID = /^reminder_/;
 
+const asStringSet = (values) =>
+  values == null ? null : new Set([...values].filter((v) => v != null).map(String));
+
 /**
- * Pure: which pending OS notifications must be cancelled after a routines load (F1-01).
- *   • LEGACY duplicates — a routine-instance notification whose OS identifier is not its own
- *     reminder id (scheduled by an older build with a random id; the same instance is re-armed under
- *     its deterministic id by the load that precedes this sweep).
- *   • ORPHANS — a notification for THIS pet whose reminder is no longer generated (routine deleted
- *     or paused elsewhere/earlier, schedule edited). Notifications without a `petId` (legacy) or for
- *     another pet are never touched here.
+ * Pure: the ONE rule for "which pending OS notifications must be cancelled". Returns their identifiers.
+ *
+ *   • lostPetIds   — every pending notification tagged with one of these pets, whatever its kind (access to the dog was lost).
+ *   • resolvedKeys — notifications whose reminder id is in this set (the instance no longer needs an alert).
+ *   • validIds     — the routine-instance reminder ids that SHOULD be armed for the pets in `scopePetIds`. When given:
+ *       – LEGACY duplicates (a routine instance whose OS identifier is not its own reminder id, armed by an older build
+ *         with a random id) are cancelled; the same instance is re-armed under its deterministic id by the load that
+ *         precedes this sweep;
+ *       – ORPHANS (a routine instance of a scoped pet that is no longer generated: routine deleted, paused or edited,
+ *         including the case where the pet has no routine left at all) are cancelled.
+ *     Notifications of pets outside the scope, untagged ones and non-routine ones are never orphans.
  */
-export function selectStaleRoutineNotifications(pending, { petId, validReminderIds }) {
-  const valid = validReminderIds instanceof Set ? validReminderIds : new Set(validReminderIds || []);
-  const stale = [];
+export function selectAlarmsToCancel(pending, { resolvedKeys, lostPetIds, validIds, scopePetIds } = {}) {
+  const lost = asStringSet(lostPetIds) ?? new Set();
+  const resolved = asStringSet(resolvedKeys) ?? new Set();
+  const valid = asStringSet(validIds);
+  const scope = asStringSet(scopePetIds) ?? new Set();
+  const out = [];
   for (const n of pending || []) {
+    const identifier = n?.identifier;
+    if (!identifier) continue;
     const data = n?.content?.data || {};
-    const rid = data.reminderId;
-    if (typeof rid !== "string" || !ROUTINE_REMINDER_ID.test(rid)) continue;
-    const identifier = n.identifier;
-    if (identifier !== rid) {
-      stale.push(identifier);
-    } else if (petId != null && data.petId != null && String(data.petId) === String(petId) && !valid.has(rid)) {
-      stale.push(identifier);
+    const petId = data.petId != null ? String(data.petId) : null;
+    if (petId != null && lost.has(petId)) {
+      out.push(identifier);
+      continue;
     }
+    const rid = data.reminderId;
+    if (typeof rid !== "string") continue;
+    if (resolved.has(rid)) {
+      out.push(identifier);
+      continue;
+    }
+    if (!valid || !ROUTINE_REMINDER_ID.test(rid)) continue;
+    if (identifier !== rid) out.push(identifier);
+    else if (petId != null && scope.has(petId) && !valid.has(rid)) out.push(identifier);
   }
-  return stale;
+  return out;
+}
+
+/** Pure: the stale routine alarms for one pet after a routines load (see selectAlarmsToCancel). */
+export function selectStaleRoutineNotifications(pending, { petId, validReminderIds }) {
+  return selectAlarmsToCancel(pending, {
+    validIds: validReminderIds || [],
+    scopePetIds: petId == null ? [] : [petId],
+  });
+}
+
+/**
+ * Cancel every pending OS notification that selectAlarmsToCancel picks. Never throws; a no-op if the OS list can't be
+ * read. Resolves to the cancelled identifiers and the reminder ids they carried.
+ */
+export async function cancelSelectedAlarms(criteria) {
+  const cancelled = { identifiers: [], reminderIds: [] };
+  try {
+    const pending = await Notifications.getAllScheduledNotificationsAsync();
+    const selected = new Set(selectAlarmsToCancel(pending, criteria));
+    for (const n of pending || []) {
+      if (!selected.has(n.identifier)) continue;
+      try {
+        await Notifications.cancelScheduledNotificationAsync(n.identifier);
+        cancelled.identifiers.push(n.identifier);
+        if (n.content?.data?.reminderId != null) cancelled.reminderIds.push(n.content.data.reminderId);
+      } catch (error) {
+        console.error("Error canceling notification:", error);
+      }
+    }
+  } catch (error) {
+    console.error("Error canceling selected notifications:", error);
+  }
+  return cancelled;
 }
 
 /**
  * Sweep the OS pending list after `loadRoutines` armed the current window for `petId`.
- * Never throws; a no-op if the OS list can't be read.
+ * Runs even when the load generated NO reminder (the pet's last routine was removed). Never throws.
+ * Resolves to the number of notifications cancelled.
  */
 export async function reconcileRoutineNotifications({ petId, validReminderIds }) {
-  try {
-    const pending = await Notifications.getAllScheduledNotificationsAsync();
-    const stale = selectStaleRoutineNotifications(pending, { petId, validReminderIds });
-    for (const id of stale) {
-      await Notifications.cancelScheduledNotificationAsync(id);
-    }
-    return stale.length;
-  } catch (error) {
-    console.error("Error reconciling routine notifications:", error);
-    return 0;
-  }
+  const { identifiers } = await cancelSelectedAlarms({
+    validIds: validReminderIds || [],
+    scopePetIds: petId == null ? [] : [petId],
+  });
+  return identifiers.length;
 }
 
 /**

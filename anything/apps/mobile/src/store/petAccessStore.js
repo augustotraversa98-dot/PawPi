@@ -39,6 +39,8 @@ let lastSharedPets = new Map();
  */
 export function reconcileSharedPets(pets) {
   if (!Array.isArray(pets)) return [];
+  // A pet that is listed (again, e.g. re-invited) is no longer lost.
+  for (const p of pets) lostPetIds.delete(String(p?.id));
   const now = new Map();
   for (const p of pets) if (p?.is_shared === true) now.set(Number(p.id), p.name ?? null);
   const lost = [];
@@ -49,6 +51,19 @@ export function reconcileSharedPets(pets) {
 
 export function resetSharedPetMemory() {
   lastSharedPets = new Map();
+  lostPetIds.clear();
+}
+
+// Pets this session has lost access to. Work that was already in flight for such a pet (a routines load, a batch of alarm
+// scheduling) checks it and drops its result, so a late response can never re-arm a dog that is no longer the person's.
+const lostPetIds = new Set();
+
+export function markPetLost(petId) {
+  if (petId != null) lostPetIds.add(String(petId));
+}
+
+export function isPetLost(petId) {
+  return petId != null && lostPetIds.has(String(petId));
 }
 
 /** Forget everything about the previous person (called on every identity change, next to queryClient.clear()). */

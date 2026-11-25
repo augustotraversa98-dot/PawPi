@@ -4,6 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getReminderStatus, REMINDER_STATUS } from "@/data/remindersData";
 import useSocialPetStore from "./socialPetStore";
 import useRoutinesStore from "./routinesStore";
+import { isPetLost } from "./petAccessStore";
 import { getSessionEpoch } from "@/utils/auth/sessionEpoch";
 import {
   scheduleReminderNotification,
@@ -107,7 +108,7 @@ const useRemindersStore = create(
     const existingIds = new Set(get().reminders.map((r) => r.id));
     const toAdd = [];
     for (const reminder of reminders) {
-      if (existingIds.has(reminder.id)) continue;
+      if (existingIds.has(reminder.id) || isPetLost(reminder.petId)) continue;
       existingIds.add(reminder.id); // de-dup within the batch too
       const routine = useRoutinesStore
         .getState()
@@ -135,9 +136,15 @@ const useRemindersStore = create(
       }
       toAdd.push({ ...reminder, scheduledNotificationId });
     }
-    if (toAdd.length === 0) return [];
-    set((state) => ({ reminders: [...state.reminders, ...toAdd] }));
-    return toAdd;
+    // Access to a dog can be lost while we were awaiting the scheduler: undo its alarms and keep it out of the store.
+    const keep = [];
+    for (const added of toAdd) {
+      if (!isPetLost(added.petId)) keep.push(added);
+      else if (added.scheduledNotificationId) await cancelNotification(added.scheduledNotificationId);
+    }
+    if (keep.length === 0) return [];
+    set((state) => ({ reminders: [...state.reminders, ...keep] }));
+    return keep;
   },
 
   // Remove future reminders by routine (keeps completed)

@@ -101,8 +101,9 @@ export function CareRingCard({ petId, petName, onPressSegment }) {
       },
       streakCount: count,
       petName: name,
+      petId,
     }).catch(() => {});
-  }, [data, s.walk_done, s.moment_done, s.care_done, s.ring_closed, s.rest_day, s.paused, count, name, t]);
+  }, [data, s.walk_done, s.moment_done, s.care_done, s.ring_closed, s.rest_day, s.paused, count, name, petId, t]);
 
   const statusKey = ringStatusKey(s);
   // Prefer the pause-specific line (with a resume date) when paused; otherwise the status copy.
