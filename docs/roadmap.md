@@ -26,11 +26,11 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
-## 2026-11-25 — EAS build 33 (v1.0.5) built — upload to App Store Connect FAILED (Apple agreement), NOT submitted for App Review, NOT device-tested
+## 2026-11-25 — EAS build 33 (v1.0.5) built and uploaded to App Store Connect — NOT submitted for App Review, NOT device-tested
 - **Build:** iOS 1.0.5 (**33**), profile / channel `production`, runtime `1.0.0`, from `main` at `f9241c38` (through #791). https://expo.dev/accounts/augusto-firulais/projects/pawpi/builds/816689b2-ef33-4a23-a928-42db0726c411
-- **App Store Connect upload:** **FAILED, the build is not on App Store Connect.** `eas submit` was scheduled and Apple rejected it: a required agreement is missing or expired (https://expo.dev/accounts/augusto-firulais/projects/pawpi/submissions/5db7405f-2839-4728-ba8d-e9ba3d37445a). The Account Holder accepts it, then the same build is submitted again (no rebuild).
+- **App Store Connect upload:** **uploaded** (https://expo.dev/accounts/augusto-firulais/projects/pawpi/submissions/dfb57340-64bb-4b96-8faa-16ff466b2008); Apple processing completion not checked. The first attempt failed on a pending Apple agreement; the owner accepted it and the same build was submitted again (no rebuild).
 - Carries everything merged to `main` since the earlier builds, including #747 and the client work from night runs #4 to #7. Entries below that say "needs EAS build 33" or "next EAS build" are in it. Build 32 (1.0.5) was never sent.
-- Owner: accept the agreement and submit the upload ([`test-backlog.md`](test-backlog.md) → "EAS build 33" has the command), test from TestFlight, attach build 33 to version 1.0.5, review the store and privacy wording, then Submit for Review by hand. Nothing was released.
+- Owner: test from TestFlight ([`test-backlog.md`](test-backlog.md) → "EAS build 33"), attach build 33 to version 1.0.5, review the store and privacy wording, then Submit for Review by hand. Nothing was released.
 
 ---
 
