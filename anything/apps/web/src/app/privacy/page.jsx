@@ -1,9 +1,10 @@
 import LegalPage from "@/components/legal/LegalPage";
+import { LEGAL_TITLES } from "@/lib/legal/titles";
 import contentEs from "../../content/legal/privacy.es.md?raw";
 import contentEn from "../../content/legal/privacy.en.md?raw";
 
 const EYEBROWS = { es: "Legal", en: "Legal" };
-const TITLES = { es: "Política de Privacidad", en: "Privacy Policy" };
+const TITLES = LEGAL_TITLES.privacy;
 const DESCRIPTIONS = {
   es: "Cómo PawPi recopila, usa y protege tus datos y los de tu perro.",
   en: "How PawPi collects, uses, and protects your data and your dog's.",

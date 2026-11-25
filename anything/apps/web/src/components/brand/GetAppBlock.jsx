@@ -1,15 +1,14 @@
 import AppStoreBadge from "@/components/brand/AppStoreBadge";
 import { BRAND } from "@/lib/brand/tokens";
+import { GET_APP_TITLES } from "@/lib/legal/titles";
 import { useLang } from "@/lib/legal/useLang";
-
-const TITLES = { es: "Descargá la app", en: "Get the app" };
 
 // Small "Get the app" card (used on /support).
 export default function GetAppBlock() {
   const { lang } = useLang();
   return (
     <aside
-      aria-label={TITLES[lang]}
+      aria-label={GET_APP_TITLES[lang]}
       style={{
         display: "flex",
         flexWrap: "wrap",
@@ -24,7 +23,7 @@ export default function GetAppBlock() {
       }}
     >
       <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: BRAND.brown }}>
-        {TITLES[lang]}
+        {GET_APP_TITLES[lang]}
       </p>
       <AppStoreBadge height={44} />
     </aside>
