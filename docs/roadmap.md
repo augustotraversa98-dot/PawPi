@@ -18,6 +18,15 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-25 — Night run #5 summary — report: `night-run/2026-11-25/REPORT.md`
+
+- **Merged (app, in build 33):** #778 (delete-account screen, Option B), #780 (Feed lock never covers your own household's dogs).
+- **Merged (docs / website text):** #779 (privacy §9/§11, terms §10, support; EN + ES). Live on the next web deploy.
+- **Open for Augusto:** the `PRIVACY_VERSION` / `TERMS_VERSION` bump (server-read file), and the decision on the literal "no blur for owner/family" rule (needs a server change).
+- Last night's open list (#776, #763, #770, #771, drafts #773–#775) is unchanged.
+
+---
+
 ## 2026-11-25 — Night run #5 · item 3: the Feed lock no longer blurs your own household's dogs — client-only, needs EAS build 33
 - Bug: a locked Feed blurred every card, including older posts of the person's OWN dog (and of a dog shared with them), although the server never withholds those (`dailyMomentsGate.js` → `applyDailyMomentsLock`, `householdPetIds`). Fix: posts of any dog in the viewer's pets list (owned + active family/caregiver) render as normal cards on the locked Feed; only other people's posts are blurred.
 - Roles verified, no change needed: only a caregiver gets the "opens when {dog} posts" text and no post button; owner and family keep the post button. When the household has posted today nobody sees a blur.
