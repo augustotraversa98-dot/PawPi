@@ -19,12 +19,11 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 | EAS build | https://expo.dev/accounts/augusto-firulais/projects/pawpi/builds/816689b2-ef33-4a23-a928-42db0726c411 (FINISHED) |
 | Built from commit | `f9241c38` (`main`, through #791) |
 | Profile / channel / runtime | `production` / `production` / `1.0.0` |
-| App Store Connect upload | **FAILED on 2026-11-25, not uploaded.** Apple reported that a required agreement is missing or expired ([submission](https://expo.dev/accounts/augusto-firulais/projects/pawpi/submissions/5db7405f-2839-4728-ba8d-e9ba3d37445a)). The same build can be submitted again once it is accepted. |
+| App Store Connect upload | **Uploaded 2026-11-25** ([submission](https://expo.dev/accounts/augusto-firulais/projects/pawpi/submissions/dfb57340-64bb-4b96-8faa-16ff466b2008)); Apple processing completion not checked. The first attempt failed on a pending Apple agreement ([failed submission](https://expo.dev/accounts/augusto-firulais/projects/pawpi/submissions/5db7405f-2839-4728-ba8d-e9ba3d37445a)). |
 | App Review | **Not submitted.** Nothing released. |
 
 Every section below that says "needs EAS build 33" or "next EAS build" is testable on this build. That includes Night run #6 (headed "build 34 candidates"), Night run #7 / item 2, the "#747" section and the "v1.0.5" section (written when 31 was expected). **Nothing here is device-verified yet.**
 
-- [ ] Account Holder: accept the pending agreement at https://appstoreconnect.apple.com/business (and at https://developer.apple.com/account if prompted), then from `anything/apps/mobile` run `eas submit --platform ios --profile production --id 816689b2-ef33-4a23-a928-42db0726c411`.
 - [ ] Wait for App Store Connect processing to finish, install from TestFlight: Settings footer reads `v1.0.5 (33)`.
 - [ ] Before Submit for Review: [`app-store-whats-new-1.0.5.md`](app-store-whats-new-1.0.5.md) only describes the sign-in and keyboard fixes; update it for what build 33 adds, if you want that mentioned.
 - [ ] Before Submit for Review: review the delete-account and privacy wording about posts left on a shared dog (requested in the roadmap's family-sharing entry).
