@@ -68,7 +68,7 @@ Two phones help: the owner of a dog, and a Family and a Caregiver account on it.
 - [ ] **2.** **Family** on the dog: same as 1. Older posts of the shared dog and of any dog of your own are clear; strangers' posts are blurred; you still get the post button.
 - [ ] **3.** **Caregiver** on the dog: older posts of the shared dog are clear; strangers' posts are blurred and say "Opens as soon as today's moment for {dog} is posted." with **no** post button.
 - [ ] **4.** Someone in the household posts today's moment: all three phones open the whole Feed within the usual refresh (pull to refresh), nothing blurred.
-- [ ] **5.** A person who is Caregiver on one dog **and** owns another: still sees their own dog's older posts clear. (Known limit, see report: if the active dog is the shared one they get the "opens when ... posts" text instead of a post button, even though posting for their own dog would unlock the Feed.)
+- [ ] **5.** A person who is Caregiver on one dog **and** owns another: still sees their own dog's older posts clear. (Known limit, see report: if the active dog is the shared one they get the "opens when ... posts" text instead of a post button, even though posting for their own dog would unlock the Feed. — **fixed in night run #6, item 3 (see that section).**)
 
 ---
 
