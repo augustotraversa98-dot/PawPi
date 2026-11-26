@@ -364,7 +364,7 @@
       "review": {
         "title": "PawPi leyó tu documento",
         "subtitle": "Revisá lo que encontramos. No se agrega nada hasta que confirmes.",
-        "aiDisclosure": "La IA de PawPi leyó tu archivo para sugerir esto. Editá lo que no cuadre.",
+        "aiDisclosure": "Anthropic (Claude) leyó tu archivo para sugerir esto. Editá lo que no cuadre.",
         "groupVaccinations": "Vacunas",
         "groupMedications": "Medicamentos",
         "groupSurgeries": "Cirugías",

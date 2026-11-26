@@ -27,6 +27,7 @@ commits. Keep this file in step with the master plan every time priorities chang
 ---
 
 ## 2026-11-25 — The note under "Add document" names Anthropic (Claude) — client-only, needs the next EAS build after 33
+- The review sheet line names the same provider instead of "PawPi's AI". This in-app note is the in-app notice for the policy change in #796.
 - EN + ES: the note now says the document is sent to Anthropic (Claude) to be read, and "Privacy Policy" opens the hosted page. The key `health.vetRecord.addDoc.comingSoon` became `aiReadNote`, with a new `privacyLink`. No permission prompt and no change to the feature, versions or build numbers. Build 33 does not have it.
 - Policy text: the companion web PR (#796).
 

@@ -364,7 +364,7 @@
       "review": {
         "title": "PawPi read your document",
         "subtitle": "Review what we found. Nothing is added until you confirm.",
-        "aiDisclosure": "PawPi's AI read your file to suggest these. Edit anything that's off.",
+        "aiDisclosure": "Anthropic (Claude) read your file to suggest these. Edit anything that's off.",
         "groupVaccinations": "Vaccines",
         "groupMedications": "Medications",
         "groupSurgeries": "Surgeries",
