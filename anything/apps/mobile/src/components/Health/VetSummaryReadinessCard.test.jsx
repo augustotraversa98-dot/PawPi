@@ -46,6 +46,23 @@ test("View Vet Summary opens the Health vet-record section (not the dead more/ve
   expect(JSON.stringify(target)).not.toContain("more/vet");
 });
 
+test("shows one headline, a labelled bar and the link, with no extra copy", () => {
+  const { getByText, queryByText } = render(
+    <VetSummaryReadinessCard petId={1} petName="Rex" />,
+  );
+  expect(getByText(/Rex's care was 60% this month/)).toBeTruthy();
+  expect(getByText("Vet summary: 2 of 4 areas started")).toBeTruthy();
+  expect(queryByText(/is building|the more you log|vetReadiness\./)).toBeNull();
+});
+
+test("a month with no care yet keeps the care story headline", () => {
+  mockStats = { care_recap: { days_elapsed: 10, percent: 0 } };
+  const { getByText } = render(
+    <VetSummaryReadinessCard petId={1} petName="Rex" />,
+  );
+  expect(getByText(/Let's build Rex's care story this month/)).toBeTruthy();
+});
+
 test("renders cleanly with empty readiness/stats (no crash, still links)", () => {
   mockReadiness = undefined;
   mockStats = undefined;

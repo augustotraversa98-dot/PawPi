@@ -59,6 +59,19 @@ describe.each(["en", "es"])("Health tab vet-record section by role (%s)", (lang)
     expect(queryByTestId("vet-record-locked")).toBeNull();
   });
 
+  test("the header shows only the short non-diagnostic line", () => {
+    mockPet = owner;
+    const { getByText, queryByText } = render(<HealthScreen />);
+    expect(
+      getByText(
+        lang === "es"
+          ? "PawPi no diagnostica ni reemplaza la atención veterinaria profesional."
+          : "PawPi does not diagnose or replace professional veterinary care.",
+      ),
+    ).toBeTruthy();
+    expect(queryByText(/track changes|registrar cambios|health\.headerDisclaimer/)).toBeNull();
+  });
+
   test("caregiver gets the friendly locked card, NOT the vet record (no requests are made)", () => {
     mockPet = caregiver;
     const { getByTestId, getByText, queryByText } = render(<HealthScreen />);

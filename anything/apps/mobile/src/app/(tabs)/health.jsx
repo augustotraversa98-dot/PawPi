@@ -158,7 +158,7 @@ function HealthScreenContent() {
           }}
         >
           <Text style={[TYPE.caption, { color: COLORS.mutedBrown, lineHeight: 16, textAlign: "center", letterSpacing: 0 }]}>
-            {t("health.disclaimer")}
+            {t("health.headerDisclaimer")}
           </Text>
         </View>
       </GlassSurface>

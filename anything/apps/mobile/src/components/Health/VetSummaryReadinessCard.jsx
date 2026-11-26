@@ -2,9 +2,8 @@
 //
 // Two positive nudges, never shaming:
 //   • Monthly care recap — "{name}'s care was X% this month" from REAL ring completion.
-//   • Vet-Summary readiness — grows as REAL records fill: "the more you log, the better {name}'s next
-//     vet summary". Links to the existing Vet Summary. Celebrates progress; an empty state is a gentle
-//     invite, never a gap-shame.
+//   • Vet-Summary readiness — a labelled bar that grows as REAL records fill. Links to the existing
+//     Vet Summary. Celebrates progress; an empty state is a gentle invite, never a gap-shame.
 
 import React from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
@@ -27,7 +26,6 @@ export function VetSummaryReadinessCard({ petId, petName }) {
 
   const filled = readiness?.filled ?? 0;
   const total = readiness?.total ?? 4;
-  const level = readiness?.level || "start";
   const pct = total > 0 ? Math.round((filled / total) * 100) : 0;
 
   return (
@@ -40,9 +38,6 @@ export function VetSummaryReadinessCard({ petId, petName }) {
             : t("vetReadiness.recapStart", { name })}
         </Text>
       ) : null}
-
-      <Text style={styles.title}>{t("vetReadiness.title", { name })}</Text>
-      <Text style={styles.sub}>{t(`vetReadiness.level_${level}`, { name })}</Text>
 
       <View style={styles.barTrack}>
         <View style={[styles.barFill, { width: `${Math.max(pct, 4)}%` }]} />
@@ -67,10 +62,8 @@ export function VetSummaryReadinessCard({ petId, petName }) {
 
 const styles = StyleSheet.create({
   card: { padding: 16 },
-  recap: { fontSize: 15, fontWeight: "800", color: COLORS.terracotta, marginBottom: 10, lineHeight: 21 },
-  title: { fontSize: 16, fontWeight: "800", color: COLORS.warmBrown },
-  sub: { marginTop: 4, fontSize: 13, color: COLORS.mutedBrown, lineHeight: 18 },
-  barTrack: { marginTop: 12, height: 10, borderRadius: 999, backgroundColor: COLORS.sand, overflow: "hidden" },
+  recap: { fontSize: 15, fontWeight: "800", color: COLORS.terracotta, marginBottom: 12, lineHeight: 21 },
+  barTrack: { height: 10, borderRadius: 999, backgroundColor: COLORS.sand, overflow: "hidden" },
   barFill: { height: 10, borderRadius: 999, backgroundColor: COLORS.coral },
   count: { marginTop: 6, fontSize: 12, fontWeight: "700", color: COLORS.mutedBrown },
   link: { marginTop: 12 },

@@ -221,6 +221,16 @@ describe("Vet Record — Visits & procedures list matches the badge", () => {
     expect(screen.queryAllByText("Dental extraction").length).toBeGreaterThan(1);
   });
 
+  test.each([["en"], ["es"]])("no summary hint or bottom note on the screen (%s)", (lang) => {
+    mockLangRef.current = lang;
+    const screen = render(<HealthVetRecord />);
+    expect(
+      screen.queryByText(
+        /in one place|un solo lugar|recent logs ready|listos para compartir|vetRecord\.(footer|readinessHint)/,
+      ),
+    ).toBeNull();
+  });
+
   test("empty state ONLY when both appointments and surgeries are empty", () => {
     const screen = render(<HealthVetRecord />);
     openVisits(screen);

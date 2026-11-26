@@ -37,6 +37,14 @@ test("shows real log counts, not the old hardcoded numbers", () => {
   expect(queryByText("📊 24 logs")).toBeNull();
 });
 
+test("the card has its title and button, with no subtitle or intro line", () => {
+  mockSummary = undefined;
+  const { getByText, queryByText } = render(<VetSummaryDashboard />);
+  expect(getByText("Vet Summary")).toBeTruthy();
+  expect(getByText("Create Vet Summary")).toBeTruthy();
+  expect(queryByText(/Prepare for your vet visit|A real summary|healthUi\./)).toBeNull();
+});
+
 test("surfaces a 'worth discussing' badge when flags exist", () => {
   mockSummary = {
     pet: { name: "Rex" },
