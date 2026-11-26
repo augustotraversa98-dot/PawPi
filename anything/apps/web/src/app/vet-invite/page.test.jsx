@@ -88,7 +88,7 @@ describe("vet invite page", () => {
     fetchMock
       .mockReturnValueOnce(ready([{ id: 1, name: "Clinic One" }, { id: 2, name: "Clinic Two" }]))
       .mockReturnValueOnce(answer(200, { status: "requested", petName: "Rex" }));
-    render(<VetInvitePage />);
+    const view = render(<VetInvitePage />);
 
     const button = await screen.findByRole("button", { name: t.invite.accept });
     expect(button).toBeDisabled();
@@ -98,6 +98,14 @@ describe("vet invite page", () => {
     expect(await screen.findByText(t.requested.title)).toBeInTheDocument();
     expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ token: TOKEN, providerId: 2 });
     expect(window.sessionStorage.getItem(INVITE_STORAGE_KEY)).toBeNull();
+
+    // A session refresh does not open the used link again.
+    userState.loading = true;
+    view.rerender(<VetInvitePage />);
+    userState.loading = false;
+    view.rerender(<VetInvitePage />);
+    expect(screen.getByText(t.requested.title)).toBeInTheDocument();
+    expect(sentTo()).toHaveLength(2);
   });
 
   it("says when the clinic already has a request or access", async () => {

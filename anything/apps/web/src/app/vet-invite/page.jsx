@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PetPageHeader, PET_PAGE_BUTTON, PET_PAGE_WRAP } from "@/components/publicPet/PetPageParts";
 import { BRAND } from "@/lib/brand/tokens";
 import { useDocumentHead } from "@/lib/legal/head";
@@ -123,6 +123,8 @@ export default function VetInvitePage() {
   const [providerId, setProviderId] = useState("");
   const [sending, setSending] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const inFlight = useRef(false);
+  const answeredToken = useRef(null); // accepted already: opening it again would read as an invalid link
 
   useEffect(() => {
     const read = () => {
@@ -137,7 +139,7 @@ export default function VetInvitePage() {
   const userId = user?.id ?? null;
 
   useEffect(() => {
-    if (!token || authLoading || !userId) return undefined;
+    if (!token || authLoading || !userId || answeredToken.current === token) return undefined;
     let alive = true;
     setView({ phase: "loading" });
     setProviderId("");
@@ -161,12 +163,14 @@ export default function VetInvitePage() {
   }, [token, userId, authLoading, attempt]);
 
   const accept = useCallback(async () => {
-    if (!providerId || sending) return;
+    if (!providerId || inFlight.current) return;
+    inFlight.current = true;
     setSending(true);
     try {
       const answer = await postInvite("accept", { token, providerId: Number(providerId) });
       const done = answer.data?.status;
       if (answer.status === 200 && (done === "requested" || done === "already_open")) {
+        answeredToken.current = token;
         if (done === "requested") storage.clear();
         setView({
           phase: done === "requested" ? "requested" : "alreadyOpen",
@@ -180,9 +184,10 @@ export default function VetInvitePage() {
     } catch {
       setView({ phase: "error" });
     } finally {
+      inFlight.current = false;
       setSending(false);
     }
-  }, [providerId, sending, token]);
+  }, [providerId, token]);
 
   let phase = view.phase;
   if (token === undefined || authLoading) phase = "loading";
