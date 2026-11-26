@@ -83,16 +83,16 @@ Section 8 (EN + ES) lists exactly the **Live** rows. Full evidence and the open 
 | **Sign in with Apple / Google** | **Live.** `AUTH_APPLE_*` and `AUTH_GOOGLE_*` set; the Welcome buttons appear only when configured. | Basic profile (name, email incl. Apple private relay) and token verification | Yes (added; was in §2 but missing from §8) |
 | **Apple Maps / Apple geocoder** (iOS system) | **Live on iPhone.** `react-native-maps` uses `PROVIDER_DEFAULT` (Apple Maps) and `expo-location` reverse-geocoding uses Apple's geocoder. | Map area viewed; coordinates to turn into a street address | Yes (added, within the Apple entry) |
 | **OpenStreetMap Nominatim** | **Live.** Services Discover "search a location", from the device on explicit submit. | Typed place text, IP, a PawPi User-Agent | Yes |
-| GitHub (`GITHUB_DISPATCH_TOKEN`) | **Live, internal ops only.** Observability alert-to-autofix loop. | Alert payloads (route/metric text), no user data | No (not user data) |
+| GitHub (`GITHUB_DISPATCH_TOKEN`) | **Live, internal ops only.** Observability alert-to-autofix loop. | Alert payloads (route/metric text), no user data. The workflow it starts (`claude-autofix.yml`) runs Claude Code, so Anthropic receives the allow-listed alert fields and the repository files the model reads; no production data or logs are given to it. | No (not user data) |
 | **RevenueCat** (`react-native-purchases`) | **Inactive.** `Purchases.configure` is only reachable from an unused hook; no RevenueCat keys in the EAS `production` profile; no webhook route. | Nothing today | No |
-| **Anthropic (Claude)** AI document reading | **Inactive.** Returns 503 unless `ANTHROPIC_API_KEY` is set; the key (and `ENRICHMENT_LLM_KEY`) is not set on production. | Nothing today. When enabled: the uploaded vet document | No |
+| **Anthropic (Claude)** AI document reading | **Live** (updated 2026-11-25): `ANTHROPIC_API_KEY` is set on production (owner's statement; not re-read from Railway). `POST /api/vet-record/documents/extract` runs automatically after the app saves a Vet Record document. | The uploaded file (base64) with its media type, a fixed extraction prompt and a fixed field schema (`utils/enrichment/petRecords.js`). No name, email, account id, pet name or file name is added; the document itself may contain any of them. | Yes (added) |
 | **Google Maps Platform** (Places enrichment, browser map picker) | **Inactive.** `GOOGLE_PLACES_API_KEY` is not set on production; `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY` is not set, so the provider-dashboard map picker renders nothing. Android shows a "coming soon" map placeholder (no Google key). | Nothing today | **Removed** |
 | **Binance Pay** | **Inactive.** Adapter exists; `BINANCE_PAY_API_*` not set on production, routes answer 503 "not configured". | Nothing today | **Removed** |
 | **Stripe** | **Not used.** Only a platform scaffold (`src/__create/stripe.ts`) that nothing imports; no Stripe key. | Nothing | **Removed** |
 | **Uploadcare / `api.anything.com`** | **Not used.** Real uploads go to Supabase Storage. `utils/upload.js` (the `api.anything.com` helper) had no importers and was deleted; `@uploadcare/upload-client` in the mobile `package.json` is an unused leftover. | Nothing | **Removed** |
 | **Google Fonts** and **Font Awesome kit** | **Removed from public pages in this PR.** Nunito/JetBrains Mono are now self-hosted; the Font Awesome Pro kit was loaded in `root.tsx` for every page but no `fa-` icon is used anywhere (and the CSP did not even allow its stylesheet). Verified no third-party request on `/`, `/privacy`, `/terms`, `/eula`, `/support`, `/account/signin`, `/p/tag/*`. | Was: visitor IP to Google / Font Awesome | n/a (no longer happens) |
 
-If RevenueCat, Anthropic, Google Maps, Binance Pay or an uploads vendor is switched on later, update this table,
+If RevenueCat, Google Maps, Binance Pay or an uploads vendor is switched on later, update this table,
 policy §2/§8 (EN + ES) and the App Store label first.
 
 ### Label impact (for the App Store Connect owner)
@@ -105,9 +105,11 @@ policy §2/§8 (EN + ES) and the App Store label first.
   App Functionality.
 - **Nominatim:** a typed place name is not the user's location. Borderline **Search History** (Not linked,
   App Functionality); conservative option is to declare it.
-- **RevenueCat / Anthropic:** none today. If RevenueCat goes live: **Purchases → Purchase History** and
-  **Identifiers → User ID / Device ID**. If Anthropic goes live: uploaded vet documents map to the already-declared
-  **Photos or Videos / Other User Content** (Linked, App Functionality).
+- **Anthropic (live):** uploaded vet documents map to the already-declared **Photos or Videos / Other User Content**
+  (Linked, App Functionality), so no new data type. A document can show phone numbers; see the optional
+  **Contact Info → Phone Number** row below.
+- **RevenueCat:** none today. If it goes live: **Purchases → Purchase History** and
+  **Identifiers → User ID / Device ID**.
 
 ## Explicitly NOT collected / declared
 - **Financial Info (card/wallet):** handled by the payment processor (MercadoPago; Binance Pay and Stripe are

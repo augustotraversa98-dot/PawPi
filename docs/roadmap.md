@@ -18,6 +18,14 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-25 — Privacy Policy discloses that Anthropic (Claude) reads uploaded vet documents — web-only content change, Railway deploy on merge, no EAS build, no migration
+- `/privacy` EN + ES: new **Anthropic** entry in §8; one new use in §4; one sentence in §6; one sentence in §9 on Anthropic's retention; links to Anthropic's privacy policy and Commercial Terms; "provider" in §3/§7 now says it means a service business, so it cannot be read as covering AI or infrastructure vendors. Mirrors in `docs/legal/`, the data map and the legal checklist updated. No code, API, env or consent-version change; the feature itself is unchanged.
+- "Last updated" was already November 25, 2026, so the line and `PRIVACY_VERSION` stay as they are.
+- The in-app notice for this change is the note in #797, which reaches users with the next EAS build after 33.
+- Open for the owner: in-app permission before sending (Apple 5.1.2(i)), confirm §8's "no own purposes" sentence for Anthropic, App Store Connect "App Privacy" (data map says no new data type).
+
+---
+
 ## 2026-11-25 — Website agent discovery (isitagentready.com checks) — web-only, Railway deploy on merge, no EAS build, no migration
 - New `utils/agentDiscovery.js` middleware (GET/HEAD only, exact paths only; `/api/*` byte-identical, pinned by test): RFC 8288 `Link` headers on the five public pages; `text/markdown` versions when `Accept` asks (`Vary: Accept`, `x-markdown-tokens`), built from `lib/home/copy.js` and `content/legal`.
 - `/.well-known/api-catalog` (one real entry: `/api/health/deep`), `/.well-known/agent-skills/index.json` (empty: none published), `/.well-known/ai-catalog.json` (one entry: the API catalog).
