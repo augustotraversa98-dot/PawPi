@@ -18,6 +18,15 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-25 — Website welcomes search engines and AI crawlers (robots.txt + privacy guard) — web-only, Railway deploy on merge, no EAS build, no migration; Cloudflare dashboard settings changed by owner
+- `public/robots.txt` is now the whole policy: content signals `search=yes, ai-input=yes, ai-train=yes` (one line to change them), `Allow: /` and `/.well-known/`, `Disallow` for `/api/`, `/account/`, `/provider`, `/admin`, `/p/`.
+- **Privacy guard:** the private-link pet pages (`/p/tag/[token]`, `/p/card/[token]`) now also carry a server-rendered `<meta name="robots" content="noindex, nofollow">`. A crawler that obeys the Disallow never reads that tag, so a bare tag or card URL posted publicly could still be listed without its content.
+- Sitemap: each `?lang=en` page now has its own `<url>` entry, so the hreflang pairs point both ways. Pinned by `src/app/crawlerAccess.test.js`.
+- **Cloudflare (owner's dashboard, not code):** "Managed robots.txt" (it prepended its own signals and training-crawler blocks) and AI bot blocking (403 to ClaudeBot and PerplexityBot) are to be off. Checked from outside before the merge: no managed block was served, and GPTBot, ClaudeBot, PerplexityBot and CCBot user-agents got 200 on `/`.
+- `/api/*` untouched.
+
+---
+
 ## 2026-11-25 — Privacy Policy discloses that Anthropic (Claude) reads uploaded vet documents — web-only content change, Railway deploy on merge, no EAS build, no migration
 - `/privacy` EN + ES: new **Anthropic** entry in §8; one new use in §4; one sentence in §6; one sentence in §9 on Anthropic's retention; links to Anthropic's privacy policy and Commercial Terms; "provider" in §3/§7 now says it means a service business, so it cannot be read as covering AI or infrastructure vendors. Mirrors in `docs/legal/`, the data map and the legal checklist updated. No code, API, env or consent-version change; the feature itself is unchanged.
 - "Last updated" was already November 25, 2026, so the line and `PRIVACY_VERSION` stay as they are.
