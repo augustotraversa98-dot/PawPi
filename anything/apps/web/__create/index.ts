@@ -12,6 +12,7 @@ import { bodyLimit } from 'hono/body-limit';
 import { requestId } from 'hono/request-id';
 import { createHonoServer } from 'react-router-hono-server/node';
 import { securityHeaders } from '../src/app/api/utils/securityHeaders.js';
+import { resolveSessionCookieSameSite } from '../src/app/api/utils/sessionCookie.js';
 import { originGuard } from '../src/app/api/utils/originGuard.js';
 import { apiNotFound } from '../src/app/api/utils/apiNotFound.js';
 import { stampSessionExpired } from '../src/app/api/utils/sessionExpiredCode.js';
@@ -297,7 +298,11 @@ if (process.env.AUTH_SECRET) {
         };
         return {
           csrfToken: { options },
-          sessionToken: { options },
+          // Opt-in SameSite=Lax for the session cookie only (AUTH_COOKIE_SAMESITE=lax): see sessionCookie.js.
+          sessionToken: {
+            // process.env, not c.env: under the Node server c.env holds the request bindings, not the environment.
+            options: { ...options, sameSite: resolveSessionCookieSameSite({ useSecure, env: process.env }) },
+          },
           callbackUrl: { options },
         };
       })(),
