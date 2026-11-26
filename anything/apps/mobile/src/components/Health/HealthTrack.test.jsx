@@ -125,6 +125,16 @@ test("renders fully localized in Spanish (es-AR)", () => {
   expect(queryAllByText("Pronto")).toHaveLength(0);
 });
 
+test.each([
+  ["en", "Care and medical history for your vet visits."],
+  ["es", "Cuidados e historial médico para tus visitas veterinarias."],
+])("Everyday has no description line; Health records keeps its own (%s)", (locale, recordsHint) => {
+  mockLocaleState.locale = locale;
+  const { getByText, queryByText } = render(<HealthTrack />);
+  expect(queryByText(/Quick daily logs|Registros diarios rápidos|trackScreen\./)).toBeNull();
+  expect(getByText(recordsHint)).toBeTruthy();
+});
+
 test("tapping Weight opens the Weight modal", () => {
   const { getByText } = render(<HealthTrack />);
   expect(modalVisibility.weight).toBe(false);

@@ -34,7 +34,6 @@ export function LeaderboardCard({ petId }) {
   return (
     <Card style={styles.card}>
       <Text style={styles.title}>{t("leaderboard.title")}</Text>
-      <Text style={styles.subtitle}>{t("leaderboard.subtitle")}</Text>
 
       <View style={styles.tabs}>
         {FLAVORS.map((f) => (
@@ -107,8 +106,7 @@ export function LeaderboardCard({ petId }) {
 
 const styles = StyleSheet.create({
   card: { padding: 16 },
-  title: { fontSize: 16, fontWeight: "800", color: COLORS.warmBrown },
-  subtitle: { marginTop: 2, fontSize: 12, color: COLORS.mutedBrown, marginBottom: 10 },
+  title: { fontSize: 16, fontWeight: "800", color: COLORS.warmBrown, marginBottom: 10 },
   tabs: { flexDirection: "row", gap: 8, marginBottom: 12 },
   tab: { flex: 1, paddingVertical: 8, borderRadius: 999, backgroundColor: COLORS.sand, alignItems: "center" },
   tabActive: { backgroundColor: COLORS.coral },

@@ -1820,17 +1820,6 @@ export default function HealthVetRecord() {
             Summary" is always reachable, even with no upcoming appointment booked.
             Reuses the dashboard card + its VetSummaryModal (unchanged). */}
         <VetSummaryDashboard />
-        <Text
-          style={{
-            fontSize: 12,
-            color: COLORS.mutedBrown,
-            lineHeight: 18,
-            marginTop: 4,
-            marginBottom: SPACING.lg,
-          }}
-        >
-          {t("health.vetRecord.readinessHint", { pet: currentPet.name })}
-        </Text>
 
         {/* ============ GROUP 1 — Medical profile ============ */}
         <SectionHeader
@@ -2335,28 +2324,6 @@ export default function HealthVetRecord() {
             {renderHistoryContent()}
           </View>
         )}
-
-        {/* Bottom Info */}
-        <View
-          style={{
-            backgroundColor: MATERIALS.surfaceSunken,
-            borderRadius: 16,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: MATERIALS.hairline,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 12,
-              color: COLORS.mutedBrown,
-              lineHeight: 18,
-              textAlign: "center",
-            }}
-          >
-            {t("health.vetRecord.footer")}
-          </Text>
-        </View>
       </View>
 
       {/* Add Record Picker Modal */}

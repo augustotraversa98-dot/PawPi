@@ -54,19 +54,10 @@ export default function VetSummaryDashboard() {
           >
             <FileText color="#fff" size={24} />
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 20, fontWeight: "700", color: "#111", marginBottom: 4 }}>
-              {t("healthUi.vetSummaryDashboard.vetSummary")}
-            </Text>
-            <Text style={{ fontSize: 14, color: "#6B7280" }}>{t("healthUi.vetSummaryDashboard.prepareForYourVetVisit")}</Text>
-          </View>
+          <Text style={{ flex: 1, fontSize: 20, fontWeight: "700", color: "#111" }}>
+            {t("healthUi.vetSummaryDashboard.vetSummary")}
+          </Text>
         </View>
-
-        <Text style={{ fontSize: 14, color: "#4B5563", lineHeight: 20, marginBottom: 16 }}>
-          {t("healthUi.vetSummaryDashboard.intro", {
-            name: currentPet?.name || t("routineCard.yourPet"),
-          })}
-        </Text>
 
         {/* Real recent activity */}
         <View

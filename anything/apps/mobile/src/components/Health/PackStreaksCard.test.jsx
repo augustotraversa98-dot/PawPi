@@ -59,6 +59,13 @@ afterEach(() => {
 const T = { timeout: 3000 };
 
 describe("PackStreaksCard — friend picker", () => {
+  test("with no pack yet: the subtitle plus one short line with the same-day rule", () => {
+    const api = renderCard();
+    expect(api.getByText("Keep the flame going with a dog friend")).toBeTruthy();
+    expect(api.getByText("It grows when you both close your ring the same day.")).toBeTruthy();
+    expect(api.queryByText(/Start a pack streak with a friend/)).toBeNull();
+  });
+
   test("focusing the picker lists friends with avatar row: pet name, @handle and owner name", async () => {
     const api = renderCard();
     fireEvent(api.getByTestId("pack-friend-input"), "focus");

@@ -104,7 +104,7 @@ export const TRACKERS = [
 ];
 
 const SECTIONS = [
-  { key: "everyday", headerKey: "sectionEveryday", hintKey: "sectionEverydayHint" },
+  { key: "everyday", headerKey: "sectionEveryday" },
   { key: "records", headerKey: "sectionRecords", hintKey: "sectionRecordsHint" },
 ];
 
@@ -297,16 +297,23 @@ export default function HealthTrack() {
             <Text
               style={[
                 TYPE.overline,
-                { color: COLORS.terracotta, textTransform: "uppercase", marginBottom: 2 },
+                {
+                  color: COLORS.terracotta,
+                  textTransform: "uppercase",
+                  // Without a hint line the header itself keeps the gap above the tiles.
+                  marginBottom: section.hintKey ? 2 : SPACING.md,
+                },
               ]}
             >
               {t(`health.trackScreen.${section.headerKey}`)}
             </Text>
-            <Text
-              style={[TYPE.footnote, { color: COLORS.mutedBrown, marginBottom: SPACING.md }]}
-            >
-              {t(`health.trackScreen.${section.hintKey}`, { pet: petName })}
-            </Text>
+            {section.hintKey ? (
+              <Text
+                style={[TYPE.footnote, { color: COLORS.mutedBrown, marginBottom: SPACING.md }]}
+              >
+                {t(`health.trackScreen.${section.hintKey}`, { pet: petName })}
+              </Text>
+            ) : null}
             <View style={{ gap: SPACING.md }}>
               {TRACKERS.filter((tr) => tr.section === section.key).map(renderTile)}
             </View>
