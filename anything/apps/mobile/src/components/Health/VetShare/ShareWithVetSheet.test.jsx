@@ -68,6 +68,22 @@ test("says what is shared and what is not", () => {
   expect(s.getByText(/Not shared: allergies, conditions, medications/)).toBeTruthy();
 });
 
+test("re-reads current access and bookings when it opens, not cached ones", () => {
+  open();
+  expect(mockGrants.refetch).toHaveBeenCalledTimes(1);
+  expect(mockBookings.refetch).toHaveBeenCalledTimes(1);
+});
+
+test("a failed share re-reads current access and says it failed", () => {
+  mockCreate.mockImplementation((vars, { onError }) => onError(new Error("Failed to create grant")));
+  const s = open();
+  fireEvent.press(s.getByTestId("vet-share-vet-1"));
+  fireEvent.press(s.getByTestId("vet-share-consent"));
+  fireEvent.press(s.getByTestId("cta"));
+  expect(mockGrants.refetch).toHaveBeenCalledTimes(2);
+  expect(Alert.alert.mock.calls[0][0]).toBe("Couldn't share");
+});
+
 test("needs a vet and consent, then creates a read-only grant", () => {
   const s = open();
   expect(ctaDisabled(s)).toBe(true);
@@ -147,6 +163,7 @@ test("a family member is told only the owner can share", () => {
   fireEvent.press(s.getByTestId("cta"));
   expect(onClose).toHaveBeenCalled();
   expect(mockCreate).not.toHaveBeenCalled();
+  expect(mockGrants.refetch).not.toHaveBeenCalled();
 });
 
 test("Spanish copy", () => {

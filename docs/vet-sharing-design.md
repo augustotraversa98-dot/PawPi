@@ -47,5 +47,7 @@ Each needs server work, so each is a draft PR with owner review.
    into a grant for the accepting provider, single use. Needs working email delivery first.
 4. **Let the vet find the pet without a booking.** A provider "Shared with us" list from active grants, plus a
    notification on grant. Then the booking restriction in the picker can go.
-5. **Fix:** creating a grant while a pending one exists hits the unique index inside the request transaction, and the
-   recovery query then fails (500). The app avoids the call; the route should use `withSavepoint`.
+5. **Fix:** creating a grant while a pending one exists returns 500 (reproduced locally 2026-11-26): the unique index
+   fires inside the request transaction and the recovery query cannot run. The sheet re-reads access when it opens and
+   does not offer that vet; the booking summary's "Share medical records" button can still hit it. The route should
+   wrap the insert in `withSavepoint` and answer with the pending request.

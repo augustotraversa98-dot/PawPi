@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Check, Circle, CircleDot, EyeOff, Square, SquareCheck } from "lucide-react-native";
+import { Check, Circle, CircleDot, Clock, EyeOff, Square, SquareCheck } from "lucide-react-native";
 import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
 import { COLORS, MATERIALS, RADIUS, SPACING, TYPE } from "@/constants/theme";
 import { useMyBookings } from "@/hooks/useProviders";
@@ -87,7 +87,8 @@ function SecondaryButton({ label, onPress, disabled, color = COLORS.terracotta, 
 
 function VetRow({ vet, name, blocked, selected, onPress }) {
   const { t } = useTranslation();
-  const Icon = blocked ? Check : selected ? CircleDot : Circle;
+  const blockedIcon = blocked === "shared" ? Check : Clock;
+  const Icon = blocked ? blockedIcon : selected ? CircleDot : Circle;
   return (
     <TouchableOpacity
       testID={`vet-share-vet-${vet.providerId}`}
@@ -127,6 +128,15 @@ export default function ShareWithVetSheet({ pet, onClose, onOpenRequests }) {
   const [selectedId, setSelectedId] = useState(null);
   const [consent, setConsent] = useState(false);
 
+  // Never decide on cached data: a vet may have asked for access, or a booking may be new, since the last read.
+  const { refetch: refetchGrants } = grantsQuery;
+  const { refetch: refetchBookings } = bookings;
+  useEffect(() => {
+    if (!isOwner) return;
+    refetchGrants();
+    refetchBookings();
+  }, [isOwner, refetchGrants, refetchBookings]);
+
   const grants = grantsQuery.data;
   const vets = bookedVetsForPet(bookings.data, petId);
   const vetName = (name) => name || t("dataAccess.thisProvider");
@@ -162,8 +172,10 @@ export default function ShareWithVetSheet({ pet, onClose, onOpenRequests }) {
             t("vetShare.doneBody", { provider: vet, pet: petName }),
           );
         },
-        onError: (e) =>
-          Alert.alert(t("vetShare.errorTitle"), friendlyErrorMessage(e, "dataAccess.tryAgain")),
+        onError: (e) => {
+          refetchGrants(); // the usual cause is a request or grant this screen had not seen yet
+          Alert.alert(t("vetShare.errorTitle"), friendlyErrorMessage(e, "dataAccess.tryAgain"));
+        },
       },
     );
   };
