@@ -61,6 +61,23 @@ Declared in App Store Connect as **"Data Not Linked to You"** and **not used to 
 - Retention: no specific period is stated. It is set by the hosting/monitoring provider's plan and is
   deliberately not stated in the privacy policy (`docs/privacy/telemetry.md`).
 
+## Emergency finder flow (added 2026-11-26)
+
+A person who finds a dog can open its tag page on the web and, when the owner's settings allow messages, send a name
+(optional), a phone number and/or email address and a message. The details go to the owner and to family members and
+caregivers with active access to that dog, in the app and by push notification where their settings allow it, and the
+stored details are deleted after 90 days. A hashed form of the sender's internet address is kept to prevent abuse.
+Opening a tag page or vet link may also record the visitor's internet address, to limit repeated requests. No location is
+requested. Behaviour: `docs/emergency-finder.md`; policy §2, §7 and §9.
+
+The owner chooses whether the tag page and vet links show their phone or email, and whether the tag page shows the
+medical profile's emergency contact (off by default).
+
+**Label impact:** declare **Contact Info -> Phone Number** (Linked, App Functionality, not tracking). The app asks for
+phone numbers and stores the one a finder sends. Name, Email Address and Other User Content are already declared and cover
+the rest. This replaces the earlier mentions of Phone Number as an optional extra. Whether the published App Store Connect
+answers already include it has not been checked.
+
 ## Third-party services that receive data (accuracy sweep 2026-10-16)
 
 Checked against the code, the production Railway service's variable **names** (values never read) and live
@@ -148,6 +165,7 @@ Items marked **NEW vs. this doc before the sweep** are changes you may need to m
 |---|---|---|---|
 | Contact Info → Email Address | Linked | App Functionality | Sign-up / Sign in with Apple, Google |
 | Contact Info → Name | Linked | App Functionality | |
+| Contact Info → Phone Number | Linked | App Functionality | Owner's finder contact, emergency contact and vet phone numbers; a finder's number sent from the tag page |
 | Contact Info → **Physical Address** | Linked | App Functionality | **NEW vs. this doc before the sweep.** Shipping address saved on physical-goods orders. Previously folded under Purchase History. |
 | User Content → Photos or Videos | Linked | App Functionality | Pet photos, posts, health-check images, daily moments, documents |
 | User Content → Other User Content | Linked | App Functionality | Pet profiles, health/vet entries, posts, comments, messages, reviews, adoption answers |
@@ -172,4 +190,3 @@ Financial Info, Advertising Data, Browsing History, Contacts, Sensitive Info.
 | User Content → Audio Data | Linked | App Functionality | Telehealth video calls (Daily.co) carry live audio; not recorded, so Apple's "not kept longer than needed" exclusion probably applies. |
 | Identifiers → Device ID (telemetry/updates) | Not linked | Analytics (telemetry) and App Functionality (Expo Updates) | Random `install_id` and Expo's random client id are not device identifiers, but this is the safest reading if review pushes back. |
 | Usage Data → Search History | Not linked | App Functionality | The Services "search a location" text is sent to OpenStreetMap Nominatim. |
-| Contact Info → Phone Number | Linked | App Functionality | Users can enter an emergency contact's and their vet's phone numbers (stored as pet-record content, not for contacting the user). |
