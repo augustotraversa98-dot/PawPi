@@ -4,7 +4,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // to a pet. auth() and `sql` are mocked at the module boundary; resolveUserId and
 // requireProviderRole run for real against the mocked sql. The sql call order per
 // request is: 1) profile lookup, 2) membership, 3) pet owner lookup,
-// [4) bookingId check], 5) dedup existing-grant check, last) the INSERT.
+// [4) bookingId check], 5) close grants past their date, 6) dedup existing-grant check,
+// last) the INSERT.
 // CRITICAL: request/approve/revoke write NO care_access_audit row.
 
 import { POST } from './route';
@@ -101,6 +102,7 @@ describe('POST /api/providers/[id]/access-requests', () => {
   it('happy path → pending grant, requested_by=provider, owner derived, scopes stored, NO audit row', async () => {
     arrange(
       [{ owner_user_id: 33 }], // pet owner lookup
+      [], // close expired
       [], // dedup: no existing live grant
       [
         {
@@ -154,6 +156,7 @@ describe('POST /api/providers/[id]/access-requests', () => {
     arrange(
       [{ owner_user_id: 33 }], // pet owner lookup
       [{ id: 77 }], // booking check: matches provider + pet
+      [], // close expired
       [], // dedup: none
       [{ id: 9, booking_id: 77, status: 'pending' }], // INSERT
     );
@@ -169,6 +172,7 @@ describe('POST /api/providers/[id]/access-requests', () => {
   it('existing PENDING grant → 409', async () => {
     arrange(
       [{ owner_user_id: 33 }], // pet owner lookup
+      [], // close expired
       [{ id: 8 }], // dedup: a pending/active grant already exists
     );
 
@@ -180,11 +184,14 @@ describe('POST /api/providers/[id]/access-requests', () => {
   it('existing ACTIVE grant → 409 (dedup query filters pending OR active)', async () => {
     arrange(
       [{ owner_user_id: 33 }], // pet owner lookup
+      [], // close expired
       [{ id: 8 }], // dedup row present (active)
     );
 
     const res = await POST(postReq({ petId: 5, scopes: VALID_SCOPES }), PARAMS);
     expect(res.status).toBe(409);
+    // Grants past their date are closed before the dedup looks.
+    expect(calls().at(-2)[0].join(' ')).toContain('app_expire_care_grants');
     // The dedup query restricts to the two live statuses.
     const dedupText = calls()[calls().length - 1][0].join(' ');
     expect(dedupText).toContain("status IN ('pending', 'active')");

@@ -11,6 +11,11 @@ import {
   Plus,
   Loader2,
   ArrowLeft,
+  Phone,
+  Shield,
+  Paperclip,
+  Camera,
+  FlaskConical,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -20,23 +25,39 @@ import {
   useAddVaccination,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
+import {
+  RECORD_COPY,
+  fill,
+  formatRecordDate,
+  recordFileHref,
+} from "../lib/recordCopy";
+import { useVisitorLang } from "../../../lib/publicPet/useVisitorLang";
 
 // Clinical record screen (c3). The ONLY provider UI that reads/writes pet MEDICAL
 // data — every read/write goes through the four assertCareAccess-gated routes via
 // the hooks. A 403 (no/expired/revoked grant or missing scope) is a first-class
 // state: it shows the request/pending panel, never a dismissable error. Access is
 // consent-based + audited server-side; that's surfaced on every state.
+//
+// When the record answers with `sharedSections` (the owner shared by section),
+// only those sections are shown, the rest are named as not shared, and there are
+// no write forms: that access is read only.
 
 // The clinical screen always requests read + both write scopes so a single owner
 // approval unlocks viewing, notes, and vaccinations.
 const CLINICAL_SCOPES = ["medical_read", "medical_write", "vaccinations_write"];
 
-const CONSENT_LINE =
-  "Access is granted by the pet's owner and can be revoked anytime. Every view and entry is logged.";
-
-function fmtDate(d) {
-  return d ? String(d).slice(0, 10) : "—";
-}
+// The order sections are listed in (the server's section keys).
+const SECTIONS = [
+  "profile",
+  "emergency_contact",
+  "insurance",
+  "vet_notes",
+  "vaccines",
+  "files",
+  "photos",
+  "lab_results",
+];
 
 export default function ProviderPetRecord({
   providerId,
@@ -48,6 +69,8 @@ export default function ProviderPetRecord({
   const requestAccess = useRequestAccess(providerId);
   const addNote = useAddVetNote(providerId, petId);
   const addVaccination = useAddVaccination(providerId, petId);
+  const { lang } = useVisitorLang();
+  const t = RECORD_COPY[lang];
 
   // A request has been sent and is awaiting the owner's approval.
   const [requested, setRequested] = useState(false);
@@ -62,14 +85,15 @@ export default function ProviderPetRecord({
     if (granted) hadAccess.current = true;
   }, [granted]);
 
-  const name = petName || "this pet";
+  const name = petName || t.thisPet;
+  const sharedSections = record.data?.sharedSections ?? null;
 
   // A write that 403s mid-session means the owner revoked access — refetch (which
   // will now 403) and drop back to the request panel rather than show stale data.
   const handleWriteError = (err, fallbackMsg) => {
     if (err?.status === 403) {
       setRequested(false);
-      toast.error("Access was revoked by the owner");
+      toast.error(t.toast.revoked);
       record.refetch();
       return;
     }
@@ -86,18 +110,18 @@ export default function ProviderPetRecord({
       {
         onSuccess: () => {
           setRequested(true);
-          toast.success("Access requested");
+          toast.success(t.toast.requested);
         },
         onError: (err) => {
           // 409 = a grant is already pending/active — not a failure; treat it as
           // "requested" so the owner just needs to approve (or it's already live).
           if (err?.status === 409) {
             setRequested(true);
-            toast.success("Access already requested — waiting for approval");
+            toast.success(t.toast.alreadyRequested);
             record.refetch();
             return;
           }
-          toast.error(err?.message || "Couldn't request access");
+          toast.error(err?.message || t.toast.requestFailed);
         },
       },
     );
@@ -111,7 +135,7 @@ export default function ProviderPetRecord({
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#7A6254] hover:text-[#3B241B]"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to bookings
+          {t.back}
         </Link>
       </div>
 
@@ -120,26 +144,33 @@ export default function ProviderPetRecord({
           className="flex h-10 w-10 items-center justify-center rounded-xl"
           style={{ backgroundColor: COLORS.peach }}
         >
-          <Stethoscope className="h-5 w-5" style={{ color: COLORS.terracotta }} />
+          <Stethoscope
+            className="h-5 w-5"
+            style={{ color: COLORS.terracotta }}
+          />
         </div>
         <div>
           <h1 className="text-2xl font-bold text-[#3B241B]">
-            Clinical record — {name}
+            {fill(t.title, { name })}
           </h1>
           <p className="flex items-center gap-1.5 text-sm text-[#7A6254]">
             <ShieldCheck className="h-3.5 w-3.5" style={{ color: "#1F7A4D" }} />
-            {CONSENT_LINE}
+            {t.consent}
           </p>
         </div>
       </div>
 
       {record.isLoading ? (
         <div className="flex items-center justify-center gap-3 rounded-2xl border border-[#FFD9B3] bg-white px-6 py-16 text-[#7A6254]">
-          <Loader2 className="h-5 w-5 animate-spin" style={{ color: COLORS.coral }} />
-          Loading record…
+          <Loader2
+            className="h-5 w-5 animate-spin"
+            style={{ color: COLORS.coral }}
+          />
+          {t.loading}
         </div>
       ) : isForbidden ? (
         <AccessPanel
+          t={t}
           name={name}
           requested={requested}
           wasRevoked={hadAccess.current}
@@ -153,20 +184,36 @@ export default function ProviderPetRecord({
         />
       ) : record.isError ? (
         <div className="rounded-2xl border border-[#FFD9B3] bg-white px-6 py-16 text-center">
-          <p className="font-semibold text-[#B23B30]">Couldn't load the record</p>
+          <p className="font-semibold text-[#B23B30]">{t.loadErrorTitle}</p>
           <p className="mt-1 text-sm text-[#7A6254]">
-            {record.error?.message || "Please try again."}
+            {record.error?.message || t.tryAgain}
           </p>
         </div>
+      ) : sharedSections ? (
+        <SharedRecord
+          t={t}
+          lang={lang}
+          providerId={providerId}
+          data={record.data}
+          sharedSections={sharedSections}
+        />
       ) : (
         <div className="space-y-6">
-          <MedicalProfileCard profile={record.data.medical_profile} />
+          <MedicalProfileCard
+            t={t}
+            lang={lang}
+            profile={record.data.medical_profile}
+          />
           <VetNotesCard
+            t={t}
+            lang={lang}
             notes={record.data.notes ?? []}
             addNote={addNote}
             onWriteError={handleWriteError}
           />
           <VaccinationsCard
+            t={t}
+            lang={lang}
             vaccinations={record.data.vaccinations ?? []}
             addVaccination={addVaccination}
             onWriteError={handleWriteError}
@@ -181,6 +228,7 @@ export default function ProviderPetRecord({
 // this session), plus the "requested — waiting for approval" pending state. The
 // owner approves on THEIR app (mobile); approval is instantly effective on Refresh.
 function AccessPanel({
+  t,
   name,
   requested,
   wasRevoked,
@@ -199,11 +247,10 @@ function AccessPanel({
           <RefreshCw className="h-6 w-6" style={{ color: COLORS.terracotta }} />
         </div>
         <h2 className="text-lg font-bold text-[#3B241B]">
-          Access requested — waiting for the owner to approve
+          {t.access.requestedTitle}
         </h2>
         <p className="mx-auto mt-2 max-w-md text-sm text-[#7A6254]">
-          {name}'s owner approves clinical access from their PawPi app. Approval is
-          effective immediately — refresh once they've granted it.
+          {fill(t.access.requestedBody, { name })}
         </p>
         <button
           type="button"
@@ -217,7 +264,7 @@ function AccessPanel({
           ) : (
             <RefreshCw className="h-4 w-4" />
           )}
-          Refresh
+          {t.access.refresh}
         </button>
       </div>
     );
@@ -232,14 +279,12 @@ function AccessPanel({
         <Lock className="h-6 w-6" style={{ color: COLORS.terracotta }} />
       </div>
       <h2 className="text-lg font-bold text-[#3B241B]">
-        {wasRevoked
-          ? `Access to ${name}'s record was revoked`
-          : `Request clinical access for ${name}`}
+        {fill(wasRevoked ? t.access.endedTitle : t.access.requestTitle, {
+          name,
+        })}
       </h2>
       <p className="mx-auto mt-2 max-w-md text-sm text-[#7A6254]">
-        {wasRevoked
-          ? "The owner revoked access. You can request it again — they'll need to approve from their app."
-          : "You don't have access to this pet's medical record yet. Requesting sends the owner an approval in their PawPi app; once they approve, you can view and add notes and vaccinations."}
+        {wasRevoked ? t.access.endedBody : t.access.requestBody}
       </p>
       <button
         type="button"
@@ -249,39 +294,72 @@ function AccessPanel({
         style={{ backgroundColor: COLORS.coral }}
       >
         {requesting && <Loader2 className="h-4 w-4 animate-spin" />}
-        {wasRevoked ? "Request access again" : "Request access"}
+        {wasRevoked ? t.access.requestAgain : t.access.request}
       </button>
     </div>
   );
 }
 
 const PROFILE_FIELDS = [
-  ["microchip_id", "Microchip ID"],
-  ["spayed_neutered_status", "Spayed / neutered"],
-  ["primary_vet_name", "Primary vet"],
-  ["primary_clinic_name", "Primary clinic"],
-  ["vet_phone", "Vet phone"],
-  ["medical_notes", "Medical notes"],
+  "microchip_id",
+  "spayed_neutered_status",
+  "primary_vet_name",
+  "primary_clinic_name",
+  "vet_phone",
+  "medical_notes",
 ];
 
-function MedicalProfileCard({ profile }) {
-  const present = profile
-    ? PROFILE_FIELDS.filter(([k]) => profile[k] != null && profile[k] !== "")
+// A section shared by itself carries every column that belongs to it.
+const SHARED_PROFILE_FIELDS = [
+  "microchip_id",
+  "spayed_neutered_status",
+  "spayed_neutered_date",
+  "primary_vet_name",
+  "primary_clinic_name",
+  "vet_phone",
+  "vet_email",
+  "medical_notes",
+];
+
+function MedicalProfileCard({ t, lang, profile, fields = PROFILE_FIELDS }) {
+  const show = (key) => {
+    const value = profile[key];
+    if (key === "spayed_neutered_status") return t.spayValues[value] ?? value;
+    if (key === "spayed_neutered_date") return formatRecordDate(value, lang);
+    return value;
+  };
+  return (
+    <FieldsCard
+      Icon={FileText}
+      title={t.sections.profile}
+      empty={t.profile.empty}
+      labels={t.profile}
+      fields={fields}
+      values={profile}
+      show={show}
+    />
+  );
+}
+
+// A card of labelled values from one row; blank values are left out.
+function FieldsCard({ Icon, title, empty, labels, fields, values, show }) {
+  const present = values
+    ? fields.filter((k) => values[k] != null && values[k] !== "")
     : [];
   return (
-    <SectionCard Icon={FileText} title="Medical profile">
-      {!profile || present.length === 0 ? (
-        <p className="px-1 py-2 text-sm text-[#7A6254]">
-          No medical profile on file for this pet yet.
-        </p>
+    <SectionCard Icon={Icon} title={title}>
+      {present.length === 0 ? (
+        <EmptyLine text={empty} />
       ) : (
         <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
-          {present.map(([k, label]) => (
+          {present.map((k) => (
             <div key={k}>
               <dt className="text-xs font-semibold uppercase tracking-wide text-[#B8A99D]">
-                {label}
+                {labels[k]}
               </dt>
-              <dd className="mt-0.5 text-sm text-[#3B241B]">{profile[k]}</dd>
+              <dd className="mt-0.5 text-sm text-[#3B241B]">
+                {show ? show(k) : values[k]}
+              </dd>
             </div>
           ))}
         </dl>
@@ -290,7 +368,250 @@ function MedicalProfileCard({ profile }) {
   );
 }
 
-function VetNotesCard({ notes, addNote, onWriteError }) {
+function EmptyLine({ text }) {
+  return <p className="px-1 py-2 text-sm text-[#7A6254]">{text}</p>;
+}
+
+// What a grant by section shows: the shared sections only, read only, and the
+// names of the ones that were not shared. Nothing here writes.
+function SharedRecord({ t, lang, providerId, data, sharedSections }) {
+  const has = (section) => sharedSections.includes(section);
+  const names = (list) => list.map((s) => t.sections[s]).join(" · ");
+  const notShared = SECTIONS.filter((s) => !has(s));
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-[#FFD9B3] bg-[#FFFBF6] p-5 text-sm text-[#7A6254]">
+        <p className="font-bold text-[#3B241B]">{t.shared.title}</p>
+        <p className="mt-1">{t.shared.readOnly}</p>
+        <p className="mt-3">
+          <span className="font-semibold text-[#3B241B]">
+            {t.shared.shared}:{" "}
+          </span>
+          <span data-testid="shared-sections">
+            {names(SECTIONS.filter(has))}
+          </span>
+        </p>
+        {notShared.length > 0 && (
+          <p className="mt-1">
+            <span className="font-semibold text-[#3B241B]">
+              {t.shared.notShared}:{" "}
+            </span>
+            <span data-testid="not-shared-sections">{names(notShared)}</span>
+          </p>
+        )}
+      </div>
+
+      {has("profile") && (
+        <MedicalProfileCard
+          t={t}
+          lang={lang}
+          profile={data.medical_profile}
+          fields={SHARED_PROFILE_FIELDS}
+        />
+      )}
+      {has("emergency_contact") && (
+        <FieldsCard
+          Icon={Phone}
+          title={t.sections.emergency_contact}
+          empty={t.emergencyContact.empty}
+          labels={t.emergencyContact}
+          fields={["emergency_contact_name", "emergency_contact_phone"]}
+          values={data.medical_profile}
+        />
+      )}
+      {has("insurance") && (
+        <FieldsCard
+          Icon={Shield}
+          title={t.sections.insurance}
+          empty={t.insurance.empty}
+          labels={t.insurance}
+          fields={["insurance_provider", "insurance_policy_number"]}
+          values={data.medical_profile}
+        />
+      )}
+      {has("vet_notes") && (
+        <VetNotesCard t={t} lang={lang} notes={data.notes ?? []} readOnly />
+      )}
+      {has("vaccines") && (
+        <VaccinationsCard
+          t={t}
+          lang={lang}
+          vaccinations={data.vaccinations ?? []}
+          readOnly
+        />
+      )}
+      {has("files") && (
+        <FilesCard
+          t={t}
+          lang={lang}
+          providerId={providerId}
+          documents={data.documents ?? []}
+        />
+      )}
+      {has("photos") && (
+        <PhotosCard
+          t={t}
+          lang={lang}
+          providerId={providerId}
+          photos={data.photo_checks ?? []}
+        />
+      )}
+      {has("lab_results") && (
+        <LabResultsCard t={t} lang={lang} results={data.lab_results ?? []} />
+      )}
+    </div>
+  );
+}
+
+function FilesCard({ t, lang, providerId, documents }) {
+  return (
+    <SectionCard Icon={Paperclip} title={t.sections.files}>
+      {documents.length === 0 ? (
+        <EmptyLine text={t.files.empty} />
+      ) : (
+        <ul className="space-y-3">
+          {documents.map((d) => {
+            const href = recordFileHref(d.file_url, providerId);
+            return (
+              <li
+                key={d.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#FFF1E2] bg-white p-4"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-[#3B241B]">
+                    {d.name}
+                  </p>
+                  <p className="text-xs text-[#7A6254]">
+                    {[
+                      d.document_type,
+                      d.document_date &&
+                        formatRecordDate(d.document_date, lang),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                  {d.notes && (
+                    <p className="mt-1 whitespace-pre-wrap text-sm text-[#3B241B]">
+                      {d.notes}
+                    </p>
+                  )}
+                </div>
+                {href ? (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-bold text-[#B75D32] hover:underline"
+                  >
+                    {t.files.open}
+                  </a>
+                ) : (
+                  <span className="text-xs text-[#B8A99D]">
+                    {t.files.unavailable}
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </SectionCard>
+  );
+}
+
+function PhotosCard({ t, lang, providerId, photos }) {
+  return (
+    <SectionCard Icon={Camera} title={t.sections.photos}>
+      {photos.length === 0 ? (
+        <EmptyLine text={t.photos.empty} />
+      ) : (
+        <ul className="grid gap-4 sm:grid-cols-3">
+          {photos.map((p) => {
+            const href = recordFileHref(p.image_url, providerId);
+            const area = t.photos.areas[p.body_area] ?? p.body_area;
+            return (
+              <li
+                key={p.id}
+                className="rounded-xl border border-[#FFF1E2] bg-white p-3"
+              >
+                {href ? (
+                  <a href={href} target="_blank" rel="noopener noreferrer">
+                    <img
+                      src={href}
+                      alt={area}
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                      className="h-40 w-full rounded-lg object-cover"
+                    />
+                  </a>
+                ) : (
+                  <p className="text-xs text-[#B8A99D]">
+                    {t.files.unavailable}
+                  </p>
+                )}
+                <p className="mt-2 text-sm font-semibold text-[#3B241B]">
+                  {area}
+                </p>
+                <p className="text-xs text-[#7A6254]">
+                  {formatRecordDate(p.created_at, lang)}
+                </p>
+                {p.notes && (
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-[#3B241B]">
+                    {p.notes}
+                  </p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </SectionCard>
+  );
+}
+
+function LabResultsCard({ t, lang, results }) {
+  return (
+    <SectionCard Icon={FlaskConical} title={t.sections.lab_results}>
+      {results.length === 0 ? (
+        <EmptyLine text={t.labResults.empty} />
+      ) : (
+        <ul className="space-y-3">
+          {results.map((r) => (
+            <li
+              key={r.id}
+              className="rounded-xl border border-[#FFF1E2] bg-white p-4"
+            >
+              <p className="text-sm font-semibold text-[#3B241B]">
+                {r.test_name}
+              </p>
+              <p className="text-xs text-[#7A6254]">
+                {[
+                  formatRecordDate(r.test_date, lang),
+                  r.ordered_by &&
+                    fill(t.labResults.orderedBy, { name: r.ordered_by }),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+              {r.results && (
+                <p className="mt-1 whitespace-pre-wrap text-sm text-[#3B241B]">
+                  {r.results}
+                </p>
+              )}
+              {r.notes && (
+                <p className="mt-1 whitespace-pre-wrap text-sm text-[#7A6254]">
+                  {r.notes}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </SectionCard>
+  );
+}
+
+function VetNotesCard({ t, lang, notes, addNote, onWriteError, readOnly }) {
   const {
     register,
     handleSubmit,
@@ -303,77 +624,80 @@ function VetNotesCard({ notes, addNote, onWriteError }) {
     if (values.note_date) body.note_date = values.note_date;
     addNote.mutate(body, {
       onSuccess: () => {
-        toast.success("Note added");
+        toast.success(t.toast.noteAdded);
         reset({ note: "", note_date: "" });
       },
-      onError: (err) => onWriteError(err, "Couldn't add note"),
+      onError: (err) => onWriteError(err, t.toast.noteFailed),
     });
   };
 
   return (
-    <SectionCard Icon={Stethoscope} title="Vet notes">
-      <form
-        onSubmit={handleSubmit(submit)}
-        className="mb-5 rounded-xl border border-[#FFE6CC] bg-[#FFFBF6] p-4"
-      >
-        <div className="flex flex-col gap-3">
-          <div>
-            <label
-              htmlFor="note-text"
-              className="mb-1 block text-sm font-semibold text-[#3B241B]"
-            >
-              Add a note <span style={{ color: COLORS.coral }}>*</span>
-            </label>
-            <textarea
-              id="note-text"
-              rows={2}
-              placeholder="Exam findings, plan, observations…"
-              {...register("note", {
-                required: "Note is required",
-                validate: (v) => v.trim().length > 0 || "Note is required",
-              })}
-              className="w-full resize-y rounded-xl border-2 border-[#FFD9B3] bg-white px-3 py-2.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
-            />
-            {errors.note && (
-              <p className="mt-1 text-xs font-semibold text-[#B23B30]">
-                {errors.note.message}
-              </p>
-            )}
-          </div>
-          <div className="flex flex-wrap items-end gap-3">
+    <SectionCard Icon={Stethoscope} title={t.sections.vet_notes}>
+      {!readOnly && (
+        <form
+          onSubmit={handleSubmit(submit)}
+          className="mb-5 rounded-xl border border-[#FFE6CC] bg-[#FFFBF6] p-4"
+        >
+          <div className="flex flex-col gap-3">
             <div>
               <label
-                htmlFor="note-date"
-                className="mb-1 block text-xs font-semibold text-[#7A6254]"
+                htmlFor="note-text"
+                className="mb-1 block text-sm font-semibold text-[#3B241B]"
               >
-                Date (optional)
+                {t.notes.addLabel}{" "}
+                <span style={{ color: COLORS.coral }}>*</span>
               </label>
-              <input
-                id="note-date"
-                type="date"
-                {...register("note_date")}
-                className="rounded-xl border-2 border-[#FFD9B3] bg-white px-3 py-2 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
+              <textarea
+                id="note-text"
+                rows={2}
+                placeholder={t.notes.placeholder}
+                {...register("note", {
+                  required: t.notes.required,
+                  validate: (v) => v.trim().length > 0 || t.notes.required,
+                })}
+                className="w-full resize-y rounded-xl border-2 border-[#FFD9B3] bg-white px-3 py-2.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
               />
-            </div>
-            <button
-              type="submit"
-              disabled={addNote.isPending}
-              className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-opacity disabled:opacity-60"
-              style={{ backgroundColor: COLORS.coral }}
-            >
-              {addNote.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Plus className="h-4 w-4" />
+              {errors.note && (
+                <p className="mt-1 text-xs font-semibold text-[#B23B30]">
+                  {errors.note.message}
+                </p>
               )}
-              Add note
-            </button>
+            </div>
+            <div className="flex flex-wrap items-end gap-3">
+              <div>
+                <label
+                  htmlFor="note-date"
+                  className="mb-1 block text-xs font-semibold text-[#7A6254]"
+                >
+                  {t.notes.date}
+                </label>
+                <input
+                  id="note-date"
+                  type="date"
+                  {...register("note_date")}
+                  className="rounded-xl border-2 border-[#FFD9B3] bg-white px-3 py-2 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={addNote.isPending}
+                className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-opacity disabled:opacity-60"
+                style={{ backgroundColor: COLORS.coral }}
+              >
+                {addNote.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                {t.notes.add}
+              </button>
+            </div>
           </div>
-        </div>
-      </form>
+        </form>
+      )}
 
       {notes.length === 0 ? (
-        <p className="px-1 py-2 text-sm text-[#7A6254]">No vet notes yet.</p>
+        <EmptyLine text={t.notes.empty} />
       ) : (
         <ul className="space-y-3">
           {notes.map((n) => (
@@ -383,12 +707,12 @@ function VetNotesCard({ notes, addNote, onWriteError }) {
             >
               <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#7A6254]">
                 <span className="font-semibold text-[#3B241B]">
-                  {fmtDate(n.note_date)}
+                  {formatRecordDate(n.note_date, lang)}
                 </span>
                 {n.vet_name && <span>· {n.vet_name}</span>}
                 {n.appointment_id != null && (
                   <span className="rounded-full bg-[#FFF1E2] px-2 py-0.5 font-semibold text-[#B75D32]">
-                    Booking #{n.appointment_id}
+                    {fill(t.notes.booking, { id: n.appointment_id })}
                   </span>
                 )}
               </div>
@@ -403,7 +727,14 @@ function VetNotesCard({ notes, addNote, onWriteError }) {
   );
 }
 
-function VaccinationsCard({ vaccinations, addVaccination, onWriteError }) {
+function VaccinationsCard({
+  t,
+  lang,
+  vaccinations,
+  addVaccination,
+  onWriteError,
+  readOnly,
+}) {
   const {
     register,
     handleSubmit,
@@ -420,115 +751,123 @@ function VaccinationsCard({ vaccinations, addVaccination, onWriteError }) {
     if (values.lot.trim()) body.lot = values.lot.trim();
     addVaccination.mutate(body, {
       onSuccess: () => {
-        toast.success("Vaccination added");
+        toast.success(t.toast.vaccinationAdded);
         reset({ name: "", date_given: "", expires_on: "", lot: "" });
       },
-      onError: (err) => onWriteError(err, "Couldn't add vaccination"),
+      onError: (err) => onWriteError(err, t.toast.vaccinationFailed),
     });
   };
 
   return (
-    <SectionCard Icon={Syringe} title="Vaccinations">
-      <p className="mb-3 text-xs text-[#B8A99D]">
-        Vaccinations you add here write to the pet's record and are visible to the
-        owner in their app.
-      </p>
-      <form
-        onSubmit={handleSubmit(submit)}
-        className="mb-5 rounded-xl border border-[#FFE6CC] bg-[#FFFBF6] p-4"
-      >
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="min-w-[180px] flex-1">
-            <label
-              htmlFor="vax-name"
-              className="mb-1 block text-sm font-semibold text-[#3B241B]"
-            >
-              Vaccine <span style={{ color: COLORS.coral }}>*</span>
-            </label>
-            <input
-              id="vax-name"
-              type="text"
-              placeholder="Rabies"
-              {...register("name", {
-                required: "Vaccine name is required",
-                validate: (v) => v.trim().length > 0 || "Vaccine name is required",
-              })}
-              className="w-full rounded-xl border-2 border-[#FFD9B3] bg-white px-3 py-2.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
-            />
-            {errors.name && (
-              <p className="mt-1 text-xs font-semibold text-[#B23B30]">
-                {errors.name.message}
-              </p>
-            )}
-          </div>
-          <div>
-            <label
-              htmlFor="vax-given"
-              className="mb-1 block text-xs font-semibold text-[#7A6254]"
-            >
-              Date given
-            </label>
-            <input
-              id="vax-given"
-              type="date"
-              {...register("date_given")}
-              className="rounded-xl border-2 border-[#FFD9B3] bg-white px-3 py-2 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="vax-expires"
-              className="mb-1 block text-xs font-semibold text-[#7A6254]"
-            >
-              Expires
-            </label>
-            <input
-              id="vax-expires"
-              type="date"
-              {...register("expires_on")}
-              className="rounded-xl border-2 border-[#FFD9B3] bg-white px-3 py-2 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="vax-lot"
-              className="mb-1 block text-xs font-semibold text-[#7A6254]"
-            >
-              Lot
-            </label>
-            <input
-              id="vax-lot"
-              type="text"
-              placeholder="Lot #"
-              {...register("lot")}
-              className="w-28 rounded-xl border-2 border-[#FFD9B3] bg-white px-3 py-2 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={addVaccination.isPending}
-            className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-opacity disabled:opacity-60"
-            style={{ backgroundColor: COLORS.coral }}
+    <SectionCard Icon={Syringe} title={t.sections.vaccines}>
+      {!readOnly && (
+        <>
+          <p className="mb-3 text-xs text-[#B8A99D]">
+            {t.vaccinations.writeHint}
+          </p>
+          <form
+            onSubmit={handleSubmit(submit)}
+            className="mb-5 rounded-xl border border-[#FFE6CC] bg-[#FFFBF6] p-4"
           >
-            {addVaccination.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Plus className="h-4 w-4" />
-            )}
-            Add vaccination
-          </button>
-        </div>
-      </form>
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="min-w-[180px] flex-1">
+                <label
+                  htmlFor="vax-name"
+                  className="mb-1 block text-sm font-semibold text-[#3B241B]"
+                >
+                  {t.vaccinations.vaccine}{" "}
+                  <span style={{ color: COLORS.coral }}>*</span>
+                </label>
+                <input
+                  id="vax-name"
+                  type="text"
+                  placeholder={t.vaccinations.placeholder}
+                  {...register("name", {
+                    required: t.vaccinations.required,
+                    validate: (v) =>
+                      v.trim().length > 0 || t.vaccinations.required,
+                  })}
+                  className="w-full rounded-xl border-2 border-[#FFD9B3] bg-white px-3 py-2.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
+                />
+                {errors.name && (
+                  <p className="mt-1 text-xs font-semibold text-[#B23B30]">
+                    {errors.name.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label
+                  htmlFor="vax-given"
+                  className="mb-1 block text-xs font-semibold text-[#7A6254]"
+                >
+                  {t.vaccinations.dateGiven}
+                </label>
+                <input
+                  id="vax-given"
+                  type="date"
+                  {...register("date_given")}
+                  className="rounded-xl border-2 border-[#FFD9B3] bg-white px-3 py-2 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="vax-expires"
+                  className="mb-1 block text-xs font-semibold text-[#7A6254]"
+                >
+                  {t.vaccinations.expires}
+                </label>
+                <input
+                  id="vax-expires"
+                  type="date"
+                  {...register("expires_on")}
+                  className="rounded-xl border-2 border-[#FFD9B3] bg-white px-3 py-2 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="vax-lot"
+                  className="mb-1 block text-xs font-semibold text-[#7A6254]"
+                >
+                  {t.vaccinations.lot}
+                </label>
+                <input
+                  id="vax-lot"
+                  type="text"
+                  placeholder={t.vaccinations.lotPlaceholder}
+                  {...register("lot")}
+                  className="w-28 rounded-xl border-2 border-[#FFD9B3] bg-white px-3 py-2 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={addVaccination.isPending}
+                className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-opacity disabled:opacity-60"
+                style={{ backgroundColor: COLORS.coral }}
+              >
+                {addVaccination.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                {t.vaccinations.add}
+              </button>
+            </div>
+          </form>
+        </>
+      )}
 
       {vaccinations.length === 0 ? (
-        <p className="px-1 py-2 text-sm text-[#7A6254]">
-          No vaccinations on record yet.
-        </p>
+        <EmptyLine text={t.vaccinations.empty} />
       ) : (
         <table className="w-full border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-[#FFF1E2] bg-[#FFFBF6]">
-              {["Vaccine", "Given", "Expires", "Lot"].map((h) => (
+              {[
+                t.vaccinations.vaccine,
+                t.vaccinations.given,
+                t.vaccinations.expires,
+                t.vaccinations.lot,
+              ].map((h) => (
                 <th
                   key={h}
                   className="px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-[#7A6254]"
@@ -548,10 +887,10 @@ function VaccinationsCard({ vaccinations, addVaccination, onWriteError }) {
                   {v.name}
                 </td>
                 <td className="px-4 py-2.5 text-[#3B241B]">
-                  {fmtDate(v.date_given)}
+                  {formatRecordDate(v.date_given, lang)}
                 </td>
                 <td className="px-4 py-2.5 text-[#3B241B]">
-                  {fmtDate(v.expires_on)}
+                  {formatRecordDate(v.expires_on, lang)}
                 </td>
                 <td className="px-4 py-2.5 text-[#7A6254]">{v.lot || "—"}</td>
               </tr>
