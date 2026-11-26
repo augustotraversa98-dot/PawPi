@@ -9,17 +9,19 @@
 // only as a key inside the limiter map; the salt is random per process, so the keys are meaningless elsewhere.
 
 import { createHash, randomBytes } from 'node:crypto';
+import { senderNetwork } from '../../app/api/utils/senderAddress.js';
 
 const SALT = randomBytes(16);
 
-/** A salted, truncated hash of the caller's address (or null when it cannot be determined). Never the raw IP. */
+/**
+ * A salted, truncated hash of the sender (utils/senderAddress.js: IPv4 address or IPv6 /64), or null when it cannot
+ * be determined. Never the raw IP.
+ */
 export function ipKey(request) {
   try {
-    const xff = request?.headers?.get?.('x-forwarded-for');
-    let ip = xff ? xff.split(',')[0].trim() : '';
-    if (!ip) ip = request?.headers?.get?.('x-real-ip')?.trim() || '';
-    if (!ip || ip.length > 64) return null;
-    return createHash('sha256').update(SALT).update(ip).digest('hex').slice(0, 16);
+    const sender = senderNetwork(request);
+    if (!sender) return null;
+    return createHash('sha256').update(SALT).update(sender).digest('hex').slice(0, 16);
   } catch {
     return null;
   }

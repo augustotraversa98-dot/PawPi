@@ -28,8 +28,10 @@ let raw: Sql;
 let app: Sql;
 let appSql: any;
 let POST: (r: Request, ctx: any) => Promise<Response>;
+let publicGET: (r: Request, ctx: any) => Promise<Response>;
 let RATE_LIMITS: any;
 let savedPawLimit: { limit: number; windowSeconds: number };
+let savedPublicLimit: { limit: number; windowSeconds: number };
 
 /** Run `fn` on a pawpi_app connection carrying `userId` as the request identity. */
 function asUser<T>(userId: number | null, fn: (tx: Sql) => Promise<T>): Promise<T> {
@@ -63,10 +65,13 @@ beforeAll(async () => {
   POST = (await import('@/app/api/posts/[id]/paw/route')).POST as any;
   RATE_LIMITS = (await import('@/app/api/utils/rateLimit')).RATE_LIMITS;
   savedPawLimit = { ...RATE_LIMITS.paw_toggle };
+  publicGET = (await import('@/app/api/public/emergency/card/[token]/route')).GET as any;
+  savedPublicLimit = { ...RATE_LIMITS.emergency_public_read };
 });
 
 afterAll(async () => {
   RATE_LIMITS.paw_toggle = savedPawLimit;
+  RATE_LIMITS.emergency_public_read = savedPublicLimit;
   await appSql.end?.();
   await app.end();
   await raw.end();
@@ -74,6 +79,7 @@ afterAll(async () => {
 
 afterEach(async () => {
   RATE_LIMITS.paw_toggle = { ...savedPawLimit };
+  RATE_LIMITS.emergency_public_read = { ...savedPublicLimit };
   await resetDb(raw);
   authState.session = null;
 });
@@ -269,5 +275,64 @@ describe('POST /api/posts/[id]/paw — the limiter on a live route', () => {
     }
     const rows = await raw`select count(*)::int as n from rate_limit_hits`;
     expect(rows[0].n).toBe(0);
+  });
+});
+
+// ── 4. anonymous senders on a public route ───────────────────────────────────
+
+describe('GET /api/public/emergency/card/[token] — who an anonymous caller is counted as', () => {
+  // Invented addresses from the documentation ranges; 172.64.0.0/13 is one of Cloudflare's published ranges.
+  const CLOUDFLARE = '172.64.10.20';
+  const read = async (headers: Record<string, string>) =>
+    (
+      await publicGET(
+        new Request('http://localhost/api/public/emergency/card/unknown', { headers }),
+        { params: { token: 'unknown' } },
+      )
+    ).status;
+  const subjects = async () =>
+    (await raw`select subject, hits from rate_limit_hits order by hits desc, subject`) as unknown as {
+      subject: string;
+      hits: number;
+    }[];
+
+  beforeEach(() => {
+    RATE_LIMITS.emergency_public_read = { limit: 2, windowSeconds: 3600 };
+  });
+
+  it('counts one connecting address as one sender, and stores no readable address', async () => {
+    const statuses: number[] = [];
+    for (let i = 1; i <= 3; i++) {
+      statuses.push(
+        await read({
+          'x-real-ip': '198.51.100.30',
+          'x-forwarded-for': `203.0.113.${i}, 192.0.2.1`,
+          'cf-connecting-ip': `203.0.113.${i + 10}`,
+        }),
+      );
+    }
+    expect(statuses[2]).toBe(429);
+    expect(statuses.slice(0, 2)).not.toContain(429);
+    const rows = await subjects();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].subject).toMatch(/^ip:[0-9a-f]{32}$/);
+  });
+
+  it('gives each visitor behind one Cloudflare address their own allowance', async () => {
+    const via = (visitor: string) => read({ 'x-real-ip': CLOUDFLARE, 'cf-connecting-ip': visitor });
+    for (let i = 1; i <= 6; i++) expect(await via(`203.0.113.${i}`)).not.toBe(429);
+    expect(await subjects()).toHaveLength(6);
+  });
+
+  it('does not pool or count callers with no known address', async () => {
+    for (let i = 0; i < 4; i++) expect(await read({})).not.toBe(429);
+    expect(await subjects()).toHaveLength(0);
+  });
+
+  it('keeps a signed-in caller on their account subject', async () => {
+    authState.session = { user: { id: ALICE.authUserId } };
+    await read({ 'x-real-ip': '198.51.100.31' });
+    await read({ 'x-real-ip': '198.51.100.32' });
+    expect(await subjects()).toEqual([{ subject: `u:${ALICE.profileId}`, hits: 2 }]);
   });
 });

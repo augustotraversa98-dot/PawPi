@@ -26,6 +26,7 @@
 // is under-counting, never over-counting.
 
 import { withSavepoint } from './requestContext';
+import { anonymousSender } from './senderAddress';
 import sql from './sql';
 
 /**
@@ -69,9 +70,9 @@ export const RATE_LIMITS = {
   // #6 (night-run S6) — sensitive routes that had no throttle. All generous: a real user/vet
   // never trips them; they exist to cap abuse (token probing, notification spam, storage/cost
   // flooding, payment attempts). The public-emergency buckets key by IP (no auth there).
-  emergency_public_read: { limit: 60, windowSeconds: 300 }, // per-IP: caps blind token probing
-  // Finder messages from the public tag (anonymous; keyed on utils/senderAddress.js, never on a session). The
-  // per-pet limits live in the database (0146); these three limit one sender.
+  emergency_public_read: { limit: 60, windowSeconds: 300 }, // per sender: caps blind token probing
+  // Finder messages from the public tag (always keyed on the sender, never on a session). The per-pet limits
+  // live in the database (0146); these three limit one sender.
   emergency_relay: { limit: 3, windowSeconds: 600 }, // short window
   emergency_relay_daily: { limit: 10, windowSeconds: 86400 }, // daily cap
   emergency_relay_urgent: { limit: 1, windowSeconds: 86400 }, // one urgent push per sender per tag per day
@@ -135,29 +136,14 @@ async function storedLocale(userId) {
 }
 
 /**
- * The best available client address. Railway sits behind a proxy, so the socket
- * address is the proxy's — x-forwarded-for's FIRST entry is the client. Only used
- * when there is no authenticated user; an unauthenticated caller behind a shared
- * NAT sharing a bucket is an acceptable trade for the routes involved.
- */
-function clientIp(request) {
-  const forwarded = request?.headers?.get?.('x-forwarded-for');
-  if (forwarded) {
-    const first = forwarded.split(',')[0].trim();
-    if (first) return first;
-  }
-  return request?.headers?.get?.('x-real-ip')?.trim() || null;
-}
-
-/**
- * WHO is being limited. Prefixed so the user-id and IP spaces can never collide.
- * Returns null when neither is knowable, which means "don't limit" — we will not
- * lump every anonymous caller into one shared bucket.
+ * WHO is being limited: the account when there is one, otherwise the sender's address (utils/senderAddress.js,
+ * hashed). The two prefixes keep the spaces apart. Returns null when neither is knowable, which means "don't
+ * limit" — we will not lump every anonymous caller into one shared bucket. Callers behind one shared address
+ * (a home or office network) share an anonymous bucket.
  */
 export function rateLimitSubject({ userId, request }) {
   if (userId != null) return `u:${userId}`;
-  const ip = clientIp(request);
-  return ip ? `ip:${ip}` : null;
+  return anonymousSender(request);
 }
 
 /** The 429 body + headers. Exported so tests can assert the shape in one place. */
