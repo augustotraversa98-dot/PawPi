@@ -200,6 +200,27 @@ test.each([
   expect(Alert.alert.mock.calls[1][0]).toBe(title);
 });
 
+test("opening it again reads the invites again, even while the cached list still counts as fresh", async () => {
+  invites = [invite()];
+  const shared = new QueryClient({ defaultOptions: { queries: { staleTime: 300000, gcTime: Infinity } } });
+  const mount = () => {
+    client = shared;
+    return render(
+      <QueryClientProvider client={shared}>
+        <InviteVet pet={{ id: 7, name: "Luna" }} />
+      </QueryClientProvider>,
+    );
+  };
+  const first = mount();
+  await waitFor(() => expect(first.getByTestId("vet-invite-withdraw-31")).toBeTruthy());
+  first.unmount();
+
+  invites = [invite({ status: "used", used_by_provider_name: "North Clinic" })];
+  const again = mount();
+  await waitFor(() => expect(again.getByText(/^Used by North Clinic/)).toBeTruthy());
+  expect(again.queryByTestId("vet-invite-withdraw-31")).toBeNull();
+});
+
 test("a list that cannot be loaded says so and retries", async () => {
   global.fetch.mockImplementationOnce(async () => reply({}, 500));
   const s = open();

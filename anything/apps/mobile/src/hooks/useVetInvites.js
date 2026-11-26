@@ -17,10 +17,11 @@ async function failure(response) {
 }
 
 // Every dog's invites: the limit on open invites is per owner, so the owner must be able to see them all.
-export function useVetInvites({ enabled = true } = {}) {
+export function useVetInvites() {
   return useQuery({
     queryKey: INVITES_KEY,
-    enabled,
+    // A vet may have used an invite since the last read: never show a cached state as current.
+    refetchOnMount: "always",
     queryFn: async () => {
       const response = await fetch(`/api/care-access/invites`);
       if (!response.ok) throw await failure(response);
