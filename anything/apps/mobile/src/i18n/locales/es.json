@@ -4008,7 +4008,7 @@
       "unconfirmed": "No pudimos confirmar el resultado. Revisá quién tiene acceso antes de probar de nuevo."
     },
     "notSharedTitle": "No se compartió nada",
-    "rolledBackBody": "PawPi no pudo aplicar exactamente tu elección. El acceso que creó para {{provider}} no coincidía, así que se revocó al instante. Puede que todavía no se pueda elegir por partes.",
+    "rolledBackBody": "PawPi no pudo aplicar exactamente tu elección. El acceso que creó para {{provider}} no coincidía, así que se revocó al instante: de este intento no queda nada compartido. Puede que todavía no se pueda elegir por partes.",
     "rollbackFailedTitle": "Revocá este acceso",
     "rollbackFailedBody": "El acceso creado para {{provider}} no coincide con lo que elegiste y puede abrir más de la historia de {{pet}}. PawPi no pudo quitarlo. Revocalo ahora.",
     "unchangedTitle": "No se aplicó tu elección",

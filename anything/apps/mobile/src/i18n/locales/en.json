@@ -4008,7 +4008,7 @@
       "unconfirmed": "We couldn't confirm the result. Check who has access before trying again."
     },
     "notSharedTitle": "Nothing was shared",
-    "rolledBackBody": "PawPi couldn't apply your exact choice. The access it created for {{provider}} didn't match it, so it was revoked right away. Choosing parts of the record may not be available yet.",
+    "rolledBackBody": "PawPi couldn't apply your exact choice. The access it created for {{provider}} didn't match it, so it was revoked right away: nothing from this attempt stays shared. Choosing parts of the record may not be available yet.",
     "rollbackFailedTitle": "Revoke this access",
     "rollbackFailedBody": "The access created for {{provider}} doesn't match what you chose and may open more of {{pet}}'s record. PawPi couldn't remove it. Revoke it now.",
     "unchangedTitle": "Your choice wasn't applied",

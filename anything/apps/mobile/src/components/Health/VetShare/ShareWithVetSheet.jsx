@@ -103,9 +103,9 @@ function Choice({ testID, role, selected, onPress, title, description }) {
   );
 }
 
-function Note({ icon: Icon = Info, children, testID }) {
+function Note({ icon: Icon = Info, children, testID, style }) {
   return (
-    <View testID={testID} style={[card, { flexDirection: "row", gap: 8 }]}>
+    <View testID={testID} style={[card, { flexDirection: "row", gap: 8 }, style]}>
       <Icon size={16} color={COLORS.mutedBrown} style={{ marginTop: 2 }} />
       <View style={{ flex: 1, gap: 4 }}>{children}</View>
     </View>
@@ -183,7 +183,7 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
           : t("vetShare.doneBodyRevoke", { ...names, sections: list }),
       );
     } else if (outcome === "rolledBack") {
-      Alert.alert(t("vetShare.notSharedTitle"), t("vetShare.rolledBackBody", names));
+      Alert.alert(t("vetShare.unchangedTitle"), t("vetShare.rolledBackBody", names));
     } else if (outcome === "rollbackFailed") {
       Alert.alert(
         t("vetShare.rollbackFailedTitle"),
@@ -388,17 +388,21 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
     <>
       <Text style={text}>{t("vetShare.intro")}</Text>
       {ready && !supported ? (
-        <Note testID="vet-share-unsupported">
+        <Note testID="vet-share-unsupported" style={{ marginTop: SPACING.md }}>
           <Text style={text}>{t("vetShare.unsupported")}</Text>
         </Note>
       ) : null}
 
-      <Heading>{t(fixed ? "vetShare.providerTitle" : "vetShare.pickTitle")}</Heading>
-      {fixed ? null : (
-        <Text style={[muted, { marginBottom: SPACING.sm }]}>{t("vetShare.pickHint", { pet: petName })}</Text>
-      )}
-      {renderVetPicker()}
-      {supported ? accessNotes() : null}
+      {supported ? (
+        <>
+          <Heading>{t(fixed ? "vetShare.providerTitle" : "vetShare.pickTitle")}</Heading>
+          {fixed ? null : (
+            <Text style={[muted, { marginBottom: SPACING.sm }]}>{t("vetShare.pickHint", { pet: petName })}</Text>
+          )}
+          {renderVetPicker()}
+          {accessNotes()}
+        </>
+      ) : null}
 
       {canChoose ? (
         <>

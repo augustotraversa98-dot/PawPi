@@ -272,6 +272,7 @@ test("against a server without sections nothing can be shared, and access can st
   mockGrants = query([{ id: 4, provider_id: 1, provider_name: "Happy Paws", status: "active", scopes: ["medical_read"] }]);
   const s = open();
   expect(s.getByTestId("vet-share-unsupported")).toBeTruthy();
+  expect(s.queryByTestId("vet-share-vet-1")).toBeNull();
   expect(s.queryByTestId("vet-share-section-vaccines")).toBeNull();
   expect(ctaDisabled(s)).toBe(true);
   expect(s.getByTestId("vet-share-revoke-4")).toBeTruthy();
@@ -286,7 +287,7 @@ test("confirmed: says which sections and until when", () => {
 });
 
 test.each([
-  ["rolledBack", "Nothing was shared", /revoked right away/],
+  ["rolledBack", "Your choice wasn't applied", /revoked right away: nothing from this attempt stays shared/],
   ["notApplied", "Nothing was shared", /nothing new was shared/],
   ["unconfirmed", "Couldn't share", /couldn't confirm/],
 ])("%s never claims access was given", (outcome, title, body) => {
