@@ -438,6 +438,12 @@ describe("inviting a vet by link", () => {
     expect(s.getByText(note)).toBeTruthy();
   });
 
+  test("the note goes away once that business has the access the owner chose", () => {
+    mockGrants = query([grant({ provider_id: 9 })]);
+    const s = open({ provider: { providerId: 9, name: "New Clinic", checkName: true } });
+    expect(s.queryByTestId("vet-share-check-name")).toBeNull();
+  });
+
   test("a booked business gets no such note", () => {
     const s = open({ provider: { providerId: 1, name: "Happy Paws" } });
     expect(s.queryByTestId("vet-share-check-name")).toBeNull();

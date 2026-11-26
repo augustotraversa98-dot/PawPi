@@ -344,7 +344,7 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
 
   const accessNotes = () => (
     <>
-      {fixed?.checkName ? (
+      {fixed?.checkName && !access?.active ? (
         <Note testID="vet-share-check-name">
           <Text style={text}>{t("vetShare.checkName", { provider: vetName(fixed.name) })}</Text>
         </Note>
