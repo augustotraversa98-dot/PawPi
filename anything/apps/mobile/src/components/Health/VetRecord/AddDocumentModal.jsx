@@ -37,6 +37,9 @@ import DateField from "@/components/DateField";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { getLocalPostDateString } from "@/utils/dateUtils";
 import { ReviewProposalModal } from "./ReviewProposalModal";
+import { AiDocConsentScreen } from "./AiDocConsentScreen";
+import { useAuthStore } from "@/utils/auth/store";
+import { getAiDocConsent, setAiDocConsent } from "@/utils/aiDocConsent";
 
 // Owner adds a Vet Record document (ticket 2.41; VR-C tagging): name + a canonical CATEGORY
 // (vaccine/lab/visit/invoice/other) + the paperwork itself + a date → upload → POST
@@ -47,11 +50,17 @@ import { ReviewProposalModal } from "./ReviewProposalModal";
 // REAL name + mimeType so a PDF uploads as application/pdf and AI reading receives the true type
 // (the /api/upload and /extract routes are mime-agnostic).
 //
-// AI-2 (night-run 2026-08-18d): once the file is stored, PawPi automatically READS it (AI-1's
-// /extract route, Claude vision) and — if it finds records — opens a REVIEW SHEET the owner
-// confirms before anything lands in the Medical history. The upload flow is unchanged (the file is
-// always stored + downloadable first); reading is a non-blocking bonus with graceful states:
-//   dormant (no key) → "Automatic reading isn't switched on yet."
+// AI-2 (night-run 2026-08-18d): once the file is stored, PawPi can READ it (AI-1's /extract route,
+// which sends it to Anthropic's Claude) and — if it finds records — opens a REVIEW SHEET the owner
+// confirms before anything lands in the Medical history. The file is always stored + downloadable
+// first; reading is a non-blocking bonus.
+//
+// PERMISSION (Apple 5.1.2(i)): the document is read ONLY if this person allowed it
+// (utils/aiDocConsent). Never asked → the permission screen, after the save. "Not now" / switched
+// off → no call at all, and the status says it was not read. This file is the only caller of /extract.
+//
+// Graceful states:
+//   dormant (no key) → "Document reading isn't switched on yet."
 //   empty proposal   → "We saved your file. We couldn't pull structured info from this one."
 //   read error       → same honest fallback (file still stored).
 const DOC_CATEGORIES = ["vaccine", "lab", "visit", "invoice", "other"];
@@ -80,7 +89,12 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
   // reuses it instead of uploading (and orphaning) another copy.
   const uploadedRef = useRef(null);
   const [saving, setSaving] = useState(false);
-  // "form" | "reading" | "review" | "dormant" | "empty" | "readError"
+  const userId = useAuthStore((s) => s.auth?.user?.id);
+  // The saved file waiting for the answer on the permission screen.
+  const pendingReadRef = useRef(null);
+  // Bumped by reset(): a save still in flight when the person closed the sheet must not ask or read.
+  const sheetRef = useRef(0);
+  // "form" | "consent" | "notRead" | "reading" | "review" | "dormant" | "empty" | "readError"
   const [phase, setPhase] = useState("form");
   const [proposal, setProposal] = useState(null);
 
@@ -97,6 +111,8 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
     setFileMimeType(null);
     setFileSize({});
     uploadedRef.current = null;
+    pendingReadRef.current = null;
+    sheetRef.current += 1;
     setPhase("form");
     setProposal(null);
     setSaving(false);
@@ -209,8 +225,8 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
 
   const canSave = name.trim().length > 0 && !!fileUri && !saving && !uploading;
 
-  // After the file is stored, read it with AI-1's /extract route. WRITES NOTHING — it returns a
-  // proposal the owner reviews. Never throws to the caller: the file is already saved.
+  // Ask AI-1's /extract route to read a stored file. Only called once permission is given. WRITES
+  // NOTHING — it returns a proposal the owner reviews. Never throws to the caller: the file is saved.
   const runExtraction = async ({ url, filename, mimeType }) => {
     setPhase("reading");
     try {
@@ -218,7 +234,13 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // Pass the REAL mimeType so a PDF is read as application/pdf, not mis-labeled as an image.
-        body: JSON.stringify({ petId, url, filename, mimeType: mimeType || "image/jpeg" }),
+        body: JSON.stringify({
+          petId,
+          url,
+          filename,
+          mimeType: mimeType || "image/jpeg",
+          aiConsent: true,
+        }),
       });
       if (res.status === 503) {
         setPhase("dormant");
@@ -244,8 +266,40 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
     }
   };
 
+  const readStoredDocument = async ({ storedFile, filename, mimeType }) => {
+    setPhase("reading");
+    // The extractor fetches the file by URL server-side, so a private key must first be exchanged
+    // for a short-lived signed URL (resolved immediately, used within its ~60 s life). A legacy
+    // public URL passes through unchanged.
+    let extractUrl = storedFile;
+    try {
+      extractUrl = await resolvePrivateMediaUrl(storedFile);
+    } catch {
+      // Signing failed → skip extraction; the document is already saved.
+      setPhase("readError");
+      return;
+    }
+    await runExtraction({ url: extractUrl, filename, mimeType });
+  };
+
+  const allowReading = async () => {
+    const pending = pendingReadRef.current;
+    if (!pending) return;
+    pendingReadRef.current = null;
+    setPhase("reading");
+    await setAiDocConsent(userId, true);
+    await readStoredDocument(pending);
+  };
+
+  const declineReading = async () => {
+    pendingReadRef.current = null;
+    setPhase("notRead");
+    await setAiDocConsent(userId, false);
+  };
+
   const handleSave = async () => {
     if (!canSave || !petId) return;
+    const sheet = sheetRef.current;
     setSaving(true);
     try {
       // Keep the real name + mimeType end-to-end. Fall back to a jpg name/type only when the
@@ -300,27 +354,22 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
         throw new Error(e.error || "Could not save document");
       }
 
-      // The file is stored — refresh Documents now so it appears regardless of what reading finds.
+      // The file is stored — refresh Documents now so it appears regardless of what happens next.
       onSaved?.();
-      setSaving(false);
-      // Then read it (non-blocking bonus). The extractor fetches the file by URL
-      // server-side, so a private key must first be exchanged for a short-lived
-      // signed URL (resolved immediately, used within its ~60 s life). A legacy
-      // public URL passes through unchanged.
-      let extractUrl = storedFile;
-      try {
-        extractUrl = await resolvePrivateMediaUrl(storedFile);
-      } catch {
-        // Signing failed → skip extraction; the document is already saved.
-        setPhase("readError");
-        return;
-      }
       // Read it as what was actually stored (a downscaled photo is JPEG even if the pick was HEIC).
-      await runExtraction({
-        url: extractUrl,
-        filename,
-        mimeType: uploaded.mimeType || mimeType,
-      });
+      const pending = { storedFile, filename, mimeType: uploaded.mimeType || mimeType };
+      // Read the choice now, not when the sheet opened, so switching it off applies at once.
+      const consent = await getAiDocConsent(userId);
+      if (sheetRef.current !== sheet) return; // closed meanwhile: the file is saved, nothing is read
+      setSaving(false);
+      if (consent === "granted") {
+        await readStoredDocument(pending);
+      } else if (consent === "denied") {
+        setPhase("notRead");
+      } else {
+        pendingReadRef.current = pending;
+        setPhase("consent");
+      }
     } catch (error) {
       setSaving(false);
       Alert.alert(
@@ -371,6 +420,15 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
   );
 
   const renderBody = () => {
+    if (phase === "consent") {
+      return <AiDocConsentScreen onAllow={allowReading} onNotNow={declineReading} />;
+    }
+    if (phase === "notRead") {
+      return statusScreen(
+        "health.vetRecord.addDoc.notReadTitle",
+        "health.vetRecord.addDoc.notRead",
+      );
+    }
     if (phase === "reading") {
       return (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 32 }}>
@@ -570,7 +628,7 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
         }}
       />
 
-      {/* Names the AI provider the document is sent to; "Privacy Policy" opens the hosted page. */}
+      {/* Names the AI provider and that reading needs permission; "Privacy Policy" opens the hosted page. */}
       <View
         style={{
           flexDirection: "row",

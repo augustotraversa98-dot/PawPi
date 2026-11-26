@@ -2,6 +2,8 @@
 // name → upload → POST /api/vet-record/documents → refetch → THEN read it (AI-1 /extract) and, per
 // outcome, show "Reading…", a dormant/empty status, or the review sheet. Native deps are mocked;
 // the review sheet is stubbed so this file focuses on the upload + extract-routing behavior.
+// Reading needs the person's permission (utils/aiDocConsent): the first block below runs as someone
+// who already allowed it; the "permission gate" block covers never asked / Not now / switched off.
 
 import React from "react";
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
@@ -11,6 +13,17 @@ const mockLaunch = jest.fn();
 const mockCamera = jest.fn();
 const mockPickFile = jest.fn();
 
+let mockUserId;
+jest.mock("@/utils/auth/store", () => ({
+  useAuthStore: (selector) => selector({ auth: { user: { id: mockUserId } } }),
+}));
+jest.mock("@/constants/legal", () => ({
+  PRIVACY_POLICY_URL: "https://www.pawpi.info/privacy",
+}));
+const mockResolveMedia = jest.fn((value) => Promise.resolve(value));
+jest.mock("@/utils/privateMedia", () => ({
+  resolvePrivateMediaUrl: (...args) => mockResolveMedia(...args),
+}));
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
@@ -67,7 +80,10 @@ jest.mock("./ReviewProposalModal", () => {
   };
 });
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Linking } from "react-native";
 import { AddDocumentModal } from "./AddDocumentModal";
+import { aiDocConsentKey, getAiDocConsent, setAiDocConsent } from "@/utils/aiDocConsent";
 import { DOCUMENT_UPLOAD_OPTIONS } from "@/utils/downscaleImageAsset";
 
 // Route the two fetches by URL; the extract response is set per-test.
@@ -102,7 +118,11 @@ async function fillAndSave({
   return { ...utils, onSaved, onClose };
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  mockUserId = 7;
+  await AsyncStorage.clear();
+  await AsyncStorage.setItem(aiDocConsentKey(7), "granted");
+  mockResolveMedia.mockClear();
   mockUpload.mockReset();
   mockLaunch.mockReset();
   mockCamera.mockReset();
@@ -296,4 +316,107 @@ test("if saving the document row fails, a retry reuses the stored file instead o
   await waitFor(() => expect(onSaved).toHaveBeenCalled());
   expect(mockUpload).toHaveBeenCalledTimes(1); // no second upload
   expect(docCalls).toBe(2);
+});
+
+describe("permission gate before a document is sent to Anthropic", () => {
+  const extractCalls = () =>
+    global.fetch.mock.calls.filter((c) => c[0] === "/api/vet-record/documents/extract");
+
+  beforeEach(async () => {
+    await AsyncStorage.clear(); // never asked
+  });
+
+  test("never asked: the file is saved, the permission screen shows, nothing is sent", async () => {
+    const utils = await fillAndSave();
+    await waitFor(() => expect(utils.getByText("Let PawPi read your documents?")).toBeTruthy());
+    expect(utils.getByText(/sent securely to Anthropic/)).toBeTruthy();
+    expect(utils.getByText(/PawPi does not diagnose/)).toBeTruthy();
+    expect(utils.onSaved).toHaveBeenCalled();
+    expect(
+      global.fetch.mock.calls.some((c) => c[0] === "/api/vet-record/documents"),
+    ).toBe(true);
+    expect(extractCalls()).toHaveLength(0);
+    expect(mockResolveMedia).not.toHaveBeenCalled(); // not even a signed link is made
+    expect(await getAiDocConsent(7)).toBeNull();
+  });
+
+  test("Allow: remembers it for this user and reads with aiConsent: true", async () => {
+    const utils = await fillAndSave();
+    await waitFor(() => utils.getByTestId("ai-doc-consent-allow"));
+    fireEvent.press(utils.getByTestId("ai-doc-consent-allow"));
+    await waitFor(() => expect(extractCalls()).toHaveLength(1));
+    expect(JSON.parse(extractCalls()[0][1].body)).toMatchObject({
+      petId: 3,
+      url: "https://cdn/paper.jpg",
+      aiConsent: true,
+    });
+    expect(await getAiDocConsent(7)).toBe("granted");
+    expect(await getAiDocConsent(8)).toBeNull();
+  });
+
+  test("Not now: nothing is sent, the screen says it was not read, and the choice is remembered", async () => {
+    const utils = await fillAndSave();
+    await waitFor(() => utils.getByTestId("ai-doc-consent-not-now"));
+    fireEvent.press(utils.getByTestId("ai-doc-consent-not-now"));
+    await waitFor(() => expect(utils.getByText(/PawPi didn't read this file/)).toBeTruthy());
+    await waitFor(async () => expect(await getAiDocConsent(7)).toBe("denied"));
+    expect(extractCalls()).toHaveLength(0);
+    expect(mockResolveMedia).not.toHaveBeenCalled();
+    fireEvent.press(utils.getByTestId("doc-status-done"));
+    expect(utils.onClose).toHaveBeenCalled();
+  });
+
+  test("switched off earlier: saved without asking again and without sending", async () => {
+    await setAiDocConsent(7, false);
+    const utils = await fillAndSave();
+    await waitFor(() => expect(utils.getByText(/PawPi didn't read this file/)).toBeTruthy());
+    expect(utils.queryByTestId("ai-doc-consent")).toBeNull();
+    expect(utils.onSaved).toHaveBeenCalled();
+    expect(extractCalls()).toHaveLength(0);
+  });
+
+  test("another user's permission on this phone does not count", async () => {
+    await setAiDocConsent(8, true);
+    const utils = await fillAndSave();
+    await waitFor(() => expect(utils.getByTestId("ai-doc-consent")).toBeTruthy());
+    expect(extractCalls()).toHaveLength(0);
+  });
+
+  test("closing the permission screen is not permission", async () => {
+    const utils = await fillAndSave();
+    await waitFor(() => utils.getByTestId("ai-doc-consent"));
+    fireEvent.press(utils.getByLabelText("Close"));
+    expect(utils.onClose).toHaveBeenCalled();
+    expect(extractCalls()).toHaveLength(0);
+    expect(await getAiDocConsent(7)).toBeNull();
+  });
+
+  test("closing the sheet while the save is still running sends nothing", async () => {
+    await setAiDocConsent(7, true);
+    let finishSave;
+    global.fetch = jest.fn((url) => {
+      if (url === "/api/vet-record/documents") {
+        return new Promise((resolve) => {
+          finishSave = resolve;
+        });
+      }
+      return extractResponse;
+    });
+    const utils = await fillAndSave();
+    await waitFor(() => expect(finishSave).toBeDefined());
+    fireEvent.press(utils.getByLabelText("Close"));
+    finishSave({ ok: true, json: () => Promise.resolve({}) });
+    await waitFor(() => expect(utils.onSaved).toHaveBeenCalled());
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(extractCalls()).toHaveLength(0);
+  });
+
+  test("the permission screen links to the Privacy Policy", async () => {
+    const open = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+    const utils = await fillAndSave();
+    await waitFor(() => utils.getByTestId("ai-doc-consent-privacy"));
+    fireEvent.press(utils.getByTestId("ai-doc-consent-privacy"));
+    expect(open).toHaveBeenCalledWith("https://www.pawpi.info/privacy");
+    open.mockRestore();
+  });
 });
