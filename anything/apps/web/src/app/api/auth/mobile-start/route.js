@@ -11,6 +11,8 @@
 //
 // This is NOT an @auth/core action (is-auth-action.ts) so the auth middleware passes it through.
 // No secrets are emitted; the CSRF token is fetched client-side by the browser itself.
+// The inline script runs only because it carries the CSP nonce (utils/securityHeaders.js).
+import { cspNonce } from "@/app/api/utils/securityHeaders";
 
 // Only providers we actually wire as web OAuth in __create/index.ts. Apple is native (no browser
 // start), so it is intentionally not allowed here.
@@ -42,6 +44,9 @@ export async function GET(request) {
 
   const callbackUrl = `/api/auth/mobile-return?return=${encodeURIComponent(returnTarget)}`;
 
+  const nonce = cspNonce();
+  const nonceAttr = nonce ? ` nonce="${nonce}"` : "";
+
   const html = `<!doctype html>
 <html>
   <head><meta charset="utf-8" /><title>Signing in…</title></head>
@@ -51,7 +56,7 @@ export async function GET(request) {
       <input type="hidden" name="csrfToken" />
       <input type="hidden" name="callbackUrl" />
     </form>
-    <script>
+    <script${nonceAttr}>
       (function () {
         var provider = ${inlineJson(provider)};
         var callbackUrl = ${inlineJson(callbackUrl)};

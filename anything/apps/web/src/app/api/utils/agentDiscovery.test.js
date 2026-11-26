@@ -51,7 +51,10 @@ async function snapshot(target, path, init) {
   const res = await target.request(path, init);
   return {
     status: res.status,
-    headers: [...res.headers].sort(),
+    // The CSP nonce differs on every response by design.
+    headers: [...res.headers]
+      .map(([name, value]) => [name, value.replace(/'nonce-[^']+'/, "'nonce-*'")])
+      .sort(),
     body: Buffer.from(await res.arrayBuffer()).toString("base64"),
   };
 }
