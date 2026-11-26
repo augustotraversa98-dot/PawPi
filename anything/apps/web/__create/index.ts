@@ -129,7 +129,8 @@ app.use(contextStorage());
 
 // AUDIT A-28 — baseline security headers (HSTS, X-Frame-Options, nosniff,
 // Referrer-Policy, CSP) on every response. CORS is configured separately below.
-app.use('*', securityHeaders());
+// Must stay after contextStorage(): inline scripts read the CSP nonce through it.
+app.use('*', securityHeaders({ dev: import.meta.env.DEV }));
 
 // Scanner probes (/.env, /Dockerfile, /docker-compose.yml, /core/.env, /wp-*, *.php, *.sql, *.bak, trailing ~)
 // get a plain 404 here instead of falling through to the React Router catch-all (HTTP 200 + app HTML). Runs

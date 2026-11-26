@@ -248,6 +248,10 @@ describe('/api/auth/* keeps using the Auth.js checks', () => {
   it.each(['/api/auth/signout', '/api/auth/session', '/api/auth/signin/google', '/api/auth/callback/credentials-signin'])(
     '%s without a CSRF token changes nothing',
     async (path) => {
+      // As in production, Google is configured. (Auth.js 0.41 resolves the provider before it checks the CSRF token, so without
+      // keys this one answers Configuration instead of MissingCSRF; either way the request is refused. See the next test.)
+      vi.stubEnv('AUTH_GOOGLE_ID', 'test-google-id');
+      vi.stubEnv('AUTH_GOOGLE_SECRET', 'test-google-secret');
       const res = await call(
         'POST',
         path,
@@ -261,6 +265,21 @@ describe('/api/auth/* keeps using the Auth.js checks', () => {
       expect(res.headers.getSetCookie().some((c) => c.startsWith(`${COOKIE_NAME}=`))).toBe(false);
     },
   );
+
+  it('/api/auth/signin/google with Google NOT configured is still refused, without a session', async () => {
+    vi.stubEnv('AUTH_GOOGLE_ID', '');
+    vi.stubEnv('AUTH_GOOGLE_SECRET', '');
+    const res = await call(
+      'POST',
+      '/api/auth/signin/google',
+      { cookie: await sessionCookie(), origin: 'https://other.example', 'sec-fetch-site': 'cross-site', 'content-type': 'application/x-www-form-urlencoded' },
+      'x=1',
+    );
+    expect(await refusedByOrigin(res)).toBe(false);
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location') ?? '').toMatch(/error=(Configuration|MissingCSRF)/);
+    expect(res.headers.getSetCookie().some((c) => c.startsWith(`${COOKIE_NAME}=`))).toBe(false);
+  });
 
   // Posts that arrive from a sign-in provider's page, and the app's browser start page (a form post that carries
   // "Origin: null" in browsers without Sec-Fetch-Site, because our pages send Referrer-Policy: no-referrer).

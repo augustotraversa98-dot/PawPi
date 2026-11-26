@@ -100,7 +100,6 @@ Cleanup I did not do (mobile / lockfile territory; this PR is docs/web only):
   `socialPetStore.js` (never rendered) are dead; both would be third-party image requests if ever wired.
 - `api.anything.com` / `ucarecdn.com` stay in `enrichment/safeFetch.js`'s allowlist because old rows may still hold URLs
   on those hosts. A DB check of `image_url`/document URLs would tell you whether they can go.
-- `app.all('/integrations/*')` in `web/__create/index.ts` proxies to create.xyz; no caller in the repo uses it. Candidate for removal.
 
 Outside the repo (action for you):
 - **The old GitHub Pages site is still live** at `augustotraversa98-dot.github.io/pawpi-legal/{privacy,terms,support}`

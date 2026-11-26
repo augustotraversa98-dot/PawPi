@@ -1,4 +1,12 @@
 import { getToken } from "@auth/core/jwt";
+import {
+  NONCE_COOKIE,
+  NONCE_PARAM,
+  clearNonceCookie,
+  nonceEnforced,
+  nonceMatches,
+  readCookie,
+} from "@/app/api/utils/mobileNonce";
 
 // GET /api/auth/mobile-return — the hand-back point for the system-browser Google flow.
 //
@@ -15,6 +23,10 @@ import { getToken } from "@auth/core/jwt";
 // Open-redirect safety: we ONLY ever redirect to a custom app scheme (validated to start with the
 // app scheme below), never to an arbitrary http(s) origin, so this can't be abused as an open
 // redirect. The token travels solely OS→app over the custom scheme; no web server sees it.
+//
+// Flow binding: the token is only handed out when the one-time nonce that /api/auth/mobile-start put in a cookie in THIS
+// browser matches the `n` the callbackUrl carried (utils/mobileNonce.js). Enforced when MOBILE_RETURN_REQUIRE_NONCE=1; otherwise
+// a mismatch is only logged and behaviour is unchanged.
 
 const DEFAULT_RETURN = "pawpi://auth-callback";
 const ALLOWED_SCHEME = "pawpi://";
@@ -32,11 +44,11 @@ function resolveReturnTarget(request) {
   return DEFAULT_RETURN;
 }
 
-function redirectTo(target) {
-  return new Response(null, {
-    status: 302,
-    headers: { Location: target, "Cache-Control": "no-store" },
-  });
+function redirectTo(target, secure) {
+  const headers = new Headers({ Location: target, "Cache-Control": "no-store" });
+  // One-time: the nonce cookie is cleared on every answer from this route.
+  headers.append("Set-Cookie", clearNonceCookie(secure));
+  return new Response(null, { status: 302, headers });
 }
 
 export async function GET(request) {
@@ -57,7 +69,18 @@ export async function GET(request) {
   const sep = returnBase.includes("?") ? "&" : "?";
 
   if (!jwt || !raw) {
-    return redirectTo(`${returnBase}${sep}error=unauthorized`);
+    return redirectTo(`${returnBase}${sep}error=unauthorized`, isSecure);
+  }
+
+  const flowBound = nonceMatches(
+    readCookie(request, NONCE_COOKIE),
+    new URL(request.url).searchParams.get(NONCE_PARAM),
+  );
+  if (!flowBound) {
+    if (nonceEnforced()) {
+      return redirectTo(`${returnBase}${sep}error=unauthorized`, isSecure);
+    }
+    console.warn("[mobile-return] no matching sign-in nonce (report-only; set MOBILE_RETURN_REQUIRE_NONCE=1 to enforce)");
   }
 
   const params = new URLSearchParams({ token: raw });
@@ -65,5 +88,5 @@ export async function GET(request) {
   if (jwt.email) params.set("email", String(jwt.email));
   if (jwt.name) params.set("name", String(jwt.name));
 
-  return redirectTo(`${returnBase}${sep}${params.toString()}`);
+  return redirectTo(`${returnBase}${sep}${params.toString()}`, isSecure);
 }
