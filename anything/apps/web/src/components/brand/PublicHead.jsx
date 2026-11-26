@@ -2,12 +2,15 @@ import {
   appleItunesAppContent,
   buildHomeJsonLd,
   buildHomeSocialMeta,
+  isPrivateLinkPath,
   isPublicPath,
 } from "@/lib/home/meta";
 
 // Server-rendered <head> tags for the public pages (rendered inside <head> by root.tsx): Safari's smart
-// app banner everywhere public, plus social-preview tags and JSON-LD on the homepage.
+// app banner everywhere public, plus social-preview tags and JSON-LD on the homepage. Private-link pet
+// pages get only a noindex tag.
 export default function PublicHead({ pathname, search }) {
+  if (isPrivateLinkPath(pathname)) return <meta name="robots" content="noindex, nofollow" />;
   if (!isPublicPath(pathname)) return null;
   const isHome = pathname === "/";
 

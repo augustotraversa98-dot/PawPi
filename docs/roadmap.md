@@ -18,6 +18,15 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-25 — Website welcomes search engines and AI crawlers (robots.txt + privacy guard) — web-only, Railway deploy on merge, no EAS build, no migration; Cloudflare dashboard settings changed by owner
+- `public/robots.txt` is now the whole policy: content signals `search=yes, ai-input=yes, ai-train=yes` (one line to change them), `Allow: /` and `/.well-known/`, `Disallow` for `/api/`, `/account/`, `/provider`, `/admin`, `/p/`.
+- **Privacy guard:** the private-link pet pages (`/p/tag/[token]`, `/p/card/[token]`) now also carry a server-rendered `<meta name="robots" content="noindex, nofollow">`. A crawler that obeys the Disallow never reads that tag, so a bare tag or card URL posted publicly could still be listed without its content.
+- Sitemap: each `?lang=en` page now has its own `<url>` entry, so the hreflang pairs point both ways. Pinned by `src/app/crawlerAccess.test.js`.
+- **Cloudflare (owner's dashboard, not code):** "Managed robots.txt" (it prepended its own signals and training-crawler blocks) and AI bot blocking (403 to ClaudeBot and PerplexityBot) are to be off. Checked from outside before the merge: no managed block was served, and GPTBot, ClaudeBot, PerplexityBot and CCBot user-agents got 200 on `/`.
+- `/api/*` untouched.
+
+---
+
 ## 2026-11-25 — Website agent discovery (isitagentready.com checks) — web-only, Railway deploy on merge, no EAS build, no migration
 - New `utils/agentDiscovery.js` middleware (GET/HEAD only, exact paths only; `/api/*` byte-identical, pinned by test): RFC 8288 `Link` headers on the five public pages; `text/markdown` versions when `Accept` asks (`Vary: Accept`, `x-markdown-tokens`), built from `lib/home/copy.js` and `content/legal`.
 - `/.well-known/api-catalog` (one real entry: `/api/health/deep`), `/.well-known/agent-skills/index.json` (empty: none published), `/.well-known/ai-catalog.json` (one entry: the API catalog).

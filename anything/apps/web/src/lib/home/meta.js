@@ -15,6 +15,13 @@ export function isPublicPath(pathname) {
   return PUBLIC_PATHS.includes(path);
 }
 
+// Pages under /p/ (pet tag, vet card) open for anyone holding the private link and show one pet's data,
+// so they must never be indexed: public/robots.txt disallows /p/ and the server-rendered head carries
+// noindex. Case-insensitive because the router also matches /P/Tag/....
+export function isPrivateLinkPath(pathname) {
+  return /^\/+p(\/|$)/i.test(String(pathname || ""));
+}
+
 // <html lang> for a public page; the rest of the web app is English.
 export function documentLang(pathname, search) {
   if (!isPublicPath(pathname)) return "en";
