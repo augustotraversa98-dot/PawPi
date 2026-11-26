@@ -63,6 +63,9 @@ export const RATE_LIMITS = {
   report_create: { limit: 20, windowSeconds: 3600 },
   // Bookings notify a business (and can create a payment intent).
   booking_create: { limit: 15, windowSeconds: 3600 },
+  // Sharing a pet's record notifies a business. 20/hour is far above an owner choosing and adjusting what to share.
+  // Only the share is limited: revoking and denying never are.
+  care_share: { limit: 20, windowSeconds: 3600 },
   // Taps. Legitimately fast and bursty — a scroll-and-paw session must never trip.
   paw_toggle: { limit: 120, windowSeconds: 60 },
   follow_toggle: { limit: 60, windowSeconds: 300 },

@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
 import { notifyCareAccess } from "@/app/api/utils/careAccessNotify";
+import { withRateLimit } from "@/app/api/utils/rateLimit";
 import {
   VALID_CARE_SCOPES,
   RECORD_SECTIONS,
@@ -407,6 +408,7 @@ async function POST(request) {
 
 // RLS R1-rollout: identity-scoped wrappers (docs/rls-hardening.md). Handler
 // bodies are unchanged — only their DB connection is now request-scoped.
+// Sharing is rate limited per owner (utils/rateLimit); ending access (PATCH) is not.
 const wrappedGET = withRequestContext(GET);
-const wrappedPOST = withRequestContext(POST);
+const wrappedPOST = withRequestContext(withRateLimit("care_share", POST));
 export { wrappedGET as GET, wrappedPOST as POST };
