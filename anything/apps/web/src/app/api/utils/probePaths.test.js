@@ -301,7 +301,7 @@ describe("wiring in __create/index.ts", () => {
 
   it("runs after the security headers + metrics middleware, before auth, the API and the SPA/static handlers", () => {
     const guard = at("app.use('*', blockProbePaths())");
-    expect(guard).toBeGreaterThan(at("app.use('*', securityHeaders())"));
+    expect(guard).toBeGreaterThan(at("app.use('*', securityHeaders("));
     expect(guard).toBeGreaterThan(at("recordHttpRequest({"));
     expect(guard).toBeLessThan(at("initAuthConfig("));
     expect(guard).toBeLessThan(at("app.route(API_BASENAME, api)"));
