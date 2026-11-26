@@ -38,6 +38,7 @@ Database: nothing to run. Use your own dog's tag link, never the demo account. D
 - [ ] **1.** Send a message from your dog's tag page on another phone: it says thanks and the notification appears in your app.
 - [ ] **2.** Emergency card on **Phone** with the number empty: the tag page shows the message form.
 - [ ] **3.** Emergency card on **Relay**: no owner phone / email on the tag page or on a vet link, and no emergency contact on a full vet link.
+- [ ] **Privacy page** (after the privacy-wording PR deploys): `https://www.pawpi.info/privacy` in ES and EN is dated 26 November 2026 and sections 2, 7 and 9 mention the person who found your dog.
 
 **App (build 34)**
 - [ ] **4.** Turn on a Focus, send a message from the tag page on another phone: the "Alguien encontró a …" banner breaks through. A second message within 10 minutes arrives as an ordinary notification (intended).

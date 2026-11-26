@@ -18,6 +18,12 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-26 — Privacy Policy wording for the emergency / finder flow (EN + ES; website only, no build)
+- Sections 2, 7 and 9 of `content/legal/privacy.{en,es}.md` and the `docs/legal/` mirrors: what a finder sends and who receives it, what the public pet pages show, the 90-day deletion. "Last updated" is November 26, 2026.
+- `PRIVACY_VERSION` / `TERMS_VERSION` unchanged; nobody is asked to accept again. Live with the web deploy after the merge.
+
+---
+
 ## 2026-11-26 — Emergency / finder flow: owner decides what is shared, family notified, tighter limits, 90-day retention — migration 0146 APPLIED 2026-11-26 (verify 19/19 PASS); website deploys with the merge, app changes need EAS build 34
 - **Finder form** on `/p/tag/[token]`: name (optional), phone and/or email (one required), message. Shown in relay mode, and in phone / email mode when nothing is saved. "The family was told" appears only when the server says so; a failed send keeps what was typed.
 - **Public pages** show the owner's phone or email only when the owner chose that mode; relay and none publish neither. A **full vet link** no longer shows the medical profile's emergency contact when the setting is relay or none. New owner switch **Show my emergency contact on the pet tag** (default OFF).
