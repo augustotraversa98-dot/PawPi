@@ -126,6 +126,11 @@ async function fetchFollowedProviderPosts(cap) {
   }));
 }
 
+// BIRTHDAY: feed posts carry the month and day only (`pet_birthday_md`, "MM-DD"), formatted in SQL so no time
+// zone can move the date; the app compares it with the device's local day. The pet's birth year is never sent.
+// `pet_birthday` is the same month and day under the fixed placeholder year 9996 (a leap year), only for
+// installed builds that expect a YYYY-MM-DD string; a year that far ahead shows no age.
+
 // Get feed posts
 async function GET(request) {
   try {
@@ -161,7 +166,8 @@ async function GET(request) {
             pet.name as pet_name,
             pet.handle as pet_handle,
             pet.avatar_url as pet_avatar,
-            pet.birthday as pet_birthday,
+            to_char(pet.birthday, 'MM-DD') as pet_birthday_md,
+            to_char(pet.birthday, '"9996-"MM-DD') as pet_birthday,
             pet.adoption_date as pet_adoption_date,
             (SELECT COUNT(*) FROM post_paws pc WHERE pc.post_id = p.id)::int as paw_count,
             (SELECT COUNT(*) FROM post_barks bc WHERE bc.post_id = p.id)::int as bark_count,
@@ -198,7 +204,8 @@ async function GET(request) {
         pet.name as pet_name,
         pet.handle as pet_handle,
         pet.avatar_url as pet_avatar,
-        pet.birthday as pet_birthday,
+        to_char(pet.birthday, 'MM-DD') as pet_birthday_md,
+        to_char(pet.birthday, '"9996-"MM-DD') as pet_birthday,
         pet.adoption_date as pet_adoption_date,
         (SELECT COUNT(*) FROM post_paws pc WHERE pc.post_id = p.id)::int as paw_count,
         (SELECT COUNT(*) FROM post_barks bc WHERE bc.post_id = p.id)::int as bark_count,
@@ -467,6 +474,8 @@ async function POST(request) {
         pet.name as pet_name,
         pet.handle as pet_handle,
         pet.avatar_url as pet_avatar,
+        to_char(pet.birthday, 'MM-DD') as pet_birthday_md,
+        to_char(pet.birthday, '"9996-"MM-DD') as pet_birthday,
         0::int as paw_count,
         0::int as bark_count,
         false as user_has_pawed

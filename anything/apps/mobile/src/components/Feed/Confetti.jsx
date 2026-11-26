@@ -6,7 +6,8 @@ import React, { useEffect, useRef } from "react";
 import { COLORS } from "@/constants/theme";
 import { Animated, View, Easing, StyleSheet } from "react-native";
 
-const PALETTE = [COLORS.coral, COLORS.apricot, COLORS.honey, COLORS.sage, COLORS.terracotta];
+// Brand-approved colours only (pawpi-brand-kit §4).
+const PALETTE = [COLORS.coral, COLORS.peach, COLORS.warmBrown, COLORS.cream, COLORS.sand];
 
 export function Confetti({ count = 14, duration = 1600, height = 240 }) {
   const pieces = useRef(

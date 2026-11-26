@@ -18,6 +18,10 @@ import { useTranslation } from "react-i18next";
 import { PawPrint, MessageCircle } from "lucide-react-native";
 import { COLORS, TAG_COLORS } from "@/constants/theme";
 import { formatRelativeTime } from "@/utils/relativeTime";
+import { getMilestone, postBirthday } from "@/utils/feedDelight";
+import { getLocalPostDateString } from "@/utils/dateUtils";
+import { MilestoneRibbon } from "./MilestoneRibbon";
+import { Confetti } from "./Confetti";
 
 const C = {
   card: COLORS.card,
@@ -55,9 +59,15 @@ export function DayCard({ dayCard, likedByPostId, streak = 0, onOpenDetail }) {
   const barkCount = curPost.bark_count ?? current?.bark_count ?? 0;
   const tagStyle = TAG_COLORS[DAILY_TAG] || { bg: C.peach, text: COLORS.terracotta };
   const timeAgo = formatRelativeTime(current?.created_at, { t });
+  // The dog's birthday today (device date): the same frame, 🎂 and ribbon as a single post card.
+  const milestone = getMilestone(
+    { birthday: postBirthday(slides[0]?._post) },
+    getLocalPostDateString(),
+  );
+  const isBirthday = milestone?.type === "birthday";
 
   return (
-    <View testID="day-card" style={styles.card}>
+    <View testID="day-card" style={[styles.card, isBirthday && styles.birthdayCard]}>
       {/* Header: pet identity (name + @handle + 🔥 streak) with a "Daily moment" tag + timestamp,
           mirroring PostCard. The "N caregivers today" sub only shows for real multi-author days. */}
       <View style={styles.header}>
@@ -65,6 +75,11 @@ export function DayCard({ dayCard, likedByPostId, streak = 0, onOpenDetail }) {
         <View style={{ flex: 1 }}>
           <View style={styles.nameRow}>
             <Text style={styles.petName}>{dayCard?.pet?.name}</Text>
+            {isBirthday ? (
+              <Text accessibilityLabel={t("feed.birthdayLabel")} style={{ fontSize: 15 }}>
+                🎂
+              </Text>
+            ) : null}
             {streak > 0 ? (
               <Text accessibilityLabel={t("feedUi.shared.dayStreak", { count: streak })} style={{ fontSize: 13 }}>
                 🔥{streak}
@@ -97,24 +112,35 @@ export function DayCard({ dayCard, likedByPostId, streak = 0, onOpenDetail }) {
       </View>
 
       {/* Carousel of attributed slides — 4:5 portrait media (parity with PostCard). */}
-      <ScrollView
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        testID="day-card-carousel"
-      >
-        {slides.map((s) => (
-          <View key={s.post_id} style={{ width }} testID={`day-card-slide-${s.post_id}`}>
-            {s.image_url ? (
-              <Image {...FEED_IMAGE_PROPS} source={{ uri: s.image_url }} style={{ width, height: mediaHeight }} contentFit="cover" />
-            ) : (
-              <View style={{ width, height: mediaHeight, backgroundColor: C.peach }} />
-            )}
-          </View>
-        ))}
-      </ScrollView>
+      <View>
+        <ScrollView
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          testID="day-card-carousel"
+        >
+          {slides.map((s) => (
+            <View key={s.post_id} style={{ width }} testID={`day-card-slide-${s.post_id}`}>
+              {s.image_url ? (
+                <Image {...FEED_IMAGE_PROPS} source={{ uri: s.image_url }} style={{ width, height: mediaHeight }} contentFit="cover" />
+              ) : (
+                <View style={{ width, height: mediaHeight, backgroundColor: C.peach }} />
+              )}
+            </View>
+          ))}
+        </ScrollView>
+        {isBirthday ? (
+          // Neither layer takes touches away from the carousel underneath.
+          <>
+            <Confetti />
+            <View pointerEvents="none" style={styles.ribbonSlot}>
+              <MilestoneRibbon type="birthday" years={milestone.years} petName={dayCard?.pet?.name} />
+            </View>
+          </>
+        ) : null}
+      </View>
 
       {/* Dots */}
       {slides.length > 1 ? (
@@ -168,6 +194,8 @@ const styles = {
     borderWidth: 1,
     borderColor: C.peach,
   },
+  birthdayCard: { borderWidth: 2.5, borderColor: C.coral },
+  ribbonSlot: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   header: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12 },
   petAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: C.peach },
   nameRow: { flexDirection: "row", alignItems: "center", gap: 5 },
