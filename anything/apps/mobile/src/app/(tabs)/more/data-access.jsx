@@ -22,6 +22,7 @@ import {
   useUpdateGrant,
 } from "@/hooks/useCareAccessGrants";
 import { friendlyErrorMessage } from "@/utils/appAlert";
+import { goBackOr } from "@/utils/navigationBack";
 
 // Human-readable labels for each scope a provider may request. Unknown scopes
 // fall through to their raw string so a new backend scope never crashes the UI.
@@ -122,7 +123,7 @@ export default function DataAccessScreen() {
         borderBottomColor: COLORS.peach,
       }}
     >
-      <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => router.back()} style={{ marginRight: 14 }}>
+      <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => goBackOr(router, "/(tabs)/more")} style={{ marginRight: 14 }}>
         <ArrowLeft size={22} color={COLORS.warmBrown} />
       </TouchableOpacity>
       <Text style={{ fontSize: 20, fontWeight: "800", color: COLORS.warmBrown }}>

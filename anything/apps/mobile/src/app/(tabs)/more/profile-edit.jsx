@@ -40,6 +40,7 @@ import { sanitizeHandleInput } from "@/utils/validateHandle";
 import { trackFeature } from "@/telemetry/track";
 import { useFormTelemetry } from "@/telemetry/useFormTelemetry";
 import { friendlyErrorMessage } from "@/utils/appAlert";
+import { goBackOr } from "@/utils/navigationBack";
 
 // Shared form field styling (Liquid Glass, ticket 2.77): sunken well + hairline
 // edge + body type. Behavior of each input (value/onChange/keyboard) is unchanged.
@@ -274,7 +275,7 @@ export default function ProfileEditScreen() {
       formTelemetry.complete();
       trackFeature("edit_profile");
       Alert.alert(t("profileEdit.successTitle"), t("profileEdit.successBody"));
-      router.back();
+      goBackOr(router, "/(tabs)/more");
     } catch (error) {
       console.error("[Profile Edit] ========================================");
       console.error("[Profile Edit] ERROR:", error.message);
@@ -341,7 +342,7 @@ export default function ProfileEditScreen() {
             borderBottomColor: MATERIALS.hairline,
           }}
         >
-          <PressableScale accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => router.back()}>
+          <PressableScale accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => goBackOr(router, "/(tabs)/more")}>
             <ArrowLeft size={22} color={COLORS.warmBrown} />
           </PressableScale>
           <Text style={[TYPE.headline, { fontWeight: "800", color: COLORS.warmBrown }]}>

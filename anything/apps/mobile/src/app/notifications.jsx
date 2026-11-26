@@ -633,8 +633,11 @@ export default function NotificationsScreen() {
         </View>
       </GlassSurface>
 
-      {/* Filter chips */}
+      {/* Filter chips. The row must never be squeezed: with a long list below, a default ScrollView
+          shrinks and cuts the pill labels in half (flexShrink: 0 here, flex: 1 on the list). Pills are
+          sized by their text, so longer Spanish labels and larger Dynamic Type just make them bigger. */}
       <ScrollView
+        testID="notifications-filters"
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{
@@ -645,6 +648,7 @@ export default function NotificationsScreen() {
         }}
         style={{
           flexGrow: 0,
+          flexShrink: 0,
           borderBottomWidth: 1,
           borderBottomColor: MATERIALS.hairline,
           backgroundColor: COLORS.card,
@@ -655,9 +659,15 @@ export default function NotificationsScreen() {
           return (
             <PressableScale
               key={filter}
+              testID={`notifications-filter-${filter}`}
               onPress={() => setSelectedFilter(filter)}
               accessibilityRole="button"
+              accessibilityState={{ selected: isSelected }}
               style={{
+                minHeight: 36,
+                flexShrink: 0,
+                alignItems: "center",
+                justifyContent: "center",
                 paddingHorizontal: SPACING.lg,
                 paddingVertical: SPACING.sm,
                 borderRadius: RADIUS.chip,
@@ -681,6 +691,8 @@ export default function NotificationsScreen() {
 
       {/* Notifications list */}
       <ScrollView
+        testID="notifications-list"
+        style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
       >

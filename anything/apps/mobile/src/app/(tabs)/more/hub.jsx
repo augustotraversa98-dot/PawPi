@@ -9,6 +9,7 @@ import { COLORS } from "@/constants/colors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { useAdoptionFavorites, useFollowedProviders } from "@/hooks/useProviders";
 import { useAllCareAccessGrants } from "@/hooks/useCareAccessGrants";
+import { goBackOr } from "@/utils/navigationBack";
 
 // MY HUB (Phase 2 ticket 2.14) — the owner's account-style hub. Bookings, orders, auto-reorder
 // and pet-friendly places moved to the Services tab's "My Activity" pane (two-pane redesign),
@@ -166,7 +167,7 @@ export default function MyHubScreen() {
           borderBottomColor: COLORS.peach,
         }}
       >
-        <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => router.back()} style={{ marginRight: 14 }}>
+        <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => goBackOr(router, "/(tabs)/more")} style={{ marginRight: 14 }}>
           <ArrowLeft size={22} color={COLORS.warmBrown} />
         </TouchableOpacity>
         <Text style={{ fontSize: 20, fontWeight: "800", color: COLORS.warmBrown }}>
@@ -198,7 +199,7 @@ export default function MyHubScreen() {
                   key={g.id}
                   primary={g.provider_name || t("dataAccess.provider")}
                   secondary={t("leftoverUi.hub.accessTo", { name: g.pet_name || t("routineCard.yourPet") })}
-                  badge="active"
+                  badge={t("screensUi.hub.activeBadge")}
                 />
               ))
             )}

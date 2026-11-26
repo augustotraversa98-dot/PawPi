@@ -26,6 +26,7 @@ import {
   BLUR,
 } from "@/constants/theme";
 import { Card, GlassSurface, PressableScale, PawMark } from "@/components/ui";
+import { goBackOr } from "@/utils/navigationBack";
 
 const CATEGORY_COLORS = {
   Health: { bg: "#EEF4FF", text: "#3B5CC4" },
@@ -159,7 +160,7 @@ export default function CommunityScreen() {
           }}
         >
           <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-            <PressableScale accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => router.back()} style={{ marginRight: SPACING.md }}>
+            <PressableScale accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => goBackOr(router, "/(tabs)/more")} style={{ marginRight: SPACING.md }}>
               <ArrowLeft size={22} color={COLORS.warmBrown} />
             </PressableScale>
             <View style={{ flex: 1 }}>

@@ -68,6 +68,7 @@ import { markExpectedNavigation } from "@/telemetry/navExpect";
 import { clearAccountStorage } from "@/utils/accountStorage";
 import DeleteAccountModal from "@/components/Settings/DeleteAccountModal";
 import { loadDeleteAccountContext, accountDeletionRequest } from "@/utils/deleteAccountContext";
+import { goBackOr } from "@/utils/navigationBack";
 
 const C = {
   coral: COLORS.coral,
@@ -807,7 +808,7 @@ export default function AppSettings({ mode = "petOwner" }) {
         }}
       >
         <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          onPress={() => router.back()}
+          onPress={() => goBackOr(router, mode === "business" ? "/business" : "/(tabs)/more")}
           style={{ marginRight: 14 }}
         >
           <ArrowLeft size={22} color={C.warmBrown} />

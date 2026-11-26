@@ -18,6 +18,15 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-25 — Emergency card, notification pills, QR share, back to the More menu (TestFlight build 33 bugs) — mobile-only, needs the next EAS build, no migration, no dependency change
+- **Emergency card buttons were slow:** every tap waited for the save AND a reload of the whole card before the control moved. Saves are now optimistic (sent one at a time, rolled back with "Could not save. Please try again."), with no reload and no QR redraw. Test measurement with simulated latency: control visible after about 415 ms to under 20 ms; requests per tap 2 to 1; QR redraws per tap 2 to 0.
+- **Share with a vet / contact options:** explicit "Save and create link" button (rests until a choice changes), Save button on the phone/email field, one line explaining each contact option (including private relay) and each link scope, Share and Copy buttons on each link, Spanish species and dates. Scope and duration stay one-of-a-group (the server accepts one value each); choosing what to include is a later item.
+- **Tag QR:** "Share QR" button and long-press export a PNG with the link text; "Copy link".
+- **Notification filter pills** were cut in half: the long list squeezed the pill row. Fixed.
+- **Back from a More menu screen** (Mi centro and the others) reopens the More menu; back buttons on those screens can no longer dead-end.
+
+---
+
 ## 2026-11-25 — Keyboard and text fields, app-wide (TestFlight build 33 bugs) — mobile-only, needs the next EAS build, no migration, no dependency change
 - **Root cause of "the keyboard hides the field" on iPhone:** the app's `TextInput` wrapper (`polyfills/native/textinput.native.jsx`) dropped React Native's static `TextInput.State`, so `KeyboardAwareScrollView` could never find the focused field. It only added padding; it never scrolled. Jest does not apply that Metro alias, so tests passed. Fixed and pinned by a test.
 - **Keyboard closing on every letter** (Edit Medical Profile): form pieces were declared inside the modal and remounted on each keystroke. Moved to module scope; a new guard rule fails CI for any component-inside-component around a text field.

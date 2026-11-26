@@ -9,6 +9,7 @@ import { ArrowLeft, Repeat, Settings } from "lucide-react-native";
 // Import only Routines and Settings tabs
 import RoutinesTab from "@/components/Health/Reminders/RoutinesTab";
 import SettingsTab from "@/components/Health/Reminders/SettingsTab";
+import { goBackOr } from "@/utils/navigationBack";
 
 const C = {
   coral: COLORS.coral,
@@ -89,7 +90,7 @@ export default function RemindersRoutinesScreen() {
           }}
         >
           <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            onPress={() => router.back()}
+            onPress={() => goBackOr(router, "/(tabs)/more")}
             style={{ marginRight: 12 }}
           >
             <ArrowLeft size={22} color={C.warmBrown} />

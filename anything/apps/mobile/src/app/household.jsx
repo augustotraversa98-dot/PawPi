@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import { ArrowLeft, Flame, Check, Circle } from "lucide-react-native";
 import { useHousehold, useFamilyStreakOptIn } from "@/hooks/useHousehold";
 import useSelectedPetStore from "@/store/selectedPetStore";
+import { goBackOr } from "@/utils/navigationBack";
 
 const C = {
   cream: COLORS.cream,
@@ -41,13 +42,13 @@ export default function HouseholdScreen() {
 
   const onSwitch = (petId) => {
     setSelectedPetId(petId); // persisted; reflected across every surface via useCurrentPet
-    router.back();
+    goBackOr(router, "/(tabs)/more");
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}>
       <View style={styles.header}>
-        <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="household-back" onPress={() => router.back()} style={{ marginRight: 12 }}>
+        <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="household-back" onPress={() => goBackOr(router, "/(tabs)/more")} style={{ marginRight: 12 }}>
           <ArrowLeft size={22} color={C.warmBrown} />
         </TouchableOpacity>
         <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>{t("household.homeTitle")}</Text>
