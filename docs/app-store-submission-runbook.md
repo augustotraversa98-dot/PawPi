@@ -77,8 +77,10 @@ eas build --platform ios --profile production
 ```bash
 eas submit --platform ios --profile production
 ```
-- This uploads the latest production build to ASC using `ascAppId` + `appleId` + `appleTeamId` from
-  `eas.json`. It does **not** submit the app *for review* — it just delivers the binary. Final
+- This uploads the latest production build to ASC using `ascAppId` + `appleTeamId` from `eas.json`.
+  The Apple ID is deliberately **not** committed: `eas submit` reads it from the `EXPO_APPLE_ID`
+  environment variable (set it in the shell, or as an EAS environment variable, before submitting)
+  and otherwise prompts for it. It does **not** submit the app *for review* — it just delivers the binary. Final
   "Submit for Review" is a manual button in ASC (step 6).
 
 ## 4. Fill the ASC listing (paste from `app-store-connect-content.md`)

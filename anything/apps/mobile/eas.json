@@ -42,7 +42,6 @@
 	"submit": {
 		"production": {
 			"ios": {
-				"appleId": "ta_traversa@hotmail.com",
 				"ascAppId": "6785949610",
 				"appleTeamId": "YHQ4T9T96K"
 			},
