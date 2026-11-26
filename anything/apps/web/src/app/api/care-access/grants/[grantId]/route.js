@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { notifyCareAccess } from "@/app/api/utils/careAccessNotify";
+import { chooseSectionsFirst, inviteRequestNeedsSections } from "@/app/api/utils/vetInvite";
 
 // PATCH /api/care-access/grants/[grantId] — the OWNER approves / denies / revokes
 // a care-access grant. Ticket 7 (docs/provider-design.md §2 Consent + §4 item 7).
@@ -24,6 +25,8 @@ import { notifyCareAccess } from "@/app/api/utils/careAccessNotify";
 //   deny    : pending  → revoked (revoked_at=now())
 //   revoke  : active   → revoked (revoked_at=now())
 // Each UPDATE repeats the source status, so a change committed while the request ran also answers 409.
+// A pending request that came from an invite link, of a business with no booking for the dog, is not approved here:
+// 409 'choose_sections'. The owner shares chosen sections (POST /api/care-access/grants) or denies it.
 //
 // DB is porsager's tagged-template `sql` (SCHEMA_NOTES "neon→porsager"): every
 // query is a tagged template; params bind via `${}`.
@@ -71,6 +74,9 @@ async function PATCH(request, { params }) {
           { error: "Only a pending grant can be approved" },
           { status: 409 },
         );
+      }
+      if (await inviteRequestNeedsSections({ grantId, ownerUserId: userId })) {
+        return await chooseSectionsFirst(request, userId);
       }
       const updated = await sql`
         UPDATE care_access_grants

@@ -3,6 +3,7 @@
 //   C. one answer for every unusable link                       D. accepting files a pending request and opens nothing
 //   E. only the owner's approval opens the record               F. limits on attempts
 //   G. the database rules on their own                          H. verify_0148.sql passes, can fail, re-applies
+//   I. approving such a request as asked needs a booking
 
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -11,8 +12,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, inject, i
 import postgres from "postgres";
 import type { Sql } from "postgres";
 import {
-  MIGRATIONS_DIR, makeTestSql, resetDb, seedCapability, seedOwnerWithPet, seedPetCaregiver, seedProviderWithStaff,
-  seedStaff, seedUser,
+  MIGRATIONS_DIR, makeTestSql, resetDb, seedBooking, seedCapability, seedOwnerWithPet, seedPetCaregiver,
+  seedProviderWithStaff, seedStaff, seedUser,
 } from "./db";
 
 const authState = vi.hoisted(() => ({ session: null as any }));
@@ -495,8 +496,9 @@ describe("E. the owner decides", () => {
     expect((await (await sharedPets()).json()).pets).toEqual([]);
   });
 
-  it("approving the request as asked gives medical_read; revoking removes it", async () => {
+  it("with a booking, approving the request as asked gives medical_read; revoking removes it", async () => {
     const grantId = await requested();
+    await seedBooking(raw, { petId: PET, ownerUserId: OWNER.profileId, providerId: P1 });
     as(OWNER);
     expect((await req(`/care-access/grants/${grantId}`, "PATCH", { action: "approve" })).status).toBe(200);
     expect((await record()).status).toBe(200);
@@ -523,6 +525,138 @@ describe("E. the owner decides", () => {
     for (const user of [VET2, PLAIN, OWNER, FORMER]) expect((await sharedPets(user)).status).toBe(403);
     expect((await sharedPets(null)).status).toBe(401);
     expect((await sharedPets(VET, "abc")).status).toBe(403);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+describe("I. approving as asked needs a booking", () => {
+  async function requested() {
+    const { token } = await invite();
+    expect((await (await accept(token)).json()).status).toBe("requested");
+    return (await grants()).at(-1)!.id as number;
+  }
+  const decide = (grantId: number, action: string, extra: object = {}, headers: Record<string, string> = {}) => {
+    as(OWNER);
+    return req(`/care-access/grants/${grantId}`, "PATCH", { action, ...extra }, headers);
+  };
+  const book = (over: object = {}) =>
+    raw`
+      insert into vet_appointments ${raw({
+        pet_id: PET, owner_user_id: OWNER.profileId, provider_id: P1, title: "Checkup",
+        appointment_date: "2099-01-01", appointment_time: "09:00", booking_status: "requested", source: "owner",
+        ...over,
+      } as any)}`;
+  const everything = async () => ({
+    grants: [...(await grants())],
+    invites: [...(await invites())],
+    notices: [...(await raw`select * from notifications order by id`)],
+  });
+  const refused = async (grantId: number, extra: object = {}) => {
+    const before = await everything();
+    const res = await decide(grantId, "approve", extra);
+    expect(res.status).toBe(409);
+    expect((await res.json()).code).toBe("choose_sections");
+    expect(await everything()).toEqual(before);
+  };
+
+  it("the accept stamps the invite and the request with the same instant", async () => {
+    await requested();
+    expect(await raw`
+      select 1 from care_access_invites i
+      join care_access_grants g on g.created_at = i.used_at and g.pet_id = i.pet_id and g.provider_id = i.used_by_provider_id
+    `).toHaveLength(1);
+  });
+
+  it("refuses without a booking: nothing changes, nobody is told, the record stays closed", async () => {
+    const grantId = await requested();
+    await refused(grantId);
+    await refused(grantId, { expiresAt: "2099-01-01T00:00:00Z" });
+    expect((await record()).status).toBe(403);
+    expect((await (await sharedPets()).json()).pets).toEqual([]);
+    expect(await raw`select 1 from notifications where type = 'care_access_granted'`).toHaveLength(0);
+  });
+
+  it("says why in the owner's language, in a sentence older app versions can show", async () => {
+    const grantId = await requested();
+    const sentence = async (headers: Record<string, string> = {}) =>
+      (await (await decide(grantId, "approve", {}, headers)).json()).error as string;
+    const en = "First choose what this business can see. If you don't have “Choose what to share”, update PawPi. You can also deny the request.";
+    const es = "Primero elegí qué puede ver este negocio. Si no te aparece “Elegir qué compartir”, actualizá PawPi. También podés rechazar el pedido.";
+    expect(await sentence()).toBe(en);
+    expect(await sentence({ "accept-language": "es-AR" })).toBe(es);
+    await raw`update user_profiles set preferred_locale = 'es' where id = ${OWNER.profileId}`;
+    expect(await sentence({ "accept-language": "en-US" })).toBe(es);
+    await raw`update user_profiles set preferred_locale = 'en' where id = ${OWNER.profileId}`;
+    expect(await sentence({ "accept-language": "es-AR" })).toBe(en);
+    for (const text of [en, es]) expect(text.length).toBeLessThanOrEqual(200);
+  });
+
+  it("a cancelled, declined or deleted booking, or one for another dog, business or person, does not count", async () => {
+    const grantId = await requested();
+    await book({ booking_status: "cancelled" });
+    await book({ booking_status: "declined" });
+    await book({ deleted_at: new Date() });
+    await raw`insert into pets (id, owner_user_id, name, handle) values (3, ${OWNER.profileId}, 'Nina', 'owner-nina')`;
+    await book({ pet_id: 3 });
+    await book({ provider_id: P2 });
+    await book({ owner_user_id: FAMILY.profileId });
+    await refused(grantId);
+  });
+
+  it.each([
+    ["requested", "2099-01-01"],
+    ["confirmed", "2099-01-01"],
+    ["completed", "2020-01-01"],
+    [null, "2020-01-01"],
+  ])("a booking with status %s on %s counts: approved as asked", async (booking_status, appointment_date) => {
+    const grantId = await requested();
+    await book({ booking_status, appointment_date });
+    const res = await decide(grantId, "approve");
+    expect(res.status).toBe(200);
+    expect((await res.json()).grant).toMatchObject({ status: "active", scopes: ["medical_read"], sections: null });
+    expect((await record()).status).toBe(200);
+    const told = await raw`
+      select recipient_user_id from notifications where type = 'care_access_granted' order by recipient_user_id`;
+    expect(told.map((n) => n.recipient_user_id)).toEqual([VET.profileId, BOTH.profileId]);
+  });
+
+  it("a request the same business files itself is approved as before, also after an invite request was denied", async () => {
+    const first = await requested();
+    expect((await decide(first, "deny")).status).toBe(200);
+    as(VET);
+    const filed = await req(`/providers/${P1}/access-requests`, "POST", { petId: PET, scopes: ["medical_read"] });
+    expect(filed.status).toBe(201);
+    expect((await decide((await filed.json()).grant.id, "approve")).status).toBe(200);
+    expect((await record()).status).toBe(200);
+  });
+
+  it("an invite left unused by an open request does not change how that request is approved", async () => {
+    as(VET);
+    const filed = await req(`/providers/${P1}/access-requests`, "POST", { petId: PET, scopes: ["medical_read"] });
+    const { token } = await invite();
+    expect((await (await accept(token)).json()).status).toBe("already_open");
+    expect((await decide((await filed.json()).grant.id, "approve")).status).toBe(200);
+  });
+
+  it("only the owner gets this answer; a request no longer pending gets the usual one", async () => {
+    const grantId = await requested();
+    for (const user of [OTHER, VET, FAMILY]) {
+      as(user);
+      expect((await req(`/care-access/grants/${grantId}`, "PATCH", { action: "approve" })).status).toBe(404);
+    }
+    expect((await decide(grantId, "deny")).status).toBe(200);
+    const res = await decide(grantId, "approve");
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "Only a pending grant can be approved" });
+  });
+
+  it("holds with the single-flight request setting on", async () => {
+    vi.stubEnv("REQUEST_SINGLE_FLIGHT", "true");
+    try {
+      await refused(await requested());
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });
 

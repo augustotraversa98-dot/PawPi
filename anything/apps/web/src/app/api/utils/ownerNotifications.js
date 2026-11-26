@@ -117,7 +117,7 @@ const COPY = {
   // Generic on purpose, like the sharing pushes: no names and nothing medical.
   care_access_requested: {
     en: () => ({ title: "A vet asks for access 🐾", body: "Nothing is shared unless you approve it. Tap to see the request." }),
-    es: () => ({ title: "Un veterinario pide acceso 🐾", body: "No se comparte nada si no lo aprobás. Tocá para ver el pedido." }),
+    es: () => ({ title: "Una veterinaria pide acceso 🐾", body: "No se comparte nada si no lo aprobás. Tocá para ver el pedido." }),
   },
 };
 

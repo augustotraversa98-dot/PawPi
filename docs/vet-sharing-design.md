@@ -45,6 +45,23 @@ denies a grant by section.
 `GET` returns each grant with `sections` (null for a grant by scope) and `expires_at`. `status` is the effective status:
 a pending or active row past its date reads `expired`, and `?status=` filters on that.
 
+### `PATCH approve` on a request from an invite
+
+`PATCH /api/care-access/grants/[grantId]` `{action: "approve"}` answers 409 `code: "choose_sections"` when the pending
+request was filed by accepting an invite link **and** the business has no booking for that pet. Nothing changes and
+nobody is notified. `error` is a sentence in the owner's language (stored language, else `Accept-Language`, else
+English) that says to choose what to share, to update PawPi if that option is missing, or to deny. `deny`, `revoke`,
+approving any other request and sharing by section are not affected.
+
+- **From an invite:** `care_access_invites` has a used invite of the same owner and pet, `used_by_provider_id` equal to
+  the request's provider and `used_at` equal to the request's `created_at`. The accept writes both in one transaction,
+  and both are its `now()`. No column of the grant records the origin, so a change that sets either timestamp any other
+  way has to keep them equal (`vet-invite.integration.test.ts` checks it). A request the same business files itself
+  does not match.
+- **Booking:** a `vet_appointments` row of the owner's for that pet and business, not deleted, whose `booking_status` is
+  not `cancelled` or `declined` (none counts). Any kind of service, any date. This is the app's rule
+  (`mobile/src/utils/vetShare.js`, `hasBookingForPet`), except that the app only sees the 50 latest past bookings.
+
 ### Invite by link (a vet with no booking)
 
 Server and web page. Migration 0148, applied by hand before the server is deployed; then `supabase/verify_0148.sql`. An
@@ -66,7 +83,8 @@ invite shares nothing: it ends in a pending request like the one a provider file
    `{status: "requested"}`. When that business already has a pending or active grant for the pet, nothing changes and the
    invite stays unused: `{status: "already_open"}`.
 4. The owner gets a `care_access_requested` notification (push under the owner notification rules, category
-   `owner_sharing`) and approves with sections and expiry, approves the request as asked, or denies it.
+   `owner_sharing`) and approves with sections and expiry or denies it. Approving the request as asked needs a booking
+   for the pet with that business (`PATCH approve` on a request from an invite, above).
 5. Once approved, the business finds the pet under Clinical, "Shared with us", with or without a booking
    (`GET /api/providers/[id]/shared-pets`: names of the pets whose record is open to it now).
 
@@ -138,11 +156,12 @@ is not completed (any kind of provider) and from Data Access > **Choose what to 
 - Access is reported as given only when the returned grant matches the choice; otherwise the app says so and revokes a
   newly created grant that differs.
 - Data Access also keeps **Approve all asked**, which approves a provider request as asked, after listing everything in
-  it, only for a provider with a booking for that pet (not cancelled or declined). Any other request, which includes
-  every request from an invite, offers **Choose what to share** or **Deny**, and asks the owner to check the name. This
-  is a rule of the app screen; the server accepts both answers.
+  it, only for a provider with a booking for that pet (not cancelled or declined). Any other request offers **Choose
+  what to share** or **Deny**, and asks the owner to check the name. For a request from an invite the server holds the
+  same rule on `PATCH approve` (section 1), so it also applies to app versions released before this screen.
 - App versions released before this sheet (including build 33) send the by-scope body, and their data-access screen
-  prints raw scope labels, so a grant by section reads `record_sections` there.
+  prints raw scope labels, so a grant by section reads `record_sections` there. They cannot choose sections: on a
+  request from an invite without a booking, **Approve** shows the `choose_sections` sentence, and **Deny** works.
 
 ## 3. Telling the provider
 
