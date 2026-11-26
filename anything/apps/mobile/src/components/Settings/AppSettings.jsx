@@ -26,8 +26,11 @@ import {
   ShieldCheck,
   FileText,
   ScrollText,
+  Sparkles,
 } from "lucide-react-native";
 import { useAuth } from "@/utils/auth/useAuth";
+import { useAuthStore } from "@/utils/auth/store";
+import { getAiDocConsent, setAiDocConsent, subscribeAiDocConsent } from "@/utils/aiDocConsent";
 import useBottomClearance from "@/hooks/useBottomClearance";
 import WalkTrackingSettings from "@/components/Health/WalkActivity/WalkTrackingSettings";
 import { WALK_TRACKING_INTEGRATIONS_ENABLED } from "@/constants/featureFlags";
@@ -200,6 +203,94 @@ function TelemetryToggle() {
       <Switch
         testID="telemetry-toggle"
         accessibilityLabel={t("settings.telemetryTitle")}
+        value={enabled}
+        onValueChange={onChange}
+        trackColor={{ false: C.peach, true: C.coral }}
+        thumbColor="#FFF"
+      />
+    </View>
+  );
+}
+
+// "Let PawPi read my documents": the permission to send Vet Record documents to Anthropic (utils/aiDocConsent). OFF until the person
+// allows it, here or on the permission screen; switching it OFF revokes it for the next upload. The hint names the recipient and is
+// never truncated: turning the switch on IS the permission.
+function AiDocReadingToggle() {
+  const { t } = useTranslation();
+  const userId = useAuthStore((s) => s.auth?.user?.id);
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    setEnabled(false);
+    getAiDocConsent(userId).then((value) => {
+      if (alive) setEnabled(value === "granted");
+    });
+    const unsubscribe = subscribeAiDocConsent((changedUserId, value) => {
+      if (changedUserId === userId) setEnabled(value === "granted");
+    });
+    return () => {
+      alive = false;
+      unsubscribe();
+    };
+  }, [userId]);
+
+  const onChange = async (value) => {
+    setEnabled(value); // optimistic
+    if (!(await setAiDocConsent(userId, value))) {
+      setEnabled(!value);
+      Alert.alert(t("settings.aiDocsErrorTitle"), t("common.pleaseTryAgain"));
+    }
+  };
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: C.peach,
+      }}
+    >
+      <View
+        style={{
+          width: 38,
+          height: 38,
+          borderRadius: 12,
+          backgroundColor: C.sand,
+          justifyContent: "center",
+          alignItems: "center",
+          marginRight: 14,
+          borderWidth: 1,
+          borderColor: C.peach,
+        }}
+      >
+        <Sparkles size={18} color={C.mutedBrown} />
+      </View>
+      <View style={{ flex: 1, marginRight: 8 }}>
+        <Text style={{ fontSize: 15, color: C.warmBrown, fontWeight: "600" }}>
+          {t("settings.aiDocsTitle")}
+        </Text>
+        <Text style={{ fontSize: 12, color: C.mutedBrown, marginTop: 2 }}>
+          {t("settings.aiDocsHint")}
+        </Text>
+        {PRIVACY_POLICY_URL ? (
+          <TouchableOpacity
+            testID="ai-docs-privacy"
+            accessibilityRole="link"
+            onPress={() => Linking.openURL(PRIVACY_POLICY_URL).catch(() => {})}
+            style={{ alignSelf: "flex-start", paddingVertical: 4 }}
+          >
+            <Text style={{ fontSize: 12, color: C.coral, fontWeight: "700" }}>
+              {t("settings.aiDocsLearnMore")}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+      <Switch
+        testID="ai-docs-toggle"
+        accessibilityLabel={t("settings.aiDocsTitle")}
         value={enabled}
         onValueChange={onChange}
         trackColor={{ false: C.peach, true: C.coral }}
@@ -884,6 +975,7 @@ export default function AppSettings({ mode = "petOwner" }) {
         <SectionCard>
           <SettingRow label={t("settings.accountPrivacy")} icon={Lock} value={t("settings.accountPublic")} />
           <TelemetryToggle />
+          {isBusiness ? null : <AiDocReadingToggle />}
         </SectionCard>
 
         <Text

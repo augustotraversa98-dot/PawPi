@@ -18,6 +18,15 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-25 — Permission before AI reads vet documents (Apple 5.1.2(i)) — mobile PR needs the next EAS build; server enforcement is DRAFT #802; no migration, no dependency change
+- The first time a Vet Record document could be read, PawPi asks: it names Anthropic, links the Privacy Policy, and offers **Allow** / **Not now**. The document is saved first, so neither answer can lose it.
+- Without permission (never asked, Not now, or switched off) the app does not call the extract endpoint at all and says the file was not read. With permission the request carries `aiConsent: true`.
+- **Settings → Privacy & data → "Let PawPi read my documents"** grants or revokes it. Stored on the device per signed-in user; sign-out clears it, so the next sign-in asks again.
+- Server: **#802 stays DRAFT, never merge until build 34 is live** (build 33 does not send `aiConsent`; merging early stops document reading for its users). Merge steps are in the PR.
+- Still open: Privacy Policy §8 says reading "happens automatically after a document is saved"; update it when #802 merges.
+
+---
+
 ## 2026-11-25 — Pet tag and vet card pages in Spanish (TestFlight build 33 report) — web-only, Railway deploy on merge, no EAS build, no migration, no API change
 - `/p/tag/[token]` and `/p/card/[token]` were English only. They now open in Spanish for `es*` browsers (English otherwise, Spanish when the browser reports nothing), with an ES/EN switch that writes `?lang=`.
 - Every string lives in `anything/apps/web/src/lib/publicPet/copy.js` (a test keeps ES and EN in step).
