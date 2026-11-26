@@ -643,7 +643,7 @@
       "sectionEveryday": "Cotidiano",
       "sectionEverydayHint": "Registros diarios rápidos que completan el Anillo de cuidado de {{pet}}.",
       "sectionRecords": "Historia clínica",
-      "sectionRecordsHint": "Cuidados e historial médico para compartir con tu veterinario.",
+      "sectionRecordsHint": "Cuidados e historial médico para tus visitas veterinarias.",
       "infoBox": "Registrá los cambios a lo largo del tiempo para compartir datos útiles con tu veterinario. Cuanto más registres, mejor preparado vas a estar para las consultas.",
       "foodWaterLabel": "Comida y agua",
       "foodWaterDesc": "Comidas, premios, agua y apetito",
@@ -799,7 +799,7 @@
       "weeksInRow": "¡{{count}} semanas seguidas! 🎉",
       "pawsConsistent": "Foto chequeo de patitas completado con constancia",
       "photoNote": "Los foto chequeos regulares ayudan a notar cambios sutiles en piel, pelaje, ojos, patitas y más. ¡Seguí así!",
-      "bottomDisclaimer": "Estos análisis te ayudan a notar patrones. Compartilos con tu veterinario para dar contexto en las visitas. Esto no reemplaza el diagnóstico ni cuidado veterinario profesional.",
+      "bottomDisclaimer": "Estos análisis te ayudan a notar patrones. Comentalos con tu veterinario para dar contexto en las visitas. Esto no reemplaza el diagnóstico ni cuidado veterinario profesional.",
       "gotIt": "Entendido",
       "close": "Cerrar"
     },

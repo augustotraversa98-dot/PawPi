@@ -643,7 +643,7 @@
       "sectionEveryday": "Everyday",
       "sectionEverydayHint": "Quick daily logs that fill {{pet}}'s Care Ring.",
       "sectionRecords": "Health records",
-      "sectionRecordsHint": "Care and medical history to share with your vet.",
+      "sectionRecordsHint": "Care and medical history for your vet visits.",
       "infoBox": "Track changes over time to share meaningful data with your vet. The more you track, the better prepared you'll be for appointments.",
       "foodWaterLabel": "Food & Water",
       "foodWaterDesc": "Meals, treats, water, and appetite",
@@ -799,7 +799,7 @@
       "weeksInRow": "{{count}} weeks in a row! 🎉",
       "pawsConsistent": "Paws photo check completed consistently",
       "photoNote": "Regular photo checks help you spot subtle changes in skin, coat, eyes, paws, and more. Keep up the great work!",
-      "bottomDisclaimer": "These insights help you notice patterns. Share them with your vet to provide meaningful context during appointments. This does not replace professional veterinary diagnosis or care.",
+      "bottomDisclaimer": "These insights help you notice patterns. Bring them up with your vet to give context during appointments. This does not replace professional veterinary diagnosis or care.",
       "gotIt": "Got it",
       "close": "Close"
     },
