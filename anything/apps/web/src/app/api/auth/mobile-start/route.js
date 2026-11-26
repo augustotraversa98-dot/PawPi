@@ -11,7 +11,13 @@
 //
 // This is NOT an @auth/core action (is-auth-action.ts) so the auth middleware passes it through.
 // No secrets are emitted; the CSRF token is fetched client-side by the browser itself.
+//
+// A one-time nonce is set as a short-lived HttpOnly cookie in this browser and echoed in the callbackUrl, so
+// mobile-return can tell a flow that began here from a bare visit (see utils/mobileNonce.js).
+//
 // The inline script runs only because it carries the CSP nonce (utils/securityHeaders.js).
+
+import { NONCE_PARAM, newNonce, setNonceCookie } from "@/app/api/utils/mobileNonce";
 import { cspNonce } from "@/app/api/utils/securityHeaders";
 
 // Only providers we actually wire as web OAuth in __create/index.ts. Apple is native (no browser
@@ -42,10 +48,15 @@ export async function GET(request) {
     return new Response("Unsupported provider", { status: 400 });
   }
 
-  const callbackUrl = `/api/auth/mobile-return?return=${encodeURIComponent(returnTarget)}`;
+  const signInNonce = newNonce();
+  const callbackUrl = `/api/auth/mobile-return?return=${encodeURIComponent(returnTarget)}&${NONCE_PARAM}=${signInNonce}`;
+  const isSecure =
+    process.env.AUTH_URL?.startsWith("https") ||
+    request.headers.get("x-forwarded-proto") === "https" ||
+    (request.url?.startsWith("https") ?? false);
 
-  const nonce = cspNonce();
-  const nonceAttr = nonce ? ` nonce="${nonce}"` : "";
+  const scriptNonce = cspNonce();
+  const nonceAttr = scriptNonce ? ` nonce="${scriptNonce}"` : "";
 
   const html = `<!doctype html>
 <html>
@@ -76,8 +87,7 @@ export async function GET(request) {
   </body>
 </html>`;
 
-  return new Response(html, {
-    status: 200,
-    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
-  });
+  const headers = new Headers({ "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+  headers.append("Set-Cookie", setNonceCookie(signInNonce, isSecure));
+  return new Response(html, { status: 200, headers });
 }
