@@ -437,3 +437,48 @@ test("an actor without a display name shows the neutral fallback, never an @user
   expect(queryByText(/^@/)).toBeNull();
   expect(queryByText("Pet parent")).toBeTruthy();
 });
+
+// ── Vet-record access notifications (care_access_*) ──────────────────────────
+describe("record access notifications", () => {
+  const dbAccess = (type, body) => ({
+    id: 90,
+    type,
+    subject_ref: "42", // = pet id
+    body,
+    read_at: null,
+    created_at: "2026-11-26T12:00:00.000Z",
+    actor_username: "Ana",
+    actor_avatar: null,
+  });
+
+  test.each([
+    ["care_access_granted", "Record access given", "Ana gave your team access to Rex's records until 03/12/2026."],
+    ["care_access_revoked", "Record access ended", "Ana ended your team's access to Rex's records."],
+  ])("%s shows its title and the server's sentence", (type, title, body) => {
+    mockDbNotifications = [dbAccess(type, body)];
+    const { getByText } = render(<NotificationsScreen />);
+    expect(getByText(title)).toBeTruthy();
+    expect(getByText(body)).toBeTruthy();
+  });
+
+  test.each(["care_access_granted", "care_access_revoked"])(
+    "tapping %s marks it read and stays: subject_ref is not a post or a screen to open",
+    (type) => {
+      mockDbNotifications = [dbAccess(type, "A sentence from the server")];
+      const { getByText } = render(<NotificationsScreen />);
+      fireEvent.press(getByText("A sentence from the server"));
+      expect(mockMarkRead).toHaveBeenCalledWith({ ids: [90] });
+      expect(mockPush).not.toHaveBeenCalled();
+      expect(mockBack).not.toHaveBeenCalled();
+    },
+  );
+
+  test.each([
+    ["care_access_granted", "A pet owner gave your team access to a dog's records."],
+    ["care_access_revoked", "A pet owner ended your team's access to a dog's records."],
+  ])("%s without a body shows the localized fallback", (type, fallback) => {
+    mockDbNotifications = [dbAccess(type, null)];
+    const { getByText } = render(<NotificationsScreen />);
+    expect(getByText(fallback)).toBeTruthy();
+  });
+});

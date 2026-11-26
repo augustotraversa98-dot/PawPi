@@ -1183,7 +1183,11 @@
     "welcome": "Welcome to PawPi! Here's your first paw 🐾",
     "pack_invite": "invited you to a pack streak 🐾",
     "pack_accepted": "accepted your pack streak — let's go! 🔥",
-    "boop": "booped you — finish your ring to keep the flame 🔥"
+    "boop": "booped you — finish your ring to keep the flame 🔥",
+    "care_access_grantedTitle": "Record access given",
+    "care_access_grantedFallback": "A pet owner gave your team access to a dog's records.",
+    "care_access_revokedTitle": "Record access ended",
+    "care_access_revokedFallback": "A pet owner ended your team's access to a dog's records."
   },
   "map": {
     "setOnMap": "Set location on map",

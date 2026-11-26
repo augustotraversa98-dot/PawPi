@@ -1,8 +1,8 @@
 # Sharing the vet record with a vet
 
 Status: 2026-11-26. Sections and expiry are built on the server and the web provider panel (migration 0147, applied by
-hand before the server is deployed; then `supabase/verify_0147.sql`), and so is sharing while a provider's request is
-pending. Part 3 is not built.
+hand before the server is deployed; then `supabase/verify_0147.sql`), and so are sharing while a provider's request is
+pending and telling the provider when access is given or revoked. Part 4 is not built.
 
 ## 1. Grants (`care_access_grants`)
 
@@ -128,16 +128,38 @@ have access with no screen to open it. Choosing sections and expiry in the app i
 app sends the by-scope body. The released data-access screen prints raw scope labels, so a grant by section reads
 `record_sections` there.
 
-## 3. Not built
+## 3. Telling the provider
+
+Every active staff member of the provider gets one in-app notification, never the person acting
+(`utils/careAccessNotify.js`).
+
+| Type | Sent when | Phone push follows the business switch |
+|---|---|---|
+| `care_access_granted` | A grant is created active (either body shape), or a pending request is approved (by the owner's `POST` or `PATCH approve`) | New bookings (`biz_booking`) |
+| `care_access_revoked` | `PATCH revoke` | Booking changes (`biz_booking_change`) |
+
+Nothing is sent for a repeated share (`deduped`), a refused request (400, 404, 409), `PATCH deny`, expiry, or the old
+grant that a share by section replaces (only `care_access_granted` goes out).
+
+- Text: a sentence in the recipient's language (EN or es-AR) with the owner's public display name (a neutral word
+  without one), the dog's name and, for a grant, the end date (`dd/MM/yyyy` on the recipient's local day) or "until
+  revoked". Nothing from the record and not the sections shared. The push banner shows the same sentence.
+- `subject_ref` is the **pet id**. The app shows the sentence and a tap only marks it read: it has no provider record
+  screen. Released builds that do not know the types show the sentence under the owner's name, a tap goes back, and a
+  tapped push opens the notifications list.
+- Push preferences work as for other business notifications: on by default, off with the switch; the bell row is always
+  written. Business pushes have no quiet hours or daily cap.
+- A failure while notifying never fails the share or the revoke: each step runs in a savepoint.
+- The web provider panel has no notification list.
+
+## 4. Not built
 
 Each needs its own change with owner review.
 
-1. **Notify the vet** when access is given or revoked (`care_access_granted`, `care_access_revoked`; the types exist
-   from 0147). PawPi sends nothing today.
-2. **Invite a vet who is not on PawPi (email, phone or link).** New `care_access_invites` (pet, owner, what is shared,
+1. **Invite a vet who is not on PawPi (email, phone or link).** New `care_access_invites` (pet, owner, what is shared,
    hashed token, expiry, accepted_by_provider, revoked_at), forced RLS, a rate-limited accept function that turns an
    invite into a grant for the accepting provider, single use. Needs working email delivery first.
-3. **Let the vet find the pet without a booking.** A provider "Shared with us" list from active grants. Then the booking
+2. **Let the vet find the pet without a booking.** A provider "Shared with us" list from active grants. Then the booking
    restriction in the picker can go.
-4. **More sections** (allergies, conditions, medications, surgeries): each needs a read policy, a branch in the record
+3. **More sections** (allergies, conditions, medications, surgeries): each needs a read policy, a branch in the record
    route and a record screen section.
