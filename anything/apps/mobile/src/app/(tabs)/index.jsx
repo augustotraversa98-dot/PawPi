@@ -21,6 +21,8 @@ import { canManageMoment, canDeleteMoment } from "@/utils/postPermissions";
 import { useMyProfileId } from "@/hooks/useUserProfile";
 import { useFeedSuggestions } from "@/hooks/useFeedSuggestions";
 import { usePostingStreak, useUpdatePostCaption, useTogglePaw } from "@/hooks/useFeedPosts";
+import { useFriendStreaks } from "@/hooks/useFriendStreaks";
+import { friendDogIds } from "@/utils/feed/householdPosts";
 import { stashProviderPost } from "@/utils/providerPostHandoff";
 import useBottomClearance from "@/hooks/useBottomClearance";
 import FeedSkeleton from "@/components/Feed/FeedSkeleton";
@@ -54,13 +56,18 @@ export default function FeedScreen() {
   } = useFeedData();
 
   // Posting streak for the active pet (ticket 2.37) — the 🔥 badge shows on its
-  // own cards. Other pets' streaks aren't fetched (bounded to one query).
+  // own cards.
   const { streak: activeStreak } = usePostingStreak(petProfile?.id);
+  // Friends' dogs on this page (never a household dog): one request for all of them; the server returns only
+  // friends with a live streak of 7+.
+  const friendIds = useMemo(() => friendDogIds(posts, householdPetIds), [posts, householdPetIds]);
+  const { streaks: friendStreaks, refetch: refetchFriendStreaks } = useFriendStreaks(friendIds);
   // (AUDIT A-15) Memoize so the map identity is stable across renders — a fresh
   // object each render would change FeedPostRow's prop and re-render every card.
+  // The active dog's own entry wins.
   const streakByPetId = useMemo(
-    () => (petProfile?.id ? { [petProfile.id]: activeStreak } : {}),
-    [petProfile?.id, activeStreak],
+    () => ({ ...friendStreaks, ...(petProfile?.id ? { [petProfile.id]: activeStreak } : {}) }),
+    [friendStreaks, petProfile?.id, activeStreak],
   );
 
   // Phase 2 ticket 2.13 — public provider/adoption suggestion cards, interleaved into the
@@ -313,7 +320,7 @@ export default function FeedScreen() {
             // locked it's a blurred, FOMO-driving tease you can scroll through to
             // see WHO posted; pull-to-refresh + full content return once unlocked.
             scrollEnabled
-            refetch={[refetchPosts, refetchTodayDailyUpdate]}
+            refetch={[refetchPosts, refetchTodayDailyUpdate, refetchFriendStreaks]}
             showsVerticalScrollIndicator={false}
             // Liquid Glass: content scrolls BEHIND the translucent iOS 26 tab bar
             // (the scroll-edge effect). `automatic` lets the native tab controller
@@ -365,6 +372,7 @@ export default function FeedScreen() {
                 onToggleLike={handleToggleLike}
                 onOpenBarks={setBarkPost}
                 onOpenDetail={setDetailPost}
+                streakByPetId={friendStreaks}
               />
             ) : (
               <UnlockedFeed
@@ -405,6 +413,7 @@ export default function FeedScreen() {
       <PostDetailModal
         visible={!!detailPost}
         post={detailPostLive}
+        streak={friendStreaks[detailPostLive?.pet_id] || 0}
         // Fill + count both read from the same live post (feed polish #2).
         liked={!!detailPostLive?.user_has_pawed}
         // The viewer can delete/edit any post they own (any of their pets).

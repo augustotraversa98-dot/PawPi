@@ -238,3 +238,12 @@ describe("own post with no caption", () => {
     expect(onDelete).toHaveBeenCalled();
   });
 });
+
+test("a friend's streak shows by the name; no streak shows nothing extra", () => {
+  const { getByText, getByLabelText } = render(
+    <PostDetailModal visible post={post} streak={14} />,
+  );
+  expect(getByText("🔥14")).toBeTruthy();
+  expect(getByLabelText("14 day streak")).toBeTruthy();
+  expect(render(<PostDetailModal visible post={post} />).queryByText(/🔥/)).toBeNull();
+});

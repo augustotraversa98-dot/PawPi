@@ -21,7 +21,9 @@ import { SocialStatRow } from "@/components/social/SocialStatRow";
 import { MomentsGrid } from "@/components/social/MomentsGrid";
 import { useCurrentPet, usePetProfile } from "@/hooks/usePetProfile";
 import { CareRing } from "@/components/Health/CareRing";
-import { StreakChip } from "@/components/Health/StreakChip";
+import { StreakBadge, StreakChip } from "@/components/Health/StreakChip";
+import { useFriendStreaks } from "@/hooks/useFriendStreaks";
+import { friendDogIds, householdPetIdSet } from "@/utils/feed/householdPosts";
 import { MilestoneCountdownBanner } from "@/components/Feed/MilestoneCountdownBanner";
 import { ShareCardDeck } from "@/components/Feed/ShareCardDeck";
 import { useCareRing } from "@/hooks/useCareRing";
@@ -98,6 +100,15 @@ export default function PetProfileScreen({ embedded = false }) {
 
   const posts = profile?.posts || [];
   const isFollowing = !!profile?.isFollowing;
+  // A friend's dog: its streak shows when the server says it is a live one of 7+ (never asked for a household dog).
+  // The resolved numeric id, since the route can be opened by handle.
+  const profilePetId = pet?.id;
+  const friendIds = useMemo(
+    () => (allPets ? friendDogIds([{ pet_id: profilePetId }], householdPetIdSet(allPets)) : []),
+    [allPets, profilePetId],
+  );
+  const { streaks: friendStreaks, refetch: refetchFriendStreaks } = useFriendStreaks(friendIds);
+  const friendStreak = friendStreaks[profilePetId] || 0;
 
   // Locked = the server withheld the moments (not own pet, viewer hasn't posted today).
   // If the viewer has JUST posted (feedUnlocked) but the cached profile still says
@@ -312,7 +323,7 @@ export default function PetProfileScreen({ embedded = false }) {
       </View>
 
       <RefreshableScrollView
-        refetch={refetch}
+        refetch={[refetch, refetchFriendStreaks]}
         showsVerticalScrollIndicator={false}
         // Liquid Glass: as the Profile tab root, content scrolls behind the
         // translucent iOS 26 tab bar; `automatic` lets the native tab controller
@@ -432,6 +443,12 @@ export default function PetProfileScreen({ embedded = false }) {
           {isOwnPet && (
             <StreakChip petId={Number(petId)} style={{ marginTop: SPACING.sm }} />
           )}
+          {/* A friend's current streak (7+ only) — same chip */}
+          <StreakBadge
+            count={friendStreak}
+            style={{ marginTop: SPACING.sm }}
+            accessibilityLabel={t("feedUi.shared.dayStreak", { count: friendStreak })}
+          />
 
           {/* Milestone countdown (E3) — the 3 days before a birthday / gotcha day */}
           {isOwnPet && (
@@ -792,6 +809,7 @@ export default function PetProfileScreen({ embedded = false }) {
       <PostDetailModal
         visible={!!detailPost}
         post={detailPost}
+        streak={friendStreak}
         liked={detailPost ? !!likedPosts[detailPost.id] : false}
         canDelete={canDeleteDetail}
         canEdit={canManageDetail}

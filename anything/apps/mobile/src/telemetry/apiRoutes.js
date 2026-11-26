@@ -148,6 +148,7 @@ export const API_ROUTE_TEMPLATES = [
   '/api/posts/:id/barks',
   '/api/posts/:id/barks/:id',
   '/api/posts/:id/paw',
+  '/api/posts/friend-streaks',
   '/api/posts/history',
   '/api/posts/owner-posted-today',
   '/api/posts/streak',

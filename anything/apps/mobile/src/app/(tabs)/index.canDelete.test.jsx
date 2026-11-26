@@ -28,6 +28,9 @@ jest.mock("@/hooks/useUserProfile", () => ({
 jest.mock("@/hooks/useFeedSuggestions", () => ({
   useFeedSuggestions: () => ({ data: [] }),
 }));
+jest.mock("@/hooks/useFriendStreaks", () => ({
+  useFriendStreaks: () => ({ streaks: {}, refetch: jest.fn() }),
+}));
 jest.mock("@/hooks/useFeedPosts", () => ({
   usePostingStreak: () => ({ streak: 0 }),
   useUpdatePostCaption: () => ({ mutateAsync: jest.fn() }),

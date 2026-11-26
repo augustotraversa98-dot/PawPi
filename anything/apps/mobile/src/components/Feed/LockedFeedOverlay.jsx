@@ -125,12 +125,14 @@ const LockedPostRow = memo(function LockedPostRow({
   onPostPress,
   onOpenProfile,
   waitingFor,
+  streak,
 }) {
   return (
     <PostCard
       post={post}
       liked={false}
       locked
+      streak={streak}
       lockedCtaIndex={lockedCtaIndex}
       onLockedPress={onPostPress}
       onOpenProfile={() => onOpenProfile?.(post)}
@@ -175,6 +177,8 @@ export function LockedFeedOverlay({
   onToggleLike,
   onOpenBarks,
   onOpenDetail,
+  // Friends' current streaks (petId → days): the flame shows by the name even while the photo is locked.
+  streakByPetId = {},
 }) {
   const list = Array.isArray(posts) ? posts : [];
 
@@ -225,6 +229,7 @@ export function LockedFeedOverlay({
             onPostPress={onPostPress}
             onOpenProfile={onOpenProfile}
             waitingFor={waitingFor}
+            streak={streakByPetId[post.pet_id] || 0}
           />
         );
       })}

@@ -49,6 +49,8 @@ export const PostDetailModal = memo(function PostDetailModal({
   onOpenBarks,
   onOpenProfile,
   onSaveCaption,
+  // The dog's current streak when it is a friend's (0 = no flame).
+  streak = 0,
 }) {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
@@ -215,9 +217,16 @@ export const PostDetailModal = memo(function PostDetailModal({
                 <PetAvatar uri={avatar || undefined} name={dogName} size={41} />
               </View>
               <View>
-                <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
-                  {dogName}
-                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                  <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
+                    {dogName}
+                  </Text>
+                  {streak > 0 ? (
+                    <Text accessibilityLabel={t("feedUi.shared.dayStreak", { count: streak })} style={{ fontSize: 13 }}>
+                      🔥{streak}
+                    </Text>
+                  ) : null}
+                </View>
                 {petHandle ? (
                   <Text style={[TYPE.footnote, { color: COLORS.mutedBrown }]}>
                     @{petHandle}
