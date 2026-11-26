@@ -141,6 +141,20 @@ describe("tag page language", () => {
     expectNoEnglish();
   });
 
+  it("shows the emergency contact and the fallback form in Spanish", async () => {
+    browserSpeaks("es-AR");
+    respond({
+      ...TAG,
+      contact: { mode: "phone", value: null, accepts_message: true },
+      emergency_contact: { name: "Ana", phone: "11 6666 0202" },
+    });
+    render(<PublicTagPage />);
+    expect(await screen.findByRole("link", { name: "Llamar al contacto de emergencia" })).toBeInTheDocument();
+    expect(screen.getByText("Contacto de emergencia")).toBeInTheDocument();
+    expect(screen.getByTestId("relay-send")).toBeInTheDocument();
+    expectNoEnglish();
+  });
+
   it("shows the inactive-tag message in Spanish", async () => {
     browserSpeaks("es-AR");
     respond(null, false);

@@ -30,7 +30,8 @@ const delivered = {
   pet_id: 3,
   pet_name: 'Rex',
   notification_id: 11,
-  recent_count: 0,
+  urgent: true,
+  member_user_ids: [8, 9],
 };
 const queryText = (call) => sql.mock.calls[call][0].join(' ');
 
@@ -44,13 +45,15 @@ describe('public relay contact POST', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
     expect(queryText(0)).toContain('app_emergency_finder_message');
-    expect(sql.mock.calls[0].slice(1)).toEqual(['TAG1', 'x'.repeat(500), 'Marta', '123456', '']);
+    // The last argument is "may be urgent" (the sender limits live in the integration suite: no transaction here).
+    expect(sql.mock.calls[0].slice(1)).toEqual(['TAG1', 'x'.repeat(500), 'Marta', '123456', '', true]);
     expect(sendEmergencyFinderPush).toHaveBeenCalledWith({
       recipient: 7,
+      members: [8, 9],
       petId: 3,
       petName: 'Rex',
       finder: { name: 'Marta', phone: '123456', email: '', message: 'x'.repeat(500) },
-      recentCount: 0,
+      urgent: true,
     });
   });
 
@@ -62,6 +65,15 @@ describe('public relay contact POST', () => {
       expect(res.status).toBe(200);
       expect(await res.json()).toEqual({ ok: false });
       expect(sendEmergencyFinderPush).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([[false], [undefined], ['yes']])(
+    'pushes as urgent only when the database says so (%o is not urgent)',
+    async (urgent) => {
+      sql.mockResolvedValueOnce([{ result: { ...delivered, urgent } }]);
+      await POST(post({ message: 'hi', finderPhone: '123456' }), PARAMS);
+      expect(sendEmergencyFinderPush.mock.calls[0][0].urgent).toBe(false);
     },
   );
 

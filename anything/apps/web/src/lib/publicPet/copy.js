@@ -31,6 +31,12 @@ export const PET_PAGE_COPY = {
       call: "Llamar a su familia",
       write: "Escribir un email a su familia",
     },
+    kin: {
+      heading: "Contacto de emergencia",
+      name: "Nombre",
+      phone: "Teléfono",
+      call: "Llamar al contacto de emergencia",
+    },
     card: {
       documentTitle: "Tarjeta de emergencia · PawPi",
       heading: "Tarjeta de emergencia",
@@ -62,7 +68,8 @@ export const PET_PAGE_COPY = {
       finderPhone: "Tu teléfono",
       finderEmail: "Tu email",
       finderNeeded: "Completá al menos uno: teléfono o email.",
-      finderPrivacy: "Estos datos le llegan a la familia de esta mascota y quedan guardados en su cuenta de PawPi.",
+      finderPrivacy:
+        "Lo que envíes le llega al dueño de esta mascota y a la familia y cuidadores que la comparten en PawPi. Se borra a los 90 días.",
       privacyLink: "Política de privacidad",
       relayPlaceholder: "Encontré a esta mascota. Estoy en… Podés contactarme al (tu teléfono o email)…",
       relaySend: "Avisar a su familia",
@@ -101,6 +108,12 @@ export const PET_PAGE_COPY = {
       call: "Call the owner",
       write: "Email the owner",
     },
+    kin: {
+      heading: "Emergency contact",
+      name: "Name",
+      phone: "Phone",
+      call: "Call the emergency contact",
+    },
     card: {
       documentTitle: "Emergency card · PawPi",
       heading: "Emergency Card",
@@ -132,7 +145,8 @@ export const PET_PAGE_COPY = {
       finderPhone: "Your phone number",
       finderEmail: "Your email",
       finderNeeded: "Fill in at least one: phone or email.",
-      finderPrivacy: "These details go to this pet’s family and are kept in their PawPi account.",
+      finderPrivacy:
+        "What you send goes to this pet’s owner and the family and caregivers who share it in PawPi. It is deleted after 90 days.",
       privacyLink: "Privacy policy",
       relayPlaceholder: "I found this pet. I’m at… You can reach me on (your phone or email)…",
       relaySend: "Contact the owner",

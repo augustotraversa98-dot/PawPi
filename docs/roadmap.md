@@ -18,11 +18,13 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
-## 2026-11-25 — Emergency / finder flow: finder contact, owner contact on the public pages, time-sensitive push (TestFlight build 33 bugs 7 and 9) — DRAFT, NOT merged, migration 0146 NOT applied (human-applied), needs EAS build 34
-- **Finder form** on `/p/tag/[token]` (relay mode): name (optional), phone and/or email (one required), message. "The family was told" now appears only when the server says so; a failed send keeps what was typed.
-- **Public pages** show the owner's phone or email, labelled and tappable, only when the owner chose that mode; relay and none publish neither (SQL, API and page). `/p/card/[token]` used to ignore the choice. A value of the wrong kind (a phone left over after switching to Email) is not published. Public tag medical least-privilege (0122) unchanged.
-- **Owner notification:** "Someone found [dog]" / "Alguien encontró a [dog]" with the message and Call / Send email buttons (was "Dueño/a"). A push is now sent at all (none was before), high priority and time-sensitive for the first 5 messages per pet per hour; at most 20 messages per pet per hour.
-- Migration `0146_emergency_finder_contact.sql` + `supabase/verify_0146.sql`. `app.json` gains only the time-sensitive entitlement (new native build; the provisioning profile must be regenerated).
+## 2026-11-26 — Emergency / finder flow: owner decides what is shared, family notified, tighter limits, 90-day retention — DRAFT, NOT merged, migration 0146 NOT applied (human-applied), needs EAS build 34
+- **Finder form** on `/p/tag/[token]`: name (optional), phone and/or email (one required), message. Shown in relay mode, and in phone / email mode when nothing is saved. "The family was told" appears only when the server says so; a failed send keeps what was typed.
+- **Public pages** show the owner's phone or email only when the owner chose that mode; relay and none publish neither. A **full vet link** no longer shows the medical profile's emergency contact when the setting is relay or none. New owner switch **Show my emergency contact on the pet tag** (default OFF).
+- **Notification** goes to the owner and every active family member / caregiver, with Call / Send email buttons and a push. Each member's own settings apply ("Lost pet alerts" switch, quiet hours); the owner's push ignores them.
+- **Limits:** per sender 3 per 10 min and 10 per day, one urgent push per sender and tag per day; per pet 5 per 10 min and 30 per day, urgent 1 per 10 min and 4 per day.
+- **Retention:** finder details are deleted after 90 days (hourly push-receipts job + read filter). Details: `docs/emergency-finder.md`.
+- Migration `0146_emergency_finder_contact.sql` + `supabase/verify_0146.sql` (19 rows). `app.json` gains only the time-sensitive entitlement (new native build; the provisioning profile must be regenerated).
 - Deploy order: apply 0146 and run the verify script → merge (deploys web) → build 34.
 
 ---

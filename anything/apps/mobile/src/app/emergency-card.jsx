@@ -60,7 +60,7 @@ const contactHint = (t, mode) =>
   })[mode];
 
 // Phone / email mode publishes the value only when it matches the mode (the server applies the same rule), so say
-// when a finder would see nothing.
+// when a finder would not see it (they get the message form instead).
 const contactWarning = (t, mode, value) => {
   if (mode !== "phone" && mode !== "email") return null;
   const text = String(value || "").trim();
@@ -273,6 +273,11 @@ export default function EmergencyCardScreen() {
   const conditions = data?.conditions || [];
   const lost = data?.lost;
   const links = data?.links || [];
+  // Null / absent = the server does not support the setting yet, so there is no switch to show.
+  const tagKinSetting = card?.show_emergency_contact_on_tag;
+  const hasEmergencyContact = !!(
+    String(medical?.emergency_contact_name || "").trim() || String(medical?.emergency_contact_phone || "").trim()
+  );
 
   // "Save and create link" rests once this exact choice has a live link; changing a choice wakes it up.
   const linkSaved =
@@ -470,6 +475,30 @@ export default function EmergencyCardScreen() {
                   onValueChange={(v) => update.mutate({ show_medical_on_tag: v })}
                 />
               </View>
+
+              {typeof tagKinSetting === "boolean" ? (
+                <>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 14 }}>
+                    <Text style={{ color: COLORS.warmBrown, fontWeight: "700", flex: 1 }}>
+                      {t("emergencyCard.showEmergencyContactOnTag")}
+                    </Text>
+                    <Switch
+                      testID="toggle-emergency-contact"
+                      accessibilityLabel={t("emergencyCard.showEmergencyContactOnTag")}
+                      value={tagKinSetting}
+                      onValueChange={(v) => update.mutate({ show_emergency_contact_on_tag: v })}
+                    />
+                  </View>
+                  <Text testID="emergency-contact-hint" style={{ color: COLORS.mutedBrown, fontSize: 12, marginTop: 4 }}>
+                    {t("emergencyCard.showEmergencyContactOnTagHint")}
+                  </Text>
+                  {tagKinSetting && !hasEmergencyContact ? (
+                    <Text testID="emergency-contact-missing" style={{ color: COLORS.warmBrown, fontSize: 12, fontWeight: "700", marginTop: 6 }}>
+                      {t("emergencyCard.emergencyContactMissing")}
+                    </Text>
+                  ) : null}
+                </>
+              ) : null}
 
               <Text style={{ color: COLORS.warmBrown, fontWeight: "700", marginTop: 14, marginBottom: 8 }}>
                 {t("emergencyCard.finderReach")}

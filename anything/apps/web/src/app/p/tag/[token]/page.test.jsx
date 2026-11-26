@@ -158,6 +158,53 @@ describe("public tag page", () => {
     expect(container.innerHTML).not.toContain(value);
   });
 
+  // Phone / email chosen but nothing saved: the finder must not hit a dead end.
+  it.each(["phone", "email"])("%s mode with nothing saved offers the message form instead", async (mode) => {
+    mockFetch({ ...RELAY, contact: { mode, value: null, accepts_message: true } });
+    render(<PublicTagPage />);
+    expect(await screen.findByTestId("relay-message")).toBeInTheDocument();
+    expect(screen.getByTestId("relay-send")).toBeEnabled();
+    expect(screen.queryByTestId("owner-contact")).toBeNull();
+  });
+
+  it.each([
+    ["phone", "+54 9 11 5555-0101"],
+    ["none", null],
+  ])("shows no form when the server says %s does not take messages", async (mode, value) => {
+    mockFetch({ ...RELAY, contact: { mode, value, accepts_message: false } });
+    render(<PublicTagPage />);
+    await screen.findByText("Rex");
+    expect(screen.queryByTestId("relay-message")).toBeNull();
+  });
+
+  // A database without 0146 sends no accepts_message, and its old function only takes relay messages.
+  it("without accepts_message offers the form in relay mode only", async () => {
+    mockFetch({ ...RELAY, contact: { mode: "phone", value: null } });
+    render(<PublicTagPage />);
+    await screen.findByText("Rex");
+    expect(screen.queryByTestId("relay-message")).toBeNull();
+  });
+
+  it("shows the emergency contact, tappable, when the server sends it", async () => {
+    mockFetch({ ...RELAY, emergency_contact: { name: "Kin Person", phone: "+54 9 11 6666 0202" } });
+    render(<PublicTagPage />);
+    const block = await screen.findByTestId("emergency-contact");
+    expect(block).toHaveTextContent("Emergency contact");
+    expect(block).toHaveTextContent("Kin Person");
+    expect(screen.getByRole("link", { name: "Call the emergency contact" })).toHaveAttribute("href", "tel:+5491166660202");
+    expect(screen.getByRole("link", { name: "+54 9 11 6666 0202" })).toHaveAttribute("href", "tel:+5491166660202");
+  });
+
+  it.each([[undefined], [null], [{ name: null, phone: null }]])(
+    "shows no emergency contact block for %o",
+    async (emergency_contact) => {
+      mockFetch({ ...RELAY, emergency_contact });
+      render(<PublicTagPage />);
+      await screen.findByText("Rex");
+      expect(screen.queryByTestId("emergency-contact")).toBeNull();
+    },
+  );
+
   it("shows 'tag not active' when the API 404s", async () => {
     mockFetch(null, false);
     render(<PublicTagPage />);

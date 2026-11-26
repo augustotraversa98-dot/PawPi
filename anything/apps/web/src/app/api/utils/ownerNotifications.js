@@ -156,6 +156,19 @@ async function readQuietSettings(recipient) {
 }
 
 /**
+ * Do this person's own notification settings let the phone ring now? For a send that does not go through
+ * pushForOwnerNotification (the finder push to family members and caregivers). A category the person switched off
+ * stops it; so do quiet hours, which exist only while notifications v2 is on (its tables are not read otherwise).
+ * No stored choice = allowed. Never throws.
+ */
+export async function ownerSettingsAllowPush(recipient, category, now = new Date()) {
+  if ((await readPref(recipient, category)) === false) return false;
+  if (!isNotifV2Enabled()) return true;
+  const { settings, timezone } = await readQuietSettings(recipient);
+  return !isInQuietHours(settings, timezone, now);
+}
+
+/**
  * Push one owner notification if (and only if) the flag is on and the owner's rules allow it:
  *   category preference (promotional = opt-in) → quiet hours (owner-local) → valid token → daily cap.
  * Quiet hours / cap / opt-out only stop the PHONE; the in-app bell row is always written by the caller first.

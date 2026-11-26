@@ -59,7 +59,7 @@ Only needed if one is lost or you add a job. Repeat for the row in question:
 |---|---|---|
 | weekly-digest | ✅ | Claims `weekly_digest_state` (`UNIQUE(pet_id, week_start)`, `ON CONFLICT DO NOTHING`) *before* sending; a concurrent run waits on the row and skips. |
 | winback | ✅ | Claim is `INSERT … ON CONFLICT DO UPDATE … WHERE last_winback_sent < now() - cap`; the second run re-evaluates the guard after the row lock and skips. |
-| push-receipts | ✅ | Only touches unresolved tickets; resolve / mark-invalid / log GC are idempotent. Worst case an overlap fetches the same receipts twice. |
+| push-receipts | ✅ | Only touches unresolved tickets; resolve / mark-invalid / log GC are idempotent. Worst case an overlap fetches the same receipts twice. It also runs the 90-day finder-details purge (`app_purge_finder_details`, idempotent, not behind `NOTIF_V2_ENABLED`; `docs/emergency-finder.md`), so pausing this service pauses that deletion. |
 | calendar-sync | ✅ | Replaces each feed's busy blocks wholesale — same input, same result. |
 | subscriptions | ✅ | Per-subscription `pg_try_advisory_xact_lock` + re-check of `next_charge_at` under the lock (see below); the payment also dedupes on `sub-<id>-<date>`. |
 

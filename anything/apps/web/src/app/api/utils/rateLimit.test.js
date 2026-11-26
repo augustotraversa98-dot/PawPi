@@ -242,6 +242,8 @@ describe('the limit catalog', () => {
       'dm_message_create',
       'emergency_public_read',
       'emergency_relay',
+      'emergency_relay_daily',
+      'emergency_relay_urgent',
       'follow_toggle',
       'handle_check',
       'invite_create',
@@ -269,6 +271,20 @@ describe('the limit catalog', () => {
     const res = await enforceRateLimit(bucket, req(), { userId: 5 });
     expect(res.status).toBe(429);
     expect(res.headers.get('Retry-After')).toBe('30');
+  });
+
+  // 0146: the finder form passes its own sender subject, so a signed-in session cannot buy a separate limit.
+  it('a fixed subject is used as it is, without reading the session identity', async () => {
+    queue([{ allowed: true, hits: 1, retry_after_seconds: 600 }]);
+    await enforceRateLimit('emergency_relay', req({ 'x-forwarded-for': '203.0.113.9' }), { subject: 'ip:abc' });
+    expect(sqlMock.fn).toHaveBeenCalledTimes(1);
+    expect(sqlMock.fn.mock.calls[0].slice(1)).toEqual(['emergency_relay', 'ip:abc', 600, 3]);
+  });
+
+  it('the finder buckets have a short window and a daily cap', () => {
+    expect(RATE_LIMITS.emergency_relay).toEqual({ limit: 3, windowSeconds: 600 });
+    expect(RATE_LIMITS.emergency_relay_daily).toEqual({ limit: 10, windowSeconds: 86400 });
+    expect(RATE_LIMITS.emergency_relay_urgent).toEqual({ limit: 1, windowSeconds: 86400 });
   });
 
   it('emergency buckets key by IP for an anonymous caller (no user id)', async () => {

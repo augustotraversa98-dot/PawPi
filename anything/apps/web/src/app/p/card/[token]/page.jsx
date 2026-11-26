@@ -70,6 +70,10 @@ export default function PublicVetCardPage() {
 
   const pet = card.pet || {};
   const medical = card.medical;
+  // The server leaves the emergency contact out when the finder setting is Relay or None: no rows then,
+  // rather than a misleading "Not recorded".
+  const sharesEmergencyContact =
+    !!medical && ("emergency_contact_name" in medical || "emergency_contact_phone" in medical);
   const row = (label, value) => <PetRow label={label} value={value} emptyText={copy.notRecorded} />;
 
   return (
@@ -103,8 +107,12 @@ export default function PublicVetCardPage() {
               {row(t.medicalNotes, medical.medical_notes)}
               {row(t.primaryVet, medical.primary_vet_name)}
               {row(t.vetPhone, phoneLink(medical.vet_phone))}
-              {row(t.emergencyContact, medical.emergency_contact_name)}
-              {row(t.emergencyPhone, phoneLink(medical.emergency_contact_phone))}
+              {sharesEmergencyContact ? (
+                <>
+                  {row(t.emergencyContact, medical.emergency_contact_name)}
+                  {row(t.emergencyPhone, phoneLink(medical.emergency_contact_phone))}
+                </>
+              ) : null}
             </div>
           ) : (
             <p style={{ color: BRAND.muted, marginTop: 16 }}>{t.basicScope}</p>

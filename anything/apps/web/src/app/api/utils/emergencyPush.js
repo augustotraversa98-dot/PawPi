@@ -1,14 +1,19 @@
 import { sendPush, resolveRecipientLocale } from "@/app/api/utils/push";
+import { ownerSettingsAllowPush } from "@/app/api/utils/ownerNotifications";
 import { composeFinderText } from "@/lib/publicPet/finder";
 
-// The push for "someone who found your pet wrote to you" (public tag page). It is the one push that asks iOS to
-// break through Focus modes (interruption level "time-sensitive"; needs the app entitlement, and a build without it
-// simply receives a normal push). It ignores quiet hours, the daily cap and category switches on purpose.
+// The push for "someone found your pet and wrote to you" (public tag page).
+//
+//   • Whether it is URGENT is decided by the database and the sender limits (0146): an urgent one asks iOS to break
+//     through Focus modes (interruption level "time-sensitive"; needs the app entitlement, and a build without it
+//     simply receives a normal push). Any other is an ordinary notification.
+//   • The OWNER's push ignores quiet hours, the daily cap and category switches on purpose.
+//   • Family members and caregivers are also notified, but each one's own settings apply: the "Lost pet alerts"
+//     switch and quiet hours. A setting only silences the phone; their in-app notification is already saved.
 // Called AFTER the request transaction has committed, so a slow or failing push can never lose the in-app message.
 
-// More messages than this for one pet within an hour are still delivered, but no longer break through Focus modes:
-// the sender is anonymous.
-export const TIME_SENSITIVE_PER_HOUR = 5;
+/** The existing preference category that covers finder messages for family members and caregivers. */
+export const MEMBER_PUSH_CATEGORY = "owner_lost_alerts";
 
 // The finder is waiting for the page to answer, so the send never holds the response longer than this.
 export const PUSH_WAIT_MS = 4000;
@@ -37,36 +42,45 @@ export function renderEmergencyPush(locale, { petName, finder }) {
   };
 }
 
-/** Never throws. */
-export async function sendEmergencyFinderPush({ recipient, petId, petName, finder, recentCount }) {
+async function sendOne(recipient, { petId, petName, finder, urgent }) {
+  const locale = await resolveRecipientLocale(recipient);
+  const { title, subtitle, body } = renderEmergencyPush(locale, { petName, finder });
+  const subjectRef = petId == null ? null : String(petId);
+  await sendPush(
+    recipient,
+    {
+      title,
+      subtitle,
+      body,
+      data: { type: "emergency_contact", subjectRef },
+      priority: urgent ? "high" : "default",
+      // Expo's push API spells it with a hyphen.
+      interruptionLevel: urgent ? "time-sensitive" : "active",
+    },
+    { type: "emergency_contact", category: null, subjectRef, cap: null },
+  );
+}
+
+/** Never throws. One recipient's failure never stops the others. */
+export async function sendEmergencyFinderPush({ recipient, members = [], ...message }) {
   let timer;
+  const guarded = (job) =>
+    job().catch((e) => console.error("[sendEmergencyFinderPush] non-fatal:", e?.message));
   try {
-    const send = (async () => {
-      const locale = await resolveRecipientLocale(recipient);
-      const { title, subtitle, body } = renderEmergencyPush(locale, { petName, finder });
-      const subjectRef = petId == null ? null : String(petId);
-      await sendPush(
-        recipient,
-        {
-          title,
-          subtitle,
-          body,
-          data: { type: "emergency_contact", subjectRef },
-          priority: "high",
-          // Expo's push API spells it with a hyphen.
-          interruptionLevel: Number(recentCount) < TIME_SENSITIVE_PER_HOUR ? "time-sensitive" : "active",
-        },
-        { type: "emergency_contact", category: null, subjectRef, cap: null },
-      );
-    })();
+    const sends = [
+      guarded(() => sendOne(recipient, message)),
+      ...members.map((member) =>
+        guarded(async () => {
+          if (await ownerSettingsAllowPush(member, MEMBER_PUSH_CATEGORY)) await sendOne(member, message);
+        }),
+      ),
+    ];
     await Promise.race([
-      send,
+      Promise.all(sends),
       new Promise((resolve) => {
         timer = setTimeout(resolve, PUSH_WAIT_MS);
       }),
     ]);
-  } catch (e) {
-    console.error("[sendEmergencyFinderPush] non-fatal:", e?.message);
   } finally {
     clearTimeout(timer);
   }

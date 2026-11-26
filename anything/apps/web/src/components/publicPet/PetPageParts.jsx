@@ -117,6 +117,28 @@ export function OwnerContact({ contact, copy }) {
   );
 }
 
+// The medical profile's emergency contact on the public tag. The server sends it only when the owner turned on
+// "Show my emergency contact on the pet tag" (default off).
+export function EmergencyContact({ contact, copy }) {
+  const name = contact?.name || null;
+  const phone = contact?.phone || null;
+  if (!name && !phone) return null;
+  const href = phone ? telHref(phone) : null;
+  const t = copy.kin;
+  return (
+    <div data-testid="emergency-contact" style={{ marginTop: 16 }}>
+      <h3 style={{ color: BRAND.brown, fontSize: 17, fontWeight: 800, margin: "0 0 4px" }}>{t.heading}</h3>
+      {name ? <PetRow label={t.name} value={name} /> : null}
+      {phone ? <PetRow label={t.phone} value={phoneLink(phone)} /> : null}
+      {href ? (
+        <a href={href} style={{ ...PET_PAGE_BUTTON, marginTop: 10 }}>
+          {t.call}
+        </a>
+      ) : null}
+    </div>
+  );
+}
+
 export function PetRow({ label, value, emptyText }) {
   return (
     <div

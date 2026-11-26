@@ -3,6 +3,7 @@ import { useParams } from "react-router";
 import {
   PET_PAGE_BUTTON,
   PET_PAGE_WRAP as wrap,
+  EmergencyContact,
   OwnerContact,
   PetPageHeader,
   PetRow,
@@ -15,8 +16,9 @@ import { useVisitorLang } from "@/lib/publicPet/useVisitorLang";
 
 // PUBLIC pet tag page (ticket 2.51) — the permanent printed QR lands here. NO login, NO
 // app-install wall. Renders ONLY the basic fields the DEFINER fn whitelisted (+ medical iff the
-// owner enabled it). A stranger can relay a message to the owner (relay mode), leaving a phone or
-// email so the owner can answer, or tap the owner's phone/email when the owner chose to expose it.
+// owner enabled it, + the emergency contact iff the owner enabled that). A stranger can tap the
+// owner's phone/email when the owner chose to expose it; otherwise (relay mode, or phone/email
+// with nothing saved) they can send a message with a phone or email so the family can answer.
 // Non-diagnostic by design. EN + ES (lib/publicPet).
 
 const LOST_RED = "#C2410C";
@@ -138,6 +140,8 @@ export default function PublicTagPage() {
   const pet = card.pet || {};
   const lost = card.lost;
   const contact = card.contact || {};
+  // The server says when the page takes messages. A database without 0146 does not say: only relay does.
+  const takesMessages = contact.accepts_message ?? contact.mode === "relay";
   const medical = card.medical;
   const row = (label, value) => <PetRow label={label} value={value} emptyText={copy.notRecorded} />;
 
@@ -190,8 +194,9 @@ export default function PublicTagPage() {
           )}
 
           <OwnerContact contact={contact} copy={copy} />
+          <EmergencyContact contact={card.emergency_contact} copy={copy} />
 
-          {contact.mode === "relay" && (
+          {takesMessages && (
             <div style={{ marginTop: 16 }}>
               {sent ? (
                 <p data-testid="relay-sent" role="status" style={{ textAlign: "center", color: BRAND.muted }}>

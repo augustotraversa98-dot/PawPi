@@ -60,6 +60,32 @@ describe("public vet card page", () => {
     expect(screen.getByRole("link", { name: "(011) 4000-7777" })).toHaveAttribute("href", "tel:01140007777");
   });
 
+  // Relay / None: the server leaves the emergency contact out of the card; the page shows no rows for it.
+  it("shows no emergency contact rows when the server leaves them out", async () => {
+    mockFetch({
+      pet: { name: "Rex" },
+      contact: { mode: "relay", value: null },
+      medical: { vet_phone: "(011) 4000-7777", allergies: [], conditions: [] },
+    });
+    render(<PublicVetCardPage />);
+    await screen.findByTestId("medical-section");
+    expect(screen.queryByText("Emergency contact")).toBeNull();
+    expect(screen.queryByText("Emergency phone")).toBeNull();
+    expect(screen.getByText("Vet phone")).toBeInTheDocument();
+  });
+
+  it("keeps the rows, as not recorded, when the family shares an emergency contact that is empty", async () => {
+    mockFetch({
+      pet: { name: "Rex" },
+      contact: { mode: "phone", value: "11 5555" },
+      medical: { emergency_contact_name: null, emergency_contact_phone: null, allergies: [], conditions: [] },
+    });
+    render(<PublicVetCardPage />);
+    await screen.findByTestId("medical-section");
+    expect(screen.getByText("Emergency contact")).toBeInTheDocument();
+    expect(screen.getByText("Emergency phone")).toBeInTheDocument();
+  });
+
   it("shows 'link no longer valid' when the API 404s (revoked/expired)", async () => {
     mockFetch(null, false);
     render(<PublicVetCardPage />);
