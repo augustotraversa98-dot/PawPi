@@ -67,6 +67,6 @@ Duplicate check for items 3 and 4: no open PR or branch existed for either, and 
 
 ## About `STATE.md`
 
-`docs/night-run/2026-11-26/STATE.md` holds the running log, the item 5 analysis and the item 10 CORS write-up. It is deliberately **not
-committed**: this repository is public and those notes describe weaknesses in more detail than PR text should. It sits in the session's
-working directory; copy it somewhere private, or tell me to commit a trimmed version.
+`docs/night-run/2026-11-26/STATE.md` is the running log, including the item 10 CORS write-up. The repository is public, so the detailed item 5
+analysis (what an outsider could and could not obtain from the old behaviour) is **not** in it; that full version was kept outside the
+repository for the owner.
