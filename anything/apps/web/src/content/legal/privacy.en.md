@@ -216,11 +216,11 @@ Only the dog's owner can give or end this access. You choose the business, and t
 every active member of that business's team in PawPi, including people who join the team while it
 lasts.
 
-**Sharing by parts (with a vet business).** In app versions that let you choose, you pick a vet
-business, at least one of the parts below (nothing is selected for you) and how long: 7 days, 30
-days, 1 year, or until you revoke it. This access is read only and includes what is added to the
-chosen parts while it lasts. Sharing by parts again with the same business replaces your earlier
-choice.
+**Sharing by parts.** In app versions that let you choose, you pick a vet business (or share from a
+booking with another pet-care business), at least one of the parts below (nothing is selected for
+you) and how long: 7 days, 30 days, 1 year, or until you revoke it. This access is read only and
+includes what is added to the chosen parts while it lasts. Sharing by parts again with the same
+business replaces your earlier choice.
 
 - **Medical profile** — microchip, spay/neuter status and date, your usual vet and clinic with their
   contact details, and medical notes.

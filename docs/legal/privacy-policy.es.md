@@ -239,11 +239,12 @@ Solo la persona dueña del perro puede dar o quitar este acceso. Vos elegís el 
 vale para todas las personas activas del equipo de ese negocio en PawPi, incluidas las que se sumen
 al equipo mientras dure.
 
-**Compartir por partes (con una veterinaria).** En las versiones de la app que permiten elegir,
-marcás una veterinaria, al menos una de las partes de abajo (no hay nada marcado de antemano) y por
-cuánto tiempo: 7 días, 30 días, 1 año o hasta que lo revoques. Este acceso es solo de lectura e
-incluye lo que se agregue en las partes elegidas mientras dure. Si volvés a compartir por partes con
-la misma veterinaria, la nueva elección reemplaza a la anterior.
+**Compartir por partes.** En las versiones de la app que permiten elegir, elegís una veterinaria (o
+compartís desde una reserva con otro negocio de cuidado de mascotas), al menos una de las partes de
+abajo (no hay nada marcado de antemano) y por cuánto tiempo: 7 días, 30 días, 1 año o hasta que lo
+revoques. Este acceso es solo de lectura e incluye lo que se agregue en las partes elegidas mientras
+dure. Si volvés a compartir por partes con el mismo negocio, la nueva elección reemplaza a la
+anterior.
 
 - **Perfil médico** — microchip, estado y fecha de castración, tu veterinaria y clínica habituales
   con sus datos de contacto, y las notas médicas.
