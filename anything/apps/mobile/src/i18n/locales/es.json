@@ -1183,7 +1183,11 @@
     "welcome": "¡Bienvenido a PawPi! Acá está tu primera patita 🐾",
     "pack_invite": "te invitó a una racha en manada 🐾",
     "pack_accepted": "aceptó tu racha en manada — ¡vamos! 🔥",
-    "boop": "te dio un boop — cerrá tu anillo para mantener la llama 🔥"
+    "boop": "te dio un boop — cerrá tu anillo para mantener la llama 🔥",
+    "care_access_grantedTitle": "Te dieron acceso a una ficha",
+    "care_access_grantedFallback": "Un dueño le dio a tu equipo acceso a la ficha de un perro.",
+    "care_access_revokedTitle": "Terminó el acceso a una ficha",
+    "care_access_revokedFallback": "Un dueño revocó el acceso de tu equipo a la ficha de un perro."
   },
   "map": {
     "setOnMap": "Marcar ubicación en el mapa",

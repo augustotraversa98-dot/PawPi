@@ -82,6 +82,14 @@ const WALK_REQUEST_TYPES = new Set([
   "walk_request_taken",
 ]);
 
+// An owner gave or ended this business's access to a dog's record (care_access_*). The server's body is already a
+// sentence in the recipient's language; subject_ref is the PET id, never a post. The app has no provider record
+// screen, so a tap only marks it read.
+const CARE_ACCESS_TYPES = new Set([
+  "care_access_granted",
+  "care_access_revoked",
+]);
+
 // Map a pending care-access grant (a vet/business asking to see a pet's record)
 // into the screen's item shape. Tagged _source:"access" so a tap routes to the
 // Data Access trust screen where the owner can approve/deny. Owner-scoped by the
@@ -289,6 +297,23 @@ const BUSINESS_TYPES = new Set([
 ]);
 function mapDbNotification(n, t) {
   if (n.type === "emergency_contact") return mapEmergencyNotification(n, t);
+  if (CARE_ACCESS_TYPES.has(n.type)) {
+    return {
+      id: `db-${n.id}`,
+      _source: "db",
+      _dbId: n.id,
+      type: n.type,
+      title: t(`notifications.${n.type}Title`),
+      message: n.body || t(`notifications.${n.type}Fallback`),
+      staysOnScreen: true,
+      timestamp: n.created_at,
+      read: !!n.read_at,
+      avatar: n.actor_avatar || null,
+      relatedBookingId: null,
+      relatedPetId: null,
+      relatedPostId: null,
+    };
+  }
   if (WALK_REQUEST_TYPES.has(n.type)) {
     const { title, message } = walkRequestDisplay(n, t);
     const accepted = n.type === "walk_request_accepted";
@@ -455,7 +480,10 @@ const NotificationIcon = ({ type }) => {
     case "training":
       return <Target size={18} color={COLORS.sageDark} />;
     case "access":
+    case "care_access_granted":
       return <ShieldCheck size={18} color={COLORS.sageDark} />;
+    case "care_access_revoked":
+      return <ShieldCheck size={18} color={COLORS.mutedBrown} />;
     case "vetNote":
       return <FileText size={18} color={COLORS.terracotta} />;
     default:
@@ -586,8 +614,8 @@ export default function NotificationsScreen() {
 
     if (notif._source === "db") {
       if (!notif.read) markRead.mutate({ ids: [notif._dbId] });
-      // Everything about a finder is on the card itself: stay here.
-      if (notif.isEmergency) return;
+      // Everything about a finder, or a change of record access, is on the card itself: stay here.
+      if (notif.isEmergency || notif.staysOnScreen) return;
       if (notif.relatedBookingId) {
         // Booking lifecycle → open the booking summary (id = appointment id).
         router.push({
