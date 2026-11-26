@@ -216,8 +216,8 @@ Compartimos información solo según sea necesario para operar el Servicio:
   postulás para adoptar o pedís una receta/cotización de seguro, el negocio correspondiente recibe la
   información necesaria para atenderte, incluido lo que vos escribas o adjuntes. **La historia clínica
   de tu perro se abre a un negocio solo cuando vos elegís compartirla** (mirá "Compartir la historia
-  clínica de tu perro con un negocio", más abajo en esta sección; los enlaces para veterinarias que
-  creás también se describen en esta sección).
+  clínica de tu perro con un negocio", más abajo en esta sección; los enlaces para veterinarias y los
+  enlaces de invitación que creás también se describen en esta sección).
 - **Con las personas que invitás** — familiares o cuidadores a quienes otorgás acceso, con el alcance
   y por el plazo que definís; podés revocar el acceso en cualquier momento.
 - **Quien encuentra a tu perro, tu familia y cuidadores**: lo que envía quien encuentra a un perro
@@ -270,6 +270,24 @@ visto antes). No muestra la lista de documentos, los chequeos con foto ni los es
 laboratorio. Aprobar todo lo que pidió un negocio también puede permitir que su equipo agregue notas
 veterinarias, recetas o vacunas a la historia de tu perro y, si lo pidió, que registre sesiones de
 cuidado, como paseos o peluquería.
+
+**Invitar a una veterinaria con un enlace.** En las versiones de la app que lo ofrecen, si sos la
+persona dueña del perro podés crear un enlace de invitación para ese perro y mandárselo vos a tu
+veterinaria; PawPi no envía ningún correo. No es lo mismo que el enlace para veterinarias público que
+se menciona más arriba. El enlace de invitación vence a los 7 días, sirve una sola vez y podés
+anularlo mientras no se haya usado. No está atado a un negocio en particular: cualquier persona
+activa del equipo de una veterinaria publicada en PawPi que tenga el enlace e inicie sesión puede ver
+el nombre de tu perro, tu nombre visible y la fecha de vencimiento del enlace, sin foto ni nada de la
+historia clínica. Mandáselo solo a la veterinaria que querés invitar.
+
+Aceptar la invitación solo te envía una solicitud de ese negocio para ver la historia. El negocio no
+ve nada de la historia si no aprobás la solicitud. Podés compartir por partes, en las versiones de la
+app que permiten elegir, aprobar todo lo pedido (el acceso de lectura descrito arriba en "Acceso
+completo anterior", que dura hasta que lo revoques) o rechazar la solicitud. De cada invitación
+guardamos el perro, tu cuenta, cuándo se creó y cuándo vence, si la anulaste y cuándo y, una vez
+usada, cuándo, qué integrante del equipo la usó y para qué negocio. Guardamos una versión codificada
+(hash) del código secreto del enlace, no el enlace en sí, y conservamos el registro de la invitación
+hasta que se borre el perro o tu cuenta.
 
 **Cómo termina y qué registramos.** Podés revocar el acceso cuando quieras en la pantalla Acceso a
 datos de la app. El acceso compartido por partes además termina solo cuando vence el plazo. PawPi

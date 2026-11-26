@@ -11,6 +11,12 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ---
 
+## Privacy page: vet invite links (website, after this privacy-wording PR deploys)
+
+- [ ] `https://www.pawpi.info/privacy` in ES and EN: section 7 has "Invitar a una veterinaria con un enlace" / "Inviting a vet by link" (two paragraphs, just before how access ends), and the date is 26 November 2026.
+
+---
+
 ## Privacy page: sharing the vet record (website, after the privacy-wording PR deploys)
 
 - [ ] `https://www.pawpi.info/privacy` in ES and EN: section 7 has "Compartir la historia clínica de tu perro con un negocio" / "Sharing your dog's Vet Record with a business", with the eight parts as a list, and the date is 26 November 2026.

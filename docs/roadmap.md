@@ -18,6 +18,12 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-26 — Privacy Policy wording for vet invite links (EN + ES; website only, no build)
+- Section 7 of `content/legal/privacy.{en,es}.md` and the `docs/legal/` mirrors: new passage on inviting a vet by link (expiry, single use, withdrawal, what an invited vet business sees, the owner's approval, what is stored), and the provider bullet now names invite links.
+- "Last updated" stays November 26, 2026; `PRIVACY_VERSION` / `TERMS_VERSION` unchanged.
+
+---
+
 ## 2026-11-26 — Share the vet record by section, with an end date (mobile) — needs the next EAS build (server side live); no migration, server or dependency change in this part
 - **Share** (Vet Record, Data Access, booking summary) opens one sheet: pick the vet, pick among 8 parts (profile, emergency contact, insurance, vet notes, vaccinations, documents, photo checks, lab results) and a length (7 days, 30 days, 1 year, until revoked). Nothing is pre-selected. A review step says who can see what, then explicit consent.
 - The app reports access as given only when the server's grant matches the choice exactly. Otherwise it says so, and revokes a newly created grant that differs.
