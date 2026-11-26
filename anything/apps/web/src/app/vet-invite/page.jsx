@@ -16,6 +16,7 @@ import useUser from "@/utils/useUser";
 
 export const INVITE_STORAGE_KEY = "pawpi.vetInvite";
 const SIGN_IN_HREF = "/account/signin?callbackUrl=%2Fvet-invite";
+const SIGN_UP_HREF = "/account/signup?callbackUrl=%2Fvet-invite";
 
 // Storage can be unavailable (private windows, blocked site data): the page then works until it is left.
 const storage = {
@@ -211,7 +212,7 @@ export default function VetInvitePage() {
         <a href={SIGN_IN_HREF} style={primary}>
           {t.signedOut.signIn}
         </a>
-        <a href="/account/signup" style={secondary}>
+        <a href={SIGN_UP_HREF} style={secondary}>
           {t.signedOut.signUp}
         </a>
       </Message>

@@ -25,6 +25,11 @@ describe("resolveCallbackUrl", () => {
     ).toBe("/auth/expo-web-success?next=/onboarding");
   });
 
+  it("returns a vet-invite visitor to the invite page, as a web visit", () => {
+    expect(resolveCallbackUrl("?callbackUrl=%2Fvet-invite")).toBe("/vet-invite");
+    expect(isMobileAuthWebview("?callbackUrl=%2Fvet-invite")).toBe(false);
+  });
+
   it("uses the provided fallback when given one", () => {
     expect(resolveCallbackUrl("", "/somewhere")).toBe("/somewhere");
   });

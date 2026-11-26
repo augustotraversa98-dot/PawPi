@@ -1,5 +1,6 @@
 import { useState } from "react";
 import useAuth from "@/utils/useAuth";
+import { isMobileAuthWebview } from "@/utils/resolveCallbackUrl";
 import {
   validatePassword,
   passwordStrength,
@@ -142,12 +143,12 @@ export default function SignUpPage() {
         return;
       }
 
-      // Account created. Record Terms/Privacy consent against the new session. The mobile
-      // web-auth bridge opens this page with an explicit ?callbackUrl= (see resolveCallbackUrl);
-      // its presence is what distinguishes a mobile sign-up from a standalone-web one.
+      // Account created. Record Terms/Privacy consent against the new session. A sign-up is a
+      // mobile one only when ?callbackUrl= is one of the mobile web-auth bridge targets (see
+      // isMobileAuthWebview); web pages also pass a callbackUrl to bring the visitor back.
       const isMobileBridge =
         typeof window !== "undefined" &&
-        new URLSearchParams(window.location.search).has("callbackUrl");
+        isMobileAuthWebview(window.location.search);
       await recordConsent(isMobileBridge ? "mobile_signup" : "web_signup");
 
       // Perform the redirect manually to the resolved callback url.
