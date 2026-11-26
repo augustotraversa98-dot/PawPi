@@ -6,8 +6,19 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Keyboard, Platform, ScrollView, StyleSheet, TextInput } from "react-native";
-import { computeVisibleBottom } from "@/utils/keyboardLayout";
+import {
+  Dimensions,
+  Keyboard,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+} from "react-native";
+import {
+  computeFollowDelay,
+  computeSheetOffset,
+  computeVisibleBottom,
+} from "@/utils/keyboardLayout";
 
 // Gap kept between the bottom of the focused input and the top of the keyboard.
 export const KEYBOARD_INPUT_MARGIN = 16;
@@ -43,6 +54,49 @@ export function computeScrollDelta(
   return Number.isFinite(delta) ? Math.max(0, delta) : 0;
 }
 
+// Pause before following a focus / content-size / keyboard-frame change, so layout
+// has settled when we measure.
+const FOLLOW_DELAY_MS = 60;
+
+// Which scroll view the focused field belongs to. Containment alone is not enough: a
+// form inside a <Modal> that is rendered by a scroll view is also "inside" that outer
+// scroll view. The focus event bubbles innermost-first, so the first one to see it owns it.
+let focusOwner = null;
+const claimedFocusEvents = new WeakSet();
+
+function claimFocus(owner, event) {
+  const key = event?.nativeEvent;
+  if (key && typeof key === "object") {
+    if (claimedFocusEvents.has(key)) return;
+    claimedFocusEvents.add(key);
+  }
+  focusOwner = owner;
+}
+
+/**
+ * Run `callback` only if `input` lives inside this scroll view. Measuring the input
+ * relative to the content view fails natively when it is not a descendant. When the
+ * check is not available the callback runs (the previous behaviour).
+ */
+function whenContained(scrollView, input, callback) {
+  const content = scrollView.getInnerViewRef?.();
+  if (content == null || typeof input.measureLayout !== "function") {
+    callback();
+    return;
+  }
+  input.measureLayout(
+    content,
+    () => {
+      try {
+        callback();
+      } catch {
+        // stale node during measure — ignore, keyboard still works
+      }
+    },
+    () => {},
+  );
+}
+
 /**
  * KeyboardAwareScrollView
  *
@@ -61,12 +115,38 @@ export function computeScrollDelta(
  * Measurement runs on keyboardWillShow (fast response while the keyboard
  * animates in) and again on keyboardDidShow (authoritative — any ancestor
  * KeyboardAvoidingView has finished its layout animation by then, so the
- * remaining overlap is measured against settled positions). iOS re-posts
- * these notifications when focus moves between inputs, which re-runs the
- * adjustment for the newly focused input.
+ * remaining overlap is measured against settled positions).
+ *
+ * While the keyboard stays up it also re-runs:
+ *  - when focus moves to another field (the TextInput's onFocus bubbles here),
+ *  - when the content grows or shrinks (a multiline field gaining a line, so the
+ *    caret stays visible; also the commit of the keyboard padding itself, without
+ *    which a field near the bottom cannot be scrolled far enough),
+ *  - when the keyboard changes height (iOS keyboardWillChangeFrame).
+ *
+ * Only the INNERMOST scroll view that contains the focused field scrolls: other
+ * mounted scroll views (the screen behind a modal) hear the same keyboard events
+ * and must stay where they are.
+ *
+ * `inPageSheet`: REQUIRED on a scroll view inside a `presentationStyle="pageSheet"`
+ * modal (guard test rule 7). There iOS measures relative to the sheet, not the
+ * screen, so without it the field stays hidden by the sheet's top offset. The scroll
+ * view must run to the bottom of the sheet.
+ *
+ * The focused field is read from `TextInput.State`. The app wraps TextInput
+ * (polyfills/native/textinput.native.jsx), and that wrapper must keep `State`.
  */
 const KeyboardAwareScrollView = forwardRef(function KeyboardAwareScrollView(
-  { children, contentContainerStyle, onScroll, scrollEventThrottle, ...props },
+  {
+    children,
+    contentContainerStyle,
+    onScroll,
+    onFocus,
+    onContentSizeChange,
+    scrollEventThrottle,
+    inPageSheet = false,
+    ...props
+  },
   ref,
 ) {
   const scrollRef = useRef(null);
@@ -75,41 +155,58 @@ const KeyboardAwareScrollView = forwardRef(function KeyboardAwareScrollView(
 
   useImperativeHandle(ref, () => scrollRef.current);
 
-  useEffect(() => {
-    // The whole sequence is guarded: it runs inside native measureInWindow
-    // callbacks that can fire after the focused input (or this scroll view) has
-    // unmounted — e.g. tapping the name field on the first onboarding step,
-    // where the keyboard opens as the wizard is still settling. Measuring or
-    // scrolling against a stale node there crashed the app on device, so every
-    // native call is behind a type guard and a try/catch. A skipped adjustment
-    // just means the keyboard-avoidance is a no-op that once; it never throws.
-    const adjustForKeyboard = (event) => {
-      try {
-        const keyboardTopY = event?.endCoordinates?.screenY;
-        const scrollView = scrollRef.current;
-        if (scrollView == null || typeof keyboardTopY !== "number") return;
+  // Window Y of the keyboard's top edge while it is up, null while it is down.
+  const keyboardTopRef = useRef(null);
+  // Stable identity of this instance in the focus-ownership check.
+  const ownerRef = useRef({});
+  const lastScrollAtRef = useRef(0);
+  const followTimerRef = useRef(null);
 
-        const scrollHost = scrollView.getNativeScrollRef?.() ?? scrollView;
-        if (typeof scrollHost?.measureInWindow !== "function") return;
+  // The whole sequence is guarded: it runs inside native measureInWindow
+  // callbacks that can fire after the focused input (or this scroll view) has
+  // unmounted — e.g. tapping the name field on the first onboarding step,
+  // where the keyboard opens as the wizard is still settling. Measuring or
+  // scrolling against a stale node there crashed the app on device, so every
+  // native call is behind a type guard and a try/catch. A skipped adjustment
+  // just means the keyboard-avoidance is a no-op that once; it never throws.
+  const adjustForKeyboard = useCallback(() => {
+    try {
+      const keyboardTopY = keyboardTopRef.current;
+      const scrollView = scrollRef.current;
+      if (scrollView == null || typeof keyboardTopY !== "number") return;
 
-        scrollHost.measureInWindow((sx, sy, sw, sh) => {
-          try {
-            setKeyboardPadding(computeKeyboardPadding(sy + sh, keyboardTopY));
+      const scrollHost = scrollView.getNativeScrollRef?.() ?? scrollView;
+      if (typeof scrollHost?.measureInWindow !== "function") return;
 
-            const input = TextInput.State.currentlyFocusedInput?.();
-            if (input == null || typeof input.measureInWindow !== "function") {
-              return;
-            }
+      scrollHost.measureInWindow((sx, measuredY, sw, sh) => {
+        try {
+          // The keyboard can have left while the measure was in flight.
+          if (keyboardTopRef.current == null) return;
+          // Converts measured Y values to screen coordinates (see computeSheetOffset).
+          const sheetOffset =
+            inPageSheet && Platform.OS === "ios"
+              ? computeSheetOffset(Dimensions.get("window").height, measuredY + sh)
+              : 0;
+          const scrollBottomY = measuredY + sh + sheetOffset;
+          setKeyboardPadding(computeKeyboardPadding(scrollBottomY, keyboardTopY));
+
+          const input = TextInput.State?.currentlyFocusedInput?.();
+          if (input == null || typeof input.measureInWindow !== "function") {
+            return;
+          }
+          if (focusOwner != null && focusOwner !== ownerRef.current) return;
+          whenContained(scrollView, input, () => {
             input.measureInWindow((ix, iy, iw, ih) => {
               try {
                 // Measure against what is actually visible: a pinned footer between
                 // the scroll view and the keyboard hides an input that is "above the
                 // keyboard" but below the scroll view's own bottom edge.
                 const delta = computeScrollDelta(
-                  iy + ih,
-                  computeVisibleBottom(sy + sh, keyboardTopY),
+                  iy + ih + sheetOffset,
+                  computeVisibleBottom(scrollBottomY, keyboardTopY),
                 );
                 if (delta > 0 && typeof scrollView.scrollTo === "function") {
+                  lastScrollAtRef.current = Date.now();
                   scrollView.scrollTo({
                     y: scrollOffsetYRef.current + delta,
                     animated: true,
@@ -119,29 +216,116 @@ const KeyboardAwareScrollView = forwardRef(function KeyboardAwareScrollView(
                 // stale node during the scroll — ignore, keyboard still works
               }
             });
-          } catch {
-            // stale node during measure — ignore, keyboard still works
-          }
-        });
-      } catch {
-        // never let keyboard-avoidance bookkeeping crash the screen
+          });
+        } catch {
+          // stale node during measure — ignore, keyboard still works
+        }
+      });
+    } catch {
+      // never let keyboard-avoidance bookkeeping crash the screen
+    }
+  }, [inPageSheet]);
+
+  const cancelFollow = useCallback(() => {
+    if (followTimerRef.current != null) clearTimeout(followTimerRef.current);
+    followTimerRef.current = null;
+  }, []);
+
+  // Re-run the adjustment shortly (debounced). Waits out a scroll that is still
+  // animating: measuring mid-animation would overshoot.
+  const followFocusedInput = useCallback(
+    (minDelay) => {
+      if (keyboardTopRef.current == null) return;
+      cancelFollow();
+      followTimerRef.current = setTimeout(
+        () => {
+          followTimerRef.current = null;
+          adjustForKeyboard();
+        },
+        computeFollowDelay(Date.now() - lastScrollAtRef.current, minDelay),
+      );
+    },
+    [adjustForKeyboard, cancelFollow],
+  );
+
+  useEffect(() => {
+    const owner = ownerRef.current;
+    return () => {
+      if (focusOwner === owner) focusOwner = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const showKeyboard = (event) => {
+      const keyboardTopY = event?.endCoordinates?.screenY;
+      if (typeof keyboardTopY !== "number") return;
+      keyboardTopRef.current = keyboardTopY;
+      if (computeFollowDelay(Date.now() - lastScrollAtRef.current, 0) > 0) {
+        followFocusedInput(0);
+      } else {
+        adjustForKeyboard();
       }
     };
-    const resetForKeyboard = () => setKeyboardPadding(0);
+    // The keyboard changed size while up (suggestion bar, number pad, emoji).
+    const changeFrame = (event) => {
+      const keyboardTopY = event?.endCoordinates?.screenY;
+      if (keyboardTopRef.current == null || typeof keyboardTopY !== "number") return;
+      if (keyboardTopY === keyboardTopRef.current) return;
+      keyboardTopRef.current = keyboardTopY;
+      followFocusedInput(FOLLOW_DELAY_MS);
+    };
+    const hideKeyboard = () => {
+      keyboardTopRef.current = null;
+      cancelFollow();
+      setKeyboardPadding(0);
+    };
 
     const subscriptions =
       Platform.OS === "ios"
         ? [
-            Keyboard.addListener("keyboardWillShow", adjustForKeyboard),
-            Keyboard.addListener("keyboardDidShow", adjustForKeyboard),
-            Keyboard.addListener("keyboardWillHide", resetForKeyboard),
+            Keyboard.addListener("keyboardWillShow", showKeyboard),
+            Keyboard.addListener("keyboardDidShow", showKeyboard),
+            Keyboard.addListener("keyboardWillChangeFrame", changeFrame),
+            Keyboard.addListener("keyboardWillHide", hideKeyboard),
           ]
         : [
-            Keyboard.addListener("keyboardDidShow", adjustForKeyboard),
-            Keyboard.addListener("keyboardDidHide", resetForKeyboard),
+            Keyboard.addListener("keyboardDidShow", showKeyboard),
+            Keyboard.addListener("keyboardDidHide", hideKeyboard),
           ];
-    return () => subscriptions.forEach((subscription) => subscription.remove());
-  }, []);
+    // Mounted while the keyboard is already up (a form opened from a focused
+    // screen): no show event is coming, so start from the current frame.
+    try {
+      const current = Keyboard.metrics?.();
+      if (current && current.height > 0 && typeof current.screenY === "number") {
+        keyboardTopRef.current = current.screenY;
+      }
+    } catch {
+      // not available — the next keyboard event sets it
+    }
+    return () => {
+      cancelFollow();
+      subscriptions.forEach((subscription) => subscription.remove());
+    };
+  }, [adjustForKeyboard, cancelFollow, followFocusedInput]);
+
+  // Focus moved to another field. TextInput focus events bubble through here.
+  const handleFocus = useCallback(
+    (event) => {
+      claimFocus(ownerRef.current, event);
+      onFocus?.(event);
+      followFocusedInput(FOLLOW_DELAY_MS);
+    },
+    [onFocus, followFocusedInput],
+  );
+
+  // The content changed height: keep the caret / focused field visible.
+  const handleContentSizeChange = useCallback(
+    (width, height) => {
+      onContentSizeChange?.(width, height);
+      followFocusedInput(FOLLOW_DELAY_MS);
+    },
+    [onContentSizeChange, followFocusedInput],
+  );
 
   const handleScroll = useCallback(
     (event) => {
@@ -167,6 +351,8 @@ const KeyboardAwareScrollView = forwardRef(function KeyboardAwareScrollView(
       {...props}
       ref={scrollRef}
       onScroll={handleScroll}
+      onFocus={handleFocus}
+      onContentSizeChange={handleContentSizeChange}
       scrollEventThrottle={scrollEventThrottle ?? 16}
       contentContainerStyle={[
         contentContainerStyle,

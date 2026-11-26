@@ -189,6 +189,7 @@ function ClaimModal({ visible, providerId, onClose }) {
           </PressableScale>
         </View>
         <KeyboardAwareScrollView
+          inPageSheet
           contentContainerStyle={{ padding: SPACING.md, gap: SPACING.lg }}
           keyboardShouldPersistTaps="handled"
         >

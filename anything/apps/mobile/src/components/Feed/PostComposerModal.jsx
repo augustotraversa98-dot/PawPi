@@ -370,6 +370,7 @@ export const PostComposerModal = memo(function PostComposerModal({
         ) : (
           // ── STEP 2: Preview + caption ──
           <KeyboardAwareScrollView
+            inPageSheet
             ref={scrollRef}
             testID="composer-scroll"
             contentContainerStyle={{ padding: 20, paddingBottom: 40 }}

@@ -200,6 +200,7 @@ export default function StartWalkModal({
         </View>
 
         <KeyboardAwareScrollView
+          inPageSheet
           style={{ flex: 1 }}
           contentContainerStyle={{
             padding: 20,

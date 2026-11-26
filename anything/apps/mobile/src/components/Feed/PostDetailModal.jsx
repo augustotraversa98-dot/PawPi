@@ -185,6 +185,7 @@ export const PostDetailModal = memo(function PostDetailModal({
         </View>
 
         <KeyboardAwareScrollView
+          inPageSheet
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
         >

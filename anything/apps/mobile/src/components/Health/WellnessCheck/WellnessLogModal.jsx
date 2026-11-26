@@ -249,6 +249,7 @@ export default function WellnessLogModal({ visible, reminder, onClose, onSaved }
 
           {/* Content */}
           <KeyboardAwareScrollView
+            inPageSheet
             style={{ flex: 1 }}
             contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
             keyboardShouldPersistTaps="handled"

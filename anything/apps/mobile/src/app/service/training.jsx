@@ -473,7 +473,7 @@ function BookTrainingModal({ provider, petId, onClose }) {
           </PressableScale>
         </View>
 
-        <KeyboardAwareScrollView contentContainerStyle={{ padding: SPACING.lg }}>
+        <KeyboardAwareScrollView inPageSheet contentContainerStyle={{ padding: SPACING.lg }}>
           {provider ? (
             <Text style={[TYPE.callout, { color: COLORS.mutedBrown, marginBottom: SPACING.lg }]}>
               {provider.name}

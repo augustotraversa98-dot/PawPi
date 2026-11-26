@@ -38,6 +38,7 @@ jest.mock("@/hooks/useEmergencyCard", () => ({
 }));
 
 import EmergencyCardScreen from "./emergency-card";
+import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -161,4 +162,22 @@ test("the owner still sees every control", () => {
   expect(getByTestId("toggle-medical")).toBeTruthy();
   expect(getByTestId("create-link")).toBeTruthy();
   expect(queryByTestId("emergency-owner-only")).toBeNull();
+});
+
+test("typing in the contact field never remounts it, and it sits in the keyboard-aware scroll", () => {
+  mockData.card.contact_mode = "phone";
+  const api = render(<EmergencyCardScreen />);
+  const field = api.getByTestId("contact-value");
+  fireEvent.changeText(field, "1");
+  api.rerender(<EmergencyCardScreen />);
+  fireEvent.changeText(api.getByTestId("contact-value"), "12");
+  expect(api.getByTestId("contact-value")).toBe(field);
+  // Nothing is saved (and so nothing refetches) until the field is left.
+  expect(mockUpdate).not.toHaveBeenCalled();
+  fireEvent(field, "endEditing", { nativeEvent: { text: "12" } });
+  expect(mockUpdate).toHaveBeenCalledWith({ contact_value: "12" });
+
+  let node = field.parent;
+  while (node && node.type !== KeyboardAwareScrollView) node = node.parent;
+  expect(node).toBeTruthy();
 });

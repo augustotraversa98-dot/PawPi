@@ -1,10 +1,9 @@
 import { normalizeWeightUnit } from "@/utils/weightUnitAlias";
 import { COLORS } from "@/constants/theme";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import {
   View,
   Text,
-  Modal,
   TextInput,
   ActivityIndicator,
   Share,
@@ -28,7 +27,7 @@ import {
   getDisclaimer,
 } from "@/utils/healthInsights";
 import { summaryToText } from "@/utils/vetSummaryText";
-import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import KeyboardSafeSheet from "@/components/KeyboardSafeSheet";
 
 const C = {
   cream: COLORS.cream,
@@ -73,6 +72,8 @@ export default function VetSummaryModal({ visible, onClose }) {
 
   const [rangeKey, setRangeKey] = useState("7days");
   const [questions, setQuestions] = useState(["", "", ""]);
+  // Return key walks Question 1 -> 2 -> 3 without closing the keyboard.
+  const questionRefs = useRef([]);
 
   const today = getLocalPostDateString();
   const days = RANGES.find((r) => r.key === rangeKey)?.days || 7;
@@ -97,9 +98,15 @@ export default function VetSummaryModal({ visible, onClose }) {
     setQuestions((qs) => qs.map((q, idx) => (idx === i ? v : q)));
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}>
-        {/* Header */}
+    // Shared keyboard-safe shell (docs/keyboard-convention.md): the questions sit at
+    // the bottom of a long report, so the focused one has to stay above the keyboard.
+    <KeyboardSafeSheet
+      visible={visible}
+      onRequestClose={onClose}
+      variant="screen"
+      backgroundColor={C.cream}
+      contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}
+      header={
         <View style={styles.header}>
           <Stethoscope size={20} color={C.coral} />
           <Text style={{ flex: 1, fontSize: 18, fontWeight: "800", color: C.warmBrown, marginLeft: 8 }}>
@@ -109,8 +116,9 @@ export default function VetSummaryModal({ visible, onClose }) {
             <X size={22} color={C.warmBrown} />
           </PressableScale>
         </View>
-
-        {/* Range selector */}
+      }
+      // Range selector: hidden while typing to give the questions the room.
+      subheader={
         <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 20, paddingTop: 14 }}>
           {RANGES.map((r) => (
             <PressableScale
@@ -128,151 +136,155 @@ export default function VetSummaryModal({ visible, onClose }) {
             </PressableScale>
           ))}
         </View>
+      }
+    >
+      {isLoading && <ActivityIndicator color={C.coral} style={{ marginTop: 30 }} />}
+      {error && (
+        <Text testID="vetsummary-error" style={{ color: C.mutedBrown, marginTop: 20 }}>
+          {t("health.vetSummary.loadError")}
+        </Text>
+      )}
 
-        <KeyboardAwareScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
-          {isLoading && <ActivityIndicator color={C.coral} style={{ marginTop: 30 }} />}
-          {error && (
-            <Text testID="vetsummary-error" style={{ color: C.mutedBrown, marginTop: 20 }}>
-              {t("health.vetSummary.loadError")}
-            </Text>
-          )}
+      {!isLoading && summary && (
+        <>
+          {/* Recap */}
+          <View style={styles.recapCard} testID="vetsummary-recap">
+            <Text style={{ fontSize: 14, color: C.warmBrown, lineHeight: 21 }}>{recap}</Text>
+          </View>
 
-          {!isLoading && summary && (
+          {/* Flags */}
+          {flags.length > 0 && (
             <>
-              {/* Recap */}
-              <View style={styles.recapCard} testID="vetsummary-recap">
-                <Text style={{ fontSize: 14, color: C.warmBrown, lineHeight: 21 }}>{recap}</Text>
-              </View>
-
-              {/* Flags */}
-              {flags.length > 0 && (
-                <>
-                  <Text style={styles.sectionLabel}>{t("health.vetSummary.worthDiscussing")}</Text>
-                  {flags.map((f) => (
-                    <View key={f.key} testID={`flag-${f.key}`} style={styles.flagCard}>
-                      <AlertCircle size={18} color={f.severity === "notable" ? C.coral : C.amber} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 14, fontWeight: "800", color: C.warmBrown }}>{f.title}</Text>
-                        <Text style={{ fontSize: 13, color: C.mutedBrown, marginTop: 2 }}>{f.detail}</Text>
-                      </View>
-                    </View>
-                  ))}
-                </>
-              )}
-
-              {/* Stats */}
-              <Text style={styles.sectionLabel}>{t("health.vetSummary.logsInPeriod")}</Text>
-              <View style={[styles.recapCard, { flexDirection: "row", flexWrap: "wrap" }]}>
-                <Stat label={t("health.vetSummary.stFood")} value={summary.food?.count || 0} />
-                <Stat label={t("health.vetSummary.stStool")} value={summary.poo?.count || 0} />
-                <Stat label={t("health.vetSummary.stUrination")} value={summary.pee?.count || 0} />
-                <Stat label={t("health.vetSummary.stVomit")} value={summary.vomit?.episodes || 0} />
-                <Stat label={t("health.vetSummary.stWalks")} value={summary.walks?.count || 0} />
-                <Stat label={t("health.vetSummary.stPhotoChecks")} value={summary.photoChecks?.count || 0} />
-                <Stat label={t("health.vetSummary.stQuickChecks")} value={summary.generalChecks?.count || 0} />
-                <Stat label={t("health.vetSummary.stWeighIns")} value={summary.weight?.series?.length || 0} />
-              </View>
-
-              {/* Walk pattern — frequency (per week) + recent per-walk durations, so a vet sees
-                  the cadence, not just a total (ticket 2.102). Degrades if items/perWeek absent. */}
-              {summary.walks?.count > 0 && (
-                <View style={styles.recapCard} testID="walk-pattern">
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: C.warmBrown }}>{t("health.vetSummary.walkPattern")}</Text>
-                  <Text style={{ fontSize: 14, color: C.mutedBrown, marginTop: 4 }}>
-                    {t("health.vetSummary.walkPatternSummary", { perWeek: summary.walks.perWeek ?? 0 })}
-                    {summary.walks.items?.length
-                      ? t("health.vetSummary.walkPatternRecent", {
-                          list: summary.walks.items
-                            .slice(0, 4)
-                            .map((w) => w.duration_minutes)
-                            .join(", "),
-                        })
-                      : ""}
-                  </Text>
-                </View>
-              )}
-
-              {/* Weight */}
-              {summary.weight?.series?.length > 0 && (
-                <View style={styles.recapCard}>
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: C.warmBrown }}>{t("health.vetSummary.weight")}</Text>
-                  <Text style={{ fontSize: 14, color: C.mutedBrown, marginTop: 4 }}>
-                    {t("health.vetSummary.weightSummary", {
-                      first: summary.weight.series[0].weight,
-                      firstUnit: normalizeWeightUnit(summary.weight.series[0].unit),
-                      last: summary.weight.series[summary.weight.series.length - 1].weight,
-                      lastUnit: normalizeWeightUnit(summary.weight.series[summary.weight.series.length - 1].unit),
-                      count: summary.weight.series.length,
-                    })}
-                  </Text>
-                </View>
-              )}
-
-              {/* Medications */}
-              {(summary.meds || []).length > 0 && (
-                <>
-                  <Text style={styles.sectionLabel}>{t("health.vetSummary.medications")}</Text>
-                  {summary.meds.map((m) => (
-                    <View key={m.name} style={styles.flagCard}>
-                      <Text style={{ flex: 1, fontSize: 14, fontWeight: "700", color: C.warmBrown }}>
-                        {m.name}{m.dose ? ` · ${m.dose}` : ""}
-                      </Text>
-                      <Text style={{ fontSize: 13, color: m.missed ? C.coral : C.green, fontWeight: "700" }}>
-                        {t("health.vetSummary.medGiven", { given: m.given, total: m.total })}
-                      </Text>
-                    </View>
-                  ))}
-                </>
-              )}
-
-              {/* Conditions / allergies */}
-              {((summary.conditions || []).length > 0 || (summary.allergies || []).length > 0) && (
-                <>
-                  <Text style={styles.sectionLabel}>{t("health.vetSummary.conditionsAllergies")}</Text>
-                  <View style={styles.recapCard}>
-                    {summary.conditions?.map((c, i) => (
-                      <Text key={`c${i}`} style={{ fontSize: 14, color: C.warmBrown, marginBottom: 4 }}>
-                        • {c.condition}{c.status ? ` (${c.status})` : ""}
-                      </Text>
-                    ))}
-                    {summary.allergies?.map((a, i) => (
-                      <Text key={`a${i}`} style={{ fontSize: 14, color: C.warmBrown, marginBottom: 4 }}>
-                        • {t("health.vetSummary.allergyLine", { allergen: a.allergen })}{a.severity ? ` (${a.severity})` : ""}
-                      </Text>
-                    ))}
+              <Text style={styles.sectionLabel}>{t("health.vetSummary.worthDiscussing")}</Text>
+              {flags.map((f) => (
+                <View key={f.key} testID={`flag-${f.key}`} style={styles.flagCard}>
+                  <AlertCircle size={18} color={f.severity === "notable" ? C.coral : C.amber} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: "800", color: C.warmBrown }}>{f.title}</Text>
+                    <Text style={{ fontSize: 13, color: C.mutedBrown, marginTop: 2 }}>{f.detail}</Text>
                   </View>
-                </>
-              )}
-
-              {/* Questions for the vet */}
-              <Text style={styles.sectionLabel}>{t("health.vetSummary.questionsForVet")}</Text>
-              {questions.map((q, i) => (
-                <TextInput
-                  key={i}
-                  testID={`question-${i}`}
-                  value={q}
-                  onChangeText={(v) => setQuestion(i, v)}
-                  placeholder={t("health.vetSummary.questionPlaceholder", { n: i + 1 })}
-                  placeholderTextColor={C.mutedBrown + "90"}
-                  style={styles.input}
-                />
+                </View>
               ))}
-
-              {/* Disclaimer */}
-              <View style={styles.disclaimer}>
-                <Text style={{ fontSize: 12, color: C.mutedBrown, lineHeight: 17 }}>{getDisclaimer()}</Text>
-              </View>
-
-              {/* Share */}
-              <PressableScale testID="vetsummary-share" onPress={onShare} style={styles.shareBtn}>
-                <Share2 size={18} color="#FFF" />
-                <Text style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}>{t("health.vetSummary.shareWithVet")}</Text>
-              </PressableScale>
             </>
           )}
-        </KeyboardAwareScrollView>
-      </View>
-    </Modal>
+
+          {/* Stats */}
+          <Text style={styles.sectionLabel}>{t("health.vetSummary.logsInPeriod")}</Text>
+          <View style={[styles.recapCard, { flexDirection: "row", flexWrap: "wrap" }]}>
+            <Stat label={t("health.vetSummary.stFood")} value={summary.food?.count || 0} />
+            <Stat label={t("health.vetSummary.stStool")} value={summary.poo?.count || 0} />
+            <Stat label={t("health.vetSummary.stUrination")} value={summary.pee?.count || 0} />
+            <Stat label={t("health.vetSummary.stVomit")} value={summary.vomit?.episodes || 0} />
+            <Stat label={t("health.vetSummary.stWalks")} value={summary.walks?.count || 0} />
+            <Stat label={t("health.vetSummary.stPhotoChecks")} value={summary.photoChecks?.count || 0} />
+            <Stat label={t("health.vetSummary.stQuickChecks")} value={summary.generalChecks?.count || 0} />
+            <Stat label={t("health.vetSummary.stWeighIns")} value={summary.weight?.series?.length || 0} />
+          </View>
+
+          {/* Walk pattern — frequency (per week) + recent per-walk durations, so a vet sees
+              the cadence, not just a total (ticket 2.102). Degrades if items/perWeek absent. */}
+          {summary.walks?.count > 0 && (
+            <View style={styles.recapCard} testID="walk-pattern">
+              <Text style={{ fontSize: 13, fontWeight: "700", color: C.warmBrown }}>{t("health.vetSummary.walkPattern")}</Text>
+              <Text style={{ fontSize: 14, color: C.mutedBrown, marginTop: 4 }}>
+                {t("health.vetSummary.walkPatternSummary", { perWeek: summary.walks.perWeek ?? 0 })}
+                {summary.walks.items?.length
+                  ? t("health.vetSummary.walkPatternRecent", {
+                      list: summary.walks.items
+                        .slice(0, 4)
+                        .map((w) => w.duration_minutes)
+                        .join(", "),
+                    })
+                  : ""}
+              </Text>
+            </View>
+          )}
+
+          {/* Weight */}
+          {summary.weight?.series?.length > 0 && (
+            <View style={styles.recapCard}>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: C.warmBrown }}>{t("health.vetSummary.weight")}</Text>
+              <Text style={{ fontSize: 14, color: C.mutedBrown, marginTop: 4 }}>
+                {t("health.vetSummary.weightSummary", {
+                  first: summary.weight.series[0].weight,
+                  firstUnit: normalizeWeightUnit(summary.weight.series[0].unit),
+                  last: summary.weight.series[summary.weight.series.length - 1].weight,
+                  lastUnit: normalizeWeightUnit(summary.weight.series[summary.weight.series.length - 1].unit),
+                  count: summary.weight.series.length,
+                })}
+              </Text>
+            </View>
+          )}
+
+          {/* Medications */}
+          {(summary.meds || []).length > 0 && (
+            <>
+              <Text style={styles.sectionLabel}>{t("health.vetSummary.medications")}</Text>
+              {summary.meds.map((m) => (
+                <View key={m.name} style={styles.flagCard}>
+                  <Text style={{ flex: 1, fontSize: 14, fontWeight: "700", color: C.warmBrown }}>
+                    {m.name}{m.dose ? ` · ${m.dose}` : ""}
+                  </Text>
+                  <Text style={{ fontSize: 13, color: m.missed ? C.coral : C.green, fontWeight: "700" }}>
+                    {t("health.vetSummary.medGiven", { given: m.given, total: m.total })}
+                  </Text>
+                </View>
+              ))}
+            </>
+          )}
+
+          {/* Conditions / allergies */}
+          {((summary.conditions || []).length > 0 || (summary.allergies || []).length > 0) && (
+            <>
+              <Text style={styles.sectionLabel}>{t("health.vetSummary.conditionsAllergies")}</Text>
+              <View style={styles.recapCard}>
+                {summary.conditions?.map((c, i) => (
+                  <Text key={`c${i}`} style={{ fontSize: 14, color: C.warmBrown, marginBottom: 4 }}>
+                    • {c.condition}{c.status ? ` (${c.status})` : ""}
+                  </Text>
+                ))}
+                {summary.allergies?.map((a, i) => (
+                  <Text key={`a${i}`} style={{ fontSize: 14, color: C.warmBrown, marginBottom: 4 }}>
+                    • {t("health.vetSummary.allergyLine", { allergen: a.allergen })}{a.severity ? ` (${a.severity})` : ""}
+                  </Text>
+                ))}
+              </View>
+            </>
+          )}
+
+          {/* Questions for the vet */}
+          <Text style={styles.sectionLabel}>{t("health.vetSummary.questionsForVet")}</Text>
+          {questions.map((q, i) => (
+            <TextInput
+              key={i}
+              ref={(node) => {
+                questionRefs.current[i] = node;
+              }}
+              returnKeyType={i < questions.length - 1 ? "next" : "done"}
+              blurOnSubmit={i === questions.length - 1}
+              onSubmitEditing={() => questionRefs.current[i + 1]?.focus()}
+              testID={`question-${i}`}
+              value={q}
+              onChangeText={(v) => setQuestion(i, v)}
+              placeholder={t("health.vetSummary.questionPlaceholder", { n: i + 1 })}
+              placeholderTextColor={C.mutedBrown + "90"}
+              style={styles.input}
+            />
+          ))}
+
+          {/* Disclaimer */}
+          <View style={styles.disclaimer}>
+            <Text style={{ fontSize: 12, color: C.mutedBrown, lineHeight: 17 }}>{getDisclaimer()}</Text>
+          </View>
+
+          {/* Share */}
+          <PressableScale testID="vetsummary-share" onPress={onShare} style={styles.shareBtn}>
+            <Share2 size={18} color="#FFF" />
+            <Text style={{ fontSize: 16, fontWeight: "800", color: "#FFF" }}>{t("health.vetSummary.shareWithVet")}</Text>
+          </PressableScale>
+        </>
+      )}
+    </KeyboardSafeSheet>
   );
 }
 

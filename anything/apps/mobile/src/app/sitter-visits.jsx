@@ -239,7 +239,7 @@ function LogVisitModal({ booking, providerId, onClose, onLogged }) {
           </TouchableOpacity>
         </View>
 
-        <KeyboardAwareScrollView contentContainerStyle={{ padding: 16 }}>
+        <KeyboardAwareScrollView inPageSheet contentContainerStyle={{ padding: 16 }}>
           {booking ? (
             <Text style={{ fontSize: 14, color: COLORS.mutedBrown, marginBottom: 16 }}>
               {booking.pet_name || t("sitterVisits.dog")}

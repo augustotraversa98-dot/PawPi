@@ -76,3 +76,32 @@ export function computeVisibleBottom(scrollViewBottomY, keyboardTopY) {
   if (!finite(scrollViewBottomY) || !finite(keyboardTopY)) return NaN;
   return Math.min(scrollViewBottomY, keyboardTopY);
 }
+
+// How long an animated scrollTo takes to settle. A measurement taken before that can
+// read a half-scrolled position and overshoot.
+export const SCROLL_SETTLE_MS = 350;
+
+/**
+ * Delay before re-measuring the focused field after a focus / content-size / keyboard
+ * frame change: at least `minDelay`, and never before the last animated scroll settled.
+ */
+export function computeFollowDelay(msSinceLastScroll, minDelay = 0) {
+  const base = finite(minDelay) ? Math.max(0, minDelay) : 0;
+  if (!finite(msSinceLastScroll) || msSinceLastScroll < 0) return base;
+  return Math.max(base, SCROLL_SETTLE_MS - msSinceLastScroll);
+}
+
+// Largest plausible gap between the screen top and a pageSheet's top edge.
+export const SHEET_MAX_OFFSET = 120;
+
+/**
+ * Inside an iOS `presentationStyle="pageSheet"` modal, measureInWindow reports positions
+ * relative to the SHEET, while the keyboard frame is reported in SCREEN coordinates. The
+ * sheet reaches the bottom of the screen, so for a scroll view that runs to the bottom of
+ * the sheet the difference is `windowHeight - its measured bottom`. Add it to every
+ * measured Y. 0 when the measurements are already in screen coordinates.
+ */
+export function computeSheetOffset(windowHeight, scrollViewBottomY) {
+  if (!finite(windowHeight) || !finite(scrollViewBottomY)) return 0;
+  return Math.max(0, Math.min(SHEET_MAX_OFFSET, Math.round(windowHeight - scrollViewBottomY)));
+}

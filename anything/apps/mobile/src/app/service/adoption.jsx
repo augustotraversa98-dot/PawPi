@@ -396,7 +396,7 @@ function AdoptionFilterSheet({ visible, filters, onApply, onClear, onClose }) {
           </PressableScale>
         </GlassSurface>
 
-        <RefreshableScrollView contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 40 }}>
+        <RefreshableScrollView inPageSheet contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 40 }}>
           <FilterGroup label={t("adoption.filter.gender")}>
             {GENDERS.map((g) => (
               <FilterPill key={g} label={g} active={draft.gender === g} onPress={() => toggle("gender", g)} />

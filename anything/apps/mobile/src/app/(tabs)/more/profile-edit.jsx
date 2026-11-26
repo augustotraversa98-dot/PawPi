@@ -32,6 +32,7 @@ import {
 import { PressableScale } from "@/components/ui";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import useBottomClearance from "@/hooks/useBottomClearance";
+import useKeyboardMetrics from "@/hooks/useKeyboardMetrics";
 import { defaultWeightUnit } from "@/utils/weightUnit";
 import useHandleAvailability, { canSaveHandle } from "@/hooks/useHandleAvailability";
 import HandleAvailabilityHint from "@/components/HandleAvailabilityHint";
@@ -58,6 +59,9 @@ export default function ProfileEditScreen() {
   const insets = useSafeAreaInsets();
   // Keeps the sticky Save footer above the native tab bar (QA 2026-10-16 bug 01).
   const bottomClearance = useBottomClearance();
+  // While typing, the Save footer joins the layout (instead of floating over the form,
+  // where it hid the focused field) and drops the tab-bar clearance.
+  const { keyboardVisible } = useKeyboardMetrics();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { t } = useTranslation();
@@ -352,7 +356,7 @@ export default function ProfileEditScreen() {
           contentContainerStyle={{
             paddingHorizontal: 20,
             paddingTop: 20,
-            paddingBottom: bottomClearance + 120,
+            paddingBottom: keyboardVisible ? SPACING.xl : bottomClearance + 120,
           }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -610,15 +614,16 @@ export default function ProfileEditScreen() {
 
         {/* Save Button */}
         <View
+          testID="profile-edit-footer"
           style={{
-            position: "absolute",
+            position: keyboardVisible ? "relative" : "absolute",
             bottom: 0,
             left: 0,
             right: 0,
             backgroundColor: COLORS.cream,
             paddingHorizontal: SPACING.xl,
-            paddingTop: SPACING.lg,
-            paddingBottom: bottomClearance + SPACING.lg,
+            paddingTop: keyboardVisible ? SPACING.md : SPACING.lg,
+            paddingBottom: keyboardVisible ? SPACING.md : bottomClearance + SPACING.lg,
             borderTopWidth: 1,
             borderTopColor: MATERIALS.hairline,
           }}

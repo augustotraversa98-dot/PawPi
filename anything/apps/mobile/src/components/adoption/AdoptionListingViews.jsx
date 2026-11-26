@@ -315,7 +315,7 @@ export function ListingDetailModal({ data, onClose, router }) {
             </View>
           </GlassSurface>
 
-          <RefreshableScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+          <RefreshableScrollView inPageSheet contentContainerStyle={{ paddingBottom: 40 }}>
             {listing.is_urgent ? (
               <View testID="detail-urgent" style={{ margin: SPACING.lg, marginBottom: 0, backgroundColor: "#C2410C", borderRadius: RADIUS.md - 4, padding: SPACING.md }}>
                 <Text style={[TYPE.body, { color: "#fff", fontWeight: "800" }]}>

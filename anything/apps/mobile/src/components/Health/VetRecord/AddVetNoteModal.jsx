@@ -92,6 +92,7 @@ export function AddVetNoteModal({ visible, onClose, petId, onSaved }) {
         </View>
 
         <KeyboardAwareScrollView
+          inPageSheet
           style={{ flex: 1 }}
           contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
         >

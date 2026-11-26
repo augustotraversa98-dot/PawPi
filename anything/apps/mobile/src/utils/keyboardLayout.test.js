@@ -6,6 +6,10 @@ import {
   FOOTER_PADDING_KEYBOARD,
   FOOTER_PADDING_RESTING,
   SHEET_MIN_HEIGHT,
+  computeFollowDelay,
+  computeSheetOffset,
+  SCROLL_SETTLE_MS,
+  SHEET_MAX_OFFSET,
 } from "./keyboardLayout";
 import { computeScrollDelta } from "@/components/KeyboardAwareScrollView";
 
@@ -117,5 +121,41 @@ describe("scroll-area budget with the keyboard up (Quick Check)", () => {
     expect(before).toBeLessThan(140);
     expect(after).toBeGreaterThan(before + 90);
     expect(after).toBeGreaterThan(200);
+  });
+});
+
+describe("computeFollowDelay (focus switch / caret follow)", () => {
+  it("uses the minimum delay once the last scroll has settled", () => {
+    expect(computeFollowDelay(SCROLL_SETTLE_MS + 1, 60)).toBe(60);
+    expect(computeFollowDelay(Number.MAX_SAFE_INTEGER, 0)).toBe(0);
+  });
+
+  it("waits out a scroll that is still animating", () => {
+    expect(computeFollowDelay(0, 60)).toBe(SCROLL_SETTLE_MS);
+    expect(computeFollowDelay(100, 60)).toBe(SCROLL_SETTLE_MS - 100);
+  });
+
+  it("never returns NaN or a negative delay", () => {
+    expect(computeFollowDelay(undefined, 60)).toBe(60);
+    expect(computeFollowDelay(NaN, NaN)).toBe(0);
+    expect(computeFollowDelay(-5, -5)).toBe(0);
+  });
+});
+
+describe("computeSheetOffset (pageSheet measurements are sheet-relative)", () => {
+  // Simulator, iPhone 16 Pro Max: window 956, sheet scroll view measured at y=180, h=714.
+  it("is the gap above the sheet", () => {
+    expect(computeSheetOffset(956, 180 + 714)).toBe(62);
+  });
+
+  it("is 0 when the measurement is already in screen coordinates", () => {
+    expect(computeSheetOffset(956, 956)).toBe(0);
+    expect(computeSheetOffset(956, 1000)).toBe(0);
+  });
+
+  it("is capped, and 0 for a missing measurement", () => {
+    expect(computeSheetOffset(956, 300)).toBe(SHEET_MAX_OFFSET);
+    expect(computeSheetOffset(956, undefined)).toBe(0);
+    expect(computeSheetOffset(NaN, 894)).toBe(0);
   });
 });
