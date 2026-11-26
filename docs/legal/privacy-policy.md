@@ -204,7 +204,8 @@ We share information only as needed to run the Service:
   request a prescription/insurance quote, the relevant business receives the information needed to
   serve you, including what you write or attach yourself. **Your dog's Vet Record is opened to a
   business only when you choose to share it** (see "Sharing your dog's Vet Record with a business"
-  below in this section; vet links you create are also described in this section).
+  below in this section; vet links and vet invite links you create are also described in this
+  section).
 - **With people you invite** — family members or caregivers you grant access to, at the scope and for
   the duration you set; you can revoke access at any time.
 - **Finders, your dog's family and caregivers**: what a finder sends goes to the dog's owner and to
@@ -254,6 +255,23 @@ exact reference (for example, one they saw earlier). It does not list your docum
 lab results. Approving everything a business asked for can also let its team add vet notes,
 prescriptions or vaccinations to your dog's record and, if it asked for this, record care sessions
 such as walks or grooming.
+
+**Inviting a vet by link.** In app versions that offer it, as the dog's owner you can create an
+invite link for that dog and send it to your vet yourself; PawPi sends no email. It is not the same
+as the public vet link mentioned above. The invite link expires after 7 days, works once, and you can
+withdraw it while it has not been used. It is not tied to one particular business: any signed-in,
+active team member of a vet business published on PawPi who has the link can see your dog's name,
+your display name and the date the link expires, with no photo and nothing from the Vet Record. Send
+it only to the vet you mean to invite.
+
+Accepting the invite only sends you a request from that business to view the record. The business
+sees nothing in the record unless you approve the request. You can share by parts, in app versions
+that let you choose, or deny the request. If that business already has a booking for your dog, you
+can also approve everything asked (the viewing access described under "Older full access" above,
+which lasts until you revoke it). For each invite we store the dog, your account, when it was
+created and when it expires, whether and when you withdrew it and, once used, when, by which team
+member and for which business. We store a scrambled (hashed) form of the link's secret code, not the
+link itself, and keep the invite record until the dog or your account is deleted.
 
 **How it ends, and what we record.** You can revoke access at any time on the app's Data Access
 screen. Access shared by parts also ends by itself when its time is up. PawPi checks the access every
