@@ -113,13 +113,58 @@ function invalidShareBySection(body, sections, expiry) {
   return null;
 }
 
-// End the active grant for this pet and provider, if any, and create the new one with exactly the
-// chosen sections and expiry. Both statements run on the request transaction: both apply or neither
-// does. A vet's PENDING request is left alone, so the insert is refused by the one-open-grant index.
+// Both locks are held until the request commits. The first allows one share at a time per pet and
+// provider: a concurrent second one waits for it. The second holds the open grant, so a change to it
+// made elsewhere (the owner approving or denying the request) lands fully before or after the share.
+async function lockOpenGrant({ userId, petId, providerId }) {
+  await sql`SELECT pg_advisory_xact_lock(hashtext(${`care_access_grant:${petId}:${providerId}`}))`;
+  await sql`
+    SELECT id FROM care_access_grants
+    WHERE owner_user_id = ${userId}
+      AND pet_id = ${petId}
+      AND provider_id = ${providerId}
+      AND status IN ('pending', 'active')
+    FOR UPDATE
+  `;
+}
+
+// The vet's pending request, if there is one, approved with exactly what the owner chose: scopes,
+// sections and expiry are all overwritten, so nothing the request asked for stays unless the owner
+// chose it too. `sections` and `interval` are null for a share by scope. Returns the 200 response,
+// or null when nothing is pending.
+async function approvePendingRequest({ userId, petId, providerId, scopes, sections, interval }) {
+  const approved = await sql`
+    UPDATE care_access_grants
+    SET status = 'active',
+        scopes = ${scopes},
+        sections = ${sections},
+        expires_at = NOW() + ${interval}::interval,
+        granted_at = NOW(),
+        updated_at = NOW()
+    WHERE owner_user_id = ${userId}
+      AND pet_id = ${petId}
+      AND provider_id = ${providerId}
+      AND status = 'pending'
+    RETURNING *
+  `;
+  return approved.length > 0
+    ? Response.json({ grant: approved[0], approvedRequest: true })
+    : null;
+}
+
+// End the active grant for this pet and provider, if any, then approve the vet's pending request or
+// create a new grant, with exactly the chosen sections and expiry. Everything runs on the request
+// transaction: it all applies or none of it does.
 async function shareBySection({ userId, petId, providerId, sections, interval }) {
   const chosen = RECORD_SECTIONS.filter((s) => sections.includes(s));
-  // One share at a time per pet and provider: a concurrent second one waits, then replaces the first.
-  await sql`SELECT pg_advisory_xact_lock(hashtext(${`care_access_grant:${petId}:${providerId}`}))`;
+  const choice = {
+    userId,
+    petId,
+    providerId,
+    scopes: [RECORD_SECTIONS_SCOPE],
+    sections: chosen,
+    interval,
+  };
   await sql`
     UPDATE care_access_grants
     SET status = 'revoked', revoked_at = NOW(), updated_at = NOW()
@@ -128,31 +173,44 @@ async function shareBySection({ userId, petId, providerId, sections, interval })
       AND provider_id = ${providerId}
       AND status = 'active'
   `;
-  const created = await sql`
-    INSERT INTO care_access_grants (
-      pet_id,
-      owner_user_id,
-      provider_id,
-      scopes,
-      sections,
-      status,
-      requested_by,
-      granted_at,
-      expires_at
-    ) VALUES (
-      ${petId},
-      ${userId},
-      ${providerId},
-      ${[RECORD_SECTIONS_SCOPE]},
-      ${chosen},
-      ${"active"},
-      ${"owner"},
-      NOW(),
-      NOW() + ${interval}::interval
-    )
-    RETURNING *
-  `;
-  return created[0];
+  const approved = await approvePendingRequest(choice);
+  if (approved) {
+    return approved;
+  }
+  try {
+    const created = await withSavepoint(async () => await sql`
+      INSERT INTO care_access_grants (
+        pet_id,
+        owner_user_id,
+        provider_id,
+        scopes,
+        sections,
+        status,
+        requested_by,
+        granted_at,
+        expires_at
+      ) VALUES (
+        ${petId},
+        ${userId},
+        ${providerId},
+        ${[RECORD_SECTIONS_SCOPE]},
+        ${chosen},
+        ${"active"},
+        ${"owner"},
+        NOW(),
+        NOW() + ${interval}::interval
+      )
+      RETURNING *
+    `);
+    return Response.json({ grant: created[0] }, { status: 201 });
+  } catch (e) {
+    // The one-open-grant index (0128) refused the row: the vet's request arrived after the check.
+    const late = e?.code === "23505" ? await approvePendingRequest(choice) : null;
+    if (late) {
+      return late;
+    }
+    throw e;
+  }
 }
 
 // POST /api/care-access/grants — OWNER-INITIATED sharing (booking detail → "Share clinic
@@ -170,7 +228,9 @@ async function shareBySection({ userId, petId, providerId, sections, interval })
 //   • { petId, providerId, sections, expiry } — a grant by section (docs/vet-sharing-design.md):
 //     exactly what the owner chose, nothing by default. An active grant for the same pet and
 //     provider ends and a new row replaces it (shareBySection).
-// A grant past its date is closed first, so it never blocks a new one.
+// A grant or request past its date is closed first, so it never blocks a new one.
+// While the vet's request for that pet is PENDING, either shape approves that row with exactly what
+// the owner chose, never what the request asked for beyond that: 200 { grant, approvedRequest: true }.
 async function POST(request) {
   try {
     const session = await auth();
@@ -233,17 +293,17 @@ async function POST(request) {
       return Response.json({ error: "Provider not found" }, { status: 404 });
     }
 
+    await lockOpenGrant({ userId, petId, providerId });
     await sql`SELECT app_expire_care_grants(${petId}::int, ${providerId}::int)`;
 
     if (bySection) {
-      const grant = await shareBySection({
+      return await shareBySection({
         userId,
         petId,
         providerId,
         sections,
         interval: SHARE_EXPIRY_INTERVALS[expiry],
       });
-      return Response.json({ grant }, { status: 201 });
     }
 
     // An active, non-expired grant that answers this request without an insert: one by section
@@ -275,12 +335,25 @@ async function POST(request) {
       return answerWith(existing[0]);
     }
 
+    const choice = {
+      userId,
+      petId,
+      providerId,
+      scopes: scopeList,
+      sections: null,
+      interval: null,
+    };
+    const approved = await approvePendingRequest(choice);
+    if (approved) {
+      return approved;
+    }
+
     // (AUDIT A-26) The lookup above is a select-then-insert race: two concurrent
     // requests can both find no existing grant and both insert. The partial
     // UNIQUE(provider_id, pet_id) WHERE status IN ('pending','active')
     // (migration 0128, hand-applied) makes the loser raise 23505. The insert runs
-    // in a savepoint so the winner can still be read afterwards.
-    // A vet's PENDING request also trips that index; it is not answered here.
+    // in a savepoint so the winner can still be read, or a request that arrived
+    // meanwhile approved, afterwards.
     let created;
     try {
       created = await withSavepoint(async () => await sql`
@@ -308,6 +381,10 @@ async function POST(request) {
         const winner = await findActive();
         if (winner.length > 0) {
           return answerWith(winner[0]);
+        }
+        const late = await approvePendingRequest(choice);
+        if (late) {
+          return late;
         }
       }
       throw e;

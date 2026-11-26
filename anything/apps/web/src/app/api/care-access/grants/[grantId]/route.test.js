@@ -87,6 +87,13 @@ describe('PATCH /api/care-access/grants/[grantId]', () => {
     expect(allQueryText()).not.toContain('care_access_audit');
   });
 
+  it('approve: 409 when the grant stopped being pending before the write', async () => {
+    arrange([{ id: 9, status: 'pending' }], []); // load, update matches nothing
+    const res = await PATCH(patchReq({ action: 'approve' }), PARAMS);
+    expect(res.status).toBe(409);
+    expect(lastQueryText()).toContain("status = 'pending'");
+  });
+
   it('approve with expiresAt sets expires_at', async () => {
     arrange(
       [{ id: 9, status: 'pending' }], // load

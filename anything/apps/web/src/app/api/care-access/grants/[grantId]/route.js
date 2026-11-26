@@ -77,8 +77,16 @@ async function PATCH(request, { params }) {
             expires_at = ${expiresAt ?? null},
             updated_at = NOW()
         WHERE id = ${grantId} AND owner_user_id = ${userId}
+          AND status = 'pending'
         RETURNING *
       `;
+      // No longer pending: the owner shared with this vet while this request ran.
+      if (updated.length === 0) {
+        return Response.json(
+          { error: "Only a pending grant can be approved" },
+          { status: 409 },
+        );
+      }
       return Response.json({ grant: updated[0] });
     }
 
