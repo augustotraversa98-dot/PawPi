@@ -1185,7 +1185,9 @@
     "care_access_grantedTitle": "Te dieron acceso a una ficha",
     "care_access_grantedFallback": "Un dueño le dio a tu equipo acceso a la ficha de un perro.",
     "care_access_revokedTitle": "Terminó el acceso a una ficha",
-    "care_access_revokedFallback": "Un dueño revocó el acceso de tu equipo a la ficha de un perro."
+    "care_access_revokedFallback": "Un dueño revocó el acceso de tu equipo a la ficha de un perro.",
+    "care_access_requestedTitle": "Una veterinaria pide acceso",
+    "care_access_requestedFallback": "Una veterinaria pide ver la ficha de tu perro. No se comparte nada si no lo aprobás en Acceso a datos."
   },
   "map": {
     "setOnMap": "Marcar ubicación en el mapa",
@@ -3927,14 +3929,56 @@
     "yearsAgo_other": "hace {{count}} años",
     "myPup": "Mi perri"
   },
+  "vetInvite": {
+    "title": "Invitar a una veterinaria con un enlace",
+    "intro": "Para una veterinaria con la que no tenés reserva. Recibís un enlace sobre {{pet}} para mandarle.",
+    "ruleOnce": "El enlace funciona una sola vez, durante 7 días.",
+    "ruleVet": "Quien lo abra tiene que tener un negocio veterinario en PawPi.",
+    "ruleNames": "Ve el nombre de {{pet}} y tu nombre, para saber de quién es la invitación.",
+    "ruleApprove": "No se comparte nada de la ficha hasta que apruebes su solicitud.",
+    "cta": "Crear enlace y compartir",
+    "creating": "Creando el enlace...",
+    "message": "Te invito a pedir acceso a la ficha veterinaria de {{pet}} en PawPi. El enlace funciona una sola vez, durante 7 días, y no se comparte nada hasta que yo lo apruebe. Abrilo con tu cuenta de negocio veterinario en PawPi:",
+    "listTitle": "Tus invitaciones",
+    "rowTitle": "{{pet}} · creada el {{date}}",
+    "status": {
+      "open": "Abierta: sirve una sola vez, hasta el {{date}}",
+      "used": "La usó {{provider}}. Su solicitud la respondés en Acceso a datos.",
+      "revoked": "Retirada",
+      "expired": "Venció el {{date}}",
+      "closed": "Cerrada"
+    },
+    "withdraw": "Retirar invitación",
+    "withdrawTitle": "¿Retirar esta invitación?",
+    "withdrawBody": "El enlace para {{pet}} va a dejar de funcionar.",
+    "keep": "Dejarla",
+    "notSharedTitle": "El enlace no se envió",
+    "notSharedBody": "Por seguridad no se puede volver a mostrar. Retirá esta invitación y creá otra cuando quieras enviarla.",
+    "loadError": "No se pudieron cargar tus invitaciones.",
+    "error": {
+      "limitTitle": "Demasiadas invitaciones abiertas",
+      "limit": "Podés tener hasta {{limit}} invitaciones abiertas entre todos tus perros. Retirá una para crear otra.",
+      "tooManyTitle": "Probá más tarde",
+      "tooMany": "Hubo demasiados intentos en poco tiempo. Esperá un rato y probá de nuevo.",
+      "notAllowedTitle": "No se creó la invitación",
+      "notAllowed": "Solo la persona dueña del perro puede invitar a una veterinaria, y el perro tiene que seguir disponible.",
+      "createTitle": "No se pudo crear la invitación",
+      "create": "No se compartió nada. Revisá tus invitaciones antes de probar de nuevo.",
+      "usedTitle": "Esta invitación ya se usó",
+      "used": "Si una veterinaria pidió acceso, rechazalo o revocalo en Acceso a datos.",
+      "withdrawTitle": "No se pudo retirar la invitación",
+      "withdraw": "Revisá tus invitaciones y probá de nuevo."
+    }
+  },
   "vetShare": {
     "title": "Compartir con tu veterinaria",
+    "checkName": "Antes de aprobar, fijate que «{{provider}}» sea de verdad tu veterinaria.",
     "titleProvider": "Compartir la historia clínica",
     "intro": "Elegí qué compartir y por cuánto tiempo. No se comparte nada hasta que lo revises y aceptes.",
     "pickTitle": "Elegí la veterinaria",
-    "pickHint": "Solo aparecen veterinarias con las que tenés una reserva para {{pet}}: así encuentran a {{pet}} en su panel de PawPi.",
+    "pickHint": "Acá aparecen las veterinarias con las que tenés una reserva para {{pet}}. A otra la podés invitar con un enlace, más abajo.",
     "providerTitle": "Con quién compartís",
-    "noVets": "Todavía no tenés una reserva veterinaria para {{pet}}. Cuando reserves, vas a poder darle acceso desde acá.",
+    "noVets": "Todavía no tenés una reserva veterinaria para {{pet}}. Reservá para darle acceso desde acá, o invitá a tu veterinaria con un enlace acá abajo.",
     "loadError": "No se pudieron cargar tus veterinarias y los accesos actuales.",
     "retry": "Reintentar",
     "hasAccess": "Ya tiene acceso",
@@ -4010,6 +4054,7 @@
       "rejected": "No se aceptó tu elección, así que no se compartió nada. Revisala y probá de nuevo. Si sigue pasando, actualizá la app.",
       "gone": "Ya no se puede compartir con este perro o con este negocio. No se compartió nada.",
       "changed": "El acceso cambió mientras elegías, así que no se compartió nada. Revisá quién tiene acceso y probá de nuevo.",
+      "tooMany": "Hubo demasiados intentos en poco tiempo, así que no se compartió nada. Esperá un rato y probá de nuevo.",
       "unconfirmed": "No pudimos confirmar el resultado. Revisá quién tiene acceso antes de probar de nuevo."
     },
     "notSharedTitle": "No se compartió nada",

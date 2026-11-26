@@ -482,3 +482,57 @@ describe("record access notifications", () => {
     expect(getByText(fallback)).toBeTruthy();
   });
 });
+
+// ── A vet asks for access (care_access_requested, after an invite by link) ───
+describe("record access request notification", () => {
+  const asked = (body) => ({
+    id: 91,
+    type: "care_access_requested",
+    subject_ref: null,
+    body,
+    read_at: null,
+    created_at: "2026-11-26T12:00:00.000Z",
+    actor_username: "Ana",
+    actor_avatar: null,
+  });
+  const sentence =
+    "North Clinic asks to see Rex's vet record. Nothing is shared unless you approve it in Data access.";
+
+  test("shows a proper title and the server's sentence, never the actor as the title", () => {
+    mockDbNotifications = [asked(sentence)];
+    const { getByText, queryByText } = render(<NotificationsScreen />);
+    expect(getByText("A vet asks for access")).toBeTruthy();
+    expect(getByText(sentence)).toBeTruthy();
+    expect(queryByText(/Ana|Pet parent/)).toBeNull();
+  });
+
+  test("tapping marks it read and opens Data access", () => {
+    mockDbNotifications = [asked(sentence)];
+    const { getByText } = render(<NotificationsScreen />);
+    fireEvent.press(getByText(sentence));
+    expect(mockMarkRead).toHaveBeenCalledWith({ ids: [91] });
+    expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/data-access");
+    expect(mockBack).not.toHaveBeenCalled();
+  });
+
+  test("without a body it shows the localized fallback", () => {
+    mockDbNotifications = [asked(null)];
+    const { getByText } = render(<NotificationsScreen />);
+    expect(
+      getByText("A vet asks to see your dog's record. Nothing is shared unless you approve it in Data access."),
+    ).toBeTruthy();
+  });
+
+  test("is listed under the Requests filter", () => {
+    mockDbNotifications = [asked(sentence)];
+    const { getByText, getByTestId } = render(<NotificationsScreen />);
+    fireEvent.press(getByTestId("notifications-filter-Requests"));
+    expect(getByText(sentence)).toBeTruthy();
+  });
+
+  test("the title and fallback exist in Spanish", () => {
+    const es = require("@/i18n/locales/es.json").notifications;
+    expect(es.care_access_requestedTitle).toBe("Una veterinaria pide acceso");
+    expect(es.care_access_requestedFallback).toContain("No se comparte nada si no lo aprobás");
+  });
+});

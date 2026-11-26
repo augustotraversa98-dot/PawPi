@@ -60,6 +60,28 @@ describe("pushTapRoute", () => {
   });
 });
 
+describe("a request to see a record", () => {
+  test("opens Data access, whatever else the payload carries", () => {
+    expect(pushTapRoute({ type: "care_access_requested", subjectRef: null })).toEqual({
+      pathname: "/(tabs)/more/data-access",
+    });
+    expect(pushTapRoute({ type: "care_access_requested" })).toEqual({ pathname: "/(tabs)/more/data-access" });
+  });
+
+  test("missing or unknown data stays harmless", () => {
+    for (const data of [null, undefined, 7, "", {}, { type: null }, { type: "care_access_other" }, { type: {} }]) {
+      expect(pushTapRoute(data)).toEqual({ pathname: "/notifications" });
+    }
+  });
+
+  test("an OS tap navigates there once the app is ready", () => {
+    markNavigationReady();
+    registerNotificationTapRouting();
+    responseListener(response("n-access", { type: "care_access_requested", subjectRef: null }));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/(tabs)/more/data-access" });
+  });
+});
+
 describe("registerNotificationTapRouting", () => {
   test("a tap while running navigates immediately once navigation is ready", async () => {
     registerNotificationTapRouting();

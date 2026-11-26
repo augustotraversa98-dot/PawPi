@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import useBottomClearance from "@/hooks/useBottomClearance";
@@ -20,6 +20,7 @@ import {
   useCareAccessGrants,
   useUpdateGrant,
 } from "@/hooks/useCareAccessGrants";
+import { useMyBookings } from "@/hooks/useProviders";
 import { friendlyErrorMessage } from "@/utils/appAlert";
 import { goBackOr } from "@/utils/navigationBack";
 import ShareWithVetSheet from "@/components/Health/VetShare/ShareWithVetSheet";
@@ -27,6 +28,7 @@ import GrantAccess from "@/components/Health/VetShare/GrantAccess";
 import {
   asksForRecord,
   grantAccessLines,
+  hasBookingForPet,
   isGrantActive,
   isGrantEnded,
   sectionsSupported,
@@ -47,6 +49,15 @@ export default function DataAccessScreen() {
   const { data: grants, isLoading, isError, refetch } =
     useCareAccessGrants(petId);
   const updateGrant = useUpdateGrant(petId);
+  const bookings = useMyBookings();
+  const refetchBookings = bookings.refetch;
+  // A request may have just arrived (this screen is where its notification leads): never rely on cached lists.
+  useEffect(() => {
+    if (!petId) return;
+    refetch();
+    refetchBookings();
+  }, [petId, refetch, refetchBookings]);
+  const refreshAll = () => Promise.all([refetch(), refetchBookings()]);
   // null = closed. { provider } shares with that one only (answering its request); {} lets the owner pick.
   const [shareSheet, setShareSheet] = useState(null);
 
@@ -186,9 +197,20 @@ export default function DataAccessScreen() {
 
   const pendingActions = (g) => {
     const record = asksForRecord(g);
-    const choose = record && canChooseSections;
+    // A business with no booking for this dog (every invite by link) is never approved "as asked": the owner chooses
+    // the sections or denies, after checking who it is.
+    const booked = hasBookingForPet(bookings.data, g.provider_id, g.pet_id ?? petId);
+    const choose = canChooseSections && (record || !booked);
     return (
       <View style={{ marginTop: 14, gap: 10 }}>
+        {!booked ? (
+          <Text
+            testID={`data-access-check-name-${g.id}`}
+            style={{ fontSize: 13, fontWeight: "700", color: COLORS.warmBrown, lineHeight: 18 }}
+          >
+            {t("vetShare.checkName", { provider: g.provider_name || t("dataAccess.thisProvider") })}
+          </Text>
+        ) : null}
         {choose ? (
           <>
             <Text style={{ fontSize: 12, color: COLORS.mutedBrown, lineHeight: 17 }}>
@@ -198,7 +220,9 @@ export default function DataAccessScreen() {
               testID={`data-access-choose-${g.id}`}
               accessibilityRole="button"
               onPress={() =>
-                setShareSheet({ provider: { providerId: g.provider_id, name: g.provider_name } })
+                setShareSheet({
+                  provider: { providerId: g.provider_id, name: g.provider_name, checkName: !booked },
+                })
               }
               style={[filledButton, { backgroundColor: COLORS.coral }]}
             >
@@ -209,26 +233,28 @@ export default function DataAccessScreen() {
           </>
         ) : null}
         <View style={{ flexDirection: "row", gap: 10 }}>
-          <TouchableOpacity
-            testID={`data-access-approve-${g.id}`}
-            accessibilityRole="button"
-            onPress={() => confirmApprove(g)}
-            disabled={updateGrant.isPending}
-            style={[choose ? outlineButton : [filledButton, { backgroundColor: COLORS.sageDark }], { flex: 1 }]}
-          >
-            <Check size={16} color={choose ? COLORS.warmBrown : "#FFF"} />
-            <Text
-              style={{
-                color: choose ? COLORS.warmBrown : "#FFF",
-                fontWeight: "800",
-                fontSize: 14,
-                flexShrink: 1,
-                textAlign: "center",
-              }}
+          {booked ? (
+            <TouchableOpacity
+              testID={`data-access-approve-${g.id}`}
+              accessibilityRole="button"
+              onPress={() => confirmApprove(g)}
+              disabled={updateGrant.isPending}
+              style={[choose ? outlineButton : [filledButton, { backgroundColor: COLORS.sageDark }], { flex: 1 }]}
             >
-              {t(record ? "dataAccess.approveAll" : "dataAccess.approve")}
-            </Text>
-          </TouchableOpacity>
+              <Check size={16} color={choose ? COLORS.warmBrown : "#FFF"} />
+              <Text
+                style={{
+                  color: choose ? COLORS.warmBrown : "#FFF",
+                  fontWeight: "800",
+                  fontSize: 14,
+                  flexShrink: 1,
+                  textAlign: "center",
+                }}
+              >
+                {t(record ? "dataAccess.approveAll" : "dataAccess.approve")}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
           <TouchableOpacity
             testID={`data-access-deny-${g.id}`}
             accessibilityRole="button"
@@ -256,7 +282,7 @@ export default function DataAccessScreen() {
         </View>
       ) : (
         <RefreshableScrollView
-          refetch={refetch}
+          refetch={refreshAll}
           contentContainerStyle={{ padding: 16, paddingBottom: bottomClearance + 32 }}
         >
           {/* What this screen covers, and what it does not. */}

@@ -24,12 +24,15 @@ import {
   sectionsSupported,
 } from "@/utils/vetShare";
 import GrantAccess, { Bullets } from "./GrantAccess";
+import InviteVet from "./InviteVet";
+import SecondaryButton from "./SecondaryButton";
 
 // A refused request opened nothing; anything else leaves the owner to check the list.
 const ERROR_KEYS = {
   400: "vetShare.error.rejected",
   404: "vetShare.error.gone",
   409: "vetShare.error.changed",
+  429: "vetShare.error.tooMany",
 };
 
 const text = [TYPE.callout, { color: COLORS.warmBrown, lineHeight: 20 }];
@@ -54,30 +57,6 @@ function Heading({ children }) {
     >
       {children}
     </Text>
-  );
-}
-
-function SecondaryButton({ label, onPress, disabled, testID }) {
-  return (
-    <TouchableOpacity
-      testID={testID}
-      accessibilityRole="button"
-      onPress={onPress}
-      disabled={disabled}
-      style={{
-        marginTop: SPACING.sm,
-        borderRadius: RADIUS.control,
-        borderWidth: 1.5,
-        borderColor: MATERIALS.hairline,
-        paddingVertical: 12,
-        paddingHorizontal: SPACING.lg,
-        alignItems: "center",
-      }}
-    >
-      <Text style={[TYPE.callout, { fontWeight: "800", color: COLORS.terracotta, textAlign: "center" }]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
   );
 }
 
@@ -117,7 +96,9 @@ function Note({ icon: Icon = Info, children, testID, style }) {
  * Also lists who has access, with revoke. Mount it only while open (each opening starts with nothing selected).
  *
  * Props: pet ({ id, name, is_shared }), onClose, onOpenRequests (show the pending access requests), and optionally
- * provider ({ providerId, name }) to share with that one only (a booking, or a request being answered).
+ * provider ({ providerId, name, checkName }) to share with that one only (a booking, or a request being answered;
+ * checkName asks the owner to make sure that business is their vet). Without a provider the owner can also invite a
+ * vet by link.
  */
 export default function ShareWithVetSheet({ pet, provider, onClose, onOpenRequests }) {
   const { t } = useTranslation();
@@ -364,6 +345,11 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
 
   const accessNotes = () => (
     <>
+      {fixed?.checkName && !access?.active ? (
+        <Note testID="vet-share-check-name">
+          <Text style={text}>{t("vetShare.checkName", { provider: vetName(fixed.name) })}</Text>
+        </Note>
+      ) : null}
       {access?.pending ? (
         <Note testID="vet-share-pending-note">
           <Text style={text}>{t("vetShare.pendingNote")}</Text>
@@ -384,6 +370,10 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
     </>
   );
 
+  // With no booked vet to pick, the invite is the way forward, so it sits right there.
+  const noVets = ready && !fixed && vets.length === 0;
+  const invite = !fixed && supported ? <InviteVet pet={pet} /> : null;
+
   const renderChoices = () => (
     <>
       <Text style={text}>{t("vetShare.intro")}</Text>
@@ -403,6 +393,8 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
           {accessNotes()}
         </>
       ) : null}
+
+      {noVets ? invite : null}
 
       {canChoose ? (
         <>
@@ -451,6 +443,8 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
           {ended.map(grantCard)}
         </>
       ) : null}
+
+      {noVets ? null : invite}
 
       <Heading>{t("vetShare.linkTitle")}</Heading>
       <View style={card}>

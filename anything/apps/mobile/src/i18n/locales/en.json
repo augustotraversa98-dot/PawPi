@@ -1185,7 +1185,9 @@
     "care_access_grantedTitle": "Record access given",
     "care_access_grantedFallback": "A pet owner gave your team access to a dog's records.",
     "care_access_revokedTitle": "Record access ended",
-    "care_access_revokedFallback": "A pet owner ended your team's access to a dog's records."
+    "care_access_revokedFallback": "A pet owner ended your team's access to a dog's records.",
+    "care_access_requestedTitle": "A vet asks for access",
+    "care_access_requestedFallback": "A vet asks to see your dog's record. Nothing is shared unless you approve it in Data access."
   },
   "map": {
     "setOnMap": "Set location on map",
@@ -3927,14 +3929,56 @@
     "yearsAgo_other": "{{count}} years ago",
     "myPup": "My pup"
   },
+  "vetInvite": {
+    "title": "Invite a vet by link",
+    "intro": "For a vet you don't have a booking with. You get a link to send them about {{pet}}.",
+    "ruleOnce": "The link works once, for 7 days.",
+    "ruleVet": "Whoever opens it must have a vet business on PawPi.",
+    "ruleNames": "They see {{pet}}'s name and your name, so they know who the invite is from.",
+    "ruleApprove": "Nothing in the record is shared until you approve their request.",
+    "cta": "Create link and share",
+    "creating": "Creating the link...",
+    "message": "I'm inviting you to ask to see {{pet}}'s vet record on PawPi. The link works once, for 7 days, and nothing is shared until I approve it. Open it with your PawPi vet business account:",
+    "listTitle": "Your invites",
+    "rowTitle": "{{pet}} · created {{date}}",
+    "status": {
+      "open": "Open: works once, until {{date}}",
+      "used": "Used by {{provider}}. You answer their request in Data access.",
+      "revoked": "Withdrawn",
+      "expired": "Expired on {{date}}",
+      "closed": "Closed"
+    },
+    "withdraw": "Withdraw invite",
+    "withdrawTitle": "Withdraw this invite?",
+    "withdrawBody": "The link for {{pet}} will stop working.",
+    "keep": "Keep it",
+    "notSharedTitle": "The link wasn't sent",
+    "notSharedBody": "For safety it can't be shown again. Withdraw this invite and create a new one when you're ready to send it.",
+    "loadError": "Couldn't load your invites.",
+    "error": {
+      "limitTitle": "Too many open invites",
+      "limit": "You can have up to {{limit}} open invites across all your dogs. Withdraw one to create another.",
+      "tooManyTitle": "Try again later",
+      "tooMany": "There were too many tries in a short time. Wait a while and try again.",
+      "notAllowedTitle": "No invite was created",
+      "notAllowed": "Only the dog's owner can invite a vet, and the dog must still be available.",
+      "createTitle": "Couldn't create the invite",
+      "create": "Nothing was shared. Check your invites before trying again.",
+      "usedTitle": "This invite was already used",
+      "used": "If a vet asked for access, deny or revoke it in Data access.",
+      "withdrawTitle": "Couldn't withdraw the invite",
+      "withdraw": "Check your invites and try again."
+    }
+  },
   "vetShare": {
     "title": "Share with your vet",
+    "checkName": "Before approving, check that “{{provider}}” is really your vet.",
     "titleProvider": "Share the medical record",
     "intro": "Choose what to share and for how long. Nothing is shared until you review it and agree.",
     "pickTitle": "Choose the vet",
-    "pickHint": "Only vets you have a booking with for {{pet}} appear here: that is how they find {{pet}} in their PawPi panel.",
+    "pickHint": "Vets you have a booking with for {{pet}} appear here. For another vet, invite them by link further down.",
     "providerTitle": "Who you're sharing with",
-    "noVets": "You don't have a vet booking for {{pet}} yet. Once you book one, you can give them access here.",
+    "noVets": "You don't have a vet booking for {{pet}} yet. Book one to give them access here, or invite your vet by link below.",
     "loadError": "Couldn't load your vets and current access.",
     "retry": "Try again",
     "hasAccess": "Has access now",
@@ -4010,6 +4054,7 @@
       "rejected": "Your choice wasn't accepted, so nothing was shared. Check it and try again. If it keeps happening, update the app.",
       "gone": "This dog or this business is no longer available for sharing. Nothing was shared.",
       "changed": "Access changed while you were choosing, so nothing was shared. Check who has access and try again.",
+      "tooMany": "There were too many tries in a short time, so nothing was shared. Wait a while and try again.",
       "unconfirmed": "We couldn't confirm the result. Check who has access before trying again."
     },
     "notSharedTitle": "Nothing was shared",

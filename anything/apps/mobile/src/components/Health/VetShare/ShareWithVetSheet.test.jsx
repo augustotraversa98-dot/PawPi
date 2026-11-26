@@ -36,6 +36,11 @@ jest.mock("@/components/KeyboardSafeFormModal", () => {
     ),
   };
 });
+// The invite block has its own tests (InviteVet.test.jsx); here only where it appears matters.
+jest.mock("./InviteVet", () => {
+  const { Text } = require("react-native");
+  return { __esModule: true, default: ({ pet }) => <Text testID="vet-invite">{pet.name}</Text> };
+});
 jest.mock("@/hooks/useProviders", () => ({ useMyBookings: () => mockBookings }));
 jest.mock("@/hooks/useCareAccessGrants", () => ({
   useCareAccessGrants: () => mockGrants,
@@ -321,6 +326,7 @@ test.each([
   [400, /wasn't accepted, so nothing was shared/],
   [404, /no longer available for sharing/],
   [409, /changed while you were choosing/],
+  [429, /too many tries in a short time, so nothing was shared/],
   [500, /couldn't confirm the result/],
   [undefined, /couldn't confirm the result/],
 ])("a %s refusal has its own clear message and re-reads access", (status, body) => {
@@ -405,4 +411,42 @@ test("Spanish copy (voseo)", () => {
   expect(s.getByText("Quién puede ver qué")).toBeTruthy();
   expect(s.getByText("Dar acceso")).toBeTruthy();
   expect(s.getByText(/Acepto que todo el equipo de Happy Paws/)).toBeTruthy();
+});
+
+describe("inviting a vet by link", () => {
+  test("is offered to the owner, with or without booked vets", () => {
+    expect(open().getByTestId("vet-invite")).toBeTruthy();
+    mockBookings = query({ upcoming: [], past: [] });
+    const empty = open();
+    expect(empty.getAllByTestId("vet-invite")).toHaveLength(1);
+    expect(empty.getByText(/invite your vet by link below/)).toBeTruthy();
+  });
+
+  test("is not offered to a family member, for one given business, or by a server without sections", () => {
+    expect(open({ pet: { ...pet, is_shared: true } }).queryByTestId("vet-invite")).toBeNull();
+    expect(open({ provider: { providerId: 1, name: "Happy Paws" } }).queryByTestId("vet-invite")).toBeNull();
+    mockGrants = query([grant({ sections: undefined })]);
+    expect(open().queryByTestId("vet-invite")).toBeNull();
+  });
+
+  test("answering a business with no booking keeps asking to check its name, up to the review", () => {
+    const s = open({ provider: { providerId: 9, name: "New Clinic", checkName: true } });
+    const note = "Before approving, check that “New Clinic” is really your vet.";
+    expect(s.getByText(note)).toBeTruthy();
+    chooseAll(s, { vet: null });
+    press(s, "cta");
+    expect(s.getByTestId("vet-share-review")).toBeTruthy();
+    expect(s.getByText(note)).toBeTruthy();
+  });
+
+  test("the note goes away once that business has the access the owner chose", () => {
+    mockGrants = query([grant({ provider_id: 9 })]);
+    const s = open({ provider: { providerId: 9, name: "New Clinic", checkName: true } });
+    expect(s.queryByTestId("vet-share-check-name")).toBeNull();
+  });
+
+  test("a booked business gets no such note", () => {
+    const s = open({ provider: { providerId: 1, name: "Happy Paws" } });
+    expect(s.queryByTestId("vet-share-check-name")).toBeNull();
+  });
 });

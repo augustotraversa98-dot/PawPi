@@ -21,6 +21,8 @@ const INBOX_ROUTE = "/notifications";
 // Where an owner creates routines/reminders (the same screen the "Set your first reminder" checklist
 // item opens).
 const REMINDERS_ROUTE = "/(tabs)/more/reminders";
+// Where an owner answers a business that asks to see a record.
+const DATA_ACCESS_ROUTE = "/(tabs)/more/data-access";
 
 // Reminder types whose home is the Vet Record section; everything else lands on Today,
 // where the reminder itself is listed with its action button.
@@ -39,16 +41,17 @@ export function reminderTapRoute(notification) {
 }
 
 /**
- * Route for the `data` payload of an OS notification tap. Reminders go to Health; every
- * server push (bookings, walk requests, messages, access requests…) opens the in-app
- * inbox, which lists it with its own tap-through. Never returns a route that does not
- * exist; returns null only when there is nothing to open.
+ * Route for the `data` payload of an OS notification tap. Reminders go to Health; a request
+ * to see a record goes to Data access; every other server push (bookings, walk requests,
+ * messages…) opens the in-app inbox, which lists it with its own tap-through. Never returns
+ * a route that does not exist; returns null only when there is nothing to open.
  */
 export function pushTapRoute(data) {
   if (!data || typeof data !== "object") return { pathname: INBOX_ROUTE };
   // The "set up your first reminder" nudge opens the screen where a reminder is created.
   if (data.nudge === "reminder_setup") return { pathname: REMINDERS_ROUTE };
   if (data.reminderId != null) return reminderTapRoute(data);
+  if (data.type === "care_access_requested") return { pathname: DATA_ACCESS_ROUTE };
   return { pathname: INBOX_ROUTE };
 }
 
