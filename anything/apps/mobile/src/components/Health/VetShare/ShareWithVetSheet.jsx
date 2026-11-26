@@ -492,6 +492,9 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
           </Text>
           <Text style={muted}>{t("vetShare.reviewLater")}</Text>
         </View>
+        <Note testID="vet-share-review-ending">
+          <Text style={muted}>{t("vetShare.endingLimit")}</Text>
+        </Note>
         <Note icon={EyeOff} testID="vet-share-review-not-shared">
           {left.length > 0 ? (
             <>

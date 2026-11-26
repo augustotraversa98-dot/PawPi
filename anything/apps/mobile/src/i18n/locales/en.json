@@ -193,7 +193,7 @@
       "noPet": "No pet selected",
       "count_one": "{{count}} item",
       "count_other": "{{count}} items",
-      "footer": "Keep your dog's vet records in one place. You can share the parts you choose with a vet you have a booking with.",
+      "footer": "Keep your dog's vet records in one place. You choose what to share: with a vet you've booked, from a booking with another pet-care business, or when a business asks for access.",
       "groupProfile": "Medical profile",
       "groupNextVisit": "Next visit",
       "groupHistory": "Medical history",
@@ -1579,7 +1579,7 @@
     "requested": "They asked for access. Nothing is shared until you answer.",
     "revoke": "Revoke",
     "revokeTitle": "Revoke access?",
-    "revokeBody": "This provider will immediately lose the access you gave to this pet's records.",
+    "revokeBody": "This provider will immediately lose the access you gave to this pet's records. This does not take back what they already saw, downloaded or noted. Some documents and health photos saved earlier use a web address that keeps working for someone who already has it.",
     "errorTitle": "Couldn't load this booking",
     "errorBody": "It may have been removed, or something went wrong."
   },
@@ -3926,7 +3926,7 @@
   "vetShare": {
     "title": "Share with your vet",
     "titleProvider": "Share the medical record",
-    "intro": "Choose what a vet can see and for how long. Nothing is shared until you review it and agree.",
+    "intro": "Choose what to share and for how long. Nothing is shared until you review it and agree.",
     "pickTitle": "Choose the vet",
     "pickHint": "Only vets you have a booking with for {{pet}} appear here: that is how they find {{pet}} in their PawPi panel.",
     "providerTitle": "Who you're sharing with",
@@ -3963,18 +3963,18 @@
       },
       "files": {
         "title": "Documents",
-        "description": "The document list and its files, whatever they contain (for example prescriptions, invoices or insurance papers)."
+        "description": "The document list and its files, whatever they contain (for example prescriptions, invoices or insurance papers). Some saved earlier use a web address that keeps working for someone who already has it, even after access ends."
       },
       "photos": {
         "title": "Photo checks",
-        "description": "Health photo checks, their photos and what was noted on them."
+        "description": "Health photo checks, their photos and what was noted on them. Some photos saved earlier use a web address that keeps working for someone who already has it, even after access ends."
       },
       "lab_results": {
         "title": "Lab results",
-        "description": "Lab results and any file attached to them."
+        "description": "The result entries. Attached documents, such as lab reports, are under Documents."
       }
     },
-    "neverShared": "Never shared from here: the allergy, condition, surgery, medication, prescription and daily health log sections.",
+    "neverShared": "Never shared from here: the allergy, condition, surgery, medication, prescription and daily health log sections. Such information can still appear inside a note, document or photo you share.",
     "alreadyVisible": "{{pet}}'s PawPi profile (name, photo, breed) is already visible to them.",
     "expiryTitle": "For how long",
     "expiry": {
@@ -3991,6 +3991,7 @@
     "reviewUntilDate": "Until {{date}}, unless you revoke it sooner",
     "reviewUntilRevoked": "Until you revoke it",
     "reviewLater": "Includes what you add to these parts while the access lasts.",
+    "endingLimit": "Ending access does not take back what they already saw, downloaded or noted. Some documents and health photos saved earlier use a web address that keeps working for someone who already has it.",
     "notSelected": "Not shared:",
     "consentDate": "I agree that everyone on {{provider}}'s PawPi team can see the parts of {{pet}}'s record listed above until {{date}}, unless I revoke access sooner.",
     "consentRevoke": "I agree that everyone on {{provider}}'s PawPi team can see the parts of {{pet}}'s record listed above until I revoke access.",
@@ -4003,7 +4004,7 @@
     "errorTitle": "Couldn't share",
     "error": {
       "rejected": "Your choice wasn't accepted, so nothing was shared. Check it and try again. If it keeps happening, update the app.",
-      "gone": "This dog or this vet is no longer available for sharing. Nothing was shared.",
+      "gone": "This dog or this business is no longer available for sharing. Nothing was shared.",
       "changed": "Access changed while you were choosing, so nothing was shared. Check who has access and try again.",
       "unconfirmed": "We couldn't confirm the result. Check who has access before trying again."
     },
@@ -4057,7 +4058,7 @@
     "denyTitle": "Deny request?",
     "denyBody": "{{provider}} will not get access to {{pet}}.",
     "revokeTitle": "Revoke access?",
-    "revokeBody": "{{provider}} will immediately lose the access you gave to {{pet}}'s records.",
+    "revokeBody": "{{provider}} will immediately lose the access you gave to {{pet}}'s records. This does not take back what they already saw, downloaded or noted. Some documents and health photos saved earlier use a web address that keeps working for someone who already has it.",
     "deny": "Deny",
     "revoke": "Revoke",
     "revokeCta": "Revoke access",

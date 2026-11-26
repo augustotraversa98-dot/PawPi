@@ -147,6 +147,9 @@ test("review says who sees what and until when; nothing is sent before consent",
   expect(not.getByText("Lab results")).toBeTruthy();
   expect(not.queryByText("Vaccinations")).toBeNull();
   expect(within(s.getByTestId("vet-share-review-until")).getByText(/^Until .*\d{4}, unless you revoke it sooner$/)).toBeTruthy();
+  const ending = within(s.getByTestId("vet-share-review-ending"));
+  expect(ending.getByText(/does not take back what they already saw, downloaded or noted/)).toBeTruthy();
+  expect(ending.getByText(/web address that keeps working for someone who already has it/)).toBeTruthy();
 
   expect(state(s, "vet-share-consent").checked).toBe(false);
   expect(ctaDisabled(s)).toBe(true);

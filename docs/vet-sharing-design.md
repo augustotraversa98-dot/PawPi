@@ -62,7 +62,7 @@ Who: every active staff member of that provider. Read at request time: expiry an
 - The web provider panel shows only the shared sections, names the ones not shared, and has no write forms.
 - No write, prescription, vaccine check or care module is opened.
 
-### Grant with `medical_read` (the consent copy of the mobile "Share" sheet; keep in step)
+### Grant with `medical_read` (the app lists it as "Older access"; keep `mobile/src/utils/vetShare.js` in step)
 
 | Opened | Source |
 |---|---|
@@ -85,11 +85,19 @@ The `pets` row (name, photo, breed...) is already readable by any signed-in user
 ### The mobile sheet
 
 Vet Record > **Share** (and Data Access > **Share with your vet**) opens
-`anything/apps/mobile/src/components/Health/VetShare/ShareWithVetSheet.jsx`. It offers providers the owner has a vet or
-telehealth booking with, for that pet: the web provider panel lists pets only through bookings, so any other vet would
-have access with no screen to open it. Choosing sections and expiry in the app is a separate change; until it ships, the
-app sends the by-scope body. The released data-access screen prints raw scope labels, so a grant by section reads
-`record_sections` there.
+`anything/apps/mobile/src/components/Health/VetShare/ShareWithVetSheet.jsx`. From there it offers providers the owner
+has a vet or telehealth booking with, for that pet: the web provider panel lists pets only through bookings, so any
+other vet would have access with no screen to open it. The same sheet opens for one given provider from a booking that
+is not completed (any kind of provider) and from Data Access > **Choose what to share** on a pending request.
+
+- It sends only the by-section body. Nothing is selected beforehand, a review step states who can see what, until when
+  and what ending access does not take back, and consent is explicit.
+- Access is reported as given only when the returned grant matches the choice; otherwise the app says so and revokes a
+  newly created grant that differs.
+- Data Access also keeps **Approve all asked**, which approves a provider request as asked, after listing everything in
+  it.
+- App versions released before this sheet (including build 33) send the by-scope body, and their data-access screen
+  prints raw scope labels, so a grant by section reads `record_sections` there.
 
 ## 3. Not built
 

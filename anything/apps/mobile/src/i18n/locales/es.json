@@ -193,7 +193,7 @@
       "noPet": "No hay mascota seleccionada",
       "count_one": "{{count}} elemento",
       "count_other": "{{count}} elementos",
-      "footer": "Guardá los registros veterinarios de tu perro en un solo lugar. Podés compartir las partes que elijas con una veterinaria con la que tengas una reserva.",
+      "footer": "Guardá los registros veterinarios de tu perro en un solo lugar. Vos elegís qué compartir: con una veterinaria con la que reservaste, desde una reserva con otro negocio de cuidado de mascotas o cuando un negocio te pide acceso.",
       "groupProfile": "Perfil médico",
       "groupNextVisit": "Próxima visita",
       "groupHistory": "Historial médico",
@@ -1579,7 +1579,7 @@
     "requested": "Pidió acceso. No se comparte nada hasta que respondas.",
     "revoke": "Revocar",
     "revokeTitle": "¿Revocar el acceso?",
-    "revokeBody": "Este proveedor perderá de inmediato el acceso que le diste a los registros de tu mascota.",
+    "revokeBody": "Este proveedor perderá de inmediato el acceso que le diste a los registros de tu mascota. Eso no borra lo que ya vio, descargó o anotó. Algunos documentos y fotos de salud guardados antes usan una dirección web que sigue funcionando para quien ya la tenga.",
     "errorTitle": "No pudimos cargar esta reserva",
     "errorBody": "Puede que se haya eliminado, o que algo haya salido mal."
   },
@@ -3926,7 +3926,7 @@
   "vetShare": {
     "title": "Compartir con tu veterinaria",
     "titleProvider": "Compartir la historia clínica",
-    "intro": "Elegí qué puede ver una veterinaria y por cuánto tiempo. No se comparte nada hasta que lo revises y aceptes.",
+    "intro": "Elegí qué compartir y por cuánto tiempo. No se comparte nada hasta que lo revises y aceptes.",
     "pickTitle": "Elegí la veterinaria",
     "pickHint": "Solo aparecen veterinarias con las que tenés una reserva para {{pet}}: así encuentran a {{pet}} en su panel de PawPi.",
     "providerTitle": "Con quién compartís",
@@ -3963,18 +3963,18 @@
       },
       "files": {
         "title": "Documentos",
-        "description": "La lista de documentos y sus archivos, tengan lo que tengan (por ejemplo recetas, facturas o papeles del seguro)."
+        "description": "La lista de documentos y sus archivos, tengan lo que tengan (por ejemplo recetas, facturas o papeles del seguro). Algunos guardados antes usan una dirección web que sigue funcionando para quien ya la tenga, incluso cuando termina el acceso."
       },
       "photos": {
         "title": "Chequeos con foto",
-        "description": "Los chequeos de salud con foto, sus fotos y lo que se anotó en ellos."
+        "description": "Los chequeos de salud con foto, sus fotos y lo que se anotó en ellos. Algunas fotos guardadas antes usan una dirección web que sigue funcionando para quien ya la tenga, incluso cuando termina el acceso."
       },
       "lab_results": {
         "title": "Estudios de laboratorio",
-        "description": "Los resultados de laboratorio y cualquier archivo adjunto."
+        "description": "Las entradas de resultados. Los documentos adjuntos, como los informes de laboratorio, están en Documentos."
       }
     },
-    "neverShared": "Desde acá nunca se comparten las secciones de alergias, condiciones, cirugías, medicamentos y recetas, ni los registros diarios de salud.",
+    "neverShared": "Desde acá nunca se comparten las secciones de alergias, condiciones, cirugías, medicamentos y recetas, ni los registros diarios de salud. Esa información igual puede aparecer dentro de una nota, un documento o una foto que compartas.",
     "alreadyVisible": "El perfil de {{pet}} en PawPi (nombre, foto, raza) ya lo puede ver.",
     "expiryTitle": "Por cuánto tiempo",
     "expiry": {
@@ -3991,6 +3991,7 @@
     "reviewUntilDate": "Hasta el {{date}}, salvo que lo revoques antes",
     "reviewUntilRevoked": "Hasta que lo revoques",
     "reviewLater": "Incluye lo que agregues en estas partes mientras dure el acceso.",
+    "endingLimit": "Terminar el acceso no borra lo que ya vieron, descargaron o anotaron. Algunos documentos y fotos de salud guardados antes usan una dirección web que sigue funcionando para quien ya la tenga.",
     "notSelected": "No se comparte:",
     "consentDate": "Acepto que todo el equipo de {{provider}} en PawPi vea las partes de la historia de {{pet}} que figuran arriba hasta el {{date}}, salvo que revoque el acceso antes.",
     "consentRevoke": "Acepto que todo el equipo de {{provider}} en PawPi vea las partes de la historia de {{pet}} que figuran arriba hasta que revoque el acceso.",
@@ -4003,7 +4004,7 @@
     "errorTitle": "No se pudo compartir",
     "error": {
       "rejected": "No se aceptó tu elección, así que no se compartió nada. Revisala y probá de nuevo. Si sigue pasando, actualizá la app.",
-      "gone": "Ya no se puede compartir con este perro o con esta veterinaria. No se compartió nada.",
+      "gone": "Ya no se puede compartir con este perro o con este negocio. No se compartió nada.",
       "changed": "El acceso cambió mientras elegías, así que no se compartió nada. Revisá quién tiene acceso y probá de nuevo.",
       "unconfirmed": "No pudimos confirmar el resultado. Revisá quién tiene acceso antes de probar de nuevo."
     },
@@ -4057,7 +4058,7 @@
     "denyTitle": "¿Rechazar solicitud?",
     "denyBody": "{{provider}} no tendrá acceso a {{pet}}.",
     "revokeTitle": "¿Revocar acceso?",
-    "revokeBody": "{{provider}} perderá de inmediato el acceso que le diste a los registros de {{pet}}.",
+    "revokeBody": "{{provider}} perderá de inmediato el acceso que le diste a los registros de {{pet}}. Eso no borra lo que ya vio, descargó o anotó. Algunos documentos y fotos de salud guardados antes usan una dirección web que sigue funcionando para quien ya la tenga.",
     "deny": "Rechazar",
     "revoke": "Revocar",
     "revokeCta": "Revocar acceso",
