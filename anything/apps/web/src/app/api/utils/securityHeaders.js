@@ -36,6 +36,47 @@ export const CSP_DIRECTIVES = {
   formAction: ["'self'", 'https://accounts.google.com'],
 };
 
+// Permissions-Policy: deny every powerful browser feature except the ones the web app actually uses.
+// Inventory (grep of src/ + __create/, plus every embedded frame):
+//   - clipboard-write  — the error boundary's "copy error" button (app/root.tsx). Same-origin only.
+//   - fullscreen       — native <video controls> in the provider panel (VideoUploader). Same-origin only.
+// Everything else is denied outright ("()"): there is no geolocation, camera, microphone, payment,
+// share, autoplay or passkey call anywhere in the web app. The Google Maps picker is click-to-pin and
+// renders in-page (no frame, no location lookup). Telehealth joins open the vendor's room in a NEW
+// top-level tab (window.open, "noopener"), which is its own browsing context with its own policy, so
+// this origin never needs camera/microphone. The app embeds no third-party frames at all, so there is
+// no frame origin to allow. The sign-in page runs inside the mobile AuthWebView and needs none of these.
+// Adding a feature later means adding it here deliberately (the test pins this exact set). Only use names
+// Chromium recognises: it logs a console warning per page for an unknown one (`bluetooth` and `web-share`
+// were tried and dropped for that reason; neither is used by the app).
+export const PERMISSIONS_POLICY = {
+  // allowed, same-origin only
+  clipboardWrite: ['self'],
+  fullscreen: ['self'],
+  // denied
+  accelerometer: [],
+  autoplay: [],
+  browsingTopics: [],
+  camera: [],
+  clipboardRead: [],
+  displayCapture: [],
+  encryptedMedia: [],
+  geolocation: [],
+  gyroscope: [],
+  hid: [],
+  idleDetection: [],
+  magnetometer: [],
+  microphone: [],
+  midi: [],
+  payment: [],
+  pictureInPicture: [],
+  publickeyCredentialsGet: [],
+  screenWakeLock: [],
+  serial: [],
+  usb: [],
+  xrSpatialTracking: [],
+};
+
 export function securityHeaders() {
   return secureHeaders({
     strictTransportSecurity: 'max-age=63072000; includeSubDomains',
@@ -43,6 +84,7 @@ export function securityHeaders() {
     xContentTypeOptions: 'nosniff',
     referrerPolicy: 'no-referrer',
     contentSecurityPolicy: CSP_DIRECTIVES,
+    permissionsPolicy: PERMISSIONS_POLICY,
     // Leave the remaining hono defaults (X-Download-Options,
     // X-Permitted-Cross-Domain-Policies, Cross-Origin-*-Policy) on.
   });

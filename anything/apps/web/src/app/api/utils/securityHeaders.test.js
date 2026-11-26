@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Hono } from 'hono';
-import { securityHeaders, CSP_DIRECTIVES } from './securityHeaders';
+import { securityHeaders, CSP_DIRECTIVES, PERMISSIONS_POLICY } from './securityHeaders';
 
 describe('securityHeaders (AUDIT A-28)', () => {
   const app = new Hono();
@@ -43,5 +43,60 @@ describe('securityHeaders (AUDIT A-28)', () => {
     expect(csp).not.toMatch(/fonts\.googleapis\.com|fonts\.gstatic\.com|fontawesome/);
     expect(CSP_DIRECTIVES.fontSrc).toEqual(["'self'", 'data:']);
     expect(CSP_DIRECTIVES.styleSrc).toEqual(["'self'", "'unsafe-inline'"]);
+  });
+});
+
+describe('Permissions-Policy', () => {
+  const app = new Hono();
+  app.use('*', securityHeaders());
+  app.get('/', (c) => c.text('ok'));
+
+  const parse = (header) =>
+    Object.fromEntries(
+      header.split(', ').map((part) => {
+        const [name, value] = part.split('=');
+        return [name, value];
+      }),
+    );
+
+  it('is sent on every response', async () => {
+    const res = await app.request('/');
+    expect(res.headers.get('permissions-policy')).toBeTruthy();
+  });
+
+  it('allows only clipboard-write and fullscreen, same-origin only', async () => {
+    const policy = parse((await app.request('/')).headers.get('permissions-policy'));
+    const allowed = Object.entries(policy)
+      .filter(([, v]) => v !== '()')
+      .sort();
+    expect(allowed).toEqual([
+      ['clipboard-write', '(self)'],
+      ['fullscreen', '(self)'],
+    ]);
+  });
+
+  it('denies the sensitive features outright', async () => {
+    const policy = parse((await app.request('/')).headers.get('permissions-policy'));
+    for (const f of [
+      'camera',
+      'microphone',
+      'geolocation',
+      'payment',
+      'display-capture',
+      'clipboard-read',
+      'usb',
+      'serial',
+      'hid',
+      'publickey-credentials-get',
+      'browsing-topics',
+    ]) {
+      expect(policy[f], f).toBe('()');
+    }
+  });
+
+  it('never opens a feature to every origin or to a third party', () => {
+    for (const [feature, list] of Object.entries(PERMISSIONS_POLICY)) {
+      for (const item of list) expect(item, feature).toBe('self');
+    }
   });
 });
