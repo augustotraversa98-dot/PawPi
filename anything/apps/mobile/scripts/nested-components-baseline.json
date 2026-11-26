@@ -11,7 +11,5 @@
     "src/components/More/OwnerMenu.jsx": { "MenuItem": 1 },
     "src/components/Settings/AppSettings.jsx": { "SectionCard": 1, "SettingRow": 1 }
   },
-  "unparsed": {
-    "src/components/Health/VetRecord/ReviewProposalModal.jsx": 1
-  }
+  "unparsed": {}
 }

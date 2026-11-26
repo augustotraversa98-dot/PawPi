@@ -34,7 +34,14 @@
         "NSPhotoLibraryAddUsageDescription": "PawPi saves photos you create in the app, such as your pet's shareable daily-moment frame, to your photo library.",
         "NSMicrophoneUsageDescription": "PawPi uses the microphone for audio in vet telehealth video consultations.",
         "NSCalendarsFullAccessUsageDescription": "PawPi adds your pet's appointments, bookings and reminders to your calendar so you don't miss them.",
-        "NSCalendarsUsageDescription": "PawPi adds your pet's appointments, bookings and reminders to your calendar so you don't miss them."
+        "NSCalendarsUsageDescription": "PawPi adds your pet's appointments, bookings and reminders to your calendar so you don't miss them.",
+        "NSMotionUsageDescription": "Allow PawPi to access your device motion",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Allow PawPi to access your location",
+        "NSLocationAlwaysUsageDescription": "Allow PawPi to access your location",
+        "NSRemindersUsageDescription": "Allow PawPi to access your reminders",
+        "NSRemindersFullAccessUsageDescription": "Allow PawPi to access your reminders",
+        "NSContactsUsageDescription": "Allow PawPi to access your contacts",
+        "NSFaceIDUsageDescription": "Allow PawPi to access your Face ID biometric data."
       },
       "privacyManifests": {
         "NSPrivacyTracking": false,
