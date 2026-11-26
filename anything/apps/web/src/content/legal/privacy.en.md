@@ -254,13 +254,14 @@ active team member of a vet business published on PawPi who has the link can see
 your display name and the date the link expires, with no photo and nothing from the Vet Record. Send
 it only to the vet you mean to invite.
 
-Accepting the invite only sends you a request from that business to view the record. The business sees
-nothing in the record unless you approve the request. You can share by parts, in app versions that
-let you choose, approve everything asked (the viewing access described under "Older full access"
-above, which lasts until you revoke it), or deny the request. For each invite we store the dog, your
-account, when it was created and when it expires, whether and when you withdrew it and, once used,
-when, by which team member and for which business. We store a scrambled (hashed) form of the link's
-secret code, not the link itself, and keep the invite record until the dog or your account is
+Accepting the invite only sends you a request from that business to view the record. The business
+sees nothing in the record unless you approve the request. You can share by parts, in app versions
+that let you choose, or deny the request. Older app versions, and the app when that business already
+has a booking for your dog, also let you approve everything asked (the viewing access described
+under "Older full access" above, which lasts until you revoke it). For each invite we store the dog,
+your account, when it was created and when it expires, whether and when you withdrew it and, once
+used, when, by which team member and for which business. We store a scrambled (hashed) form of the
+link's secret code, not the link itself, and keep the invite record until the dog or your account is
 deleted.
 
 **How it ends, and what we record.** You can revoke access at any time on the app's Data Access

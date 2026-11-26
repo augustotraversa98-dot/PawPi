@@ -281,13 +281,14 @@ el nombre de tu perro, tu nombre visible y la fecha de vencimiento del enlace, s
 historia clínica. Mandáselo solo a la veterinaria que querés invitar.
 
 Aceptar la invitación solo te envía una solicitud de ese negocio para ver la historia. El negocio no
-ve nada de la historia si no aprobás la solicitud. Podés compartir por partes, en las versiones de la
-app que permiten elegir, aprobar todo lo pedido (el acceso de lectura descrito arriba en "Acceso
-completo anterior", que dura hasta que lo revoques) o rechazar la solicitud. De cada invitación
-guardamos el perro, tu cuenta, cuándo se creó y cuándo vence, si la anulaste y cuándo y, una vez
-usada, cuándo, qué integrante del equipo la usó y para qué negocio. Guardamos una versión codificada
-(hash) del código secreto del enlace, no el enlace en sí, y conservamos el registro de la invitación
-hasta que se borre el perro o tu cuenta.
+ve nada de la historia si no aprobás la solicitud. Podés compartir por partes, en las versiones de
+la app que permiten elegir, o rechazar la solicitud. Las versiones anteriores de la app, y la app
+cuando ese negocio ya tiene una reserva para tu perro, también te permiten aprobar todo lo pedido
+(el acceso de lectura descrito arriba en "Acceso completo anterior", que dura hasta que lo
+revoques). De cada invitación guardamos el perro, tu cuenta, cuándo se creó y cuándo vence, si la
+anulaste y cuándo y, una vez usada, cuándo, qué integrante del equipo la usó y para qué negocio.
+Guardamos una versión codificada (hash) del código secreto del enlace, no el enlace en sí, y
+conservamos el registro de la invitación hasta que se borre el perro o tu cuenta.
 
 **Cómo termina y qué registramos.** Podés revocar el acceso cuando quieras en la pantalla Acceso a
 datos de la app. El acceso compartido por partes además termina solo cuando vence el plazo. PawPi
