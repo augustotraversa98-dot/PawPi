@@ -83,8 +83,9 @@ Where data-protection law (such as the GDPR) applies, we rely on:
 - **Performance of a contract** — to create your account and provide the features you request
   (feed, health tracking, bookings, messaging, caregivers, etc.).
 - **Consent** — for optional device permissions (location, camera/photos, notifications), for
-  sharing pet health data with a service business (such as a vet), and for leaderboard opt-in. You
-  can withdraw consent at any time (see Section 10).
+  sending Vet Record documents to Anthropic to suggest records, for sharing pet health data with a
+  service business (such as a vet), and for leaderboard opt-in. You can withdraw consent at any time
+  (see Section 10).
 - **Legitimate interests** — to secure the Service, prevent abuse and fraud, and operate and improve
   core functionality, balanced against your rights.
 - **Legal obligation** — to keep records the law requires (e.g. certain transaction records) and to
@@ -97,8 +98,9 @@ We use the information to:
 - create and manage your account and your pets' profiles;
 - provide the features you use (feed, health tracking, reminders, vet records, training, community,
   adoption, and the services marketplace);
-- read the documents and document photos you upload to your dog's Vet Record, using an AI service
-  (Anthropic's Claude), to suggest records you can review before anything is added (see Section 8);
+- if you allow it, read the documents and document photos you upload to your dog's Vet Record, using
+  an AI service (Anthropic's Claude), to suggest records you can review before anything is added (see
+  Section 8);
 - enable bookings, payments, messaging, reviews, and caregiver sharing;
 - send you the reminders and notifications you have set up or enabled (including push);
 - show location-based content when you grant location permission;
@@ -176,9 +178,9 @@ stop sending.
 
 PawPi helps you **track changes and prepare better conversations with your veterinarian. It does not
 diagnose, prescribe, or replace professional veterinary care.** Health content you enter is stored
-to help you organize records and notice patterns. Documents you upload to the Vet Record are also
-sent to Anthropic (Claude) to read them and suggest records, which you review before anything is
-added (see Section 8). Any "insights" are informational and behavioural, never diagnostic.
+to help you organize records and notice patterns. If you allow it, documents you upload to the Vet
+Record are also sent to Anthropic (Claude) to read them and suggest records, which you review before
+anything is added (see Section 8). Any "insights" are informational and behavioural, never diagnostic.
 Prescriptions appear in the app only as records issued by a licensed veterinary provider through the
 Service.
 
@@ -220,7 +222,7 @@ contract, only as needed:
 - **Expo** (push service) — Purpose: Delivering push notifications (Expo passes them to Apple's or Google's push service); Data involved: Device push token, notification content
 - **MercadoPago** — Purpose: Payment processing; Data involved: Transaction amount/status/reference; you provide payment details directly to them
 - **Resend** — Purpose: Transactional email (e.g. password reset, digests); Data involved: Your email address, message content
-- **Anthropic** (Claude, an AI model) — Purpose: Reading the documents and document photos you upload to your dog's Vet Record and suggesting records you can review before anything is added; Data involved: This happens automatically after a document is saved, whether you or a family member you invited uploads it. We send the uploaded file (large photos are resized first), with everything written, shown or embedded in it; its file type; and a fixed instruction from PawPi asking to extract only the records present in the document, with the list of record fields to fill in. PawPi does not add your name, email address, account details, your dog's name or the file name to that request, although the document itself may contain such details. [Anthropic's privacy policy](https://www.anthropic.com/legal/privacy) · [Anthropic's Commercial Terms](https://www.anthropic.com/legal/commercial-terms)
+- **Anthropic** (Claude, an AI model) — Purpose: Reading the documents and document photos you upload to your dog's Vet Record, only to suggest records you can review before anything is added; Data involved: This happens only if the person uploading the document has allowed it in the app (a question the first time, and the “Let PawPi read my documents” setting, which can be turned off at any time). It applies whether you or a family member you invited uploads it. The document is saved either way. The choice is kept on that device and is asked again after signing out. Turning the setting off stops further documents from being sent from that device; it does not take back documents already sent. We send the uploaded file (large photos are resized first), with everything written, shown or embedded in it; its file type; and a fixed instruction from PawPi asking to extract only the records present in the document, with the list of record fields to fill in. PawPi does not add your name, email address, account details, your dog's name or the file name to that request, although the document itself may contain such details. [Anthropic's privacy policy](https://www.anthropic.com/legal/privacy) · [Anthropic's Commercial Terms](https://www.anthropic.com/legal/commercial-terms)
 - **Apple** — Purpose: Sign in with Apple, if you choose it; and, on iPhone, the maps and address lookup built into iOS (Apple Maps); Data involved: For sign-in, the basic profile Apple shares with us (name and email, subject to your choices, including Apple's private-relay email). For maps, the area you view and any coordinates you ask to turn into a street address are handled by Apple's system services. [Apple's privacy policy](https://www.apple.com/legal/privacy/)
 - **Google** — Purpose: Sign in with Google, if you choose it; Data involved: The basic profile Google shares with us (name and email, subject to your choices). [Google's privacy policy](https://policies.google.com/privacy)
 - **Grafana Cloud** (Grafana Labs) — Purpose: Hosting and monitoring of the anonymous usage and diagnostics data described in Section 5; Data involved: Anonymous usage and diagnostics events and statistics, tied only to random identifiers — no name, email, account, pet, content, or location data
@@ -230,8 +232,14 @@ contract, only as needed:
 
 OpenStreetMap Nominatim is a public service that the app contacts directly from your device. Apple and Google are
 the sign-in and map services built into your device or chosen by you. Each of these handles your data under its
-own privacy policy, linked above. We keep this list current as our vendors change. We do not permit the
-vendors we engage under contract to use your data for their own purposes.
+own privacy policy, linked above. We keep this list current as our vendors change.
+
+We share data with the vendors we engage only so that they can provide their services. Each vendor's
+own terms also set what it may do with that data, such as keeping or using it to meet legal
+obligations or to protect its service against misuse. Under Anthropic's Commercial Terms, Anthropic
+may not train its models on the content PawPi sends through its API. Anthropic processes that content
+to provide its service, and may keep it longer where the law requires it, or to enforce its usage
+policies and deal with harmful use.
 
 ## 9. Data retention
 
@@ -247,8 +255,8 @@ resolve disputes or enforce our Terms, and our payment processor keeps its own p
 its own policy. Push tokens are removed when you disable notifications or delete your account.
 Backups are rotated on a routine schedule.
 
-Anthropic, which reads the documents you upload to the Vet Record (see Section 8), keeps content sent
-through its API for a limited period under [its own retention policy](https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data),
+Anthropic, which reads the Vet Record documents that are sent to it with permission (see Section 8),
+keeps content sent through its API for a limited period under [its own retention policy](https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data),
 and longer where required by law or to enforce its usage policies.
 
 For dogs that others shared with you, you can choose to delete the posts you published about them.
@@ -276,6 +284,8 @@ You can also:
 
 - control camera, photo, location, and notification permissions in your device settings;
 - turn off anonymous usage and diagnostics in **Settings → Help improve PawPi (anonymous)**;
+- allow or stop the reading of your Vet Record documents in **Settings → Let PawPi read my
+  documents**;
 - edit or delete pets, posts, comments, logs, and other content within the app;
 - revoke a caregiver's or provider's access at any time;
 - delete your account in the app (Settings → Delete account).

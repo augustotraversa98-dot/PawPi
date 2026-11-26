@@ -27,9 +27,10 @@ qualified attorney before launch. Give your lawyer this checklist.
    Grafana Cloud, Daily.co, Anthropic, Apple/Google sign-in, Apple Maps on iOS, Expo Updates, OSM Nominatim) is
    complete and that DPAs are in place with each. Binance Pay, Stripe, Uploadcare, Google Maps Platform and
    RevenueCat are NOT live and were removed/omitted (see `docs/legal/accuracy-sweep-2026-10-16.md`).
-   **Anthropic** (reads uploaded Vet Record documents; added 2026-11-25): confirm the §8 sentence that vendors may
-   not use the data for their own purposes, whether disclosure alone is enough or explicit permission is needed
-   before sending (Apple guideline 5.1.2(i)), and the §9 sentence on how long Anthropic keeps what it receives.
+   **Anthropic** (reads Vet Record documents when the person uploading allows it): check the §8 paragraph on what
+   vendors may do with data against Anthropic's Commercial Terms and Data Processing Addendum, confirm that no
+   setting or program that permits training on PawPi's content is turned on in the Anthropic account, and check the
+   §9 sentence on how long Anthropic keeps what it receives.
 7. **International transfers.** Data is hosted outside the user's country (Supabase region sa-east-1
    today, plus vendors elsewhere). Confirm transfer mechanism/safeguards.
 8. **Payments.** Confirm refund/cancellation responsibility wording given providers set their own
