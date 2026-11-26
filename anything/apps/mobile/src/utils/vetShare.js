@@ -51,6 +51,32 @@ export function bookedVetsForPet(bookings, petId) {
   return [...vets.values()];
 }
 
+const CALLED_OFF = ["cancelled", "declined"];
+
+// Whether the owner has a booking (not cancelled or declined) with this business for this dog. A pending request from a
+// business without one can only be answered by choosing sections or denying it, so unknown bookings count as none.
+export function hasBookingForPet(bookings, providerId, petId) {
+  const all = [...(bookings?.upcoming ?? []), ...(bookings?.past ?? [])];
+  return all.some(
+    (b) =>
+      b?.provider_id != null &&
+      String(b.provider_id) === String(providerId) &&
+      String(b.pet_id) === String(petId) &&
+      !CALLED_OFF.includes(b.booking_status),
+  );
+}
+
+const CLOSED_INVITES_SHOWN = 5;
+
+// Every open invite (each can be withdrawn), then the most recent others. Keeps the server's order.
+export function visibleInvites(invites) {
+  const all = invites ?? [];
+  return [
+    ...all.filter((i) => i.status === "open"),
+    ...all.filter((i) => i.status !== "open").slice(0, CLOSED_INVITES_SHOWN),
+  ];
+}
+
 export function isGrantExpired(grant, now = Date.now()) {
   if (grant?.status === "expired") return true;
   if (!grant?.expires_at) return false;

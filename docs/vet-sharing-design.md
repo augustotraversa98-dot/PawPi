@@ -74,7 +74,12 @@ Only a hash of the token is stored (`care_access_invites`, forced RLS, owner pol
 `app_preview_vet_invite` and `app_claim_vet_invite`). The token sits after the `#`, so it is not part of a request URL:
 the page keeps it in the tab's session storage across sign-in, removes it from the address bar and sends it only in a
 request body. The page is `noindex` and sends no referrer. Creating, opening and accepting are rate limited.
-The app screens for creating an invite are not built. Tests: `web/test/integration/vet-invite.integration.test.ts`.
+Tests: `web/test/integration/vet-invite.integration.test.ts`.
+
+In the app (`mobile/src/components/Health/VetShare/InviteVet.jsx`, released versions after build 33): the share sheet
+offers **Invite a vet by link** to the pet's owner, states the rules before creating, hands the link straight to the
+phone's share sheet without keeping it, and lists every invite of the owner with its state and **Withdraw** on open ones.
+A `care_access_requested` notification, in the list or as a tapped push, opens Data Access.
 
 ## 2. What the vet sees
 
@@ -124,8 +129,8 @@ The `pets` row (name, photo, breed...) is already readable by any signed-in user
 
 Vet Record > **Share** (and Data Access > **Share with your vet**) opens
 `anything/apps/mobile/src/components/Health/VetShare/ShareWithVetSheet.jsx`. From there it offers providers the owner
-has a vet or telehealth booking with, for that pet (a vet without one can be invited by link from the server and web,
-section 1). The same sheet opens for one given provider from a booking that
+has a vet or telehealth booking with, for that pet (a vet without one is invited by link, section 1). The same sheet
+opens for one given provider from a booking that
 is not completed (any kind of provider) and from Data Access > **Choose what to share** on a pending request.
 
 - It sends only the by-section body. Nothing is selected beforehand, a review step states who can see what, until when
@@ -133,7 +138,9 @@ is not completed (any kind of provider) and from Data Access > **Choose what to 
 - Access is reported as given only when the returned grant matches the choice; otherwise the app says so and revokes a
   newly created grant that differs.
 - Data Access also keeps **Approve all asked**, which approves a provider request as asked, after listing everything in
-  it.
+  it, only for a provider with a booking for that pet (not cancelled or declined). Any other request, which includes
+  every request from an invite, offers **Choose what to share** or **Deny**, and asks the owner to check the name. This
+  is a rule of the app screen; the server accepts both answers.
 - App versions released before this sheet (including build 33) send the by-scope body, and their data-access screen
   prints raw scope labels, so a grant by section reads `record_sections` there.
 
@@ -167,7 +174,7 @@ Each needs its own change with owner review.
 
 1. **Send an invite by email or phone.** PawPi sends nothing to an invited vet: the owner shares the link ("Invite by
    link", section 1). Needs working email delivery first.
-2. **Create an invite in the app, and offer a vet without a booking in the picker.** The server, the web invite page and
-   the provider panel's "Shared with us" list exist; the app screens are a separate change.
+2. **Offer a vet without a booking in the picker.** After a vet from an invite is approved, the owner sees and revokes
+   that access in Data Access and the share sheet's list, but changes it only through a new request.
 3. **More sections** (allergies, conditions, medications, surgeries): each needs a read policy, a branch in the record
    route and a record screen section.

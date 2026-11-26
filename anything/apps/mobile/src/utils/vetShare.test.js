@@ -1,4 +1,6 @@
 import {
+  hasBookingForPet,
+  visibleInvites,
   SHARE_EXPIRIES,
   SHARE_SECTIONS,
   bookedVetsForPet,
@@ -166,5 +168,33 @@ describe("grantAccessLines", () => {
   test("an unknown scope or section is shown as is, never hidden", () => {
     expect(grantAccessLines({ scopes: ["new_scope"] }, t)).toEqual(["new_scope"]);
     expect(grantAccessLines({ scopes: ["record_sections"], sections: ["new_part"] }, t)).toEqual(["new_part"]);
+  });
+});
+
+describe("hasBookingForPet", () => {
+  const b = (over) => ({ pet_id: 7, provider_id: 3, capability: "vet", booking_status: "confirmed", ...over });
+
+  test("any booking with that business for that dog counts, upcoming or past, whatever the capability", () => {
+    expect(hasBookingForPet({ upcoming: [b()], past: [] }, 3, 7)).toBe(true);
+    expect(hasBookingForPet({ upcoming: [], past: [b({ capability: "grooming" })] }, "3", "7")).toBe(true);
+    expect(hasBookingForPet({ upcoming: [b({ booking_status: "requested" })], past: [] }, 3, 7)).toBe(true);
+  });
+
+  test("another dog, another business, a cancelled or declined booking, or unknown bookings do not", () => {
+    expect(hasBookingForPet({ upcoming: [b({ pet_id: 8 })], past: [] }, 3, 7)).toBe(false);
+    expect(hasBookingForPet({ upcoming: [b({ provider_id: 4 })], past: [] }, 3, 7)).toBe(false);
+    expect(hasBookingForPet({ upcoming: [b({ booking_status: "cancelled" })], past: [] }, 3, 7)).toBe(false);
+    expect(hasBookingForPet({ upcoming: [b({ booking_status: "declined" })], past: [] }, 3, 7)).toBe(false);
+    expect(hasBookingForPet({ upcoming: [b({ provider_id: null })], past: [] }, null, 7)).toBe(false);
+    expect(hasBookingForPet(undefined, 3, 7)).toBe(false);
+  });
+});
+
+describe("visibleInvites", () => {
+  test("keeps every open invite and only the most recent others", () => {
+    const closed = Array.from({ length: 8 }, (_, i) => ({ id: i, status: "expired" }));
+    const open = [{ id: 20, status: "open" }, { id: 21, status: "open" }];
+    expect(visibleInvites([...closed, ...open]).map((i) => i.id)).toEqual([20, 21, 0, 1, 2, 3, 4]);
+    expect(visibleInvites(undefined)).toEqual([]);
   });
 });

@@ -1,6 +1,8 @@
 // Render pins for the owner's Data Access (care-access trust) screen:
 //   - pending requests spell out what they ask for; approving them as asked goes through a confirmation that lists it
 //     all, and a record request can be answered by choosing sections instead (the share sheet, for that vet);
+//   - a request from a business with no booking for the dog (every invite by link) is never approved as asked: only
+//     "Choose what to share" or "Deny", after a note to check the name;
 //   - active grants show exactly which sections and until when, with Revoke (through a confirm Alert);
 //   - an expired grant is shown as ended, never under "Who has access";
 //   - both sections show their empty state with no grants;
@@ -13,6 +15,7 @@ import { Alert } from "react-native";
 
 let mockGrants;
 let mockCurrentPet;
+let mockBookings;
 const mockMutate = jest.fn();
 
 jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
@@ -32,6 +35,9 @@ jest.mock("@/components/RefreshableScrollView", () => {
 jest.mock("@/hooks/usePetProfile", () => ({
   useCurrentPet: () => mockCurrentPet,
 }));
+jest.mock("@/hooks/useProviders", () => ({
+  useMyBookings: () => mockBookings,
+}));
 jest.mock("@/hooks/useCareAccessGrants", () => ({
   useCareAccessGrants: () => mockGrants,
   useUpdateGrant: () => ({ mutate: mockMutate, isPending: false }),
@@ -42,7 +48,11 @@ jest.mock("@/components/Health/VetShare/ShareWithVetSheet", () => {
   return {
     __esModule: true,
     default: ({ provider }) => (
-      <Text testID="vet-share-sheet">{provider ? `${provider.providerId}:${provider.name}` : "any"}</Text>
+      <Text testID="vet-share-sheet">
+        {provider
+          ? `${provider.providerId}:${provider.name}${provider.checkName ? ":check-name" : ""}`
+          : "any"}
+      </Text>
     ),
   };
 });
@@ -53,12 +63,16 @@ beforeEach(() => {
   mockMutate.mockReset();
   mockCurrentPet = { data: { id: 7, name: "Rex" } };
   mockGrants = { data: [], isLoading: false, isError: false, refetch: jest.fn() };
+  // The requesting business of these tests (provider 5) has a booking for the dog unless a test says otherwise.
+  mockBookings = booked({ pet_id: 7, provider_id: 5, booking_status: "confirmed" });
   // Auto-press the destructive (non-cancel) button so confirm dialogs resolve.
   jest.spyOn(Alert, "alert").mockImplementation((title, msg, buttons = []) => {
     const target = buttons.find((b) => b.style === "destructive") || buttons[0];
     target?.onPress?.();
   });
 });
+
+const booked = (...upcoming) => ({ data: { upcoming, past: [] }, refetch: jest.fn() });
 
 afterEach(() => {
   jest.restoreAllMocks();
@@ -278,4 +292,68 @@ test("a family member is not offered the share", () => {
   mockCurrentPet = { data: { id: 7, name: "Rex", is_shared: true } };
   const { queryByTestId } = render(<DataAccessScreen />);
   expect(queryByTestId("data-access-share")).toBeNull();
+});
+
+describe("a request from a business with no booking for the dog", () => {
+  const unbooked = [
+    ["no booking at all", () => booked()],
+    ["a booking for another dog", () => booked({ pet_id: 8, provider_id: 5, booking_status: "confirmed" })],
+    ["a booking with another business", () => booked({ pet_id: 7, provider_id: 6, booking_status: "confirmed" })],
+    ["only a cancelled booking", () => booked({ pet_id: 7, provider_id: 5, booking_status: "cancelled" })],
+    ["only a declined booking", () => booked({ pet_id: 7, provider_id: 5, booking_status: "declined" })],
+    ["bookings not loaded", () => ({ data: undefined, refetch: jest.fn() })],
+  ];
+
+  test.each(unbooked)("%s: only choosing the sections or denying, after checking the name", (_name, bookings) => {
+    mockBookings = bookings();
+    mockGrants = list(request({ scopes: ["medical_read"] }));
+    const { getByTestId, queryByTestId, queryByText, getByText } = render(<DataAccessScreen />);
+
+    expect(getByText("Before approving, check that “Happy Paws” is really your vet.")).toBeTruthy();
+    expect(getByTestId("data-access-choose-11")).toBeTruthy();
+    expect(getByTestId("data-access-deny-11")).toBeTruthy();
+    expect(queryByTestId("data-access-approve-11")).toBeNull();
+    expect(queryByText("Approve all asked")).toBeNull();
+    expect(queryByText("Approve")).toBeNull();
+  });
+
+  test("Choose what to share carries the reminder to check the name, and approves nothing", () => {
+    mockBookings = booked();
+    mockGrants = list(request({ scopes: ["medical_read"] }));
+    const { getByTestId } = render(<DataAccessScreen />);
+
+    fireEvent.press(getByTestId("data-access-choose-11"));
+
+    expect(getByTestId("vet-share-sheet").props.children).toBe("5:Happy Paws:check-name");
+    expect(mockMutate).not.toHaveBeenCalled();
+  });
+
+  test("a request that does not ask for the record is not approvable as asked either", () => {
+    mockBookings = booked();
+    mockGrants = list(request({ scopes: ["health_logs_write"] }));
+    const { getByTestId, queryByTestId } = render(<DataAccessScreen />);
+    expect(getByTestId("data-access-choose-11")).toBeTruthy();
+    expect(queryByTestId("data-access-approve-11")).toBeNull();
+  });
+
+  test("against a server without sections it can only be denied", () => {
+    mockBookings = booked();
+    mockGrants = list(request({ sections: undefined }));
+    const { getByTestId, queryByTestId } = render(<DataAccessScreen />);
+    expect(queryByTestId("data-access-choose-11")).toBeNull();
+    expect(queryByTestId("data-access-approve-11")).toBeNull();
+    expect(getByTestId("data-access-deny-11")).toBeTruthy();
+  });
+
+  test("a business with a booking gets no note", () => {
+    mockGrants = list(request());
+    const { queryByTestId } = render(<DataAccessScreen />);
+    expect(queryByTestId("data-access-check-name-11")).toBeNull();
+  });
+});
+
+test("opening the screen reads the requests and bookings again", () => {
+  render(<DataAccessScreen />);
+  expect(mockGrants.refetch).toHaveBeenCalled();
+  expect(mockBookings.refetch).toHaveBeenCalled();
 });

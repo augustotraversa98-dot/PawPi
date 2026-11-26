@@ -90,6 +90,11 @@ const CARE_ACCESS_TYPES = new Set([
   "care_access_revoked",
 ]);
 
+// A vet accepted the owner's invite link and asks to see a record. The server's body is a ready sentence in the
+// owner's language; there is no subject_ref. A tap opens Data access, where the owner answers.
+const ACCESS_REQUEST_TYPE = "care_access_requested";
+const DATA_ACCESS_ROUTE = "/(tabs)/more/data-access";
+
 // Map a pending care-access grant (a vet/business asking to see a pet's record)
 // into the screen's item shape. Tagged _source:"access" so a tap routes to the
 // Data Access trust screen where the owner can approve/deny. Owner-scoped by the
@@ -297,6 +302,23 @@ const BUSINESS_TYPES = new Set([
 ]);
 function mapDbNotification(n, t) {
   if (n.type === "emergency_contact") return mapEmergencyNotification(n, t);
+  if (n.type === ACCESS_REQUEST_TYPE) {
+    return {
+      id: `db-${n.id}`,
+      _source: "db",
+      _dbId: n.id,
+      type: n.type,
+      title: t("notifications.care_access_requestedTitle"),
+      message: n.body || t("notifications.care_access_requestedFallback"),
+      opensDataAccess: true,
+      timestamp: n.created_at,
+      read: !!n.read_at,
+      avatar: n.actor_avatar || null,
+      relatedBookingId: null,
+      relatedPetId: null,
+      relatedPostId: null,
+    };
+  }
   if (CARE_ACCESS_TYPES.has(n.type)) {
     return {
       id: `db-${n.id}`,
@@ -481,6 +503,7 @@ const NotificationIcon = ({ type }) => {
       return <Target size={18} color={COLORS.sageDark} />;
     case "access":
     case "care_access_granted":
+    case ACCESS_REQUEST_TYPE:
       return <ShieldCheck size={18} color={COLORS.sageDark} />;
     case "care_access_revoked":
       return <ShieldCheck size={18} color={COLORS.mutedBrown} />;
@@ -596,13 +619,14 @@ export default function NotificationsScreen() {
       Barks: "bark",
       Training: "training",
     };
+    if (selectedFilter === "Requests" && notif.type === ACCESS_REQUEST_TYPE) return true;
     return notif.type === typeMap[selectedFilter];
   });
 
   const handleNotifTap = (notif) => {
     if (notif._source === "access") {
       // Take the owner to the trust screen to approve/deny the request.
-      router.push("/(tabs)/more/data-access");
+      router.push(DATA_ACCESS_ROUTE);
       return;
     }
 
@@ -616,6 +640,10 @@ export default function NotificationsScreen() {
       if (!notif.read) markRead.mutate({ ids: [notif._dbId] });
       // Everything about a finder, or a change of record access, is on the card itself: stay here.
       if (notif.isEmergency || notif.staysOnScreen) return;
+      if (notif.opensDataAccess) {
+        router.push(DATA_ACCESS_ROUTE);
+        return;
+      }
       if (notif.relatedBookingId) {
         // Booking lifecycle → open the booking summary (id = appointment id).
         router.push({
