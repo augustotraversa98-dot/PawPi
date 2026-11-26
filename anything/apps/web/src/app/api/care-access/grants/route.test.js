@@ -97,8 +97,9 @@ describe('GET /api/care-access/grants', () => {
 });
 
 // POST /api/care-access/grants — owner-initiated "Share clinic history". sql call order:
-// 1) resolveUserId profile, 2) pet-ownership, 3) provider-published, 4) close expired grants,
-// 5) dedup, 6) INSERT.
+// 1) resolveUserId profile, 2) pet-ownership, 3) provider-published, 4) share lock,
+// 5) hold the open grant, 6) close expired grants, 7) dedup, 8) approve a pending request,
+// 9) INSERT.
 const postReq = (body) =>
   new Request('http://localhost/api/care-access/grants', {
     method: 'POST',
@@ -130,8 +131,11 @@ describe('POST /api/care-access/grants', () => {
       .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId → 7
       .mockResolvedValueOnce([{ id: 5 }]) // pet belongs to me
       .mockResolvedValueOnce([{ id: 9 }]) // provider published
+      .mockResolvedValueOnce([]) // share lock
+      .mockResolvedValueOnce([]) // open grant
       .mockResolvedValueOnce([]) // close expired
       .mockResolvedValueOnce([]) // dedup: none
+      .mockResolvedValueOnce([]) // no pending request
       .mockResolvedValueOnce([
         { id: 100, pet_id: 5, owner_user_id: 7, provider_id: 9, scopes: ['medical_read'], status: 'active', requested_by: 'owner' },
       ]); // INSERT
@@ -159,8 +163,11 @@ describe('POST /api/care-access/grants', () => {
       .mockResolvedValueOnce([PROFILE_ROW])
       .mockResolvedValueOnce([{ id: 5 }])
       .mockResolvedValueOnce([{ id: 9 }])
+      .mockResolvedValueOnce([]) // share lock
+      .mockResolvedValueOnce([]) // open grant
       .mockResolvedValueOnce([]) // close expired
-      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]) // dedup: none
+      .mockResolvedValueOnce([]) // no pending request
       .mockResolvedValueOnce([{ id: 100, status: 'active' }]);
 
     await POST(postReq({ petId: 5, providerId: 9, scopes: ['medical_read', 'appointments'] }));
@@ -185,6 +192,8 @@ describe('POST /api/care-access/grants', () => {
       .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
       .mockResolvedValueOnce([{ id: 5 }]) // pet
       .mockResolvedValueOnce([{ id: 9 }]) // provider
+      .mockResolvedValueOnce([]) // share lock
+      .mockResolvedValueOnce([existing]) // open grant
       .mockResolvedValueOnce([]) // close expired
       .mockResolvedValueOnce([existing]); // dedup HIT → return
 
@@ -209,8 +218,11 @@ describe('POST /api/care-access/grants', () => {
       .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
       .mockResolvedValueOnce([{ id: 5 }]) // pet
       .mockResolvedValueOnce([{ id: 9 }]) // provider
+      .mockResolvedValueOnce([]) // share lock
+      .mockResolvedValueOnce([]) // open grant
       .mockResolvedValueOnce([]) // close expired
       .mockResolvedValueOnce([]) // dedup: none
+      .mockResolvedValueOnce([]) // no pending request
       .mockRejectedValueOnce(Object.assign(new Error('dup'), { code: '23505' })) // INSERT loses
       .mockResolvedValueOnce([winner]); // winner SELECT
 
@@ -250,6 +262,8 @@ describe('POST /api/care-access/grants', () => {
       .mockResolvedValueOnce([PROFILE_ROW])
       .mockResolvedValueOnce([{ id: 5 }])
       .mockResolvedValueOnce([{ id: 9 }])
+      .mockResolvedValueOnce([]) // share lock
+      .mockResolvedValueOnce([]) // open grant
       .mockResolvedValueOnce([]) // close expired
       .mockResolvedValueOnce([{ id: 60, scopes: ['record_sections'], sections: ['vaccines'] }]);
 
@@ -298,6 +312,7 @@ describe('POST /api/care-access/grants by section', () => {
       const text = strings.join(' ');
       if (text.includes('FROM user_profiles')) return [PROFILE_ROW];
       if (text.includes('INSERT INTO care_access_grants')) return [{ id: 101 }];
+      if (text.includes('UPDATE care_access_grants')) return []; // nothing active or pending
       return [{ id: 5 }];
     });
 
@@ -309,5 +324,50 @@ describe('POST /api/care-access/grants by section', () => {
     expect(allBound()).toContainEqual(['record_sections']);
     expect(allBound()).toContainEqual(['profile', 'lab_results']);
     expect(allBound()).toContain('30 days');
+  });
+});
+
+describe("POST /api/care-access/grants while the vet's request is pending", () => {
+  const APPROVED = { id: 55, status: 'active', requested_by: 'provider' };
+  const isApproval = (text) => text.includes("status = 'pending'");
+  const arrangePending = ({ insertFails = false } = {}) => {
+    auth.mockResolvedValue(SESSION);
+    let inserted = false;
+    sql.mockImplementation(async (strings) => {
+      const text = strings.join(' ');
+      if (text.includes('FROM user_profiles')) return [PROFILE_ROW];
+      if (text.includes('FROM pets') || text.includes('FROM providers')) return [{ id: 5 }];
+      if (text.includes('INSERT INTO care_access_grants')) {
+        inserted = true;
+        throw Object.assign(new Error('dup'), { code: '23505' });
+      }
+      // With insertFails the request is only there once the INSERT has been refused.
+      if (isApproval(text)) return insertFails && !inserted ? [] : [APPROVED];
+      return [];
+    });
+  };
+  const approval = () => sql.mock.calls.find((c) => isApproval(c[0].join(' ')));
+
+  it.each([
+    ['by scope', {}, [['medical_read'], null, null]],
+    ['by section', { sections: ['vaccines'], expiry: '7d' }, [['record_sections'], ['vaccines'], '7 days']],
+  ])("200 { grant, approvedRequest } with the owner's choice, no INSERT (%s)", async (_label, extra, choice) => {
+    arrangePending();
+    const res = await POST(postReq({ petId: 5, providerId: 9, ...extra }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ grant: APPROVED, approvedRequest: true });
+    // scopes, sections, interval, then the owner, pet and provider that scope the write.
+    expect(approval().slice(1)).toEqual([...choice, 7, 5, 9]);
+    expect(allQueryTexts().some((t) => t.includes('INSERT INTO care_access_grants'))).toBe(false);
+  });
+
+  it.each([
+    ['by scope', {}],
+    ['by section', { sections: ['vaccines'], expiry: '7d' }],
+  ])('a request that arrives before the INSERT is approved instead (%s)', async (_label, extra) => {
+    arrangePending({ insertFails: true });
+    const res = await POST(postReq({ petId: 5, providerId: 9, ...extra }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ grant: APPROVED, approvedRequest: true });
   });
 });
