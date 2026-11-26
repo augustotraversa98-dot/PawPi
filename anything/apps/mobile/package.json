@@ -6,7 +6,8 @@
     "preinstall": "npx -y only-allow npm",
     "postinstall": "patch-package",
     "test": "jest && jest --config jest.config.tz-negative.js",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "lint:components": "node scripts/check-nested-components.js"
   },
   "expo": {
     "autolinking": {
@@ -119,6 +120,7 @@
     "zustand": "5.0.3"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.6.7",
     "@expo/cli": "54.0.1",
     "@tailwindcss/postcss": "4.1.18",
     "@testing-library/react-native": "^13.3.3",

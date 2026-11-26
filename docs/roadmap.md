@@ -27,6 +27,13 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-26 — CI check: no new components declared inside components (mobile) — tooling only, no app, server or migration change
+- `npm run lint:components` runs in the `mobile (jest)` job: Biome 2.6.7 (one new dev dependency) with only `noNestedComponentDefinitions` (the pattern behind the keyboard bug fixed in #799).
+- 14 existing cases in 10 files are a committed baseline (`anything/apps/mobile/scripts/nested-components-baseline.json`): warnings, not fixed. A new one fails.
+- Found by the check, not fixed: a stray `>` in `ReviewProposalModal.jsx` (also baselined). Details and limits: `docs/keyboard-convention.md`.
+
+---
+
 ## 2026-11-26 — Privacy Policy wording for the emergency / finder flow (EN + ES; website only, no build)
 - Sections 2, 7 and 9 of `content/legal/privacy.{en,es}.md` and the `docs/legal/` mirrors: what a finder sends and who receives it, what the public pet pages show, the 90-day deletion. "Last updated" is November 26, 2026.
 - `PRIVACY_VERSION` / `TERMS_VERSION` unchanged; nobody is asked to accept again. Live with the web deploy after the merge.

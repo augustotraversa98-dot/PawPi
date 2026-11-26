@@ -20,15 +20,33 @@ local to one screen. This is the single shared mechanism plus a CI guard so a ne
 6. **Never declare a component inside another component around a text field.** `const Field = () => <TextInput/>`
    inside a screen or modal is a new component type on every render: React remounts it on each keystroke and the
    keyboard closes. Declare it at module scope and pass props (or call a plain `renderField()` function).
+   The same applies to components without a text field: see "CI check for components inside components".
 7. **A keyboard-aware scroll view inside `presentationStyle="pageSheet"` passes `inPageSheet`**, and runs to the
    bottom of the sheet (pinned footers belong in `KeyboardSafeSheet`).
 8. A pinned footer must never float over the form while typing. An absolutely positioned footer switches to
    `position: "relative"` (taking its own space) while `useKeyboardMetrics().keyboardVisible`.
 9. Do not swap a screen's branch (spinner, empty state) in a way that unmounts the search field the user is typing in.
 
-All of 1, 2, 6 and 7 are enforced by `keyboardSafety.guard.test.js`. (The mobile package has no ESLint setup, so
-`react/no-unstable-nested-components` cannot be switched on without new dependencies; guard rule 6 covers the text
-field cases.)
+All of 1, 2, 6 and 7 are enforced by `keyboardSafety.guard.test.js`.
+
+## CI check for components inside components
+
+`npm run lint:components` (a step of the `mobile (jest)` job) runs Biome with exactly one rule,
+`lint/correctness/noNestedComponentDefinitions` (`biome.json`; no formatter, no other rules). It covers every
+`.js/.jsx/.ts/.tsx` file of the mobile app, with or without a text field.
+
+* Cases that already existed are listed in `scripts/nested-components-baseline.json` and only warn. The match is per
+  file + component name + count, so line shifts do not matter.
+* A new case fails. Fix it: move the component outside its parent and pass props, or make it a lowercase function and
+  call it (`{renderRow()}`). Do not add it to the baseline.
+* After fixing, renaming or moving a listed case, lower or remove its entry; an outdated entry also fails.
+* The one file Biome reports a syntax error for is listed under `unparsed`; a new syntax error fails.
+
+**What the rule does not detect** (checked with Biome 2.6.7): a component wrapped in `useCallback` / `useMemo` or
+returned by a factory (`styled(...)`), one chosen by a condition (`x ? () => <A/> : B`), an inline
+`ListHeaderComponent={() => ...}`, and anything declared inside a hook, a lowercase-named function or an anonymous
+`export default () => ...`. Guard rule 6 still covers the inline-prop and `useCallback` shapes when a text field is
+involved.
 
 ## What `KeyboardAwareScrollView` guarantees
 
