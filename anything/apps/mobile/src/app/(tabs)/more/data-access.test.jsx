@@ -38,6 +38,11 @@ jest.mock("@/hooks/useCareAccessGrants", () => ({
   useUpdateGrant: () => ({ mutate: mockMutate, isPending: false }),
 }));
 
+jest.mock("@/components/Health/VetShare/ShareWithVetSheet", () => {
+  const { Text } = require("react-native");
+  return { __esModule: true, default: () => <Text testID="vet-share-sheet">sheet</Text> };
+});
+
 import DataAccessScreen from "./data-access";
 
 // Far-future / far-past so the expiry check is deterministic without faking time.
@@ -203,4 +208,17 @@ test("an active grant with a past expires_at is NOT shown as active", () => {
   // Falls out of "Who has access" → empty state, and is not rendered anywhere.
   expect(getByText("No one has access yet.")).toBeTruthy();
   expect(queryByText("Expired Vet")).toBeNull();
+});
+
+test("the owner can open the share-with-your-vet sheet", () => {
+  const { getByTestId, queryByTestId } = render(<DataAccessScreen />);
+  expect(queryByTestId("vet-share-sheet")).toBeNull();
+  fireEvent.press(getByTestId("data-access-share"));
+  expect(getByTestId("vet-share-sheet")).toBeTruthy();
+});
+
+test("a family member is not offered the share", () => {
+  mockCurrentPet = { data: { id: 7, name: "Rex", is_shared: true } };
+  const { queryByTestId } = render(<DataAccessScreen />);
+  expect(queryByTestId("data-access-share")).toBeNull();
 });

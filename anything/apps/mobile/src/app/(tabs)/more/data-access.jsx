@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import useBottomClearance from "@/hooks/useBottomClearance";
@@ -23,6 +23,7 @@ import {
 } from "@/hooks/useCareAccessGrants";
 import { friendlyErrorMessage } from "@/utils/appAlert";
 import { goBackOr } from "@/utils/navigationBack";
+import ShareWithVetSheet from "@/components/Health/VetShare/ShareWithVetSheet";
 
 // Human-readable labels for each scope a provider may request. Unknown scopes
 // fall through to their raw string so a new backend scope never crashes the UI.
@@ -73,6 +74,7 @@ export default function DataAccessScreen() {
   const { data: grants, isLoading, isError, refetch } =
     useCareAccessGrants(petId);
   const updateGrant = useUpdateGrant(petId);
+  const [showShareSheet, setShowShareSheet] = useState(false);
 
   const act = (grantId, action) => {
     updateGrant.mutate(
@@ -214,6 +216,26 @@ export default function DataAccessScreen() {
             </Text>
           </View>
 
+          {/* Only the dog's owner can give access, so a family member is not offered it. */}
+          {!currentPet.is_shared ? (
+            <TouchableOpacity
+              testID="data-access-share"
+              accessibilityRole="button"
+              onPress={() => setShowShareSheet(true)}
+              style={{
+                backgroundColor: COLORS.coral,
+                borderRadius: 14,
+                paddingVertical: 14,
+                marginBottom: 20,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 15 }}>
+                {t("vetShare.title")}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+
           {isError ? (
             <Text
               style={{
@@ -329,6 +351,15 @@ export default function DataAccessScreen() {
           )}
         </RefreshableScrollView>
       )}
+
+      {showShareSheet ? (
+        <ShareWithVetSheet
+          pet={currentPet}
+          onClose={() => setShowShareSheet(false)}
+          // The pending requests are on this screen, right behind the sheet.
+          onOpenRequests={() => setShowShareSheet(false)}
+        />
+      ) : null}
     </View>
   );
 }
