@@ -300,6 +300,9 @@ describe('the limit catalog', () => {
       'report_create',
       'search_query',
       'upload_create',
+      'vet_invite_accept',
+      'vet_invite_create',
+      'vet_invite_open',
     ]);
   });
 

@@ -44,6 +44,37 @@ denies a grant by section.
 `GET` returns each grant with `sections` (null for a grant by scope) and `expires_at`. `status` is the effective status:
 a pending or active row past its date reads `expired`, and `?status=` filters on that.
 
+### Invite by link (a vet with no booking)
+
+Server and web page. Migration 0148, applied by hand before the server is deployed; then `supabase/verify_0148.sql`. An
+invite shares nothing: it ends in a pending request like the one a provider files, which only the owner can approve.
+
+1. The pet's owner (not family members) creates an invite for one pet:
+   `POST /api/care-access/invites` `{petId}` answers 201 `{invite, link}`. The link is `<site>/vet-invite#<token>` and
+   is returned only then. It lasts 7 days, works once and can be withdrawn
+   (`PATCH /api/care-access/invites/[inviteId]` `{action: "revoke"}`, 409 `invite_used` after use). At most 5 open
+   invites per owner (409 `invite_limit`). `GET /api/care-access/invites?petId=` lists them without any token, with
+   `status` `open`, `used`, `revoked` or `expired`. PawPi sends nothing to the vet: the owner shares the link.
+2. A signed-in active staff member of a **published business with the `vet` capability** opens the link.
+   `POST /api/care-access/invites/preview` `{token}` returns the pet's name, the owner's display name, the expiry and the
+   caller's eligible businesses. No photo, no record data. 401 signed out, 403 `no_business`, and one answer, 404
+   `invite_not_valid`, for an unknown, expired, used or withdrawn link (also when the pet changed owner or either person
+   blocked the other).
+3. `POST /api/care-access/invites/accept` `{token, providerId}` uses the invite and files a pending request
+   (`scopes = {medical_read}`, `requested_by = 'provider'`, no sections) through the ordinary insert policy:
+   `{status: "requested"}`. When that business already has a pending or active grant for the pet, nothing changes and the
+   invite stays unused: `{status: "already_open"}`.
+4. The owner gets a `care_access_requested` notification (push under the owner notification rules, category
+   `owner_sharing`) and approves with sections and expiry, approves the request as asked, or denies it.
+5. Once approved, the business finds the pet under Clinical, "Shared with us", with or without a booking
+   (`GET /api/providers/[id]/shared-pets`: names of the pets whose record is open to it now).
+
+Only a hash of the token is stored (`care_access_invites`, forced RLS, owner policies; a vet reaches it only through
+`app_preview_vet_invite` and `app_claim_vet_invite`). The token sits after the `#`, so it is not part of a request URL:
+the page keeps it in the tab's session storage across sign-in, removes it from the address bar and sends it only in a
+request body. The page is `noindex` and sends no referrer. Creating, opening and accepting are rate limited.
+The app screens for creating an invite are not built. Tests: `web/test/integration/vet-invite.integration.test.ts`.
+
 ## 2. What the vet sees
 
 Who: every active staff member of that provider. Read at request time: expiry and revocation apply to the next request.

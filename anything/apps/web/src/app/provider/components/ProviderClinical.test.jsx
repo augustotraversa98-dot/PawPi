@@ -14,9 +14,10 @@ vi.mock("react-router", () => ({
 }));
 vi.mock("../hooks/useProviders", () => ({
   useProviderBookings: vi.fn(),
+  useSharedPets: vi.fn(),
 }));
 
-import { useProviderBookings } from "../hooks/useProviders";
+import { useProviderBookings, useSharedPets } from "../hooks/useProviders";
 import ProviderClinical from "./ProviderClinical";
 
 function setBookings(data, extra = {}) {
@@ -31,6 +32,7 @@ function setBookings(data, extra = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  useSharedPets.mockReturnValue({ data: [] });
 });
 
 describe("ProviderClinical index", () => {
@@ -49,6 +51,25 @@ describe("ProviderClinical index", () => {
     expect(links).toHaveLength(2);
     expect(links[0].getAttribute("href")).toContain("/provider/pets/55/record");
     expect(links[0].getAttribute("href")).toContain("petName=Rex");
+  });
+
+  it("lists pets shared without a booking, linking into the gated record", () => {
+    setBookings([]);
+    useSharedPets.mockReturnValue({
+      data: [{ pet_id: 88, pet_name: "Nina & Co", expires_at: null }],
+    });
+    render(<ProviderClinical providerId={3} />);
+
+    expect(screen.getByRole("region", { name: /shared with us|compartidas con nosotros/i })).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: /nina & co/i });
+    expect(link.getAttribute("href")).toBe("/provider/pets/88/record?petName=Nina+%26+Co");
+    expect(useSharedPets).toHaveBeenCalledWith(3);
+  });
+
+  it("shows no shared section while nothing is shared", () => {
+    setBookings([]);
+    render(<ProviderClinical providerId={3} />);
+    expect(screen.queryByRole("region")).not.toBeInTheDocument();
   });
 
   it("shows the empty state when there are no bookings", () => {

@@ -1,8 +1,43 @@
 import { useMemo } from "react";
 import { Link } from "react-router";
 import { Stethoscope, ShieldCheck, ChevronRight, Loader2 } from "lucide-react";
-import { useProviderBookings } from "../hooks/useProviders";
+import { useProviderBookings, useSharedPets } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
+import { VET_INVITE_COPY } from "../../../lib/vetInvite/copy";
+import { useVisitorLang } from "../../../lib/publicPet/useVisitorLang";
+
+// Pets whose owner shared the record with this business, with or without a booking
+// (for example after an invite link). Hidden while there are none.
+function SharedWithUs({ providerId }) {
+  const { data: pets } = useSharedPets(providerId);
+  const { lang } = useVisitorLang();
+  const t = VET_INVITE_COPY[lang].shared;
+
+  if (!pets?.length) return null;
+
+  return (
+    <section aria-label={t.title} className="mb-5">
+      <h2 className="text-lg font-bold text-[#3B241B]">{t.title}</h2>
+      <p className="mb-2 text-sm text-[#7A6254]">{t.body}</p>
+      <ul className="overflow-hidden rounded-2xl border border-[#FFD9B3] bg-white">
+        {pets.map((p) => (
+          <li key={p.pet_id}>
+            <Link
+              to={`/provider/pets/${p.pet_id}/record?${new URLSearchParams({ petName: p.pet_name ?? "" })}`}
+              className="flex items-center justify-between border-b border-[#FFF7EF] px-5 py-4 last:border-0 hover:bg-[#FFFBF6]"
+            >
+              <span className="font-semibold text-[#3B241B]">{p.pet_name}</span>
+              <span className="flex items-center gap-1 text-sm font-semibold text-[#B75D32]">
+                {t.open}
+                <ChevronRight className="h-4 w-4" />
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 // Clinical index (c3). Clinical data is pet-specific and consent-gated, so this
 // index lists only the DISTINCT pets the provider already sees through bookings
@@ -55,6 +90,8 @@ export default function ProviderClinical({ providerId }) {
           </p>
         </div>
       </div>
+
+      <SharedWithUs providerId={providerId} />
 
       <div className="overflow-hidden rounded-2xl border border-[#FFD9B3] bg-white">
         {isLoading ? (

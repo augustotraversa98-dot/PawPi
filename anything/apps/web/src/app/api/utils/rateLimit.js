@@ -91,6 +91,11 @@ export const RATE_LIMITS = {
   // People/pet/provider search is a typeahead (debounced) READ that can be scripted to enumerate accounts;
   // 180/min is well above real typing and still stops bulk scraping.
   search_query: { limit: 180, windowSeconds: 60 },
+  // Vet invite links (0148). The owner creates them (also at most 5 open per owner); opening and accepting one is
+  // capped per account, or per sender when signed out.
+  vet_invite_create: { limit: 20, windowSeconds: 3600 },
+  vet_invite_open: { limit: 30, windowSeconds: 600 },
+  vet_invite_accept: { limit: 10, windowSeconds: 600 },
 };
 
 const RATE_LIMITED_CODE = 'rate_limited';
