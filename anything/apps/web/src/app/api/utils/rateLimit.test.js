@@ -36,6 +36,7 @@ import {
   rateLimitSubject,
   withRateLimit,
 } from './rateLimit';
+import { anonymousSender } from './senderAddress';
 
 /** Queue the rows each successive `sql\`…\`` call should resolve to. */
 function queue(...results) {
@@ -55,22 +56,67 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('rateLimitSubject', () => {
+  // Invented addresses from the documentation ranges; 172.64.0.0/13 is one of Cloudflare's published ranges.
+  const CLOUDFLARE = '172.64.10.20';
+  const anonymous = (headers) => rateLimitSubject({ userId: null, request: req(headers) });
+  const direct = (address) => anonymous({ 'x-real-ip': address });
+
   it('prefers the user id, prefixed so it cannot collide with an IP', () => {
     expect(rateLimitSubject({ userId: 7, request: req() })).toBe('u:7');
   });
 
-  it('falls back to the FIRST x-forwarded-for entry (the client, not the proxy)', () => {
-    const request = req({ 'x-forwarded-for': '203.0.113.9, 10.0.0.1, 10.0.0.2' });
-    expect(rateLimitSubject({ userId: null, request })).toBe('ip:203.0.113.9');
+  it('keeps the user id subject whatever address headers come with the request', () => {
+    const request = req({
+      'x-real-ip': CLOUDFLARE,
+      'cf-connecting-ip': '198.51.100.7',
+      'x-forwarded-for': '203.0.113.9, 192.0.2.1',
+    });
+    expect(rateLimitSubject({ userId: 7, request })).toBe('u:7');
   });
 
-  it('falls back to x-real-ip when there is no forwarded chain', () => {
-    expect(rateLimitSubject({ userId: null, request: req({ 'x-real-ip': '198.51.100.4' }) }))
-      .toBe('ip:198.51.100.4');
+  it('is the same hashed subject the finder limits use, never the readable address', () => {
+    const request = req({ 'x-real-ip': '198.51.100.4' });
+    expect(rateLimitSubject({ userId: null, request })).toBe(anonymousSender(request));
+    expect(direct('198.51.100.4')).toMatch(/^ip:[0-9a-f]{32}$/);
   });
 
-  it('returns null when neither is knowable — anonymous callers are NOT pooled', () => {
-    expect(rateLimitSubject({ userId: null, request: req() })).toBeNull();
+  it('through Cloudflare: each visitor has a separate subject, even behind one Cloudflare address', () => {
+    const via = (visitor) => anonymous({ 'x-real-ip': CLOUDFLARE, 'cf-connecting-ip': visitor });
+    expect(via('198.51.100.7')).toBe(direct('198.51.100.7'));
+    expect(via('198.51.100.8')).toBe(direct('198.51.100.8'));
+    expect(via('198.51.100.7')).not.toBe(via('198.51.100.8'));
+  });
+
+  it('through Cloudflare, when the hosting edge already reports the visitor', () => {
+    const headers = { 'x-real-ip': '198.51.100.7', 'cf-connecting-ip': '198.51.100.7' };
+    expect(anonymous(headers)).toBe(direct('198.51.100.7'));
+  });
+
+  it('direct to the host: follows the connecting address, not the other forwarding headers', () => {
+    const headers = {
+      'x-real-ip': '198.51.100.4',
+      'x-forwarded-for': '203.0.113.9, 192.0.2.1',
+      'cf-connecting-ip': '203.0.113.10',
+    };
+    expect(anonymous(headers)).toBe(direct('198.51.100.4'));
+  });
+
+  it('without X-Real-IP uses the entry added by the nearest proxy', () => {
+    expect(anonymous({ 'x-forwarded-for': '203.0.113.9, 198.51.100.4' })).toBe(direct('198.51.100.4'));
+    expect(anonymous({ 'x-forwarded-for': '198.51.100.4' })).toBe(direct('198.51.100.4'));
+  });
+
+  it('counts one IPv6 /64 as one sender', () => {
+    expect(direct('2001:db8:1:2::1')).toBe(direct('2001:db8:1:2::ffff'));
+    expect(direct('2001:db8:1:2::1')).not.toBe(direct('2001:db8:1:3::1'));
+  });
+
+  it.each([
+    ['no headers (local development)', {}],
+    ['a value that is not an address', { 'x-forwarded-for': 'unknown', 'x-real-ip': 'nonsense' }],
+    ['only CF-Connecting-IP', { 'cf-connecting-ip': '198.51.100.7' }],
+  ])('returns null with %s — anonymous callers are NOT pooled', (_label, headers) => {
+    expect(anonymous(headers)).toBeNull();
   });
 });
 
@@ -287,13 +333,20 @@ describe('the limit catalog', () => {
     expect(RATE_LIMITS.emergency_relay_urgent).toEqual({ limit: 1, windowSeconds: 86400 });
   });
 
-  it('emergency buckets key by IP for an anonymous caller (no user id)', async () => {
+  it('emergency buckets key by sender for an anonymous caller (no user id)', async () => {
     queue(
       [{ id: null }], // current_app_user_id() → no user
       [{ allowed: true, hits: 1, retry_after_seconds: 300 }],
     );
-    await enforceRateLimit('emergency_public_read', req({ 'x-forwarded-for': '203.0.113.9' }));
-    // subject param (2nd bind) is the IP, prefixed.
-    expect(sqlMock.fn.mock.calls[1].slice(1)[1]).toBe('ip:203.0.113.9');
+    const request = req({ 'x-real-ip': '203.0.113.9' });
+    await enforceRateLimit('emergency_public_read', request);
+    // subject param (2nd bind) is the sender.
+    expect(sqlMock.fn.mock.calls[1].slice(1)[1]).toBe(anonymousSender(request));
+  });
+
+  it('does not count an anonymous caller whose address is unknown', async () => {
+    queue([{ id: null }]);
+    expect(await enforceRateLimit('emergency_public_read', req())).toBeNull();
+    expect(sqlMock.fn).toHaveBeenCalledTimes(1); // the identity read only, no counter call
   });
 });

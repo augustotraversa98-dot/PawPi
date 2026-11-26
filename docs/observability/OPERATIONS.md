@@ -247,7 +247,8 @@ says `enabled`, Settings opt-out, bounded queue) is described in `docs/privacy/t
 **Endpoints** (both public, no auth, no database)
 - `POST /api/telemetry/events` — batched events. Body <= 32 KB and <= 50 events (else 413 / 400), strict registry validation, per-`install_id` (30/min) and
   per-IP (300/min) in-memory rate limit (429), `204` on success even if some events were dropped, `400` for a bad envelope, never 5xx. The client IP is hashed
-  in memory for the limiter only and is never stored, logged or emitted.
+  in memory for the limiter only and is never stored, logged or emitted. The sender is determined the same way as for
+  the database-backed limits (`anything/apps/web/src/app/api/utils/senderAddress.js`).
 - `GET /api/telemetry/config` — `{ "enabled": true, "sampleRate": 1 }`, `Cache-Control: public, max-age=300`. The app reads it to honour the kill switch and sampling.
 
 **What it emits**

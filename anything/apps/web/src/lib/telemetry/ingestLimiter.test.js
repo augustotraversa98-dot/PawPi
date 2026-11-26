@@ -46,22 +46,50 @@ describe('createSlidingWindowLimiter', () => {
 });
 
 describe('ipKey', () => {
+  // Invented addresses from the documentation ranges; 172.64.0.0/13 is one of Cloudflare's published ranges.
+  const CLOUDFLARE = '172.64.10.20';
+  const direct = (address) => ipKey(req({ 'x-real-ip': address }));
+
   it('is a salted hash: stable per address, never the address itself', () => {
-    const a = ipKey(req({ 'x-forwarded-for': '203.0.113.7, 10.0.0.1' }));
+    const a = direct('203.0.113.7');
     expect(a).toMatch(/^[0-9a-f]{16}$/);
-    expect(a).toBe(ipKey(req({ 'x-forwarded-for': '203.0.113.7' }))); // first hop only
-    expect(a).not.toBe(ipKey(req({ 'x-forwarded-for': '203.0.113.8' })));
+    expect(a).toBe(direct('203.0.113.7'));
+    expect(a).not.toBe(direct('203.0.113.8'));
     // The raw address can never appear in the key: it has dots, a hex digest cannot. (Do NOT assert
     // `not.toContain('203')` -- the salt is random per process, so a 16-hex-char key contains any given
     // 3-char substring ~0.34% of the time, which made this test flaky.)
     expect(a).not.toContain('203.0.113.7');
     expect(a).not.toContain('.');
-    expect(ipKey(req({ 'x-real-ip': '198.51.100.2' }))).toMatch(/^[0-9a-f]{16}$/);
+  });
+
+  it('through Cloudflare: one key per visitor, even behind one Cloudflare address', () => {
+    const via = (visitor) => ipKey(req({ 'x-real-ip': CLOUDFLARE, 'cf-connecting-ip': visitor }));
+    expect(via('203.0.113.7')).toBe(direct('203.0.113.7'));
+    expect(via('203.0.113.7')).not.toBe(via('203.0.113.8'));
+  });
+
+  it('direct to the host: follows the connecting address, not the other forwarding headers', () => {
+    const headers = {
+      'x-real-ip': '198.51.100.2',
+      'x-forwarded-for': '203.0.113.9, 192.0.2.1',
+      'cf-connecting-ip': '203.0.113.10',
+    };
+    expect(ipKey(req(headers))).toBe(direct('198.51.100.2'));
+  });
+
+  it('without X-Real-IP uses the entry added by the nearest proxy', () => {
+    expect(ipKey(req({ 'x-forwarded-for': '203.0.113.9, 198.51.100.2' }))).toBe(direct('198.51.100.2'));
+  });
+
+  it('counts one IPv6 /64 as one sender', () => {
+    expect(direct('2001:db8:1:2::1')).toBe(direct('2001:db8:1:2::ffff'));
+    expect(direct('2001:db8:1:2::1')).not.toBe(direct('2001:db8:1:3::1'));
   });
 
   it('is null (=> not limited) when there is no address', () => {
     expect(ipKey(req({}))).toBeNull();
     expect(ipKey(req({ 'x-forwarded-for': 'x'.repeat(200) }))).toBeNull();
+    expect(ipKey(req({ 'cf-connecting-ip': '203.0.113.7' }))).toBeNull();
     expect(ipKey(null)).toBeNull();
   });
 });

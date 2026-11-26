@@ -178,6 +178,14 @@ describe('POST: rate limiting', () => {
     expect((await handleIngest(post(envelope(GOOD, { install_id: uuid(99) }), { 'x-forwarded-for': '203.0.113.8' }), d)).status).toBe(204);
   });
 
+  it('per IP: one connecting address stays one sender when other forwarding headers differ', async () => {
+    const { d } = testDeps({ ipLimiter: createSlidingWindowLimiter({ limit: 2, windowMs: 60_000 }) });
+    const send = async (i, address = '198.51.100.20') =>
+      (await handleIngest(post(envelope(GOOD), { 'x-real-ip': address, 'x-forwarded-for': `203.0.113.${i}, 192.0.2.1` }), d)).status;
+    expect([await send(1), await send(2), await send(3)]).toEqual([204, 204, 429]);
+    expect(await send(4, '198.51.100.21')).toBe(204);
+  });
+
   it('the per-IP check runs before the body is parsed (garbage flood is cheap)', async () => {
     const { d } = testDeps({ ipLimiter: createSlidingWindowLimiter({ limit: 1, windowMs: 60_000 }) });
     const h = { 'x-forwarded-for': '198.51.100.1' };
