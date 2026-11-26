@@ -64,6 +64,9 @@ export const NOTIFICATION_TYPE_TO_BUSINESS_CATEGORY = {
   biz_payout: "biz_payout",
   biz_post_engagement: "biz_post_engagement",
   biz_follow: "biz_follow",
+  // An owner gave or ended access to a dog's record: they follow the two booking switches.
+  care_access_granted: "biz_booking",
+  care_access_revoked: "biz_booking_change",
 };
 
 export function isBusinessNotificationCategory(category) {

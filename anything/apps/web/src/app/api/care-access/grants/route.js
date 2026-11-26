@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
+import { notifyCareAccess } from "@/app/api/utils/careAccessNotify";
 import {
   VALID_CARE_SCOPES,
   RECORD_SECTIONS,
@@ -147,9 +148,11 @@ async function approvePendingRequest({ userId, petId, providerId, scopes, sectio
       AND status = 'pending'
     RETURNING *
   `;
-  return approved.length > 0
-    ? Response.json({ grant: approved[0], approvedRequest: true })
-    : null;
+  if (approved.length === 0) {
+    return null;
+  }
+  await notifyCareAccess({ type: "care_access_granted", grant: approved[0], actor: userId });
+  return Response.json({ grant: approved[0], approvedRequest: true });
 }
 
 // End the active grant for this pet and provider, if any, then approve the vet's pending request or
@@ -202,6 +205,7 @@ async function shareBySection({ userId, petId, providerId, sections, interval })
       )
       RETURNING *
     `);
+    await notifyCareAccess({ type: "care_access_granted", grant: created[0], actor: userId });
     return Response.json({ grant: created[0] }, { status: 201 });
   } catch (e) {
     // The one-open-grant index (0128) refused the row: the vet's request arrived after the check.
@@ -390,6 +394,7 @@ async function POST(request) {
       throw e;
     }
 
+    await notifyCareAccess({ type: "care_access_granted", grant: created[0], actor: userId });
     return Response.json({ grant: created[0] }, { status: 201 });
   } catch (error) {
     console.error("[POST /api/care-access/grants] Error:", error.message);

@@ -214,9 +214,10 @@ Compartimos información solo según sea necesario para operar el Servicio:
   de los feeds y la búsqueda de las personas usuarias reales.
 - **Con proveedores con los que operás** — cuando reservás, enviás mensajes, dejás reseñas, te
   postulás para adoptar o pedís una receta/cotización de seguro, el negocio correspondiente recibe la
-  información necesaria para atenderte. **El uso compartido de datos de salud con uno de estos
-  negocios ocurre solo mediante tu consentimiento explícito dentro de la app**, con alcance definido y
-  revocable.
+  información necesaria para atenderte, incluido lo que vos escribas o adjuntes. **La historia clínica
+  de tu perro se abre a un negocio solo cuando vos elegís compartirla** (mirá "Compartir la historia
+  clínica de tu perro con un negocio", más abajo en esta sección; los enlaces para veterinarias que
+  creás también se describen en esta sección).
 - **Con las personas que invitás** — familiares o cuidadores a quienes otorgás acceso, con el alcance
   y por el plazo que definís; podés revocar el acceso en cualquier momento.
 - **Quien encuentra a tu perro, tu familia y cuidadores**: lo que envía quien encuentra a un perro
@@ -231,6 +232,59 @@ Compartimos información solo según sea necesario para operar el Servicio:
 - **Con procesadores y proveedores de infraestructura (subprocesadores)** — ver Sección 8.
 - **Por razones legales** — para cumplir la ley, hacer cumplir nuestros Términos o proteger los
   derechos, la seguridad de las personas usuarias y del público.
+
+### Compartir la historia clínica de tu perro con un negocio
+
+Solo la persona dueña del perro puede dar o quitar este acceso. Vos elegís el negocio, y el acceso
+vale para todas las personas activas del equipo de ese negocio en PawPi, incluidas las que se sumen
+al equipo mientras dure.
+
+**Compartir por partes.** En las versiones de la app que permiten elegir, elegís una veterinaria (o
+compartís desde una reserva con otro negocio de cuidado de mascotas), al menos una de las partes de
+abajo (no hay nada marcado de antemano) y por cuánto tiempo: 7 días, 30 días, 1 año o hasta que lo
+revoques. Este acceso es solo de lectura e incluye lo que se agregue en las partes elegidas mientras
+dure. Si volvés a compartir por partes con el mismo negocio, la nueva elección reemplaza a la
+anterior.
+
+- **Perfil médico** — microchip, estado y fecha de castración, tu veterinaria y clínica habituales
+  con sus datos de contacto, y las notas médicas.
+- **Contacto de emergencia** — el nombre y el teléfono de esa persona.
+- **Seguro** — la compañía y el número de póliza del seguro.
+- **Notas veterinarias** — todas las notas, las tuyas y las que cargaron veterinarias.
+- **Vacunas** — los registros de vacunación.
+- **Documentos** — la lista de documentos y sus archivos, tengan lo que tengan.
+- **Chequeos con foto** — los chequeos de salud con foto, sus fotos y lo que se anotó en ellos.
+- **Estudios de laboratorio** — los resultados cargados; los documentos adjuntos, como los informes
+  de laboratorio, van en Documentos.
+
+Las secciones de alergias, condiciones, cirugías, medicamentos, recetas y los registros diarios de
+salud no forman parte de estas opciones, aunque esa información puede aparecer dentro de una nota, un
+documento o una foto que compartas.
+
+**Acceso completo anterior.** Las versiones anteriores de la app, los accesos dados antes de que se
+pudiera elegir por partes y la aprobación de todo lo que pidió un negocio usan un único paquete que
+dura hasta que lo revoques. Su acceso de lectura permite que el equipo del negocio vea todo el perfil
+médico (incluidos el contacto de emergencia y el seguro), todas las notas veterinarias y las vacunas,
+y que abra un archivo privado de tu perro si tiene su referencia exacta (por ejemplo, una que haya
+visto antes). No muestra la lista de documentos, los chequeos con foto ni los estudios de
+laboratorio. Aprobar todo lo que pidió un negocio también puede permitir que su equipo agregue notas
+veterinarias, recetas o vacunas a la historia de tu perro y, si lo pidió, que registre sesiones de
+cuidado, como paseos o peluquería.
+
+**Cómo termina y qué registramos.** Podés revocar el acceso cuando quieras en la pantalla Acceso a
+datos de la app. El acceso compartido por partes además termina solo cuando vence el plazo. PawPi
+controla el acceso cada vez que el equipo abre la historia o un archivo privado, así que las nuevas
+consultas se rechazan apenas lo revocás o vence. Registramos esas lecturas y lo que se agregue con el
+acceso (con qué acceso, qué integrante del equipo, qué y cuándo), y conservamos constancia del acceso
+que diste. Avisamos al equipo del negocio cuando das el acceso y cuando lo quitás.
+
+**Lo que quitar el acceso no deshace.** No borra lo que el equipo ya vio, descargó, copió o anotó, y
+una receta emitida por una veterinaria sigue visible para ese negocio. Un enlace temporal a un
+archivo privado abierto justo antes puede seguir funcionando cerca de un minuto. Algunos archivos
+usan una dirección web larga que le funciona a cualquiera que la tenga, sin iniciar sesión: los
+documentos y las fotos de salud guardados con versiones anteriores de la app (o con una versión vieja
+que todavía se use) y los adjuntos enviados por mensaje. Quitar el acceso no desactiva esas
+direcciones.
 
 ## 8. Subprocesadores y terceros
 
@@ -335,8 +389,9 @@ para esas transferencias.
 ## 14. Seguridad
 
 Usamos medidas técnicas y organizativas para proteger tu información, incluida la **seguridad a nivel
-de fila** para que los datos de cada persona estén acotados a esa persona (dueño/a, o un cuidador
-aceptado que hayas invitado), contraseñas con hash y transporte cifrado. Ningún método de transmisión
+de fila** para que los datos de cada persona estén acotados a esa persona (dueño/a, un cuidador
+aceptado que hayas invitado o el equipo de un negocio al que diste acceso, para lo que ese acceso
+abarca), contraseñas con hash y transporte cifrado. Ningún método de transmisión
 o almacenamiento es 100% seguro, pero trabajamos para proteger tu información y mejorar continuamente
 nuestras salvaguardas.
 

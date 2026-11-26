@@ -45,7 +45,8 @@ export async function safeNotify({ recipient, actor, type, subjectRef, body }) {
 
 // Same as safeNotify, but the app_notify INSERT runs in a SAVEPOINT. A failed insert (e.g. a notification type the DB CHECK does not know yet
 // because a migration is not applied) is rolled back to the savepoint instead of aborting the REQUEST transaction, which would turn the
-// caller's successful action into a blanket 500 at COMMIT. Use this for any notification that must never be able to fail its action.
+// caller's successful action into a blanket 500 at COMMIT. The push hooks run in a second savepoint: a failed query there keeps the bell row
+// and the action. Use this for any notification that must never be able to fail its action.
 // Returns the bell row id, or null when nothing was written (self-notify, gated, or the insert was refused).
 export async function safeNotifyIsolated({ recipient, actor, type, subjectRef, body }) {
   try {
@@ -65,8 +66,14 @@ export async function safeNotifyIsolated({ recipient, actor, type, subjectRef, b
       return null;
     }
     if (notificationId == null) return null;
-    await pushForNotification({ recipient, actor, type, subjectRef, body });
-    await pushForOwnerNotification({ recipient, type, subjectRef });
+    try {
+      await withSavepoint(async () => {
+        await pushForNotification({ recipient, actor, type, subjectRef, body });
+        await pushForOwnerNotification({ recipient, type, subjectRef });
+      });
+    } catch (e) {
+      console.error("[safeNotifyIsolated] push failed (non-fatal):", e?.message);
+    }
     return notificationId;
   } catch (error) {
     console.error("[safeNotifyIsolated] non-fatal:", error?.message);

@@ -202,8 +202,9 @@ We share information only as needed to run the Service:
   users while active. Demo/seed content is excluded from all real users' feeds and discovery.
 - **With service providers you transact with** — when you book, message, review, apply to adopt, or
   request a prescription/insurance quote, the relevant business receives the information needed to
-  serve you. **Sharing of pet health data with one of these businesses happens only through explicit
-  in-app consent**, scoped and revocable.
+  serve you, including what you write or attach yourself. **Your dog's Vet Record is opened to a
+  business only when you choose to share it** (see "Sharing your dog's Vet Record with a business"
+  below in this section; vet links you create are also described in this section).
 - **With people you invite** — family members or caregivers you grant access to, at the scope and for
   the duration you set; you can revoke access at any time.
 - **Finders, your dog's family and caregivers**: what a finder sends goes to the dog's owner and to
@@ -218,6 +219,55 @@ We share information only as needed to run the Service:
 - **With processors and infrastructure providers (subprocessors)** — see Section 8.
 - **For legal reasons** — to comply with the law, enforce our Terms, or protect the rights, safety,
   and security of users and the public.
+
+### Sharing your dog's Vet Record with a business
+
+Only the dog's owner can give or end this access. You choose the business, and the access applies to
+every active member of that business's team in PawPi, including people who join the team while it
+lasts.
+
+**Sharing by parts.** In app versions that let you choose, you pick a vet business (or share from a
+booking with another pet-care business), at least one of the parts below (nothing is selected for
+you) and how long: 7 days, 30 days, 1 year, or until you revoke it. This access is read only and
+includes what is added to the chosen parts while it lasts. Sharing by parts again with the same
+business replaces your earlier choice.
+
+- **Medical profile** — microchip, spay/neuter status and date, your usual vet and clinic with their
+  contact details, and medical notes.
+- **Emergency contact** — that person's name and phone number.
+- **Insurance** — insurance company and policy number.
+- **Vet notes** — all notes, yours and those added by vets.
+- **Vaccinations** — the vaccination records.
+- **Documents** — the list of documents and their files, whatever they contain.
+- **Photo checks** — health photo checks, their photos and what was noted on them.
+- **Lab results** — the result entries; attached documents, such as lab reports, are under Documents.
+
+The allergy, condition, surgery, medication, prescription and daily health log sections are not part
+of these choices, although such information can appear inside a note, document or photo that you
+share.
+
+**Older full access.** Older app versions, access given before you could choose parts, and approving
+everything a business asked for use one bundle that lasts until you revoke it. Its viewing access
+lets the business's team see the whole medical profile (including the emergency contact and
+insurance), all vet notes and vaccinations, and open a private file of your dog if they have its
+exact reference (for example, one they saw earlier). It does not list your documents, photo checks or
+lab results. Approving everything a business asked for can also let its team add vet notes,
+prescriptions or vaccinations to your dog's record and, if it asked for this, record care sessions
+such as walks or grooming.
+
+**How it ends, and what we record.** You can revoke access at any time on the app's Data Access
+screen. Access shared by parts also ends by itself when its time is up. PawPi checks the access every
+time the team opens the record or a private file, so new views are refused as soon as you revoke it
+or it expires. We log those reads and anything added through the access (which access, which team
+member, what and when), and we keep a record of the access you gave. We notify the business's team
+when you give access and when you end it.
+
+**What ending access cannot undo.** It does not take back what the team already saw, downloaded,
+copied or noted, and a prescription a vet issued stays visible to that vet business. A temporary link
+to a private file opened just before can keep working for about a minute. Some files use a long web
+address that works for anyone who has it, without signing in: documents and health photos saved with
+earlier app versions (or with an older version still in use), and attachments sent in messages.
+Ending access does not switch those addresses off.
 
 ## 8. Subprocessors and third parties
 
@@ -317,8 +367,9 @@ outside your country). Where required, we use appropriate safeguards for such tr
 ## 14. Security
 
 We use technical and organizational measures to protect your information, including **row-level
-security** so each user's data is scoped to that user (owner, or an accepted caregiver you invited),
-hashed passwords, and encrypted transport. No method of transmission or storage is 100% secure, but
+security** so each user's data is scoped to that user (owner, an accepted caregiver you invited, or
+the team of a business you gave access to, for what that access covers), hashed passwords, and
+encrypted transport. No method of transmission or storage is 100% secure, but
 we work to protect your information and continually improve our safeguards.
 
 ## 15. Changes to this Policy

@@ -316,7 +316,18 @@ const PUSH_COPY = {
     en: { title: "Payment received", body: "A payment was received." },
     es: { title: "Pago recibido", body: "Se recibió un pago." },
   },
+  care_access_granted: {
+    en: { title: "Record access given", body: "A client shared a dog's records with your team." },
+    es: { title: "Te dieron acceso a una ficha", body: "Un cliente compartió la ficha de un perro con tu equipo." },
+  },
+  care_access_revoked: {
+    en: { title: "Record access ended", body: "A client ended your team's access to a dog's records." },
+    es: { title: "Terminó el acceso a una ficha", body: "Un cliente revocó el acceso de tu equipo a la ficha de un perro." },
+  },
 };
+
+// Types whose stored body is already a sentence in the recipient's language: the banner shows it, so it names the dog.
+const BODY_IS_MESSAGE = new Set(["care_access_granted", "care_access_revoked"]);
 
 const GENERIC_COPY = {
   en: { title: "PawPi", body: "You have a new notification." },
@@ -325,12 +336,12 @@ const GENERIC_COPY = {
 
 /**
  * Render short bilingual push banner copy for a notification type. Pure — the
- * `body` JSON is available for future per-event detail; today the templates are
- * static so an absent/garbled body never breaks rendering.
+ * templates are static so an absent/garbled body never breaks rendering; only the
+ * BODY_IS_MESSAGE types show their `body` as the message.
  * @returns {{title:string, message:string}}
  */
-export function renderPushContent(type, _body, locale = "es") {
+export function renderPushContent(type, body, locale = "es") {
   const lang = locale === "en" ? "en" : "es";
   const copy = (PUSH_COPY[type] ?? GENERIC_COPY)[lang] ?? GENERIC_COPY[lang];
-  return { title: copy.title, message: copy.body };
+  return { title: copy.title, message: (BODY_IS_MESSAGE.has(type) && body) || copy.body };
 }
