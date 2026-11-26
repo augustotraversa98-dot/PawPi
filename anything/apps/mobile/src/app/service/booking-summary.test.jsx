@@ -1,6 +1,6 @@
 // BOOKING DETAIL screen (My Activity → a booking, upcoming OR past). Asserts: summary fields +
 // the "Paid" empty state (past), Location (name/address/directions/message), the UPCOMING
-// "Share clinic history" flow (share → grant, Shared + revoke), and that COMPLETED past behavior
+// sharing card (open the choices, list what is shared, revoke), and that COMPLETED past behavior
 // (Leave a review) is unchanged. Data hooks, router, Linking/Alert, WriteReviewModal, i18n and
 // chrome are mocked; i18n resolves REAL en.json.
 
@@ -10,10 +10,10 @@ import { Linking, Alert } from "react-native";
 
 const mockPush = jest.fn();
 const mockStartThread = jest.fn();
-const mockCreateGrant = jest.fn();
 const mockUpdateGrant = jest.fn();
 let mockDetail;
 let mockGrants;
+let mockPets;
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ back: jest.fn(), push: mockPush }),
@@ -36,9 +36,21 @@ jest.mock("@/hooks/useProviders", () => ({
 }));
 jest.mock("@/hooks/useCareAccessGrants", () => ({
   useCareAccessGrants: () => ({ data: mockGrants }),
-  useCreateCareGrant: () => ({ mutate: mockCreateGrant, isPending: false }),
   useUpdateGrant: () => ({ mutate: mockUpdateGrant, isPending: false }),
 }));
+jest.mock("@/hooks/usePetProfile", () => ({ usePetProfile: () => ({ data: mockPets }) }));
+// The sheet itself (choices, review, consent, request shape) is covered in ShareWithVetSheet.test.jsx.
+jest.mock("@/components/Health/VetShare/ShareWithVetSheet", () => {
+  const { View, Text } = require("react-native");
+  return {
+    __esModule: true,
+    default: ({ pet, provider }) => (
+      <View testID="vet-share-sheet">
+        <Text testID="sheet-args">{JSON.stringify({ pet, provider })}</Text>
+      </View>
+    ),
+  };
+});
 jest.mock("@/components/Providers/WriteReviewModal", () => {
   const { View, Text } = require("react-native");
   return ({ visible, providerId, petId }) =>
@@ -84,9 +96,9 @@ const UPCOMING = { ...COMPLETED, booking_status: "confirmed", status: "confirmed
 beforeEach(() => {
   mockPush.mockReset();
   mockStartThread.mockReset();
-  mockCreateGrant.mockReset();
   mockUpdateGrant.mockReset();
   mockGrants = [];
+  mockPets = [{ id: 3, name: "Rex" }];
   jest.spyOn(Linking, "openURL").mockImplementation(() => Promise.resolve());
   jest.spyOn(Alert, "alert").mockImplementation(() => {});
 });
@@ -176,27 +188,75 @@ test("Message provider starts a thread and routes to provider-chat", async () =>
   });
 });
 
-// ── Share clinic history (upcoming) ───────────────────────────────────────────
-test("UPCOMING with no grant: shows 'Share medical records' and creates the grant", async () => {
+// ── Share the medical record (upcoming) ──────────────────────────────────────
+const sheetArgs = (getByTestId) => JSON.parse(getByTestId("sheet-args").props.children);
+
+test("UPCOMING with no grant: 'Share medical records' opens the choices for this vet and sends nothing", async () => {
   mockDetail = ok(UPCOMING);
-  const { getByTestId, queryByTestId } = render(<BookingSummaryScreen />);
+  const { getByTestId, getByText, queryByTestId } = render(<BookingSummaryScreen />);
   await waitFor(() => expect(getByTestId("booking-summary-share")).toBeTruthy());
   expect(queryByTestId("booking-summary-shared")).toBeNull();
-  const cta = getByTestId("booking-summary-share-cta");
-  fireEvent.press(cta);
-  expect(mockCreateGrant).toHaveBeenCalledWith(
-    { petId: 3, providerId: 9 },
-    expect.any(Object),
-  );
+  expect(queryByTestId("vet-share-sheet")).toBeNull();
+  expect(
+    getByText(
+      "You choose which parts Vet A can see and for how long. Nothing is shared until you review it and agree.",
+    ),
+  ).toBeTruthy();
+  fireEvent.press(getByTestId("booking-summary-share-cta"));
+  expect(sheetArgs(getByTestId)).toEqual({
+    pet: { id: 3, name: "Rex", is_shared: false },
+    provider: { providerId: 9, name: "Vet A" },
+  });
+  expect(mockUpdateGrant).not.toHaveBeenCalled();
 });
 
-test("UPCOMING with an active grant: shows Shared + Revoke, no share CTA", async () => {
-  mockGrants = [{ id: 50, provider_id: 9, status: "active" }];
+test("a shared dog is passed as shared, so only the owner can share", async () => {
+  mockPets = [{ id: 3, name: "Rex", is_shared: true }];
   mockDetail = ok(UPCOMING);
-  const { getByTestId, queryByTestId } = render(<BookingSummaryScreen />);
+  const { getByTestId } = render(<BookingSummaryScreen />);
+  await waitFor(() => expect(getByTestId("booking-summary-share-cta")).toBeTruthy());
+  fireEvent.press(getByTestId("booking-summary-share-cta"));
+  expect(sheetArgs(getByTestId).pet.is_shared).toBe(true);
+});
+
+const ACTIVE = {
+  id: 50,
+  provider_id: 9,
+  status: "active",
+  scopes: ["record_sections"],
+  sections: ["vaccines"],
+  expires_at: null,
+};
+
+test("UPCOMING with an active grant: lists exactly what is shared, with Change and Revoke", async () => {
+  mockGrants = [ACTIVE];
+  mockDetail = ok(UPCOMING);
+  const { getByTestId, getByText, queryByTestId, queryByText } = render(<BookingSummaryScreen />);
   await waitFor(() => expect(getByTestId("booking-summary-shared")).toBeTruthy());
+  expect(getByText("Vaccinations")).toBeTruthy();
+  expect(queryByText("Insurance")).toBeNull();
+  expect(getByText("Until you revoke it")).toBeTruthy();
   expect(queryByTestId("booking-summary-share-cta")).toBeNull();
   expect(getByTestId("booking-summary-revoke")).toBeTruthy();
+  fireEvent.press(getByTestId("booking-summary-change"));
+  expect(getByTestId("vet-share-sheet")).toBeTruthy();
+});
+
+test("an expired grant is shown as ended, and sharing is offered again", async () => {
+  mockGrants = [{ ...ACTIVE, status: "expired", expires_at: "2000-01-01T12:00:00Z" }];
+  mockDetail = ok(UPCOMING);
+  const { getByTestId, getByText, queryByTestId } = render(<BookingSummaryScreen />);
+  await waitFor(() => expect(getByTestId("booking-summary-share-cta")).toBeTruthy());
+  expect(queryByTestId("booking-summary-shared")).toBeNull();
+  expect(getByText(/^Ended on .*2000$/)).toBeTruthy();
+});
+
+test("a pending request is mentioned and is not shown as shared", async () => {
+  mockGrants = [{ ...ACTIVE, status: "pending", scopes: ["medical_read"], sections: null }];
+  mockDetail = ok(UPCOMING);
+  const { getByTestId, queryByTestId } = render(<BookingSummaryScreen />);
+  await waitFor(() => expect(getByTestId("booking-summary-requested")).toBeTruthy());
+  expect(queryByTestId("booking-summary-shared")).toBeNull();
 });
 
 test("Revoke confirms then revokes the grant", async () => {
@@ -204,13 +264,13 @@ test("Revoke confirms then revokes the grant", async () => {
   Alert.alert.mockImplementation((title, body, buttons) => {
     buttons.find((b) => b.style === "destructive").onPress();
   });
-  mockGrants = [{ id: 50, provider_id: 9, status: "active" }];
+  mockGrants = [ACTIVE];
   mockDetail = ok(UPCOMING);
   const { getByTestId } = render(<BookingSummaryScreen />);
   await waitFor(() => expect(getByTestId("booking-summary-revoke")).toBeTruthy());
   fireEvent.press(getByTestId("booking-summary-revoke"));
   expect(Alert.alert).toHaveBeenCalled();
-  expect(mockUpdateGrant).toHaveBeenCalledWith({ grantId: 50, action: "revoke" });
+  expect(mockUpdateGrant).toHaveBeenCalledWith({ grantId: 50, action: "revoke" }, expect.any(Object));
 });
 
 test("share section is HIDDEN for a completed booking (past behavior)", async () => {
