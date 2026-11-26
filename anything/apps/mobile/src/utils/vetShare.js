@@ -1,8 +1,37 @@
-// Pure rules behind the "Share with your vet" sheet (components/Health/VetShare/ShareWithVetSheet).
+// Pure rules behind sharing the vet record (components/Health/VetShare, Data Access, booking summary).
 
-// The ONE scope the owner can give. The server enforces it as a single read bundle (RLS 0023 + assertCareAccess):
-// there is no per-section permission, so the sheet must not pretend there is one. See docs/vet-sharing-design.md.
-export const VET_SHARE_SCOPE = "medical_read";
+// A grant by section carries this one scope and nothing else.
+export const RECORD_SECTIONS_SCOPE = "record_sections";
+// The older, all-together read grant (sections = null).
+export const RECORD_READ_SCOPE = "medical_read";
+
+// The parts of the record an owner can choose, in the order they are shown. Keys are the server's.
+export const SHARE_SECTIONS = [
+  "profile",
+  "emergency_contact",
+  "insurance",
+  "vet_notes",
+  "vaccines",
+  "files",
+  "photos",
+  "lab_results",
+];
+
+export const SHARE_EXPIRIES = ["7d", "30d", "1y", "until_revoked"];
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const EXPIRY_DAYS = { "7d": 7, "30d": 30, "1y": 365 };
+// Room for a leap day and a clock change between the server's start and end dates.
+const EXPIRY_TOLERANCE_MS = 1.5 * DAY_MS;
+
+// When a choice would end if it started at `from`; null when it lasts until revoked. Preview only: the server sets it.
+export function expiryDate(expiry, from = new Date()) {
+  if (!EXPIRY_DAYS[expiry]) return null;
+  const end = new Date(from);
+  if (expiry === "1y") end.setFullYear(end.getFullYear() + 1);
+  else end.setDate(end.getDate() + EXPIRY_DAYS[expiry]);
+  return end;
+}
 
 const VET_CAPABILITIES = ["vet", "telehealth"];
 
@@ -23,27 +52,84 @@ export function bookedVetsForPet(bookings, petId) {
 }
 
 export function isGrantExpired(grant, now = Date.now()) {
+  if (grant?.status === "expired") return true;
   if (!grant?.expires_at) return false;
   return new Date(grant.expires_at).getTime() <= now;
 }
 
-// Why a vet cannot be picked right now, or null when they can. The database allows only one pending-or-active grant
-// per vet and pet (0128), so any such grant has to be answered or revoked before a new one can be created.
-//   "pending" the vet asked for access and is waiting for an answer
-//   "shared"  they can already read the record
-//   "other"   an active grant that does not include reading the record (or one that ran out)
-export function shareBlockReason(grants, providerId, now = Date.now()) {
-  const mine = (grants ?? []).filter(
-    (g) => String(g.provider_id) === String(providerId),
-  );
-  const canRead = mine.some(
-    (g) =>
-      g.status === "active" &&
-      !isGrantExpired(g, now) &&
-      (g.scopes ?? []).includes(VET_SHARE_SCOPE),
-  );
-  if (canRead) return "shared";
-  if (mine.some((g) => g.status === "pending")) return "pending";
-  if (mine.some((g) => g.status === "active")) return "other";
-  return null;
+// Gives access right now.
+export function isGrantActive(grant, now = Date.now()) {
+  return grant?.status === "active" && !isGrantExpired(grant, now);
+}
+
+// Gave access and ran out. A server may report it as "expired", or leave "active" with a past date.
+export function isGrantEnded(grant, now = Date.now()) {
+  if (grant?.status === "expired") return true;
+  return grant?.status === "active" && isGrantExpired(grant, now);
+}
+
+// False when the server's grants carry no `sections` field: it cannot share by section. An empty list says nothing,
+// which is why every created grant is also checked (grantMatchesChoice).
+export function sectionsSupported(grants) {
+  return !(grants ?? []).some((g) => g.sections === undefined);
+}
+
+export function providerGrants(grants, providerId) {
+  return (grants ?? []).filter((g) => String(g.provider_id) === String(providerId));
+}
+
+const sameSet = (a, b) =>
+  Array.isArray(a) &&
+  a.length === b.length &&
+  new Set(a).size === a.length &&
+  b.every((x) => a.includes(x));
+
+// True only when the grant the server answered with is exactly what the owner chose: active, the section scope alone,
+// the same sections, and the chosen length. Anything else must never be presented as shared.
+export function grantMatchesChoice(grant, { sections, expiry }, now = Date.now()) {
+  if (grant?.status !== "active") return false;
+  if (!sameSet(grant.scopes, [RECORD_SECTIONS_SCOPE])) return false;
+  if (!sameSet(grant.sections, sections)) return false;
+  if (expiry === "until_revoked") return grant.expires_at === null;
+  const days = EXPIRY_DAYS[expiry];
+  if (!days || !grant.expires_at) return false;
+  const start = grant.granted_at ? new Date(grant.granted_at).getTime() : now;
+  const length = new Date(grant.expires_at).getTime() - start;
+  return Math.abs(length - days * DAY_MS) <= EXPIRY_TOLERANCE_MS;
+}
+
+// What the older read grant opens (supabase/migrations/0023, the record and media routes). Keep true to the server.
+const OLDER_READ_LINES = ["medical", "notes", "vaccines", "files"];
+
+const SCOPE_LINE_KEYS = {
+  medical_write: "vetShare.can.medicalWrite",
+  vaccinations_write: "vetShare.can.vaccinationsWrite",
+  health_logs_write: "vetShare.can.healthLogsWrite",
+  health_logs_read: "dataAccess.scope.healthLogsRead",
+  appointments: "dataAccess.scope.appointments",
+  messaging: "dataAccess.scope.messaging",
+};
+
+// Everything a grant (or a pending request) opens, as translated lines. A scope this build does not know is shown as is
+// rather than hidden.
+export function grantAccessLines(grant, t, petName) {
+  if (Array.isArray(grant?.sections) && grant.sections.length > 0) {
+    return grant.sections.map((key) =>
+      SHARE_SECTIONS.includes(key) ? t(`vetShare.section.${key}.title`) : key,
+    );
+  }
+  const lines = [];
+  for (const scope of grant?.scopes ?? []) {
+    if (scope === RECORD_READ_SCOPE) {
+      lines.push(...OLDER_READ_LINES.map((k) => t(`vetShare.older.${k}`, { pet: petName })));
+    } else {
+      lines.push(SCOPE_LINE_KEYS[scope] ? t(SCOPE_LINE_KEYS[scope]) : scope);
+    }
+  }
+  return lines;
+}
+
+// A pending request that asks to read the record: the owner can answer it by choosing sections instead.
+export function asksForRecord(grant) {
+  return (grant?.scopes ?? []).includes(RECORD_READ_SCOPE);
 }

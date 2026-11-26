@@ -19,11 +19,11 @@ import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
 import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { useBookingDetail, useStartThread } from "@/hooks/useProviders";
-import {
-  useCareAccessGrants,
-  useCreateCareGrant,
-  useUpdateGrant,
-} from "@/hooks/useCareAccessGrants";
+import { useCareAccessGrants, useUpdateGrant } from "@/hooks/useCareAccessGrants";
+import { usePetProfile } from "@/hooks/usePetProfile";
+import ShareWithVetSheet from "@/components/Health/VetShare/ShareWithVetSheet";
+import GrantAccess from "@/components/Health/VetShare/GrantAccess";
+import { isGrantActive, isGrantEnded, providerGrants } from "@/utils/vetShare";
 import WriteReviewModal from "@/components/Providers/WriteReviewModal";
 import BookingStatusChip, {
   BOOKING_STATUSES,
@@ -35,8 +35,8 @@ import { friendlyErrorMessage } from "@/utils/appAlert";
 // BOOKING DETAIL (My Activity → a booking, upcoming OR past). Shows WHAT service, WHAT was done
 // (notes), status, when, provider, pet, the LOCATION (with directions + message provider), and
 // WHAT WAS PAID — or a clean "Not recorded" state, never a fabricated number (real charges are
-// parked; a sandbox order never settles). UPCOMING bookings add owner-initiated "Share clinic
-// history" (create/revoke a care-access grant). COMPLETED bookings add "Leave a review" (reusing
+// parked; a sandbox order never settles). UPCOMING bookings add owner-initiated sharing of the
+// medical record (the shared sheet: chosen parts and length; revoke here). COMPLETED bookings add "Leave a review" (reusing
 // the existing WriteReviewModal; the backend re-checks the completed + one-per-booking gate).
 // Links out to existing screens; rebuilds no management UI. No Book CTA.
 
@@ -62,15 +62,18 @@ export default function BookingSummaryScreen() {
   // Mirror VetAppointmentDetailModal's review gate exactly: a completed booking with a
   // provider. The backend re-checks; this only decides whether to OFFER the action.
   const canReview = booking?.status === "completed" && providerId != null;
-  // Upcoming = not completed. Only upcoming bookings offer the "Share clinic history" action.
+  // Upcoming = not completed. Only upcoming bookings offer to share the medical record.
   const canShare = booking != null && booking.status !== "completed" && providerId != null && petId != null;
 
   // Current sharing state for THIS provider + pet (real data; empty until loaded).
   const { data: grants } = useCareAccessGrants(petId);
-  const activeGrant = (grants ?? []).find(
-    (g) => String(g.provider_id) === String(providerId) && g.status === "active",
-  );
-  const createGrant = useCreateCareGrant();
+  const providerAccess = providerGrants(grants, providerId);
+  const activeGrant = providerAccess.find((g) => isGrantActive(g));
+  const pendingGrant = providerAccess.find((g) => g.status === "pending");
+  const endedGrant = activeGrant ? null : providerAccess.find((g) => isGrantEnded(g));
+  const [showShare, setShowShare] = useState(false);
+  const { data: pets } = usePetProfile();
+  const isSharedPet = !!pets?.find((p) => String(p.id) === String(petId))?.is_shared;
   const updateGrant = useUpdateGrant(petId);
   const { mutate: startThread, isPending: startingThread } = useStartThread();
 
@@ -119,17 +122,6 @@ export default function BookingSummaryScreen() {
     );
   };
 
-  const shareRecords = () => {
-    if (createGrant.isPending) return;
-    createGrant.mutate(
-      { petId, providerId },
-      {
-        onError: (e) =>
-          Alert.alert(t("bookingSummary.shareErrorTitle"), friendlyErrorMessage(e)),
-      },
-    );
-  };
-
   const revokeAccess = () => {
     if (!activeGrant || updateGrant.isPending) return;
     Alert.alert(t("bookingSummary.revokeTitle"), t("bookingSummary.revokeBody"), [
@@ -138,7 +130,13 @@ export default function BookingSummaryScreen() {
         text: t("bookingSummary.revoke"),
         style: "destructive",
         onPress: () =>
-          updateGrant.mutate({ grantId: activeGrant.id, action: "revoke" }),
+          updateGrant.mutate(
+            { grantId: activeGrant.id, action: "revoke" },
+            {
+              onError: (e) =>
+                Alert.alert(t("dataAccess.errorTitle"), friendlyErrorMessage(e, "dataAccess.tryAgain")),
+            },
+          ),
       },
     ]);
   };
@@ -320,7 +318,7 @@ export default function BookingSummaryScreen() {
             </Card>
           ) : null}
 
-          {/* Share clinic history — UPCOMING bookings with a provider only. */}
+          {/* Share the medical record — UPCOMING bookings with a provider only. */}
           {canShare ? (
             <Card
               testID="booking-summary-share"
@@ -335,54 +333,77 @@ export default function BookingSummaryScreen() {
                 </Text>
               </View>
               <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.xs }]}>
-                {t("bookingSummary.shareBody")}
+                {t("bookingSummary.shareBody", {
+                  provider: booking.provider_name || t("dataAccess.thisProvider"),
+                })}
               </Text>
 
               {activeGrant ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.md, marginTop: SPACING.md }}>
+                <View style={{ marginTop: SPACING.md }}>
                   <View
                     testID="booking-summary-shared"
-                    style={{ flexDirection: "row", alignItems: "center", gap: 4, flex: 1 }}
+                    style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
                   >
                     <Check size={16} color="#3FA34D" />
                     <Text style={[TYPE.subhead, { color: "#3FA34D", fontWeight: "800" }]}>
                       {t("bookingSummary.shared")}
                     </Text>
                   </View>
-                  <PressableScale
-                    testID="booking-summary-revoke"
-                    onPress={revokeAccess}
-                    style={{ paddingVertical: SPACING.sm, paddingHorizontal: SPACING.md }}
-                  >
-                    <Text style={[TYPE.subhead, { color: COLORS.coral, fontWeight: "800" }]}>
-                      {t("bookingSummary.revoke")}
-                    </Text>
-                  </PressableScale>
+                  <GrantAccess grant={activeGrant} petName={booking.pet_name || t("dataAccess.yourPet")} />
+                  <View style={{ flexDirection: "row", gap: SPACING.md, marginTop: SPACING.sm }}>
+                    <PressableScale
+                      testID="booking-summary-change"
+                      onPress={() => setShowShare(true)}
+                      style={{ paddingVertical: SPACING.sm, paddingRight: SPACING.md }}
+                    >
+                      <Text style={[TYPE.subhead, { color: COLORS.coral, fontWeight: "800" }]}>
+                        {t("bookingSummary.change")}
+                      </Text>
+                    </PressableScale>
+                    <PressableScale
+                      testID="booking-summary-revoke"
+                      onPress={revokeAccess}
+                      style={{ paddingVertical: SPACING.sm, paddingHorizontal: SPACING.md }}
+                    >
+                      <Text style={[TYPE.subhead, { color: COLORS.coral, fontWeight: "800" }]}>
+                        {t("bookingSummary.revoke")}
+                      </Text>
+                    </PressableScale>
+                  </View>
                 </View>
               ) : (
-                <PressableScale
-                  testID="booking-summary-share-cta"
-                  onPress={shareRecords}
-                  style={{
-                    marginTop: SPACING.md,
-                    backgroundColor: COLORS.coral,
-                    borderRadius: RADIUS.control,
-                    paddingVertical: SPACING.md + 2,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: SPACING.sm,
-                  }}
-                >
-                  {createGrant.isPending ? (
-                    <ActivityIndicator size="small" color="#FFF" />
-                  ) : (
+                <>
+                  {pendingGrant ? (
+                    <Text
+                      testID="booking-summary-requested"
+                      style={[TYPE.subhead, { color: COLORS.warmBrown, fontWeight: "700", marginTop: SPACING.sm }]}
+                    >
+                      {t("bookingSummary.requested")}
+                    </Text>
+                  ) : null}
+                  {endedGrant ? (
+                    <GrantAccess grant={endedGrant} petName={booking.pet_name || t("dataAccess.yourPet")} />
+                  ) : null}
+                  <PressableScale
+                    testID="booking-summary-share-cta"
+                    onPress={() => setShowShare(true)}
+                    style={{
+                      marginTop: SPACING.md,
+                      backgroundColor: COLORS.coral,
+                      borderRadius: RADIUS.control,
+                      paddingVertical: SPACING.md + 2,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: SPACING.sm,
+                    }}
+                  >
                     <ShieldCheck size={16} color="#FFF" />
-                  )}
-                  <Text style={[TYPE.subhead, { color: "#FFF", fontWeight: "800" }]}>
-                    {t("bookingSummary.shareRecords")}
-                  </Text>
-                </PressableScale>
+                    <Text style={[TYPE.subhead, { color: "#FFF", fontWeight: "800" }]}>
+                      {t("bookingSummary.shareRecords")}
+                    </Text>
+                  </PressableScale>
+                </>
               )}
             </Card>
           ) : null}
@@ -445,6 +466,18 @@ export default function BookingSummaryScreen() {
           providerId={booking.provider_id}
           providerName={booking.provider_name}
           petId={booking.pet_id}
+        />
+      ) : null}
+
+      {showShare && canShare ? (
+        <ShareWithVetSheet
+          pet={{ id: petId, name: booking.pet_name, is_shared: isSharedPet }}
+          provider={{ providerId, name: booking.provider_name }}
+          onClose={() => setShowShare(false)}
+          onOpenRequests={() => {
+            setShowShare(false);
+            router.push("/(tabs)/more/data-access");
+          }}
         />
       ) : null}
     </View>

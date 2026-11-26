@@ -1,9 +1,8 @@
 // Render pins for the owner's Data Access (care-access trust) screen:
-//   - pending grants render under "Pending requests" with Approve/Deny that call
-//     useUpdateGrant with the right action (Deny goes through a confirm Alert);
-//   - active, non-expired grants render under "Who has access" with Revoke
-//     (through a confirm Alert);
-//   - an active grant whose expires_at is in the past is NOT shown as active;
+//   - pending requests spell out what they ask for; approving them as asked goes through a confirmation that lists it
+//     all, and a record request can be answered by choosing sections instead (the share sheet, for that vet);
+//   - active grants show exactly which sections and until when, with Revoke (through a confirm Alert);
+//   - an expired grant is shown as ended, never under "Who has access";
 //   - both sections show their empty state with no grants;
 //   - no active pet → a friendly message, no crash.
 // The data/mutation hooks, router, and Alert are mocked — this exercises wiring.
@@ -40,14 +39,15 @@ jest.mock("@/hooks/useCareAccessGrants", () => ({
 
 jest.mock("@/components/Health/VetShare/ShareWithVetSheet", () => {
   const { Text } = require("react-native");
-  return { __esModule: true, default: () => <Text testID="vet-share-sheet">sheet</Text> };
+  return {
+    __esModule: true,
+    default: ({ provider }) => (
+      <Text testID="vet-share-sheet">{provider ? `${provider.providerId}:${provider.name}` : "any"}</Text>
+    ),
+  };
 });
 
 import DataAccessScreen from "./data-access";
-
-// Far-future / far-past so the expiry check is deterministic without faking time.
-const FUTURE = "2999-01-01";
-const PAST = "2000-01-01";
 
 beforeEach(() => {
   mockMutate.mockReset();
@@ -76,46 +76,89 @@ test("empty states for both sections when there are no grants", () => {
   expect(getByText("No one has access yet.")).toBeTruthy();
 });
 
-test("renders a pending grant with human-readable scopes and Approve/Deny", () => {
-  mockGrants = {
-    data: [
-      {
-        id: 11,
-        status: "pending",
-        provider_name: "Happy Paws",
-        pet_name: "Rex",
-        scopes: ["medical_read", "vaccinations_write"],
-      },
-    ],
-    isLoading: false,
-    isError: false,
-    refetch: jest.fn(),
-  };
-  const { getByText } = render(<DataAccessScreen />);
+const list = (...data) => ({ data, isLoading: false, isError: false, refetch: jest.fn() });
+const request = (over) => ({
+  id: 11,
+  status: "pending",
+  provider_id: 5,
+  provider_name: "Happy Paws",
+  pet_name: "Rex",
+  scopes: ["medical_read", "medical_write", "vaccinations_write"],
+  sections: null,
+  ...over,
+});
+
+test("a pending record request spells out everything it asks for", () => {
+  mockGrants = list(request());
+  const { getByText, queryByText } = render(<DataAccessScreen />);
 
   expect(getByText("Happy Paws")).toBeTruthy();
   expect(getByText("wants access to Rex")).toBeTruthy();
-  expect(getByText("View medical records")).toBeTruthy();
+  expect(getByText("Asked for:")).toBeTruthy();
+  expect(getByText("Medical profile, emergency contact, insurance and medical notes")).toBeTruthy();
+  expect(getByText("All vet notes, yours and the ones vets added")).toBeTruthy();
+  expect(getByText("A private file of Rex, only with its exact link")).toBeTruthy();
+  expect(getByText("Add vet notes and prescriptions")).toBeTruthy();
   expect(getByText("Add vaccinations")).toBeTruthy();
-  expect(getByText("Approve")).toBeTruthy();
+  expect(queryByText(/^Until/)).toBeNull();
+  expect(getByText("Choose what to share")).toBeTruthy();
+  expect(getByText("Approve all asked")).toBeTruthy();
   expect(getByText("Deny")).toBeTruthy();
 });
 
-test("Approve calls useUpdateGrant with action 'approve'", () => {
-  mockGrants = {
-    data: [{ id: 11, status: "pending", provider_name: "Happy Paws", scopes: [] }],
-    isLoading: false,
-    isError: false,
-    refetch: jest.fn(),
-  };
-  const { getByText } = render(<DataAccessScreen />);
+test("Choose what to share opens the sheet for that vet and approves nothing by itself", () => {
+  mockGrants = list(request());
+  const { getByTestId } = render(<DataAccessScreen />);
 
-  fireEvent.press(getByText("Approve"));
+  fireEvent.press(getByTestId("data-access-choose-11"));
 
-  expect(mockMutate).toHaveBeenCalledWith(
-    { grantId: 11, action: "approve" },
-    expect.any(Object),
-  );
+  expect(getByTestId("vet-share-sheet").props.children).toBe("5:Happy Paws");
+  expect(mockMutate).not.toHaveBeenCalled();
+});
+
+test("approving as asked shows the whole list and its length, and only then approves", () => {
+  Alert.alert.mockImplementation(() => {});
+  mockGrants = list(request());
+  const { getByTestId } = render(<DataAccessScreen />);
+
+  fireEvent.press(getByTestId("data-access-approve-11"));
+
+  expect(mockMutate).not.toHaveBeenCalled();
+  const [title, body, buttons] = Alert.alert.mock.calls[0];
+  expect(title).toBe("Approve everything asked?");
+  expect(body).toMatch(/^Until you revoke it, Happy Paws will get this for Rex:\n/);
+  for (const line of [
+    "Medical profile, emergency contact, insurance and medical notes",
+    "All vet notes, yours and the ones vets added",
+    "Vaccinations",
+    "A private file of Rex, only with its exact link",
+    "Add vet notes and prescriptions",
+    "Add vaccinations",
+  ]) {
+    expect(body).toContain(`• ${line}`);
+  }
+  buttons.find((b) => b.text === "Approve").onPress();
+  expect(mockMutate).toHaveBeenCalledWith({ grantId: 11, action: "approve" }, expect.any(Object));
+});
+
+test("a request without record access has no section choice, and is confirmed with what it opens", () => {
+  Alert.alert.mockImplementation(() => {});
+  mockGrants = list(request({ scopes: ["health_logs_write"] }));
+  const { getByTestId, queryByTestId, getByText } = render(<DataAccessScreen />);
+
+  expect(queryByTestId("data-access-choose-11")).toBeNull();
+  expect(getByText("Approve")).toBeTruthy();
+  fireEvent.press(getByTestId("data-access-approve-11"));
+
+  expect(Alert.alert.mock.calls[0][0]).toBe("Approve request?");
+  expect(Alert.alert.mock.calls[0][1]).toContain("• Record walks, grooming, daycare, sitting and training sessions");
+});
+
+test("against a server without sections, no section choice is offered", () => {
+  mockGrants = list(request({ sections: undefined }));
+  const { queryByTestId, getByTestId } = render(<DataAccessScreen />);
+  expect(queryByTestId("data-access-choose-11")).toBeNull();
+  expect(getByTestId("data-access-approve-11")).toBeTruthy();
 });
 
 test("Deny confirms then calls useUpdateGrant with action 'deny'", () => {
@@ -136,30 +179,45 @@ test("Deny confirms then calls useUpdateGrant with action 'deny'", () => {
   );
 });
 
-test("renders an active, non-expired grant under Who has access with Revoke", () => {
-  mockGrants = {
-    data: [
-      {
-        id: 22,
-        status: "active",
-        provider_name: "City Vet",
-        pet_name: "Rex",
-        scopes: ["appointments"],
-        granted_at: "2026-06-01",
-        expires_at: FUTURE,
-      },
-    ],
-    isLoading: false,
-    isError: false,
-    refetch: jest.fn(),
-  };
-  const { getByText } = render(<DataAccessScreen />);
+test("a grant by section shows exactly its sections and end date", () => {
+  mockGrants = list({
+    id: 22,
+    status: "active",
+    provider_name: "City Vet",
+    pet_name: "Rex",
+    scopes: ["record_sections"],
+    sections: ["vaccines", "lab_results"],
+    granted_at: "2026-06-01T12:00:00Z",
+    expires_at: "2999-03-05T12:00:00Z",
+  });
+  const { getByText, queryByText } = render(<DataAccessScreen />);
 
   expect(getByText("City Vet")).toBeTruthy();
   expect(getByText("has access to Rex")).toBeTruthy();
-  expect(getByText("Manage appointments")).toBeTruthy();
-  expect(getByText(/Access until/)).toBeTruthy();
+  expect(getByText("Can see (read only):")).toBeTruthy();
+  expect(getByText("Vaccinations")).toBeTruthy();
+  expect(getByText("Lab results")).toBeTruthy();
+  expect(queryByText("Insurance")).toBeNull();
+  expect(queryByText("record_sections")).toBeNull();
+  expect(getByText(/^Until .*2999$/)).toBeTruthy();
+  expect(getByText(/^Granted .*2026$/)).toBeTruthy();
   expect(getByText("Revoke access")).toBeTruthy();
+});
+
+test("an older grant is listed as the whole bundle, until revoked", () => {
+  mockGrants = list({
+    id: 23,
+    status: "active",
+    provider_name: "City Vet",
+    scopes: ["medical_read"],
+    sections: null,
+    expires_at: null,
+  });
+  const { getByText } = render(<DataAccessScreen />);
+
+  expect(getByText("Older access, all together:")).toBeTruthy();
+  expect(getByText("Medical profile, emergency contact, insurance and medical notes")).toBeTruthy();
+  expect(getByText("Until you revoke it")).toBeTruthy();
 });
 
 test("Revoke confirms then calls useUpdateGrant with action 'revoke'", () => {
@@ -188,33 +246,32 @@ test("Revoke confirms then calls useUpdateGrant with action 'revoke'", () => {
   );
 });
 
-test("an active grant with a past expires_at is NOT shown as active", () => {
-  mockGrants = {
-    data: [
-      {
-        id: 33,
-        status: "active",
-        provider_name: "Expired Vet",
-        scopes: [],
-        expires_at: PAST,
-      },
-    ],
-    isLoading: false,
-    isError: false,
-    refetch: jest.fn(),
-  };
-  const { getByText, queryByText } = render(<DataAccessScreen />);
+test.each([
+  ["reported as expired", "expired", false],
+  ["still reported active past its date", "active", true],
+])("a grant %s is shown as ended, not as access", (_name, status, removable) => {
+  mockGrants = list({
+    id: 33,
+    status,
+    provider_name: "Expired Vet",
+    scopes: ["record_sections"],
+    sections: ["files"],
+    expires_at: "2000-01-01T12:00:00Z",
+  });
+  const { getByText, queryByTestId } = render(<DataAccessScreen />);
 
-  // Falls out of "Who has access" → empty state, and is not rendered anywhere.
   expect(getByText("No one has access yet.")).toBeTruthy();
-  expect(queryByText("Expired Vet")).toBeNull();
+  expect(getByText("ENDED")).toBeTruthy();
+  expect(getByText("had access to your pet")).toBeTruthy();
+  expect(getByText(/^Ended on .*2000$/)).toBeTruthy();
+  expect(!!queryByTestId("data-access-revoke-33")).toBe(removable);
 });
 
 test("the owner can open the share-with-your-vet sheet", () => {
   const { getByTestId, queryByTestId } = render(<DataAccessScreen />);
   expect(queryByTestId("vet-share-sheet")).toBeNull();
   fireEvent.press(getByTestId("data-access-share"));
-  expect(getByTestId("vet-share-sheet")).toBeTruthy();
+  expect(getByTestId("vet-share-sheet").props.children).toBe("any");
 });
 
 test("a family member is not offered the share", () => {

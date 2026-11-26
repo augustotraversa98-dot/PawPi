@@ -18,6 +18,15 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-26 — Share the vet record by section, with an end date (mobile) — draft until the server change is live; needs the next EAS build; no migration, server or dependency change in this part
+- **Share** (Vet Record, Data Access, booking summary) opens one sheet: pick the vet, pick among 8 parts (profile, emergency contact, insurance, vet notes, vaccinations, documents, photo checks, lab results) and a length (7 days, 30 days, 1 year, until revoked). Nothing is pre-selected. A review step says who can see what, then explicit consent.
+- The app reports access as given only when the server's grant matches the choice exactly. Otherwise it says so, and revokes a newly created grant that differs.
+- Lists of access show the exact parts and end date. Older grants are spelled out as the whole bundle they open. Ended access is shown as ended.
+- Data Access: a record request can be answered by choosing parts; approving it as asked lists everything first.
+- Copy rewritten where it promised more than the app does; two insight buttons that had no action were removed.
+
+---
+
 ## 2026-11-26 — Privacy Policy wording for the emergency / finder flow (EN + ES; website only, no build)
 - Sections 2, 7 and 9 of `content/legal/privacy.{en,es}.md` and the `docs/legal/` mirrors: what a finder sends and who receives it, what the public pet pages show, the 90-day deletion. "Last updated" is November 26, 2026.
 - `PRIVACY_VERSION` / `TERMS_VERSION` unchanged; nobody is asked to accept again. Live with the web deploy after the merge.
