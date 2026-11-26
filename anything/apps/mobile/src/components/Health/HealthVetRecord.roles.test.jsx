@@ -35,6 +35,10 @@ jest.mock("./VetRecord/AddVetNoteModal", () => ({ AddVetNoteModal: () => null })
 jest.mock("./VetRecord/AddVetRecordModal", () => ({ AddVetRecordModal: () => null }));
 jest.mock("./Medication/MedicationModal", () => ({ __esModule: true, default: () => null }));
 jest.mock("./VetRecord/AddDocumentModal", () => ({ AddDocumentModal: () => null }));
+jest.mock("./VetShare/ShareWithVetSheet", () => {
+  const { Text } = require("react-native");
+  return { __esModule: true, default: ({ pet }) => <Text testID="vet-share-sheet">{pet.name}</Text> };
+});
 jest.mock("@/hooks/usePetVaccinations", () => ({
   usePetVaccinations: () => ({ data: [], isLoading: false, error: null }),
 }));
@@ -104,4 +108,11 @@ describe("a note written by someone who has since left PawPi", () => {
     expect(s.queryByText(/Editor · Editor|Editor · Editor/)).toBeNull();
     if (lang === "es") expect(s.queryByText(/Former member/)).toBeNull();
   });
+});
+
+test("Share opens the share-with-your-vet sheet for the active pet, in place", () => {
+  const s = render(<HealthVetRecord />);
+  expect(s.queryByTestId("vet-share-sheet")).toBeNull();
+  fireEvent.press(s.getByText("Share"));
+  expect(s.getByTestId("vet-share-sheet")).toBeTruthy();
 });
