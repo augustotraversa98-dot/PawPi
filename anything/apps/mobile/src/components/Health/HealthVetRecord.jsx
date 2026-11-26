@@ -51,6 +51,7 @@ import VetAppointmentDetailModal from "./VetAppointmentDetailModal";
 import PhotoHistory from "./PhotoCheck/PhotoHistory";
 import VetSummaryDashboard from "./VetSummary/VetSummaryDashboard";
 import { PrescriptionsSection } from "./VetRecord/PrescriptionsSection";
+import ShareWithVetSheet from "./VetShare/ShareWithVetSheet";
 import EditMedicalProfileModal from "./VetRecord/EditMedicalProfileModal";
 import {
   COLORS,
@@ -136,6 +137,7 @@ export default function HealthVetRecord() {
   const [showAllergyConditionChooser, setShowAllergyConditionChooser] =
     useState(false);
   const [showEditMedicalProfile, setShowEditMedicalProfile] = useState(false);
+  const [showShareSheet, setShowShareSheet] = useState(false);
   const [selectedSurgery, setSelectedSurgery] = useState(null);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [selectedLab, setSelectedLab] = useState(null);
@@ -483,10 +485,11 @@ export default function HealthVetRecord() {
     }));
   };
 
-  // Open the owner's trust screen for the active pet: who has (or has requested)
-  // access to this pet's record, where the owner approves / denies / revokes.
+  // "Share with your vet": give a vet read access to the record, or revoke it. Opens in place; pending requests
+  // are still answered on the Data Access screen.
   const handleShare = () => {
-    router.push("/(tabs)/more/data-access");
+    if (currentPet?.id == null) return;
+    setShowShareSheet(true);
   };
 
   const handleAddRecord = () => {
@@ -2936,6 +2939,18 @@ export default function HealthVetRecord() {
         petId={currentPet?.id}
         onSaved={refetchDocuments}
       />
+
+      {/* Mounted only while open, so every opening starts with nothing selected and consent off. */}
+      {showShareSheet && currentPet ? (
+        <ShareWithVetSheet
+          pet={currentPet}
+          onClose={() => setShowShareSheet(false)}
+          onOpenRequests={() => {
+            setShowShareSheet(false);
+            router.push("/(tabs)/more/data-access");
+          }}
+        />
+      ) : null}
 
       {/* Add History Entry Modal (ticket 2.42) */}
       <AddVetNoteModal

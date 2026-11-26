@@ -27,6 +27,14 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-26 — Share the vet record with your vet from "Share" — mobile only, needs the next EAS build; no migration, no server change, no dependency change
+- Vet Record → **Share** (and Data Access → **Share with your vet**) now opens a sheet that can give access. Before, it only listed requests.
+- One read-only permission, listed in full with what is not shared. Consent starts off. **Revoke** is in the same sheet.
+- Only vets the owner has a booking with for that dog can be picked (that is how they find the dog in their panel). PawPi does not notify them. Owner only.
+- Not built, needs server work (`docs/vet-sharing-design.md`): choosing sections, expiry dates, invitations by email/phone/link, vets without a booking.
+
+---
+
 ## 2026-11-25 — Permission before AI reads vet documents (Apple 5.1.2(i)) — mobile PR needs the next EAS build; server enforcement is DRAFT #802; no migration, no dependency change
 - The first time a Vet Record document could be read, PawPi asks: it names Anthropic, links the Privacy Policy, and offers **Allow** / **Not now**. The document is saved first, so neither answer can lose it.
 - Without permission (never asked, Not now, or switched off) the app does not call the extract endpoint at all and says the file was not read. With permission the request carries `aiConsent: true`.
