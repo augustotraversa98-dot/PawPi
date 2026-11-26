@@ -57,7 +57,9 @@ Cloudflare ranges are a fixed list; a new range that is missing makes senders be
 ## Retention: 90 days
 
 The finder's name, phone, email and message are deleted 90 days after the message, from every copy (owner and
-members). The pet's name stays, so the entry still reads "Someone found <pet>". Old sender counters are removed too.
+members). The pet's name stays, so the entry still reads "Someone found <pet>". Old sender counters are removed too:
+the finder-message counters (`emergency_relay*`) and, since 0151, the counters for opening a public tag or vet-card page
+(`emergency_public_read`), all after 90 days.
 
 - **Delete:** `app_purge_finder_details()` runs at the start of `POST /api/notifications/push-receipts/run`, called
   hourly by the Railway service `cron-push-receipts` (`docs/ops/railway-cron.md`). It runs whether or not
