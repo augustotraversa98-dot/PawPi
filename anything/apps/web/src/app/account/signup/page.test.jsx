@@ -119,9 +119,16 @@ describe("SignUpPage — consent persistence", () => {
     await waitFor(() => expect(location.href).toBe("/provider"));
   });
 
-  it("uses source mobile_signup when the page was opened with ?callbackUrl=", async () => {
-    location.search = "?callbackUrl=/api/auth/token";
-    signUpMock.mockResolvedValue({ ok: true, url: "/api/auth/token" });
+  // The search strings the app's auth webview produces: the device webview, the same page after an
+  // in-webview navigation (the target is appended again), an encoded form, and the Expo-web iframe.
+  it.each([
+    ["?callbackUrl=/api/auth/token", "/api/auth/token"],
+    ["?callbackUrl=/api/auth/token&callbackUrl=/api/auth/token", "/api/auth/token"],
+    ["?callbackUrl=%2Fapi%2Fauth%2Ftoken", "/api/auth/token"],
+    ["?callbackUrl=/api/auth/expo-web-success", "/api/auth/expo-web-success"],
+  ])("uses source mobile_signup for the mobile bridge (%s)", async (search, url) => {
+    location.search = search;
+    signUpMock.mockResolvedValue({ ok: true, url });
 
     render(<SignUpPage />);
     fillForm();
@@ -130,7 +137,25 @@ describe("SignUpPage — consent persistence", () => {
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ source: "mobile_signup" });
-    await waitFor(() => expect(location.href).toBe("/api/auth/token"));
+    await waitFor(() => expect(location.href).toBe(url));
+  });
+
+  it("uses source web_signup for a web callbackUrl, and returns there (vet invite)", async () => {
+    location.search = "?callbackUrl=%2Fvet-invite";
+    signUpMock.mockResolvedValue({ ok: true, url: "/vet-invite" });
+
+    render(<SignUpPage />);
+    expect(screen.getByRole("link", { name: "Log in" })).toHaveAttribute(
+      "href",
+      "/account/signin?callbackUrl=%2Fvet-invite",
+    );
+    fillForm();
+    checkAgree();
+    submit();
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ source: "web_signup" });
+    await waitFor(() => expect(location.href).toBe("/vet-invite"));
   });
 
   it("a failed consent POST does NOT block the redirect (retries once, then proceeds)", async () => {

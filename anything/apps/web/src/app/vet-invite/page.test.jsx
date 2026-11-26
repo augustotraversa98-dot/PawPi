@@ -51,6 +51,10 @@ describe("vet invite page", () => {
       "href",
       "/account/signin?callbackUrl=%2Fvet-invite",
     );
+    expect(screen.getByRole("link", { name: t.signedOut.signUp })).toHaveAttribute(
+      "href",
+      "/account/signup?callbackUrl=%2Fvet-invite",
+    );
     expect(fetchMock).not.toHaveBeenCalled();
     expect(window.sessionStorage.getItem(INVITE_STORAGE_KEY)).toBe(TOKEN);
     expect(document.body.innerHTML).not.toContain(TOKEN);
