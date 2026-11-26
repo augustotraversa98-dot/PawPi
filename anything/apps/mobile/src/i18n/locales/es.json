@@ -318,7 +318,8 @@
         "cameraPermissionTitle": "Se necesita acceso a la cámara",
         "cameraPermissionBody": "Permití el acceso a la cámara para sacar una foto del documento.",
         "errorBody": "No se pudo guardar el documento.",
-        "comingSoon": "Al guardar, PawPi lee tu documento y sugiere registros que podés revisar antes de agregar.",
+        "aiReadNote": "Al guardar, PawPi envía tu documento a Anthropic (Claude) para leerlo y sugerir registros que podés revisar antes de agregar. Mirá nuestra",
+        "privacyLink": "Política de Privacidad",
         "reading": "Leyendo tu documento…",
         "readingHint": "PawPi busca vacunas, medicamentos, análisis y más.",
         "dormantTitle": "Guardado en Documentos",
@@ -363,7 +364,7 @@
       "review": {
         "title": "PawPi leyó tu documento",
         "subtitle": "Revisá lo que encontramos. No se agrega nada hasta que confirmes.",
-        "aiDisclosure": "La IA de PawPi leyó tu archivo para sugerir esto. Editá lo que no cuadre.",
+        "aiDisclosure": "Anthropic (Claude) leyó tu archivo para sugerir esto. Editá lo que no cuadre.",
         "groupVaccinations": "Vacunas",
         "groupMedications": "Medicamentos",
         "groupSurgeries": "Cirugías",

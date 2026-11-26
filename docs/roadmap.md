@@ -49,6 +49,13 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-25 — The note under "Add document" names Anthropic (Claude) — client-only, needs the next EAS build after 33
+- The review sheet line names the same provider instead of "PawPi's AI". This in-app note is the in-app notice for the policy change in #796.
+- EN + ES: the note now says the document is sent to Anthropic (Claude) to be read, and "Privacy Policy" opens the hosted page. The key `health.vetRecord.addDoc.comingSoon` became `aiReadNote`, with a new `privacyLink`. No permission prompt and no change to the feature, versions or build numbers. Build 33 does not have it.
+- Policy text: the companion web PR (#796).
+
+---
+
 ## 2026-11-27 — Night run #7 · item 3: members of a shared dog no longer get "Forbidden" on the today's-moment check — SERVER CODE, DRAFT, NOT merged, NO migration, nothing to apply
 - **Finding: a real server permission gap**, not an expected denial the app retries. `GET /api/posts/today-daily-update?pet_id=` accepted only the pet's OWNER (`pets.owner_user_id`). The Feed asks about the active dog (`useFeedData` → `useTodayDailyUpdate(promptPet.id)`), which for a Family member, and for a caregiver who owns no dog, is the shared one: a 403 on every Feed open, focus and refetch, doubled by React Query's single retry (1.5 s). The Feed kept working because it falls back to the posts it already has.
 - **Fix (one route, same gate as the other shared-dog routes):** the owner is unchanged (latest daily moment of the dog today, by anyone); an ACTIVE, UNEXPIRED grantee (family or caregiver) is admitted through `resolvePetLogOwner(..., { allowCaregiver: true })` (`app_user_has_pet_access` underneath; degrades before 0049) and gets back **only their own moment of today, or null**. Outsiders, a member who left or was revoked, an expired grant and an unknown dog still get 403. Not widened: nothing is returned that the caller could not already read; the client is unchanged.

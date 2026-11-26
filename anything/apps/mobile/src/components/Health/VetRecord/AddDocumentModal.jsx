@@ -10,6 +10,7 @@ import {
   Alert,
   Platform,
   ActionSheetIOS,
+  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
@@ -25,6 +26,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
+import { PRIVACY_POLICY_URL } from "@/constants/legal";
 import { useUpload } from "@/utils/useUpload";
 import {
   DOCUMENT_UPLOAD_OPTIONS,
@@ -567,7 +569,7 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
         }}
       />
 
-      {/* AI reading is now live — honest, non-blocking note. */}
+      {/* Names the AI provider the document is sent to; "Privacy Policy" opens the hosted page. */}
       <View
         style={{
           flexDirection: "row",
@@ -583,7 +585,24 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
       >
         <Sparkles size={18} color={COLORS.coral} style={{ marginTop: 1 }} />
         <Text style={{ flex: 1, fontSize: 12, color: COLORS.mutedBrown, lineHeight: 17 }}>
-          {t("health.vetRecord.addDoc.comingSoon")}
+          {t("health.vetRecord.addDoc.aiReadNote")}{" "}
+          <Text
+            testID="doc-privacy-link"
+            accessibilityRole={PRIVACY_POLICY_URL ? "link" : undefined}
+            onPress={
+              PRIVACY_POLICY_URL
+                ? () => Linking.openURL(PRIVACY_POLICY_URL).catch(() => {})
+                : undefined
+            }
+            style={
+              PRIVACY_POLICY_URL
+                ? { textDecorationLine: "underline", fontWeight: "700" }
+                : undefined
+            }
+          >
+            {t("health.vetRecord.addDoc.privacyLink")}
+          </Text>
+          .
         </Text>
       </View>
 

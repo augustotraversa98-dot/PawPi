@@ -318,7 +318,8 @@
         "cameraPermissionTitle": "Camera access needed",
         "cameraPermissionBody": "Allow camera access to take a photo of the document.",
         "errorBody": "Could not save the document.",
-        "comingSoon": "After saving, PawPi reads your document and suggests records you can review before adding.",
+        "aiReadNote": "After saving, PawPi sends your document to Anthropic (Claude) to read it and suggest records you can review before adding. See our",
+        "privacyLink": "Privacy Policy",
         "reading": "Reading your document…",
         "readingHint": "PawPi is looking for vaccines, meds, labs and more.",
         "dormantTitle": "Saved to Documents",
@@ -363,7 +364,7 @@
       "review": {
         "title": "PawPi read your document",
         "subtitle": "Review what we found. Nothing is added until you confirm.",
-        "aiDisclosure": "PawPi's AI read your file to suggest these. Edit anything that's off.",
+        "aiDisclosure": "Anthropic (Claude) read your file to suggest these. Edit anything that's off.",
         "groupVaccinations": "Vaccines",
         "groupMedications": "Medications",
         "groupSurgeries": "Surgeries",
