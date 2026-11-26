@@ -1,7 +1,8 @@
 # Sharing the vet record with a vet
 
 Status: 2026-11-26. Sections and expiry are built on the server and the web provider panel (migration 0147, applied by
-hand before the server is deployed; then `supabase/verify_0147.sql`). Part 3 is not built.
+hand before the server is deployed; then `supabase/verify_0147.sql`), and so is sharing while a provider's request is
+pending. Part 3 is not built.
 
 ## 1. Grants (`care_access_grants`)
 
@@ -32,8 +33,13 @@ denies a grant by section.
   Nothing is selected by default.
 - Expiry: `7d`, `30d`, `1y`, `until_revoked`. The server computes `expires_at`.
 - A grant past its date never blocks a new one: it is marked `expired` first (here and on a provider request).
-- A provider's **pending** request for the same pet is not handled yet: the one-open-grant index refuses the new row
-  and the route answers 500, writing nothing (see part 3).
+- While the provider's request for the same pet is **pending**, the owner's `POST` of either shape approves that row
+  with exactly what the owner chose and answers 200 `{grant, approvedRequest: true}`. By scope: the scopes in the body
+  (`medical_read` by default), no expiry. By section: the chosen sections and expiry. Scopes the provider asked for and
+  the owner did not choose are dropped; the row keeps `requested_by = 'provider'`. A pending row past its date is marked
+  `expired` and a new grant is created instead.
+- Shares for the same pet and provider run one at a time, and `PATCH approve` answers 409 if the request stopped being
+  pending while it ran, so it never overwrites the owner's choice.
 
 `GET` returns each grant with `sections` (null for a grant by scope) and `expires_at`. `status` is the effective status:
 a pending or active row past its date reads `expired`, and `?status=` filters on that.
@@ -95,14 +101,12 @@ app sends the by-scope body. The released data-access screen prints raw scope la
 
 Each needs its own change with owner review.
 
-1. **Share while a request is pending.** The owner's `POST` should approve the pending row with exactly what the owner
-   chose (200 `{grant, approvedRequest: true}`), never what the request asked for beyond that.
-2. **Notify the vet** when access is given or revoked (`care_access_granted`, `care_access_revoked`; the types exist
+1. **Notify the vet** when access is given or revoked (`care_access_granted`, `care_access_revoked`; the types exist
    from 0147). PawPi sends nothing today.
-3. **Invite a vet who is not on PawPi (email, phone or link).** New `care_access_invites` (pet, owner, what is shared,
+2. **Invite a vet who is not on PawPi (email, phone or link).** New `care_access_invites` (pet, owner, what is shared,
    hashed token, expiry, accepted_by_provider, revoked_at), forced RLS, a rate-limited accept function that turns an
    invite into a grant for the accepting provider, single use. Needs working email delivery first.
-4. **Let the vet find the pet without a booking.** A provider "Shared with us" list from active grants. Then the booking
+3. **Let the vet find the pet without a booking.** A provider "Shared with us" list from active grants. Then the booking
    restriction in the picker can go.
-5. **More sections** (allergies, conditions, medications, surgeries): each needs a read policy, a branch in the record
+4. **More sections** (allergies, conditions, medications, surgeries): each needs a read policy, a branch in the record
    route and a record screen section.
