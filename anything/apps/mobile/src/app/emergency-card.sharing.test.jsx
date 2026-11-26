@@ -66,6 +66,30 @@ test.each([
   expect(getByText(es[key])).toBeTruthy();
 });
 
+test.each([
+  ["phone", null, "contactPhoneMissing"],
+  ["phone", "ana@example.test", "contactPhoneMismatch"],
+  ["email", "  ", "contactEmailMissing"],
+  ["email", "11 5555", "contactEmailMismatch"],
+])("%s mode with %p says that finders will see nothing", (mode, value, key) => {
+  mockData.card.contact_mode = mode;
+  mockData.card.contact_value = value;
+  const { getByTestId } = render(<EmergencyCardScreen />);
+  expect(getByTestId("contact-warning").props.children).toBe(es[key]);
+});
+
+test.each([
+  ["phone", "11 5555"],
+  ["email", "ana@example.test"],
+  ["relay", null],
+  ["none", null],
+])("no warning for %s mode with %p", (mode, value) => {
+  mockData.card.contact_mode = mode;
+  mockData.card.contact_value = value;
+  const { queryByTestId } = render(<EmergencyCardScreen />);
+  expect(queryByTestId("contact-warning")).toBeNull();
+});
+
 test("no English leaks into the Spanish card", () => {
   const { getByText, queryByText } = render(<EmergencyCardScreen />);
   expect(getByText("Perro")).toBeTruthy();

@@ -11,6 +11,7 @@ import {
   Target,
   ChevronRight,
   ShieldCheck,
+  ShieldAlert,
   FileText,
   CalendarCheck,
   Dog,
@@ -19,6 +20,8 @@ import {
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { ownerDisplayName } from "@/utils/ownerDisplayName";
+import { parseFinderContact } from "@/utils/finderContact";
+import EmergencyContactActions from "@/components/Notifications/EmergencyContactActions";
 import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
 import { Card, PressableScale, GlassSurface, PawMark } from "@/components/ui";
@@ -235,6 +238,34 @@ function winbackDisplay(n, t) {
   return { title, message };
 }
 
+// "Someone found your pet" — a finder wrote from the public tag page (emergency_contact). There is no actor, so it
+// must never take the generic "Pet parent" title. finder_contact (0146) carries the pet's name and what the finder
+// left; older rows only have the plain-text body.
+function mapEmergencyNotification(n, t) {
+  const finder = parseFinderContact(n.finder_contact);
+  let message = finder?.message;
+  if (!message && (finder?.phone || finder?.email)) message = t("notifications.emergencyNoMessage");
+  if (!message) message = n.body || t("notifications.emergencyEmptyBody");
+  return {
+    id: `db-${n.id}`,
+    _source: "db",
+    _dbId: n.id,
+    type: n.type,
+    title: finder?.petName
+      ? t("notifications.emergencyTitle", { name: finder.petName })
+      : t("notifications.emergencyTitleFallback"),
+    message,
+    finder,
+    isEmergency: true,
+    timestamp: n.created_at,
+    read: !!n.read_at,
+    avatar: null,
+    relatedBookingId: null,
+    relatedPetId: null,
+    relatedPostId: null,
+  };
+}
+
 // Map a DB social notification (ticket 2.26) into the screen's item shape, tagged
 // _source:"db" so tap-through + mark-read use the API path (reminders use the store).
 // Booking-lifecycle types (0080) branch to a localized, deep-linkable booking item.
@@ -257,6 +288,7 @@ const BUSINESS_TYPES = new Set([
   "biz_follow",
 ]);
 function mapDbNotification(n, t) {
+  if (n.type === "emergency_contact") return mapEmergencyNotification(n, t);
   if (WALK_REQUEST_TYPES.has(n.type)) {
     const { title, message } = walkRequestDisplay(n, t);
     const accepted = n.type === "walk_request_accepted";
@@ -410,6 +442,8 @@ const NotificationIcon = ({ type }) => {
     return <PawPrint size={18} color={COLORS.coral} fill={COLORS.coral} />;
   }
   switch (type) {
+    case "emergency_contact":
+      return <ShieldAlert size={18} color={COLORS.coral} />;
     case "walk":
       return <MapPin size={18} color={COLORS.sage} />;
     case "feeding":
@@ -552,6 +586,8 @@ export default function NotificationsScreen() {
 
     if (notif._source === "db") {
       if (!notif.read) markRead.mutate({ ids: [notif._dbId] });
+      // Everything about a finder is on the card itself: stay here.
+      if (notif.isEmergency) return;
       if (notif.relatedBookingId) {
         // Booking lifecycle → open the booking summary (id = appointment id).
         router.push({
@@ -768,6 +804,8 @@ export default function NotificationsScreen() {
                 key={notif.id}
                 onPress={() => handleNotifTap(notif)}
                 accessibilityRole="button"
+                // An emergency card holds its own Call / Email buttons: VoiceOver must reach them one by one.
+                accessible={!notif.isEmergency}
                 style={{ marginHorizontal: SPACING.lg, marginTop: SPACING.md }}
               >
                 <Card
@@ -820,6 +858,17 @@ export default function NotificationsScreen() {
                   )}
 
                   <View style={{ flex: 1 }}>
+                    {notif.isEmergency ? (
+                      <Text
+                        testID="emergency-badge"
+                        style={[
+                          TYPE.caption,
+                          { fontWeight: "800", color: COLORS.coral, textTransform: "uppercase", marginBottom: SPACING.xs },
+                        ]}
+                      >
+                        {t("notifications.emergencyBadge")}
+                      </Text>
+                    ) : null}
                     <View
                       style={{
                         flexDirection: "row",
@@ -864,6 +913,15 @@ export default function NotificationsScreen() {
                       {notif.message}
                     </Text>
 
+                    {notif.isEmergency ? (
+                      <EmergencyContactActions
+                        finder={notif.finder}
+                        onOpen={() => {
+                          if (!notif.read) markRead.mutate({ ids: [notif._dbId] });
+                        }}
+                      />
+                    ) : null}
+
                     {/* Action button for reminder notifications */}
                     {isReminder && notif.actionLabel && (
                       <View
@@ -898,7 +956,8 @@ export default function NotificationsScreen() {
                         borderRadius: 4,
                         backgroundColor: COLORS.coral,
                         position: "absolute",
-                        top: 16,
+                        // An emergency card starts with its badge line: keep the dot there, off the time.
+                        top: notif.isEmergency ? 2 : 16,
                         right: 16,
                       }}
                     />

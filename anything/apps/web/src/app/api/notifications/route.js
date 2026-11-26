@@ -34,6 +34,9 @@ async function GET(request) {
         n.type,
         n.subject_ref,
         n.body,
+        -- emergency_contact only (0146): what the finder left. Read through to_jsonb so this query also works
+        -- on a database that does not have the column yet (then it is simply null).
+        to_jsonb(n) -> 'finder_contact' AS finder_contact,
         n.read_at,
         n.created_at,
         -- PRIVACY (QA 2026-10-16 bug 04): the display name only — username can be e-mail derived.

@@ -43,6 +43,25 @@ beforeEach(() => {
   delete process.env.EXPO_ACCESS_TOKEN;
 });
 
+describe("sendPush message shape", () => {
+  it("adds subtitle, priority and interruption level only when the caller asks", async () => {
+    sql.mockResolvedValue([{ token: TOKEN, platform: "ios" }]);
+    await sendPush(1, { title: "t", body: "b" });
+    await sendPush(1, {
+      title: "t",
+      body: "b",
+      subtitle: "s",
+      priority: "high",
+      interruptionLevel: "time-sensitive",
+    });
+    const base = { to: TOKEN, title: "t", body: "b", data: {}, sound: "default" };
+    expect(mock.send.mock.calls[0][0]).toEqual([base]);
+    expect(mock.send.mock.calls[1][0]).toEqual([
+      { ...base, subtitle: "s", priority: "high", interruptionLevel: "time-sensitive" },
+    ]);
+  });
+});
+
 describe("decidePush (the BN2 push rule)", () => {
   it("IN_APP_ONLY never pushes, regardless of pref", () => {
     expect(decidePush(CHANNEL_CLASS.IN_APP_ONLY, undefined)).toBe(false);

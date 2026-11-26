@@ -90,7 +90,22 @@ async function resolveValidTokens(recipient) {
   return (rows ?? []).map((r) => r.token).filter((t) => Expo.isExpoPushToken(t));
 }
 
-async function sendPushV2(recipient, { title, body, data } = {}, opts = {}) {
+// The Expo message for one device. subtitle / priority / interruptionLevel are only set when the caller asks for
+// them (today: the emergency finder push), so every other push is unchanged.
+function buildMessage(to, { title, body, data, subtitle, priority, interruptionLevel } = {}) {
+  return {
+    to,
+    title: title ?? "PawPi",
+    body: body ?? "",
+    data: data ?? {},
+    sound: "default",
+    ...(subtitle ? { subtitle } : {}),
+    ...(priority ? { priority } : {}),
+    ...(interruptionLevel ? { interruptionLevel } : {}),
+  };
+}
+
+async function sendPushV2(recipient, content = {}, opts = {}) {
   let tokens = await resolveValidTokens(recipient);
   const v2Schema = tokens !== null;
   if (!v2Schema) tokens = await resolveRecipientTokens(recipient); // legacy reader (fail soft)
@@ -112,13 +127,7 @@ async function sendPushV2(recipient, { title, body, data } = {}, opts = {}) {
     if (!reserved) return { sent: 0, skipped: "cap" };
   }
 
-  const messages = tokens.map((to) => ({
-    to,
-    title: title ?? "PawPi",
-    body: body ?? "",
-    data: data ?? {},
-    sound: "default",
-  }));
+  const messages = tokens.map((to) => buildMessage(to, content));
   const expo = getExpo();
   const chunks = expo.chunkPushNotifications(messages);
   let sent = 0;
@@ -156,13 +165,14 @@ async function processTickets(recipient, chunk, tickets) {
 
 /**
  * Send an Expo push to every registered device of `recipient`. Never throws.
+ * `content`: {title, body, data, subtitle?, priority?, interruptionLevel?}.
  * `opts` ({type, category, subjectRef, cap}) only matters when NOTIF_V2_ENABLED is on.
  * @returns {Promise<{sent:number, skipped?:string}>}
  */
-export async function sendPush(recipient, { title, body, data } = {}, opts = {}) {
+export async function sendPush(recipient, content = {}, opts = {}) {
   try {
     if (isNotifV2Enabled()) {
-      return await sendPushV2(recipient, { title, body, data }, opts);
+      return await sendPushV2(recipient, content, opts);
     }
     const tokens = await resolveRecipientTokens(recipient);
     if (tokens.length === 0) {
@@ -171,13 +181,7 @@ export async function sendPush(recipient, { title, body, data } = {}, opts = {})
       console.log(`[sendPush] no push tokens for recipient ${recipient} — no-op`);
       return { sent: 0, skipped: "no-tokens" };
     }
-    const messages = tokens.map((to) => ({
-      to,
-      title: title ?? "PawPi",
-      body: body ?? "",
-      data: data ?? {},
-      sound: "default",
-    }));
+    const messages = tokens.map((to) => buildMessage(to, content));
     const expo = getExpo();
     const chunks = expo.chunkPushNotifications(messages);
     let sent = 0;
@@ -260,7 +264,7 @@ export async function pushForNotification({ recipient, actor, type, subjectRef, 
 
 // Resolve the recipient's language for the push copy (0107 preferred_locale via the
 // 0109 DEFINER reader). 'en' | 'es' | null; null → es-AR fallback (app-wide default).
-async function resolveRecipientLocale(recipient) {
+export async function resolveRecipientLocale(recipient) {
   try {
     const rows = await sql`SELECT app_recipient_locale(${recipient}) AS locale`;
     const loc = rows?.[0]?.locale;

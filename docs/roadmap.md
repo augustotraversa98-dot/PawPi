@@ -18,6 +18,15 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-25 — Emergency / finder flow: finder contact, owner contact on the public pages, time-sensitive push (TestFlight build 33 bugs 7 and 9) — DRAFT, NOT merged, migration 0146 NOT applied (human-applied), needs EAS build 34
+- **Finder form** on `/p/tag/[token]` (relay mode): name (optional), phone and/or email (one required), message. "The family was told" now appears only when the server says so; a failed send keeps what was typed.
+- **Public pages** show the owner's phone or email, labelled and tappable, only when the owner chose that mode; relay and none publish neither (SQL, API and page). `/p/card/[token]` used to ignore the choice. A value of the wrong kind (a phone left over after switching to Email) is not published. Public tag medical least-privilege (0122) unchanged.
+- **Owner notification:** "Someone found [dog]" / "Alguien encontró a [dog]" with the message and Call / Send email buttons (was "Dueño/a"). A push is now sent at all (none was before), high priority and time-sensitive for the first 5 messages per pet per hour; at most 20 messages per pet per hour.
+- Migration `0146_emergency_finder_contact.sql` + `supabase/verify_0146.sql`. `app.json` gains only the time-sensitive entitlement (new native build; the provisioning profile must be regenerated).
+- Deploy order: apply 0146 and run the verify script → merge (deploys web) → build 34.
+
+---
+
 ## 2026-11-25 — Permission before AI reads vet documents (Apple 5.1.2(i)) — mobile PR needs the next EAS build; server enforcement is DRAFT #802; no migration, no dependency change
 - The first time a Vet Record document could be read, PawPi asks: it names Anthropic, links the Privacy Policy, and offers **Allow** / **Not now**. The document is saved first, so neither answer can lose it.
 - Without permission (never asked, Not now, or switched off) the app does not call the extract endpoint at all and says the file was not read. With permission the request carries `aiConsent: true`.

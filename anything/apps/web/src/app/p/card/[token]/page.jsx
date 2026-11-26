@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router";
-import { PET_PAGE_WRAP as wrap, PetPageHeader, PetRow } from "@/components/publicPet/PetPageParts";
+import {
+  PET_PAGE_WRAP as wrap,
+  OwnerContact,
+  PetPageHeader,
+  PetRow,
+  phoneLink,
+} from "@/components/publicPet/PetPageParts";
 import { BRAND } from "@/lib/brand/tokens";
 import { useDocumentHead } from "@/lib/legal/head";
 import { PET_PAGE_COPY } from "@/lib/publicPet/copy";
@@ -85,6 +91,8 @@ export default function PublicVetCardPage() {
             {row(copy.microchip, card.microchip_id)}
           </div>
 
+          <OwnerContact contact={card.contact} copy={copy} />
+
           {medical ? (
             <div data-testid="medical-section" style={{ marginTop: 16 }}>
               <h3 style={{ color: BRAND.brown, fontSize: 17, fontWeight: 800 }}>{t.medicalHeading}</h3>
@@ -94,9 +102,9 @@ export default function PublicVetCardPage() {
               {row(copy.conditions, (medical.conditions || []).map((c) => c.condition).join(", "))}
               {row(t.medicalNotes, medical.medical_notes)}
               {row(t.primaryVet, medical.primary_vet_name)}
-              {row(t.vetPhone, medical.vet_phone)}
+              {row(t.vetPhone, phoneLink(medical.vet_phone))}
               {row(t.emergencyContact, medical.emergency_contact_name)}
-              {row(t.emergencyPhone, medical.emergency_contact_phone)}
+              {row(t.emergencyPhone, phoneLink(medical.emergency_contact_phone))}
             </div>
           ) : (
             <p style={{ color: BRAND.muted, marginTop: 16 }}>{t.basicScope}</p>

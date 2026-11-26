@@ -2,6 +2,7 @@
 // supplied paw mark through BrandLockup (never an emoji), and the brand palette.
 import BrandLockup from "@/components/brand/BrandLockup";
 import { BRAND, FONT_MONO } from "@/lib/brand/tokens";
+import { mailtoHref, telHref } from "@/lib/publicPet/finder";
 
 export const PET_PAGE_WRAP = {
   maxWidth: 480,
@@ -56,6 +57,63 @@ export function PetPageHeader({ lang, setLang, copy, heading }) {
         </div>
       ) : null}
     </header>
+  );
+}
+
+export const PET_PAGE_BUTTON = {
+  display: "block",
+  textAlign: "center",
+  background: BRAND.coral,
+  color: "#fff",
+  padding: 12,
+  borderRadius: 12,
+  textDecoration: "none",
+  fontWeight: 700,
+};
+
+/** A tappable phone number (tel:), or the text as typed when it cannot be dialled. Nothing for an empty value. */
+export function phoneLink(value) {
+  if (!value) return null;
+  const href = telHref(value);
+  return href ? (
+    <a href={href} style={{ color: BRAND.brown }}>
+      {value}
+    </a>
+  ) : (
+    value
+  );
+}
+
+// The phone / email the family chose to publish ("how can a finder reach you" = phone or email). Relay and none
+// render nothing — the server sends no value for them, and a value of the wrong kind is not shown either.
+export function OwnerContact({ contact, copy }) {
+  const { mode, value } = contact || {};
+  if (!value || (mode !== "phone" && mode !== "email")) return null;
+  const isPhone = mode === "phone";
+  if (isPhone === String(value).includes("@")) return null;
+  const href = isPhone ? telHref(value) : mailtoHref(value);
+  const t = copy.contact;
+  return (
+    <div data-testid="owner-contact" style={{ marginTop: 16 }}>
+      <h3 style={{ color: BRAND.brown, fontSize: 17, fontWeight: 800, margin: "0 0 4px" }}>{t.heading}</h3>
+      <PetRow
+        label={isPhone ? t.phone : t.email}
+        value={
+          href ? (
+            <a href={href} style={{ color: BRAND.brown }}>
+              {value}
+            </a>
+          ) : (
+            value
+          )
+        }
+      />
+      {href ? (
+        <a href={href} style={{ ...PET_PAGE_BUTTON, marginTop: 10 }}>
+          {isPhone ? t.call : t.write}
+        </a>
+      ) : null}
+    </div>
   );
 }
 

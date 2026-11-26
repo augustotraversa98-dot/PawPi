@@ -59,6 +59,19 @@ const contactHint = (t, mode) =>
     none: t("emergencyCard.contactNoneHint"),
   })[mode];
 
+// Phone / email mode publishes the value only when it matches the mode (the server applies the same rule), so say
+// when a finder would see nothing.
+const contactWarning = (t, mode, value) => {
+  if (mode !== "phone" && mode !== "email") return null;
+  const text = String(value || "").trim();
+  if (mode === "phone") {
+    if (!text) return t("emergencyCard.contactPhoneMissing");
+    return text.includes("@") ? t("emergencyCard.contactPhoneMismatch") : null;
+  }
+  if (!text) return t("emergencyCard.contactEmailMissing");
+  return text.includes("@") ? null : t("emergencyCard.contactEmailMismatch");
+};
+
 function speciesLabel(t, species) {
   const key = String(species || "").toLowerCase();
   if (key === "dog") return t("emergencyCard.speciesDog");
@@ -481,6 +494,11 @@ export default function EmergencyCardScreen() {
                   onSave={(contact_value) => update.mutate({ contact_value })}
                 />
               )}
+              {contactWarning(t, card?.contact_mode, card?.contact_value) ? (
+                <Text testID="contact-warning" style={{ color: COLORS.warmBrown, fontSize: 12, fontWeight: "700", marginTop: 8 }}>
+                  {contactWarning(t, card?.contact_mode, card?.contact_value)}
+                </Text>
+              ) : null}
               <Text style={{ color: COLORS.mutedBrown, fontSize: 12, marginTop: 10 }}>{t("emergencyCard.autoSaveHint")}</Text>
             </View>
 
