@@ -2,6 +2,8 @@
 
 (The file `REPORT.md` next to this one belongs to an earlier run.)
 
+**Update 2026-11-26:** database change 0146 (finder flow) was applied to production and `supabase/verify_0146.sql` returned 19 of 19 PASS. There is no database step left to do.
+
 ## 1. Summary
 
 1. All five items were worked on. Five pull requests are merged, each with all four automatic checks green.
@@ -9,10 +11,10 @@
 3. The pet tag and vet link web pages are now in Spanish and English, and are **live**.
 4. The app now asks permission before AI reads a vet document. The server rule that enforces it waits as a draft.
 5. "Compartir" in the vet record can now give a vet access, but only one fixed read-only bundle. **Please confirm that is acceptable** (decision A).
-6. The finder / emergency flow is built but **not merged**: it needs a database change that only you apply.
+6. The finder / emergency flow (#804): its database change (0146) is applied and verified (2026-11-26). Merging it deploys the website; the app changes need build 34.
 7. All app changes reach phones only with the **next app build (34)**.
 8. Tested with automated tests and, for the main screens, the iOS Simulator. Nothing was tested on a physical phone or Android.
-9. No database change was applied. No dependency, version or build number changed.
+9. The run itself applied no database change (0146 was applied afterwards, on 2026-11-26). No dependency, version or build number changed.
 10. Build 33, in App Store review, was not touched.
 
 ## 2. Items
@@ -24,7 +26,7 @@
 | 02 Spanish public pages | Done and live | [#801](https://github.com/augustotraversa98-dot/PawPi/pull/801) | Yes |
 | 03 AI consent, app | Done | [#803](https://github.com/augustotraversa98-dot/PawPi/pull/803) | Yes |
 | 03 AI consent, server | **Draft. Wait until build 34 is on the App Store** | [#802](https://github.com/augustotraversa98-dot/PawPi/pull/802) | No |
-| 04 Finder flow, owner contact, urgent notification | **Draft. Needs your database step** | [#804](https://github.com/augustotraversa98-dot/PawPi/pull/804) | No |
+| 04 Finder flow, owner contact, urgent notification | Database change 0146 applied and verified 2026-11-26 | [#804](https://github.com/augustotraversa98-dot/PawPi/pull/804) | Not at the time of this update |
 | 05 Share with your vet | Done, with limits | [#805](https://github.com/augustotraversa98-dot/PawPi/pull/805) | Yes |
 
 Production checks after the web changes went live:
@@ -37,16 +39,11 @@ Production checks after the web changes went live:
 - Answer **decision A** below. If you do not want the vet sharing sheet yet, revert #805 before the build.
 - Optional, possible today: open your own dog's tag link (not the demo account) and check the page in Spanish.
 
-### Step 2. Apply the database change (finder flow)
-1. Open the Supabase dashboard, your project, **SQL Editor**, **New query**.
-2. Paste the whole file [`0146_emergency_finder_contact.sql`](https://github.com/augustotraversa98-dot/PawPi/blob/auto/night-run-2026-11-25-emergency-finder/supabase/migrations/0146_emergency_finder_contact.sql) and press **Run**. It should say "Success". Running it twice is harmless.
-3. New query. Paste the whole file [`verify_0146.sql`](https://github.com/augustotraversa98-dot/PawPi/blob/auto/night-run-2026-11-25-emergency-finder/supabase/verify_0146.sql) and press **Run**.
-4. **PASS looks like: 11 rows, every one says PASS.** If any says FAIL, stop and do not merge.
-
-The live website keeps working after this step, even before the merge.
+### Step 2. Database change (finder flow): done
+Migration 0146 was applied to production on 2026-11-26 and `supabase/verify_0146.sql` returned **19 of 19 PASS**. Nothing to run.
 
 ### Step 3. Merge #804 (this updates the website)
-1. On [#804](https://github.com/augustotraversa98-dot/PawPi/pull/804): **Ready for review**, wait for green checks, **Squash and merge**.
+1. [#804](https://github.com/augustotraversa98-dot/PawPi/pull/804): ready for review, green checks, squash and merge.
 2. Wait for the Railway deploy to finish.
 3. On your own dog's tag link, in "relay" mode: the page shows name, phone and email fields; sending shows thanks and the notification appears in your app.
 4. Publish the finder privacy wording at the same time. The exact English and Spanish text is in the local file `NIGHT_RUN_2026-11-25/STATE.md`, section "Item 04".

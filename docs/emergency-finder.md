@@ -3,6 +3,7 @@
 What a stranger can see and send after scanning a dog's tag, who hears about it, and how long it is kept.
 Schema and functions: `supabase/migrations/0146_emergency_finder_contact.sql` (verify: `supabase/verify_0146.sql`,
 19 rows, all PASS).
+Status: 0146 was applied to production on 2026-11-26; the verify script returned 19 of 19 PASS.
 
 ## What the public pages show (the owner decides)
 
@@ -46,14 +47,12 @@ Per **pet** (inside the database function, sliding windows, whoever sends; paral
 | Messages | 5 per 10 minutes, 30 per 24 hours | refused (`ok:false`) |
 | Urgent pushes | 1 per 10 minutes, 4 per 24 hours | delivered, not urgent |
 
-**Who is the sender** (`utils/senderAddress.js`): the address Railway's edge saw (`X-Real-IP`); `CF-Connecting-IP`
-only when that address is Cloudflare's; never the first `X-Forwarded-For` entry; an IPv6 /64 counts as one sender; a
-signed-in session changes nothing; the stored key is a hash. The sender limits fail open (like every limit in the
-app), so the per-pet limits are the guarantee: no one can ring a family urgently more than 4 times a day per pet.
+**Who is the sender** (`utils/senderAddress.js`): the address the hosting proxies vouch for; an IPv6 /64 counts as
+one sender; signing in does not change it; the stored key is a hash. The per-pet limits are enforced in the database:
+at most 4 urgent pushes per pet per day, whoever sends.
 
-The per-pet message limit is a trade-off: once it is reached, a further finder sees "couldn't send" until the window
-opens again. Maintenance: the Cloudflare ranges are a fixed list; a new range that is missing makes senders behind
-that address share a limit.
+Over the per-pet message limit the form shows "couldn't send" until the window opens again. Maintenance: the
+Cloudflare ranges are a fixed list; a new range that is missing makes senders behind that address share a limit.
 
 ## Retention: 90 days
 

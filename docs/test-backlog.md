@@ -30,6 +30,22 @@ Every section below that says "needs EAS build 33" or "next EAS build" is testab
 
 ---
 
+## 📱 To test — Emergency / finder flow (0146 APPLIED 2026-11-26, verify 19/19 PASS; web after merge + Railway deploy; app needs EAS build 34)
+
+Database: nothing to run. Use your own dog's tag link, never the demo account. Details: [`emergency-finder.md`](emergency-finder.md).
+
+**Website (after the PR is merged and deployed; no build needed)**
+- [ ] **1.** Send a message from your dog's tag page on another phone: it says thanks and the notification appears in your app.
+- [ ] **2.** Emergency card on **Phone** with the number empty: the tag page shows the message form.
+- [ ] **3.** Emergency card on **Relay**: no owner phone / email on the tag page or on a vet link, and no emergency contact on a full vet link.
+
+**App (build 34)**
+- [ ] **4.** Turn on a Focus, send a message from the tag page on another phone: the "Alguien encontró a …" banner breaks through. A second message within 10 minutes arrives as an ordinary notification (intended).
+- [ ] **5.** Notification list: **Llamar** / **Enviar email** open the phone and mail apps. A family member's phone gets the notification too.
+- [ ] **6.** Emergency card, **Mostrar mi contacto de emergencia en la chapa**: off by default; on, the tag page shows it; off again, it is gone.
+
+---
+
 ## 📌 Night run #7 — checks (add each item's section as its PR lands)
 
 ### Item 3 — "Forbidden" on the today's-moment check (SERVER, DRAFT: only after the PR is merged and Railway has deployed; no build needed)
