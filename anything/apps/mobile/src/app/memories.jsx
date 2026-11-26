@@ -12,6 +12,7 @@ import { usePostingStreak } from "@/hooks/useFeedPosts";
 import { getLocalPostDateString } from "@/utils/dateUtils";
 import { onThisDay, detectMilestones } from "@/utils/memoriesWrapped";
 import { MemoryShareButton } from "@/components/Feed/MemoryShareButton";
+import { goBackOr } from "@/utils/navigationBack";
 
 const C = {
   cream: COLORS.cream,
@@ -46,7 +47,7 @@ export default function MemoriesScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}>
       <View style={styles.header}>
-        <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="memories-back" onPress={() => router.back()} style={{ marginRight: 12 }}>
+        <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="memories-back" onPress={() => goBackOr(router, "/(tabs)/more")} style={{ marginRight: 12 }}>
           <ArrowLeft size={22} color={C.warmBrown} />
         </TouchableOpacity>
         <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>{t("memoriesScreen.title")}</Text>

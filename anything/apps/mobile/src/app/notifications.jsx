@@ -622,19 +622,27 @@ export default function NotificationsScreen() {
           <PressableScale testID="notifications-back" accessibilityLabel={t("common.back")} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => router.back()} accessibilityRole="button">
             <ArrowLeft size={22} color={COLORS.mutedBrown} />
           </PressableScale>
-          <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
+            style={[TYPE.headline, { color: COLORS.warmBrown, flex: 1, textAlign: "center", marginHorizontal: SPACING.sm }]}
+          >
             {t("notifications.title")}
           </Text>
-          <PressableScale onPress={handleMarkAllRead} accessibilityRole="button">
-            <Text style={[TYPE.subhead, { fontWeight: "700", color: COLORS.coral }]}>
+          <PressableScale onPress={handleMarkAllRead} accessibilityRole="button" style={{ flexShrink: 1, maxWidth: "45%" }}>
+            <Text style={[TYPE.subhead, { fontWeight: "700", color: COLORS.coral, textAlign: "right" }]}>
               {t("notifications.markAllRead")}
             </Text>
           </PressableScale>
         </View>
       </GlassSurface>
 
-      {/* Filter chips */}
+      {/* Filter chips. The row must never be squeezed: with a long list below, a default ScrollView
+          shrinks and cuts the pill labels in half (flexShrink: 0 here, flex: 1 on the list). Pills are
+          sized by their text, so longer Spanish labels and larger Dynamic Type just make them bigger. */}
       <ScrollView
+        testID="notifications-filters"
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{
@@ -645,6 +653,7 @@ export default function NotificationsScreen() {
         }}
         style={{
           flexGrow: 0,
+          flexShrink: 0,
           borderBottomWidth: 1,
           borderBottomColor: MATERIALS.hairline,
           backgroundColor: COLORS.card,
@@ -655,9 +664,15 @@ export default function NotificationsScreen() {
           return (
             <PressableScale
               key={filter}
+              testID={`notifications-filter-${filter}`}
               onPress={() => setSelectedFilter(filter)}
               accessibilityRole="button"
+              accessibilityState={{ selected: isSelected }}
               style={{
+                minHeight: 36,
+                flexShrink: 0,
+                alignItems: "center",
+                justifyContent: "center",
                 paddingHorizontal: SPACING.lg,
                 paddingVertical: SPACING.sm,
                 borderRadius: RADIUS.chip,
@@ -681,6 +696,8 @@ export default function NotificationsScreen() {
 
       {/* Notifications list */}
       <ScrollView
+        testID="notifications-list"
+        style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
       >

@@ -38,6 +38,7 @@ import {
 import { Card, PressableScale } from "@/components/ui";
 import { formatLocalDate } from "@/utils/localeDateTime";
 import { breedLabel } from "@/data/dogBreeds";
+import { goBackOr } from "@/utils/navigationBack";
 
 // The canonical value BreedPicker persists for its pinned "Mixed breed" option
 // (BreedPicker.jsx's own MIXED_VALUE) — real breed names stay canonical English
@@ -180,7 +181,7 @@ export default function ProfileScreen() {
           borderBottomColor: MATERIALS.hairline,
         }}
       >
-        <PressableScale accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => router.back()}>
+        <PressableScale accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => goBackOr(router, "/(tabs)/more")}>
           <ArrowLeft size={22} color={COLORS.warmBrown} />
         </PressableScale>
         <Text style={[TYPE.headline, { fontWeight: "800", color: COLORS.warmBrown }]}>

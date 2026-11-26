@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ErrorState } from "@/components/ui";
 import {
   View,
@@ -8,13 +8,16 @@ import {
   Switch,
   Share,
   Alert,
+  Pressable,
+  Keyboard,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ChevronLeft, Share2, Trash2, ShieldAlert } from "lucide-react-native";
+import { ChevronLeft, Share2, Trash2, ShieldAlert, Info, Copy, Check } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { captureRef } from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
+import * as Clipboard from "expo-clipboard";
 import QRCode from "react-native-qrcode-svg";
 import { COLORS } from "@/constants/colors";
 import { PetAvatar } from "@/components/Pets/PetAvatar";
@@ -31,6 +34,9 @@ import {
 } from "@/hooks/useEmergencyCard";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { spayNeuterLabel } from "@/utils/healthText";
+import { formatLocalDate } from "@/utils/localeDateTime";
+import { shareQrImage } from "@/utils/emergencyQrShare";
+import { goBackOr } from "@/utils/navigationBack";
 
 const contactModes = (t) => [
   { key: "relay", label: t("emergencyCard.contactRelay") },
@@ -43,6 +49,22 @@ const expiryOptions = (t) => [
   { key: 168, label: t("emergencyCard.expiry7d") },
   { key: null, label: t("emergencyCard.expiryNone") },
 ];
+
+// One plain sentence per way a finder can reach the owner (shown under the chips for the selected one).
+const contactHint = (t, mode) =>
+  ({
+    relay: t("emergencyCard.contactRelayHint"),
+    phone: t("emergencyCard.contactPhoneHint"),
+    email: t("emergencyCard.contactEmailHint"),
+    none: t("emergencyCard.contactNoneHint"),
+  })[mode];
+
+function speciesLabel(t, species) {
+  const key = String(species || "").toLowerCase();
+  if (key === "dog") return t("emergencyCard.speciesDog");
+  if (key === "cat") return t("emergencyCard.speciesCat");
+  return species;
+}
 
 function Row({ label, value }) {
   const { t } = useTranslation();
@@ -69,8 +91,14 @@ function Chip({ selected, label, onPress, testID }) {
     <TouchableOpacity
       testID={testID}
       onPress={onPress}
-      activeOpacity={0.85}
+      activeOpacity={0.7}
+      accessibilityRole="radio"
+      accessibilityState={{ selected: !!selected, checked: !!selected }}
       style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        minHeight: 36,
         paddingHorizontal: 12,
         paddingVertical: 7,
         borderRadius: 999,
@@ -79,10 +107,127 @@ function Chip({ selected, label, onPress, testID }) {
         backgroundColor: selected ? COLORS.coral + "18" : COLORS.card,
       }}
     >
+      {selected ? <Check size={14} color={COLORS.coral} /> : null}
       <Text style={{ color: selected ? COLORS.coral : COLORS.warmBrown, fontWeight: "700", fontSize: 13 }}>
         {label}
       </Text>
     </TouchableOpacity>
+  );
+}
+
+function InfoRow({ text, testID }) {
+  return (
+    <View
+      testID={testID}
+      style={{ flexDirection: "row", gap: 8, marginTop: 10, backgroundColor: COLORS.sand, borderRadius: 12, padding: 10 }}
+    >
+      <Info size={16} color={COLORS.mutedBrown} />
+      <Text style={{ flex: 1, color: COLORS.warmBrown, fontSize: 12, lineHeight: 17 }}>{text}</Text>
+    </View>
+  );
+}
+
+// Memoised: the QR only redraws when its link changes, never because a toggle or chip was tapped.
+const TagQr = React.memo(function TagQr({ url, getRef, onLongPress, hint }) {
+  return (
+    <View testID="tag-qr" style={{ alignItems: "center", marginTop: 12 }}>
+      <Pressable testID="tag-qr-press" onLongPress={onLongPress} accessibilityHint={hint}>
+        <QRCode value={url} size={176} quietZone={10} backgroundColor="#FFFFFF" getRef={getRef} />
+      </Pressable>
+      <Text selectable style={{ color: COLORS.mutedBrown, fontSize: 11, marginTop: 8, textAlign: "center" }}>
+        {url}
+      </Text>
+    </View>
+  );
+});
+
+function SmallButton({ testID, icon: Icon, label, onPress, disabled }) {
+  return (
+    <TouchableOpacity
+      testID={testID}
+      onPress={onPress}
+      disabled={disabled}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        minHeight: 40,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 12,
+        borderWidth: 1.5,
+        borderColor: COLORS.coral,
+        backgroundColor: COLORS.card,
+        opacity: disabled ? 0.5 : 1,
+      }}
+    >
+      {Icon ? <Icon size={15} color={COLORS.coral} /> : null}
+      <Text style={{ color: COLORS.coral, fontWeight: "800", fontSize: 13 }}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+// The phone / email a finder may see. It saves from its own button (enabled only when the text changed), and
+// also when the field is left or the screen is closed, so a typed number is never lost.
+function ContactValueField({ mode, savedValue, onSave }) {
+  const { t } = useTranslation();
+  const saved = savedValue || "";
+  const [draft, setDraft] = useState(null); // null = untouched
+  const draftRef = useRef(null);
+  const sentRef = useRef(saved);
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
+
+  // Follows the cache: after a refused save it rolls back, so the same text can be sent again.
+  useEffect(() => {
+    sentRef.current = saved;
+  }, [saved]);
+
+  const commit = useCallback((text) => {
+    if (text == null || text === sentRef.current) return;
+    sentRef.current = text;
+    onSaveRef.current(text);
+  }, []);
+
+  useEffect(() => () => commit(draftRef.current), [commit]);
+
+  const dirty = draft != null && draft !== saved;
+  return (
+    <View style={{ marginTop: 10 }}>
+      <TextInput
+        testID="contact-value"
+        defaultValue={saved}
+        onChangeText={(text) => {
+          draftRef.current = text;
+          setDraft(text);
+        }}
+        onEndEditing={(e) => commit(e.nativeEvent.text)}
+        keyboardType={mode === "phone" ? "phone-pad" : "email-address"}
+        autoCapitalize="none"
+        autoCorrect={false}
+        placeholder={mode === "phone" ? t("emergencyCard.phoneNumberPlaceholder") : t("emergencyCard.emailPlaceholder")}
+        placeholderTextColor={COLORS.mutedBrown}
+        style={{ backgroundColor: COLORS.sand, borderRadius: 12, padding: 10, color: COLORS.warmBrown }}
+      />
+      <TouchableOpacity
+        testID="contact-save"
+        accessibilityRole="button"
+        disabled={!dirty}
+        onPress={() => {
+          commit(draftRef.current);
+          Keyboard.dismiss();
+        }}
+        activeOpacity={0.85}
+        style={{ marginTop: 8, backgroundColor: COLORS.coral, borderRadius: 12, paddingVertical: 10, alignItems: "center", opacity: dirty ? 1 : 0.45 }}
+      >
+        <Text style={{ color: "#fff", fontWeight: "800" }}>
+          {draft != null && !dirty ? t("emergencyCard.saved") : t("common.save")}
+        </Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -99,9 +244,10 @@ export default function EmergencyCardScreen() {
   const petId = params.petId || (currentPet?.id != null ? String(currentPet.id) : "");
 
   const { data, isLoading, isError, refetch } = useEmergencyCard(petId || null);
-  const update = useUpdateEmergencyCard(petId);
-  const createLink = useCreateEmergencyLink(petId);
-  const revokeLink = useRevokeEmergencyLink(petId);
+  const saveFailed = () => Alert.alert(t("emergencyCard.saveError"));
+  const update = useUpdateEmergencyCard(petId, { onError: saveFailed });
+  const createLink = useCreateEmergencyLink(petId, { onError: saveFailed });
+  const revokeLink = useRevokeEmergencyLink(petId, { onError: saveFailed });
 
   const cardRef = useRef(null);
   const [linkScope, setLinkScope] = useState("full");
@@ -114,6 +260,48 @@ export default function EmergencyCardScreen() {
   const conditions = data?.conditions || [];
   const lost = data?.lost;
   const links = data?.links || [];
+
+  // "Save and create link" rests once this exact choice has a live link; changing a choice wakes it up.
+  const linkSaved =
+    !!createLink.isSuccess &&
+    createLink.variables?.scope === linkScope &&
+    createLink.variables?.ttlHours === linkTtl &&
+    links.some((l) => l.id === createLink.data?.link?.id);
+  const createDisabled = !!createLink.isPending || linkSaved;
+
+  const [copied, setCopied] = useState(null); // which link was just copied
+  useEffect(() => {
+    if (copied == null) return undefined;
+    const timer = setTimeout(() => setCopied(null), 2500);
+    return () => clearTimeout(timer);
+  }, [copied]);
+  const copyLink = async (key, url) => {
+    try {
+      await Clipboard.setStringAsync(url);
+      setCopied(key);
+    } catch (e) {
+      Alert.alert(t("emergencyCard.copyError"));
+    }
+  };
+
+  const qrSvgRef = useRef(null);
+  const getQrRef = useCallback((svg) => {
+    qrSvgRef.current = svg;
+  }, []);
+  const sharingQr = useRef(false);
+  const shareQrRef = useRef(null);
+  shareQrRef.current = async () => {
+    if (sharingQr.current || !card?.tag_token) return;
+    sharingQr.current = true;
+    try {
+      await shareQrImage({ svg: qrSvgRef.current, petName: pet?.name, url: tagUrl(card.tag_token), t });
+    } catch (e) {
+      Alert.alert(t("emergencyCard.qrShareError"));
+    } finally {
+      sharingQr.current = false;
+    }
+  };
+  const shareQr = useCallback(() => shareQrRef.current?.(), []);
 
   const shareCard = async () => {
     try {
@@ -161,7 +349,7 @@ export default function EmergencyCardScreen() {
           borderBottomColor: COLORS.peach,
         }}
       >
-        <TouchableOpacity onPress={() => router.back()} style={{ flexDirection: "row", alignItems: "center", padding: 6 }}>
+        <TouchableOpacity onPress={() => goBackOr(router, "/(tabs)/health")} style={{ flexDirection: "row", alignItems: "center", padding: 6 }}>
           <ChevronLeft size={22} color={COLORS.coral} />
           <Text style={{ color: COLORS.coral, fontWeight: "700" }}>{t("common.back")}</Text>
         </TouchableOpacity>
@@ -204,7 +392,7 @@ export default function EmergencyCardScreen() {
                 <Text style={{ color: COLORS.coral, fontWeight: "700" }}>{t("emergencyCard.hasHome")}</Text>
               </View>
               <View style={{ marginTop: 12 }}>
-                <Row label={t("emergencyCard.species")} value={pet?.species} />
+                <Row label={t("emergencyCard.species")} value={speciesLabel(t, pet?.species)} />
                 <Row label={t("emergencyCard.breed")} value={breedLabel(t, pet?.breed)} />
                 <Row label={t("emergencyCard.microchip")} value={medical?.microchip_id} />
                 <Row label={t("emergencyCard.bloodType")} value={card?.blood_type} />
@@ -240,12 +428,23 @@ export default function EmergencyCardScreen() {
                 {t("emergencyCard.tagQrHint")}
               </Text>
               {card?.tag_token ? (
-                <View testID="tag-qr" style={{ alignItems: "center", marginTop: 12 }}>
-                  <QRCode value={tagUrl(card.tag_token)} size={160} />
-                  <Text selectable style={{ color: COLORS.mutedBrown, fontSize: 11, marginTop: 8 }}>
-                    {tagUrl(card.tag_token)}
-                  </Text>
-                </View>
+                <>
+                  <TagQr
+                    url={tagUrl(card.tag_token)}
+                    getRef={getQrRef}
+                    onLongPress={shareQr}
+                    hint={t("emergencyCard.qrLongPressHint")}
+                  />
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8, marginTop: 12 }}>
+                    <SmallButton testID="share-qr" icon={Share2} label={t("emergencyCard.shareQr")} onPress={shareQr} />
+                    <SmallButton
+                      testID="copy-tag-link"
+                      icon={copied === "tag" ? Check : Copy}
+                      label={copied === "tag" ? t("emergencyCard.linkCopied") : t("emergencyCard.copyLink")}
+                      onPress={() => copyLink("tag", tagUrl(card.tag_token))}
+                    />
+                  </View>
+                </>
               ) : null}
 
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 14 }}>
@@ -273,16 +472,16 @@ export default function EmergencyCardScreen() {
                   />
                 ))}
               </View>
+              <InfoRow testID="contact-hint" text={contactHint(t, card?.contact_mode || "relay")} />
               {(card?.contact_mode === "phone" || card?.contact_mode === "email") && (
-                <TextInput
-                  testID="contact-value"
-                  defaultValue={card?.contact_value || ""}
-                  onEndEditing={(e) => update.mutate({ contact_value: e.nativeEvent.text })}
-                  placeholder={card?.contact_mode === "phone" ? t("emergencyCard.phoneNumberPlaceholder") : t("emergencyCard.emailPlaceholder")}
-                  placeholderTextColor={COLORS.mutedBrown}
-                  style={{ marginTop: 10, backgroundColor: COLORS.sand, borderRadius: 12, padding: 10, color: COLORS.warmBrown }}
+                <ContactValueField
+                  key={card.contact_mode}
+                  mode={card.contact_mode}
+                  savedValue={card?.contact_value}
+                  onSave={(contact_value) => update.mutate({ contact_value })}
                 />
               )}
+              <Text style={{ color: COLORS.mutedBrown, fontSize: 12, marginTop: 10 }}>{t("emergencyCard.autoSaveHint")}</Text>
             </View>
 
             {/* Vet links */}
@@ -297,9 +496,13 @@ export default function EmergencyCardScreen() {
                 <Chip testID="scope-full" label={t("emergencyCard.scopeFull")} selected={linkScope === "full"} onPress={() => setLinkScope("full")} />
                 <Chip testID="scope-basic" label={t("emergencyCard.scopeBasic")} selected={linkScope === "basic"} onPress={() => setLinkScope("basic")} />
               </View>
+              <InfoRow
+                testID="scope-hint"
+                text={linkScope === "basic" ? t("emergencyCard.scopeBasicHint") : t("emergencyCard.scopeFullHint")}
+              />
 
               <Text style={{ color: COLORS.warmBrown, fontWeight: "700", marginTop: 12, marginBottom: 6 }}>{t("emergencyCard.expires")}</Text>
-              <View style={{ flexDirection: "row", gap: 8 }}>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                 {expiryOptions(t).map((e) => (
                   <Chip
                     key={String(e.key)}
@@ -314,16 +517,29 @@ export default function EmergencyCardScreen() {
               <TouchableOpacity
                 testID="create-link"
                 // (AUDIT A-26) Guard against a double-tap creating two links.
-                disabled={createLink.isPending}
+                disabled={createDisabled}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: createDisabled }}
                 onPress={() => {
-                  if (createLink.isPending) return;
+                  if (createDisabled) return;
                   createLink.mutate({ scope: linkScope, ttlHours: linkTtl });
                 }}
                 activeOpacity={0.85}
-                style={{ marginTop: 14, backgroundColor: COLORS.sageDark, borderRadius: 14, paddingVertical: 12, alignItems: "center", opacity: createLink.isPending ? 0.6 : 1 }}
+                style={{ marginTop: 14, backgroundColor: COLORS.sageDark, borderRadius: 14, paddingVertical: 12, alignItems: "center", opacity: createDisabled ? 0.6 : 1 }}
               >
-                <Text style={{ color: "#fff", fontWeight: "800" }}>{t("emergencyCard.createVetLink")}</Text>
+                <Text style={{ color: "#fff", fontWeight: "800" }}>
+                  {createLink.isPending
+                    ? t("emergencyCard.saving")
+                    : linkSaved
+                      ? t("emergencyCard.linkSaved")
+                      : t("emergencyCard.createVetLink")}
+                </Text>
               </TouchableOpacity>
+              {linkSaved ? (
+                <Text testID="link-saved-hint" style={{ color: COLORS.mutedBrown, fontSize: 12, marginTop: 6, textAlign: "center" }}>
+                  {t("emergencyCard.linkSavedHint")}
+                </Text>
+              ) : null}
 
               {links.length === 0 ? (
                 <Text testID="links-empty" style={{ color: COLORS.mutedBrown, marginTop: 12, fontSize: 13 }}>
@@ -338,13 +554,22 @@ export default function EmergencyCardScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: COLORS.warmBrown, fontWeight: "700" }}>
                         {l.scope === "basic" ? t("emergencyCard.scopeBasic") : t("emergencyCard.scopeFull")} ·{" "}
-                        {l.expires_at ? t("emergencyCard.expiresOn", { date: new Date(l.expires_at).toLocaleDateString() }) : t("emergencyCard.expiryNoneShort")}
+                        {l.expires_at ? t("emergencyCard.expiresOn", { date: formatLocalDate(l.expires_at) }) : t("emergencyCard.expiryNoneShort")}
                       </Text>
                       <TouchableOpacity testID={`share-link-${l.id}`} onPress={() => shareVetLink(l.token)}>
                         <Text style={{ color: COLORS.coral, fontSize: 12 }} numberOfLines={1}>
                           {cardUrl(l.token)}
                         </Text>
                       </TouchableOpacity>
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                        <SmallButton testID={`share-link-button-${l.id}`} icon={Share2} label={t("emergencyCard.shareLink")} onPress={() => shareVetLink(l.token)} />
+                        <SmallButton
+                          testID={`copy-link-${l.id}`}
+                          icon={copied === l.id ? Check : Copy}
+                          label={copied === l.id ? t("emergencyCard.linkCopied") : t("emergencyCard.copyLink")}
+                          onPress={() => copyLink(l.id, cardUrl(l.token))}
+                        />
+                      </View>
                     </View>
                     <TouchableOpacity accessibilityLabel={t("common.delete")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                       testID={`revoke-link-${l.id}`}

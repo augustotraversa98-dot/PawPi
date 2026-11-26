@@ -1,9 +1,10 @@
 import { MATERIALS } from "@/constants/theme";
 import { COLORS } from "@/constants/theme";
-import React, { useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Modal, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { NavigationContext } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { ChevronRight, LogOut, Menu, X } from "lucide-react-native";
 import { useAuth } from "@/utils/auth/useAuth";
@@ -11,6 +12,7 @@ import { useMyProviders } from "@/hooks/useProviders";
 import { PetSwitcher } from "@/components/Pets/PetSwitcher";
 import { markExpectedNavigation } from "@/telemetry/navExpect";
 import { clearAccountStorage } from "@/utils/accountStorage";
+import { watchMenuReturn } from "@/utils/menuReturn";
 
 const C = {
   coral: COLORS.coral,
@@ -29,7 +31,8 @@ const C = {
 // The "More" menu behind the Profile tab's top-right burger (ticket 2.39, reused
 // by 2.60 so the Profile tab can BE the pet's social profile while every former
 // More destination + the My Dogs switcher stay reachable from here). Closing the
-// sheet before navigating keeps tab nav clean (honors the 2.19 fix).
+// sheet before navigating keeps tab nav clean (honors the 2.19 fix); coming back
+// from the chosen screen opens the sheet again (utils/menuReturn.js).
 export function OwnerMenu() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -41,8 +44,18 @@ export function OwnerMenu() {
   const { data: myProviders = [] } = useMyProviders();
   const isBusiness = (myProviders?.length ?? 0) > 0;
 
-  const goMenu = (path) => {
+  const navigation = useContext(NavigationContext); // undefined outside a navigator
+  const menuReturn = useRef(null);
+  useEffect(() => {
+    const watcher = watchMenuReturn(navigation, () => setMenuVisible(true));
+    menuReturn.current = watcher;
+    return watcher.dispose;
+  }, [navigation]);
+
+  // `returnToMenu: false` is for a destination that is a mode switch rather than a visit.
+  const goMenu = (path, { returnToMenu = true } = {}) => {
     setMenuVisible(false);
+    if (returnToMenu) menuReturn.current?.arm();
     router.push(path);
   };
 
@@ -194,7 +207,7 @@ export function OwnerMenu() {
                     title={t("business.menu.item")}
                     emoji="🏪"
                     color={C.coral}
-                    onPress={() => goMenu("/business")}
+                    onPress={() => goMenu("/business", { returnToMenu: false })}
                   />
                 </>
               ) : null}

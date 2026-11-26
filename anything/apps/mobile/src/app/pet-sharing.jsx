@@ -41,6 +41,7 @@ import CaregiverLogWalkModal from "@/components/Pets/CaregiverLogWalkModal";
 import InviteCodePanel from "@/components/Pets/InviteCodePanel";
 import RedeemInviteCard from "@/components/Pets/RedeemInviteCard";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
+import { goBackOr } from "@/utils/navigationBack";
 
 const C = {
   cream: COLORS.cream,
@@ -157,7 +158,7 @@ export default function PetSharingScreen() {
           borderBottomColor: C.peach,
         }}
       >
-        <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="sharing-back" onPress={() => router.back()} style={{ marginRight: 12 }}>
+        <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="sharing-back" onPress={() => goBackOr(router, "/(tabs)/more")} style={{ marginRight: 12 }}>
           <ArrowLeft size={22} color={C.warmBrown} />
         </TouchableOpacity>
         <Text style={{ fontSize: 20, fontWeight: "800", color: C.warmBrown }}>
