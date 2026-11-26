@@ -1,4 +1,5 @@
 import { getToken } from '@auth/core/jwt';
+import { cspNonce } from '@/app/api/utils/securityHeaders';
 
 // #4 (night-run S4) — the WebView auth-success bridge. This page hands the caller's JWT to
 // window.parent via postMessage. Previously it targeted '*' (any parent origin), so any page that
@@ -28,12 +29,15 @@ function inlineJson(value) {
 	return JSON.stringify(value).replace(/</g, '\\u003c');
 }
 
+// The inline script runs only because it carries the CSP nonce (utils/securityHeaders.js).
 function page(bodyScript, status = 200) {
+	const nonce = cspNonce();
+	const nonceAttr = nonce ? ` nonce="${nonce}"` : '';
 	return new Response(
 		`
 		<html>
 			<body>
-				<script>${bodyScript}</script>
+				<script${nonceAttr}>${bodyScript}</script>
 			</body>
 		</html>
 		`,
