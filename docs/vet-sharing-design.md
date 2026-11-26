@@ -2,7 +2,8 @@
 
 Status: 2026-11-26. Sections and expiry are built on the server and the web provider panel (migration 0147, applied by
 hand before the server is deployed; then `supabase/verify_0147.sql`), and so are sharing while a provider's request is
-pending and telling the provider when access is given or revoked. Part 4 is not built.
+pending, telling the provider when access is given or revoked, and inviting a vet by link (migration 0148, then
+`supabase/verify_0148.sql`; server and web). Part 4 is not built.
 
 ## 1. Grants (`care_access_grants`)
 
@@ -123,9 +124,8 @@ The `pets` row (name, photo, breed...) is already readable by any signed-in user
 
 Vet Record > **Share** (and Data Access > **Share with your vet**) opens
 `anything/apps/mobile/src/components/Health/VetShare/ShareWithVetSheet.jsx`. It offers providers the owner has a vet or
-telehealth booking with, for that pet: the web provider panel lists pets only through bookings, so any other vet would
-have access with no screen to open it. Choosing sections and expiry in the app is a separate change; until it ships, the
-app sends the by-scope body. The released data-access screen prints raw scope labels, so a grant by section reads
+telehealth booking with, for that pet (a vet without one can be invited by link, section 1). Choosing sections and
+expiry in the app is a separate change; until it ships, the app sends the by-scope body. The released data-access screen prints raw scope labels, so a grant by section reads
 `record_sections` there.
 
 ## 3. Telling the provider
@@ -156,10 +156,9 @@ grant that a share by section replaces (only `care_access_granted` goes out).
 
 Each needs its own change with owner review.
 
-1. **Invite a vet who is not on PawPi (email, phone or link).** New `care_access_invites` (pet, owner, what is shared,
-   hashed token, expiry, accepted_by_provider, revoked_at), forced RLS, a rate-limited accept function that turns an
-   invite into a grant for the accepting provider, single use. Needs working email delivery first.
-2. **Let the vet find the pet without a booking.** A provider "Shared with us" list from active grants. Then the booking
-   restriction in the picker can go.
+1. **Send an invite by email or phone.** PawPi sends nothing to an invited vet: the owner shares the link ("Invite by
+   link", section 1). Needs working email delivery first.
+2. **Create an invite in the app, and offer a vet without a booking in the picker.** The server, the web invite page and
+   the provider panel's "Shared with us" list exist; the app screens are a separate change.
 3. **More sections** (allergies, conditions, medications, surgeries): each needs a read policy, a branch in the record
    route and a record screen section.
