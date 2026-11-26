@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { notifyCareAccess } from "@/app/api/utils/careAccessNotify";
 
 // PATCH /api/care-access/grants/[grantId] — the OWNER approves / denies / revokes
 // a care-access grant. Ticket 7 (docs/provider-design.md §2 Consent + §4 item 7).
@@ -87,6 +88,7 @@ async function PATCH(request, { params }) {
           { status: 409 },
         );
       }
+      await notifyCareAccess({ type: "care_access_granted", grant: updated[0], actor: userId });
       return Response.json({ grant: updated[0] });
     }
 
@@ -124,6 +126,7 @@ async function PATCH(request, { params }) {
       WHERE id = ${grantId} AND owner_user_id = ${userId}
       RETURNING *
     `;
+    await notifyCareAccess({ type: "care_access_revoked", grant: updated[0], actor: userId });
     return Response.json({ grant: updated[0] });
   } catch (error) {
     console.error(
