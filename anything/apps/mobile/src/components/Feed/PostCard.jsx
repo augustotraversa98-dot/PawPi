@@ -31,7 +31,7 @@ import { useTogglePaw } from "@/hooks/useFeedPosts";
 import { DailyShareButton } from "./DailyShareButton";
 import { PawablePhoto } from "./PawablePhoto";
 import { FeedVideo } from "./FeedVideo";
-import { getMilestone } from "@/utils/feedDelight";
+import { getMilestone, postBirthday } from "@/utils/feedDelight";
 import { MilestoneRibbon } from "./MilestoneRibbon";
 import { Confetti } from "./Confetti";
 import { useTranslation } from "react-i18next";
@@ -177,26 +177,27 @@ export const PostCard = memo(function PostCard({
     } catch {}
     onLockedPress?.();
   };
-  // Birthday / adoption-day highlight (2.37) → milestone moment (E3): a 🎂 by the name + a thicker
-  // signature-orange frame, and on a milestone day an animated ribbon + confetti + a "Share this"
-  // CTA. Computed from the pet's own date fields against the viewer's local day — never fabricated.
+  // Birthday / adoption-day highlight (2.37) → milestone moment (E3): a thicker coral frame, and on
+  // an unlocked card an animated ribbon + confetti + a "Share this" CTA; a birthday also gets a 🎂 by
+  // the name. Computed from the pet's own date fields against the viewer's local day — never fabricated.
   const milestone = getMilestone(
-    { birthday: post.pet_birthday, adoption_date: post.pet_adoption_date },
+    { birthday: postBirthday(post), adoption_date: post.pet_adoption_date },
     getLocalPostDateString(),
   );
-  const isBirthday = !!milestone;
-  const showMilestone = isBirthday && !locked;
+  const isMilestone = !!milestone;
+  const isBirthday = milestone?.type === "birthday";
+  const showMilestone = isMilestone && !locked;
 
   return (
     <Card
       level="md"
       radius={RADIUS.card}
-      borderColor={isBirthday ? COLORS.coral : MATERIALS.hairline}
+      borderColor={isMilestone ? COLORS.coral : MATERIALS.hairline}
       style={{
         marginHorizontal: SPACING.lg,
         marginBottom: SPACING.lg,
         overflow: "hidden",
-        borderWidth: isBirthday ? 2.5 : 1,
+        borderWidth: isMilestone ? 2.5 : 1,
       }}
     >
       {/* Header — identity stays fully visible while locked, and tapping it

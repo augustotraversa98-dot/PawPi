@@ -37,12 +37,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: "rgba(255,111,97,0.92)", // coral banner
   },
-  title: { color: "#FFF", fontWeight: "800", fontSize: 14 },
+  title: { color: COLORS.cream, fontWeight: "800", fontSize: 14 },
   years: {
     color: COLORS.warmBrown,
     fontWeight: "800",
     fontSize: 12,
-    backgroundColor: "rgba(255,255,255,0.85)",
+    backgroundColor: COLORS.cream,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 999,
