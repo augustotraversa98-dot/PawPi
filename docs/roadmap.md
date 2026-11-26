@@ -18,6 +18,14 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-25 — Pet tag and vet card pages in Spanish (TestFlight build 33 report) — web-only, Railway deploy on merge, no EAS build, no migration, no API change
+- `/p/tag/[token]` and `/p/card/[token]` were English only. They now open in Spanish for `es*` browsers (English otherwise, Spanish when the browser reports nothing), with an ES/EN switch that writes `?lang=`.
+- Every string lives in `anything/apps/web/src/lib/publicPet/copy.js` (a test keeps ES and EN in step).
+- The finder note now asks for a phone or email, because the owner cannot reply on the page. No new field.
+- Brand: the paw emoji header was replaced by the supplied lockup. Pages stay `noindex`.
+
+---
+
 ## 2026-11-25 — Emergency card, notification pills, QR share, back to the More menu (TestFlight build 33 bugs) — mobile-only, needs the next EAS build, no migration, no dependency change
 - **Emergency card buttons were slow:** every tap waited for the save AND a reload of the whole card before the control moved. Saves are now optimistic (sent one at a time, rolled back with "Could not save. Please try again."), with no reload and no QR redraw. Test measurement with simulated latency: control visible after about 415 ms to under 20 ms; requests per tap 2 to 1; QR redraws per tap 2 to 0.
 - **Share with a vet / contact options:** explicit "Save and create link" button (rests until a choice changes), Save button on the phone/email field, one line explaining each contact option (including private relay) and each link scope, Share and Copy buttons on each link, Spanish species and dates. Scope and duration stay one-of-a-group (the server accepts one value each); choosing what to include is a later item.

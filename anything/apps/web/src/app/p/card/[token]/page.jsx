@@ -1,35 +1,24 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router";
+import { PET_PAGE_WRAP as wrap, PetPageHeader, PetRow } from "@/components/publicPet/PetPageParts";
+import { BRAND } from "@/lib/brand/tokens";
+import { useDocumentHead } from "@/lib/legal/head";
+import { PET_PAGE_COPY } from "@/lib/publicPet/copy";
+import { useVisitorLang } from "@/lib/publicPet/useVisitorLang";
 
 // PUBLIC revocable vet card page (ticket 2.51) — a vet opens the link the owner shared. NO login.
 // The DEFINER fn returns the scoped card (full|basic) ONLY while the link is non-revoked +
 // non-expired; otherwise the API 404s and this page shows a clean "no longer valid" message.
-// Non-diagnostic by design.
-
-const C = {
-  coral: "#FF6F61",
-  cream: "#FFF7EF",
-  card: "#FFFFFF",
-  warm: "#3B241B",
-  muted: "#7A6254",
-  line: "#FFD9B3",
-};
-
-function Row({ label, value }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px solid ${C.line}` }}>
-      <span style={{ color: C.muted, fontWeight: 600 }}>{label}</span>
-      <span style={{ color: C.warm, fontWeight: 700, textAlign: "right" }}>
-        {value == null || value === "" ? "Not recorded" : value}
-      </span>
-    </div>
-  );
-}
+// Non-diagnostic by design. EN + ES (lib/publicPet).
 
 export default function PublicVetCardPage() {
   const { token } = useParams();
   const [state, setState] = useState("loading"); // loading | ok | invalid
   const [card, setCard] = useState(null);
+  const { lang, setLang } = useVisitorLang();
+  const copy = PET_PAGE_COPY[lang];
+  const t = copy.card;
+  useDocumentHead([{ title: t.documentTitle }]);
 
   useEffect(() => {
     let alive = true;
@@ -46,64 +35,74 @@ export default function PublicVetCardPage() {
     };
   }, [token]);
 
-  const wrap = { maxWidth: 480, margin: "0 auto", padding: 16, fontFamily: "system-ui, sans-serif" };
+  const header = <PetPageHeader lang={lang} setLang={setLang} copy={copy} heading={t.heading} />;
+  const page = { minHeight: "100vh", background: BRAND.cream };
 
   if (state === "loading") {
-    return <div style={{ ...wrap, color: C.muted }}>Loading…</div>;
+    return (
+      <div style={page}>
+        <div style={wrap}>
+          {header}
+          <p style={{ color: BRAND.muted, textAlign: "center" }}>{copy.loading}</p>
+        </div>
+      </div>
+    );
   }
   if (state === "invalid") {
     return (
-      <div data-testid="invalid-link" style={{ ...wrap, textAlign: "center", color: C.muted }}>
-        <h2 style={{ color: C.warm }}>Link no longer valid</h2>
-        <p>This emergency link has expired or was revoked by the owner.</p>
+      <div style={page}>
+        <div style={wrap}>
+          {header}
+          <div data-testid="invalid-link" style={{ textAlign: "center", color: BRAND.muted }}>
+            <h2 style={{ color: BRAND.brown, fontSize: 20, fontWeight: 800, margin: "16px 0 8px" }}>{t.invalidTitle}</h2>
+            <p>{t.invalidBody}</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   const pet = card.pet || {};
   const medical = card.medical;
+  const row = (label, value) => <PetRow label={label} value={value} emptyText={copy.notRecorded} />;
 
   return (
-    <div style={{ minHeight: "100vh", background: C.cream }}>
+    <div style={page}>
       <div style={wrap}>
-        <div style={{ textAlign: "center", color: C.coral, fontWeight: 800, fontSize: 20, marginBottom: 8 }}>
-          🐾 PawPi · Emergency Card
-        </div>
-        <div style={{ background: C.card, borderRadius: 16, padding: 16, border: `1px solid ${C.line}` }}>
+        {header}
+        <div style={{ background: BRAND.card, borderRadius: 16, padding: 16, border: `1px solid ${BRAND.peach}` }}>
           <div style={{ textAlign: "center" }}>
             {pet.avatar_url ? (
-              <img src={pet.avatar_url} alt={pet.name} style={{ width: 110, height: 110, borderRadius: 55, objectFit: "cover" }} />
+              <img src={pet.avatar_url} alt={pet.name || t.petFallback} style={{ width: 110, height: 110, borderRadius: 55, objectFit: "cover" }} />
             ) : (
-              <div style={{ width: 110, height: 110, borderRadius: 55, background: C.cream, margin: "0 auto", lineHeight: "110px", fontSize: 44 }}>🐶</div>
+              <div aria-hidden="true" style={{ width: 110, height: 110, borderRadius: 55, background: BRAND.cream, margin: "0 auto", lineHeight: "110px", fontSize: 44 }}>🐶</div>
             )}
-            <h1 style={{ color: C.warm, margin: "8px 0 2px" }}>{pet.name || "Pet"}</h1>
+            <h1 style={{ color: BRAND.brown, margin: "8px 0 2px", fontSize: 26, fontWeight: 800 }}>{pet.name || t.petFallback}</h1>
           </div>
           <div style={{ marginTop: 12 }}>
-            <Row label="Species" value={pet.species} />
-            <Row label="Breed" value={pet.breed} />
-            <Row label="Microchip" value={card.microchip_id} />
+            {row(copy.species, copy.speciesValues[String(pet.species || "").toLowerCase()] || pet.species)}
+            {row(copy.breed, pet.breed)}
+            {row(copy.microchip, card.microchip_id)}
           </div>
 
           {medical ? (
             <div data-testid="medical-section" style={{ marginTop: 16 }}>
-              <h3 style={{ color: C.warm }}>Medical</h3>
-              <Row label="Blood type" value={medical.blood_type} />
-              <Row label="Spay/neuter" value={medical.spayed_neutered_status} />
-              <Row label="Allergies" value={(medical.allergies || []).map((a) => a.allergen).join(", ")} />
-              <Row label="Conditions" value={(medical.conditions || []).map((c2) => c2.condition).join(", ")} />
-              <Row label="Medical notes" value={medical.medical_notes} />
-              <Row label="Primary vet" value={medical.primary_vet_name} />
-              <Row label="Vet phone" value={medical.vet_phone} />
-              <Row label="Emergency contact" value={medical.emergency_contact_name} />
-              <Row label="Emergency phone" value={medical.emergency_contact_phone} />
+              <h3 style={{ color: BRAND.brown, fontSize: 17, fontWeight: 800 }}>{t.medicalHeading}</h3>
+              {row(copy.bloodType, medical.blood_type)}
+              {row(copy.spayNeuter, copy.spayValues[medical.spayed_neutered_status] || medical.spayed_neutered_status)}
+              {row(copy.allergies, (medical.allergies || []).map((a) => a.allergen).join(", "))}
+              {row(copy.conditions, (medical.conditions || []).map((c) => c.condition).join(", "))}
+              {row(t.medicalNotes, medical.medical_notes)}
+              {row(t.primaryVet, medical.primary_vet_name)}
+              {row(t.vetPhone, medical.vet_phone)}
+              {row(t.emergencyContact, medical.emergency_contact_name)}
+              {row(t.emergencyPhone, medical.emergency_contact_phone)}
             </div>
           ) : (
-            <p style={{ color: C.muted, marginTop: 16 }}>This is a basic-scope link (no medical details).</p>
+            <p style={{ color: BRAND.muted, marginTop: 16 }}>{t.basicScope}</p>
           )}
         </div>
-        <p style={{ color: C.muted, fontSize: 12, textAlign: "center", marginTop: 16 }}>
-          PawPi organizes a pet’s existing information for a real vet. It does not provide a diagnosis.
-        </p>
+        <p style={{ color: BRAND.muted, fontSize: 12, textAlign: "center", marginTop: 16 }}>{copy.footer}</p>
       </div>
     </div>
   );
