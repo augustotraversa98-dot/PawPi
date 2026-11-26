@@ -38,6 +38,7 @@ Duplicate check for items 3 and 4: no open PR or branch existed for either, and 
 - **Items 7 and 8.** In both, other test files re-apply older migrations on the shared test database; the new tests re-assert their own
   migration first so they do not depend on file order. One existing test line (`shared-pets-access`) now sends this pet's media key
   for the caregiver photo case.
+- **Item 7 CI.** The first integration run of #834 passed all 168 files and then the Node process ran out of memory during teardown (exit 134); the single allowed re-run passed. The whole suite is close to the default heap on the runner; if it recurs on other PRs, the integration job needs a larger `--max-old-space-size`.
 - **Item 11.** One existing test needed an adjustment: in 0.41 Auth.js resolves the provider before it checks the CSRF token, so
   with Google not configured the answer is `error=Configuration` instead of `MissingCSRF`. The request is still refused with no
   session in both cases, and both are now pinned. `jose` moved 5.10.0 to 6.2.18 as a transitive of `@auth/core` (nothing in the app
