@@ -4,6 +4,7 @@
 //   E. expiry and revocation apply to the next request           F. who is denied, and one person staffing two vets
 //   G. no write, and no other route, is opened by a grant by section
 //   H. sharing while the vet's request is pending approves it with exactly the owner's choice
+//   I. a limit on how often an owner can share
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, inject, it, vi } from "vitest";
 import type { Sql } from "postgres";
@@ -808,5 +809,112 @@ describe("H. the vet's request is still pending", () => {
     const [row] = await grants();
     expect(row.expires_at).not.toBeNull();
     expect(row.sections).toEqual(["vaccines"]);
+  });
+
+  const answer = (grantId: number, action: string) => () => {
+    as(OWNER);
+    return req(`/care-access/grants/${grantId}`, "PATCH", { action });
+  };
+  const endedNotices = async () =>
+    (await raw`select count(*)::int as n from notifications where type = 'care_access_revoked'`)[0].n;
+
+  it("a revoke of a grant that a new share is replacing changes nothing (409) and sends no notice", async () => {
+    const old = await shared(["vaccines"]);
+    // What a share by section stores over an active grant: that one ends and a new row takes its place.
+    const res = await whileUncommitted(
+      async (tx) => {
+        await tx`update care_access_grants set status = 'revoked', revoked_at = now() where id = ${old.id}`;
+        await tx`
+          insert into care_access_grants
+            (pet_id, owner_user_id, provider_id, scopes, sections, status, requested_by, granted_at)
+          values (${PET}, ${OWNER.profileId}, ${P1}, array['record_sections'], array['photos'], 'active', 'owner', now())`;
+      },
+      answer(old.id, "revoke"),
+    );
+    expect(res.status).toBe(409);
+    expect(await endedNotices()).toBe(0);
+    const [, next] = await grants();
+    expect(next.status).toBe("active");
+    // The new grant is the owner's to end.
+    expect((await answer(next.id, "revoke")()).status).toBe(200);
+    expect(await endedNotices()).toBe(2); // one per active staff member
+    expect((await record()).status).toBe(403);
+  });
+
+  it("a revoke of a grant that is already being revoked answers 409 and sends no notice", async () => {
+    const grant = await shared(["vaccines"]);
+    const res = await whileUncommitted(
+      (tx) => tx`update care_access_grants set status = 'revoked', revoked_at = now() where id = ${grant.id}`,
+      answer(grant.id, "revoke"),
+    );
+    expect(res.status).toBe(409);
+    expect(await endedNotices()).toBe(0);
+  });
+
+  it("a deny that overlaps an approval changes nothing (409): the grant stays active", async () => {
+    const request = await ask();
+    const res = await whileUncommitted(
+      (tx) => tx`update care_access_grants set status = 'active', granted_at = now() where id = ${request.id}`,
+      answer(request.id, "deny"),
+    );
+    expect(res.status).toBe(409);
+    const [row] = await grants();
+    expect([row.status, row.revoked_at]).toEqual(["active", null]);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+describe("I. how often an owner can share", () => {
+  const LIMIT = 20;
+  const answer = (grantId: number, action: string) => {
+    as(OWNER);
+    return req(`/care-access/grants/${grantId}`, "PATCH", { action });
+  };
+  const noticeCount = async () => (await raw`select count(*)::int as n from notifications`)[0].n;
+  // LIMIT shares, each but the last one revoked again. Returns the grant left active.
+  const useTheLimit = async () => {
+    for (let i = 1; i < LIMIT; i++) {
+      const grant = await shared(["vaccines"]);
+      expect((await answer(grant.id, "revoke")).status).toBe(200);
+    }
+    return shared(["vaccines"]);
+  };
+
+  it(`takes ${LIMIT} shares an hour; the next one, of either shape, is a 429 that changes and sends nothing`, async () => {
+    await useTheLimit();
+    const before = await grants();
+    const sent = await noticeCount();
+    for (const res of [await share(["photos"]), await shareByScope()]) {
+      expect(res.status).toBe(429);
+      expect(Number(res.headers.get("retry-after"))).toBeGreaterThan(0);
+      expect(await res.json()).toMatchObject({ code: "rate_limited" });
+    }
+    expect(await grants()).toEqual(before);
+    expect(await noticeCount()).toBe(sent);
+  });
+
+  it("revoking, approving and denying still work once the limit is reached", async () => {
+    const active = await useTheLimit();
+    expect((await share(["vaccines"], "7d", P2)).status).toBe(429);
+    expect((await answer(active.id, "revoke")).status).toBe(200);
+    for (const action of ["deny", "approve", "revoke"]) {
+      let id: number;
+      if (action === "revoke") {
+        [{ id }] = await raw`select id from care_access_grants where status = 'active'`;
+      } else {
+        as(VET2);
+        const asked = await req(`/providers/${P2}/access-requests`, "POST", { petId: PET, scopes: ["medical_read"] });
+        expect(asked.status).toBe(201);
+        id = (await asked.json()).grant.id;
+      }
+      expect((await answer(id, action)).status, action).toBe(200);
+    }
+    expect([...(await grants())].filter((g: any) => g.status !== "revoked")).toEqual([]);
+  });
+
+  it("is counted per owner", async () => {
+    await useTheLimit();
+    expect((await share(["vaccines"])).status).toBe(429);
+    expect((await post({ petId: OTHER.petId, providerId: P1 }, OTHER)).status).toBe(201);
   });
 });

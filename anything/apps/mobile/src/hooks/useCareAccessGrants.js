@@ -112,15 +112,16 @@ export function useShareRecord({ onSuccess, onError } = {}) {
 
 // Approve / deny / revoke a single grant. The backend flips the grant's status
 // (approve pending→active, deny pending→revoked, revoke active→revoked), which
-// assertCareAccess honors instantly — so on success we just invalidate this pet's
-// grant list and the trust screen reflects the new state.
+// assertCareAccess honors instantly — so afterwards we just invalidate this pet's
+// grant list and the trust screen reflects the current state.
 export function useUpdateGrant(petId) {
   const queryClient = useQueryClient();
 
   return useMutation({
     // mutateAsync({ grantId, action: 'approve'|'deny'|'revoke', expiresAt? })
     mutationFn: ({ grantId, action, expiresAt }) => patchGrant(grantId, action, expiresAt),
-    onSuccess: () => {
+    // Settled, not only success: a refused change means the grant is no longer as the screen shows it.
+    onSettled: () => {
       queryClient.invalidateQueries({
         queryKey: ["care-access-grants", petId],
       });
