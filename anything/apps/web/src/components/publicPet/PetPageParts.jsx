@@ -84,35 +84,50 @@ export function phoneLink(value) {
   );
 }
 
-// The phone / email the family chose to publish ("how can a finder reach you" = phone or email). Relay and none
-// render nothing — the server sends no value for them, and a value of the wrong kind is not shown either.
+// The phone and / or email the family chose to publish. A card saved with the two switches (database 0152) sends
+// `phone` and `email`; any other card sends one `value` for its `mode`.
+function publishedChannels(contact) {
+  const c = contact || {};
+  const sent = "phone" in c || "email" in c ? [["phone", c.phone], ["email", c.email]] : [[c.mode, c.value]];
+  // Relay and none render nothing — the server sends no value for them, and a value of the wrong kind is not shown.
+  return sent.filter(
+    ([kind, value]) =>
+      !!value && (kind === "phone" || kind === "email") && (kind === "email") === String(value).includes("@"),
+  );
+}
+
 export function OwnerContact({ contact, copy }) {
-  const { mode, value } = contact || {};
-  if (!value || (mode !== "phone" && mode !== "email")) return null;
-  const isPhone = mode === "phone";
-  if (isPhone === String(value).includes("@")) return null;
-  const href = isPhone ? telHref(value) : mailtoHref(value);
+  const channels = publishedChannels(contact);
+  if (channels.length === 0) return null;
   const t = copy.contact;
   return (
     <div data-testid="owner-contact" style={{ marginTop: 16 }}>
       <h3 style={{ color: BRAND.brown, fontSize: 17, fontWeight: 800, margin: "0 0 4px" }}>{t.heading}</h3>
-      <PetRow
-        label={isPhone ? t.phone : t.email}
-        value={
-          href ? (
-            <a href={href} style={{ color: BRAND.brown }}>
-              {value}
-            </a>
-          ) : (
-            value
-          )
-        }
-      />
-      {href ? (
-        <a href={href} style={{ ...PET_PAGE_BUTTON, marginTop: 10 }}>
-          {isPhone ? t.call : t.write}
-        </a>
-      ) : null}
+      {channels.map(([kind, value]) => {
+        const isPhone = kind === "phone";
+        const href = isPhone ? telHref(value) : mailtoHref(value);
+        return (
+          <div key={kind}>
+            <PetRow
+              label={isPhone ? t.phone : t.email}
+              value={
+                href ? (
+                  <a href={href} style={{ color: BRAND.brown }}>
+                    {value}
+                  </a>
+                ) : (
+                  value
+                )
+              }
+            />
+            {href ? (
+              <a href={href} style={{ ...PET_PAGE_BUTTON, marginTop: 10 }}>
+                {isPhone ? t.call : t.write}
+              </a>
+            ) : null}
+          </div>
+        );
+      })}
     </div>
   );
 }

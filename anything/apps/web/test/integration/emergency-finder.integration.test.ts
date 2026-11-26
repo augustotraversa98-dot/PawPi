@@ -139,6 +139,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // This file re-applies 0146 on the shared cluster, which restores its older card assembler: put 0152's back.
+  await raw.unsafe(readMigration('0152_emergency_contact_channels.sql'));
   await app.end();
   await raw.end();
 });

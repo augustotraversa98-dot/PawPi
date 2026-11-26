@@ -14,6 +14,16 @@ export const cardUrl = (token) => `${WEB_BASE}/p/card/${token}`;
 
 const cardKey = (petId) => ["emergency-card", petId];
 
+// The phone / email switches. A server without them answers 200 and saves none of these, so such an answer
+// counts as a failed save (rolled back, the owner is told, and the card is read again).
+const CHANNEL_FIELDS = [
+  "contact_phone_enabled",
+  "contact_email_enabled",
+  "contact_message_enabled",
+  "contact_phone",
+  "contact_email",
+];
+
 export function useEmergencyCard(petId) {
   return useQuery({
     queryKey: cardKey(petId),
@@ -42,7 +52,12 @@ export function useUpdateEmergencyCard(petId, { onError } = {}) {
         body: JSON.stringify({ petId, ...patch }),
       });
       if (!res.ok) throw new Error("Failed to update emergency card");
-      return res.json();
+      const result = await res.json();
+      const setsChannels = Object.keys(patch).some((field) => CHANNEL_FIELDS.includes(field));
+      if (setsChannels && typeof result?.card?.contact_phone_enabled !== "boolean") {
+        throw new Error("Failed to update emergency card");
+      }
+      return result;
     },
     onMutate: async (patch) => {
       await qc.cancelQueries({ queryKey });

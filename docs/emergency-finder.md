@@ -2,21 +2,41 @@
 
 What a stranger can see and send after scanning a dog's tag, who hears about it, and how long it is kept.
 Schema and functions: `supabase/migrations/0146_emergency_finder_contact.sql` (verify: `supabase/verify_0146.sql`,
-19 rows, all PASS).
-Status: 0146 was applied to production on 2026-11-26; the verify script returned 19 of 19 PASS.
+19 rows, all PASS) and `supabase/migrations/0152_emergency_contact_channels.sql` (verify: `supabase/verify_0152.sql`,
+11 rows, all PASS).
+Status: 0146 was applied to production on 2026-11-26; the verify script returned 19 of 19 PASS. 0152 is hand-applied
+after its merge.
 
 ## What the public pages show (the owner decides)
 
+The owner has two independent switches, phone and email. With both off, a third one chooses between the private
+message form ("Relay") and no contact at all ("None"). App builds without the switches offer the same four as one
+choice (Relay, Phone, Email, None).
+
 | Owner setting | Tag page `/p/tag` | Full vet link `/p/card` |
 |---|---|---|
-| Finder contact = **Relay** | message form; no owner phone / email | no owner phone / email, **no emergency contact** |
-| Finder contact = **None** | no form, no contact | no owner phone / email, **no emergency contact** |
-| **Phone** / **Email**, value saved | that value, tappable; no form | that value + the emergency contact |
-| **Phone** / **Email**, nothing saved (or a value of the other kind) | message form (same as Relay) | emergency contact; no owner value |
+| Both off, private message on (**Relay**) | message form; no owner phone / email | no owner phone / email, **no emergency contact** |
+| Both off, private message off (**None**) | no form, no contact | no owner phone / email, **no emergency contact** |
+| **Phone** and / or **Email** on, at least one value saved | each saved value, tappable; no form | those values + the emergency contact |
+| **Phone** and / or **Email** on, nothing saved (or only a value of the other kind) | message form (same as Relay) | emergency contact; no owner value |
 | **Show my emergency contact on the pet tag** (default **OFF**) | ON: the medical profile's emergency contact name and phone | no effect |
 | Show medical info on the public tag (default OFF) | blood type, spay/neuter, allergies, conditions, notes. Never vet or emergency-contact details | no effect |
 
 A basic vet link never carries medical details or the emergency contact.
+
+### How the choice is stored (0152)
+
+`contact_phone_enabled`, `contact_email_enabled`, `contact_message_enabled`, `contact_phone`, `contact_email` on
+`pet_emergency_cards`. All NULL until the owner uses the switches; such a card is described by `contact_mode` /
+`contact_value` alone, as before. Triggers keep both in step:
+
+- a write that names `contact_mode` or `contact_value` (an app build without the switches) replaces the whole choice
+  and clears the five new columns;
+- a write to the new columns rewrites `contact_mode` / `contact_value`: a channel on gives that channel (the one with
+  a publishable value, phone first); both off gives `relay` or `none`.
+
+So the finder message function, the limits and the vet-link rule read `contact_mode` / `contact_value` as before.
+The public card adds `contact.phone` and `contact.email` for cards saved with the switches.
 
 ## Who is notified
 
