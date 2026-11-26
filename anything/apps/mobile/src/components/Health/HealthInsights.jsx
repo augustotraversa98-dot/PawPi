@@ -8,7 +8,6 @@ import {
   AlertCircle,
   CheckCircle,
   Calendar,
-  FileText,
   MessageCircle,
   Activity,
   BarChart3,
@@ -560,25 +559,6 @@ export default function HealthInsights() {
                 </View>
               ))}
             </View>
-
-            <PressableScale
-              accessibilityRole="button"
-              style={{
-                marginTop: SPACING.lg,
-                backgroundColor: COLORS.coral,
-                borderRadius: RADIUS.sm,
-                paddingVertical: 13,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: SPACING.sm,
-              }}
-            >
-              <FileText size={16} color="#FFF" />
-              <Text style={[TYPE.callout, { fontWeight: "800", color: "#FFF" }]}>
-                {t("health.insightsView.prepareReport")}
-              </Text>
-            </PressableScale>
           </Card>
         </View>
 
@@ -739,29 +719,6 @@ export default function HealthInsights() {
           {/* Full Photo History */}
           <PhotoHistory />
         </View>
-
-        {/* Export for Vet */}
-        <PressableScale
-          accessibilityRole="button"
-          style={{ marginBottom: SPACING.xl }}
-        >
-          <Card
-            level="sm"
-            radius={RADIUS.card}
-            style={{
-              padding: 18,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: SPACING.sm + 2,
-            }}
-          >
-            <FileText size={20} color={COLORS.terracotta} />
-            <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
-              {t("health.insightsView.exportAll")}
-            </Text>
-          </Card>
-        </PressableScale>
 
         {/* Bottom Disclaimer */}
         <View

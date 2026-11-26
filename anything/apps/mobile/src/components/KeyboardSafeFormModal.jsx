@@ -61,6 +61,7 @@ export default function KeyboardSafeFormModal({
   children,
   backgroundColor = C.cream,
   headerPaddingTop = 16,
+  scrollRef,
 }) {
   const { t } = useTranslation();
   // Presentation + keyboard handling live in the shared KeyboardSafeSheet (full-screen variant):
@@ -71,6 +72,7 @@ export default function KeyboardSafeFormModal({
       visible={visible}
       onRequestClose={onClose}
       variant="screen"
+      scrollRef={scrollRef}
       backgroundColor={backgroundColor}
       contentContainerStyle={{ padding: 20, paddingBottom: 24 }}
       header={
