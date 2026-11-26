@@ -8,7 +8,7 @@
   wording is still pending.
 -->
 
-**Last updated:** November 25, 2026
+**Last updated:** November 26, 2026
 
 This Privacy Policy explains how Augusto Traversa ("PawPi," "we," "us") collects, uses, and
 shares information when you use the PawPi mobile app and related services (the "Service"). PawPi is
@@ -54,6 +54,11 @@ We collect only what the app needs to work. Specifically:
   insurance leads/applications, prescription/refill requests, and the family members or caregivers
   you invite (and the access scope you grant them).
 - **Support communications** — anything you send us when you contact support.
+- **Messages from someone who found your dog**: if a person opens your dog's tag page and sends a
+  message, we collect their name (optional), their phone number and/or email address and the message
+  they type. To prevent abuse we also keep a scrambled (hashed) form of their internet address.
+  Opening a dog's tag page or a vet link may also record the visitor's internet address, to limit
+  repeated requests.
 
 **Information collected automatically**
 
@@ -201,6 +206,15 @@ We share information only as needed to run the Service:
   in-app consent**, scoped and revocable.
 - **With people you invite** — family members or caregivers you grant access to, at the scope and for
   the duration you set; you can revoke access at any time.
+- **Finders, your dog's family and caregivers**: what a finder sends goes to the dog's owner and to
+  the family members and caregivers who have active access to that dog, in the app and in a
+  notification that may appear on the lock screen.
+- **What your dog's public pages show (you decide)**: if you choose Phone or Email as the way to be
+  reached, that number or address is shown to anyone who opens the dog's tag page or a vet link;
+  with Relay or None it is not shown. The emergency contact from the medical profile appears on the
+  tag page only if you turn on "Show my emergency contact on the pet tag" (off by default), and on a
+  full vet link only if you chose Phone or Email. Make sure that person agrees before you share
+  their details.
 - **With processors and infrastructure providers (subprocessors)** — see Section 8.
 - **For legal reasons** — to comply with the law, enforce our Terms, or protect the rights, safety,
   and security of users and the public.
@@ -252,6 +266,14 @@ Health logs and vet-record entries you added are part of that dog's care history
 owner, no longer linked to you and shown as "Former member". If you delete your account and you had
 shared a dog, the dog and everything recorded about it is deleted, including what the people you
 shared it with added. We tell them before it happens.
+
+The name, phone number, email address and message sent by someone who found a dog are deleted
+automatically after 90 days, from the owner's notifications and from those of the family members and
+caregivers who received them (sooner for anyone who deletes their account). We keep only that a
+message arrived and the dog's name. The scrambled internet address used against abuse is also
+deleted after 90 days. Notifications already delivered to a phone stay there until dismissed, and
+backups are rotated on a routine schedule. A finder can ask us to delete their details earlier by
+writing to support.
 
 ## 10. Your choices and rights
 

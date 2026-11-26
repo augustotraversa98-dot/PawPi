@@ -8,7 +8,7 @@
   ley aplicable.
 -->
 
-**Última actualización:** 25 de noviembre de 2026
+**Última actualización:** 26 de noviembre de 2026
 
 Esta Política de Privacidad explica cómo Augusto Traversa ("PawPi", "nosotros") recopila, usa y
 comparte información cuando usás la aplicación móvil PawPi y los servicios relacionados (el
@@ -57,6 +57,12 @@ Recopilamos solo lo que la app necesita para funcionar. En particular:
   consultas de seguros, pedidos de recetas/renovaciones, y los familiares o cuidadores que invitás (y
   el alcance de acceso que les otorgás).
 - **Comunicaciones de soporte** — todo lo que nos envíes cuando contactás a soporte.
+- **Mensajes de quien encontró a tu perro**: si alguien abre la página de la chapa de tu perro y
+  envía un mensaje, recopilamos su nombre (opcional), su teléfono y/o su email y el mensaje que
+  escribe. Para evitar abusos, además guardamos una versión codificada (hash) de su dirección de
+  internet. Al abrir la página de la chapa de un perro o un enlace para veterinarias, también
+  podemos registrar la dirección de internet de quien la abre, para limitar las solicitudes
+  repetidas.
 
 **Información recopilada automáticamente**
 
@@ -213,6 +219,15 @@ Compartimos información solo según sea necesario para operar el Servicio:
   revocable.
 - **Con las personas que invitás** — familiares o cuidadores a quienes otorgás acceso, con el alcance
   y por el plazo que definís; podés revocar el acceso en cualquier momento.
+- **Quien encuentra a tu perro, tu familia y cuidadores**: lo que envía quien encuentra a un perro
+  le llega a su dueño y a los familiares y cuidadores con acceso activo a ese perro, en la app y en
+  una notificación que puede verse en la pantalla bloqueada.
+- **Lo que muestran las páginas públicas de tu perro (vos decidís)**: si elegís Teléfono o Correo
+  para que te contacten, ese número o dirección se muestra a quien abra la página de la chapa o un
+  enlace para veterinarias; con Retransmisión o Ninguno no se muestra. El contacto de emergencia del
+  perfil médico aparece en la página de la chapa solo si activás "Mostrar mi contacto de emergencia
+  en la chapa" (desactivado por defecto), y en un enlace completo para veterinarias solo si elegiste
+  Teléfono o Correo. Asegurate de que esa persona esté de acuerdo antes de compartir sus datos.
 - **Con procesadores y proveedores de infraestructura (subprocesadores)** — ver Sección 8.
 - **Por razones legales** — para cumplir la ley, hacer cumplir nuestros Términos o proteger los
   derechos, la seguridad de las personas usuarias y del público.
@@ -267,6 +282,14 @@ parte del historial de cuidado de ese perro: quedan con quien lo tiene a cargo, 
 y como "Ex integrante". Si eliminás tu cuenta y habías compartido un perro, se borra el perro y todo
 lo registrado sobre él, incluido lo que agregaron las personas con quienes lo compartiste. Les
 avisamos antes.
+
+El nombre, el teléfono, el email y el mensaje que envía quien encontró a un perro se borran
+automáticamente a los 90 días, tanto de las notificaciones del dueño como de las de los familiares y
+cuidadores que los recibieron (antes para quien elimine su cuenta). Solo conservamos que llegó un
+mensaje y el nombre del perro. La versión codificada (hash) de la dirección de internet que usamos
+contra abusos también se borra a los 90 días. Las notificaciones ya entregadas a un teléfono quedan
+ahí hasta que se descarten, y las copias de seguridad se renuevan periódicamente. Quien envió el
+mensaje puede pedirnos que borremos sus datos antes escribiendo a soporte.
 
 ## 10. Tus opciones y derechos
 
