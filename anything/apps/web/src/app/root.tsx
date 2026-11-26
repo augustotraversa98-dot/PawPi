@@ -16,6 +16,7 @@ import {
   type FC,
   type ReactNode,
   useCallback,
+  useContext,
   useEffect,
   useRef,
   useState,
@@ -37,6 +38,8 @@ import '../__create/design-mode';
 import PublicHead from '@/components/brand/PublicHead';
 // @ts-expect-error -- plain JS module, no type declarations
 import { documentLang } from '@/lib/home/meta';
+// @ts-expect-error -- plain JS module, no type declarations
+import { NonceContext } from '@/lib/csp/NonceContext';
 import type { Route } from './+types/root';
 
 export const links = () => [];
@@ -410,6 +413,7 @@ export function Layout({ children }: { children: ReactNode }) {
   useHandshakeParent();
   useHandleScreenshotRequest();
   useDevServerHeartbeat();
+  const nonce: string | undefined = useContext(NonceContext);
   const navigate = useNavigate();
   const location = useLocation();
   const pathname = location?.pathname;
@@ -453,8 +457,8 @@ export function Layout({ children }: { children: ReactNode }) {
       <body>
         <ClientOnly loader={() => children} />
         <Toaster position={isMobile ? 'top-center' : 'bottom-right'} />
-        <ScrollRestoration />
-        <Scripts />
+        <ScrollRestoration nonce={nonce} />
+        <Scripts nonce={nonce} />
       </body>
     </html>
   );

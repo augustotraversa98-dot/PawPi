@@ -14,8 +14,11 @@
 //
 // A one-time nonce is set as a short-lived HttpOnly cookie in this browser and echoed in the callbackUrl, so
 // mobile-return can tell a flow that began here from a bare visit (see utils/mobileNonce.js).
+//
+// The inline script runs only because it carries the CSP nonce (utils/securityHeaders.js).
 
 import { NONCE_PARAM, newNonce, setNonceCookie } from "@/app/api/utils/mobileNonce";
+import { cspNonce } from "@/app/api/utils/securityHeaders";
 
 // Only providers we actually wire as web OAuth in __create/index.ts. Apple is native (no browser
 // start), so it is intentionally not allowed here.
@@ -45,12 +48,15 @@ export async function GET(request) {
     return new Response("Unsupported provider", { status: 400 });
   }
 
-  const nonce = newNonce();
-  const callbackUrl = `/api/auth/mobile-return?return=${encodeURIComponent(returnTarget)}&${NONCE_PARAM}=${nonce}`;
+  const signInNonce = newNonce();
+  const callbackUrl = `/api/auth/mobile-return?return=${encodeURIComponent(returnTarget)}&${NONCE_PARAM}=${signInNonce}`;
   const isSecure =
     process.env.AUTH_URL?.startsWith("https") ||
     request.headers.get("x-forwarded-proto") === "https" ||
     (request.url?.startsWith("https") ?? false);
+
+  const scriptNonce = cspNonce();
+  const nonceAttr = scriptNonce ? ` nonce="${scriptNonce}"` : "";
 
   const html = `<!doctype html>
 <html>
@@ -61,7 +67,7 @@ export async function GET(request) {
       <input type="hidden" name="csrfToken" />
       <input type="hidden" name="callbackUrl" />
     </form>
-    <script>
+    <script${nonceAttr}>
       (function () {
         var provider = ${inlineJson(provider)};
         var callbackUrl = ${inlineJson(callbackUrl)};
@@ -82,6 +88,6 @@ export async function GET(request) {
 </html>`;
 
   const headers = new Headers({ "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
-  headers.append("Set-Cookie", setNonceCookie(nonce, isSecure));
+  headers.append("Set-Cookie", setNonceCookie(signInNonce, isSecure));
   return new Response(html, { status: 200, headers });
 }

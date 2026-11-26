@@ -38,7 +38,8 @@ const getUrlFromArgs = (...args: Parameters<typeof originalFetch>): string => {
 };
 
 const isFirstPartyURL = (url: string) => {
-  return url.startsWith('/integrations') || url.startsWith('/_create');
+  // The /integrations proxy was removed (see removedRoute.test.js); only the platform's /_create path is still first-party.
+  return url.startsWith('/_create');
 };
 
 const isSecondPartyUrl = (url: string) => {

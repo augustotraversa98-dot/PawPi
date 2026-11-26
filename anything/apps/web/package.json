@@ -14,7 +14,7 @@
 		"seed:demo:reset": "SEED_DEMO_RESET=1 node scripts/demo-seed/index.mjs"
 	},
 	"dependencies": {
-		"@auth/core": "^0.37.2",
+		"@auth/core": "^0.41.3",
 		"@babel/generator": "^7.27.1",
 		"@chakra-ui/react": "2.8.2",
 		"@dnd-kit/core": "^6.3.1",
