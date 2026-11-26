@@ -622,11 +622,16 @@ export default function NotificationsScreen() {
           <PressableScale testID="notifications-back" accessibilityLabel={t("common.back")} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => router.back()} accessibilityRole="button">
             <ArrowLeft size={22} color={COLORS.mutedBrown} />
           </PressableScale>
-          <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
+            style={[TYPE.headline, { color: COLORS.warmBrown, flex: 1, textAlign: "center", marginHorizontal: SPACING.sm }]}
+          >
             {t("notifications.title")}
           </Text>
-          <PressableScale onPress={handleMarkAllRead} accessibilityRole="button">
-            <Text style={[TYPE.subhead, { fontWeight: "700", color: COLORS.coral }]}>
+          <PressableScale onPress={handleMarkAllRead} accessibilityRole="button" style={{ flexShrink: 1, maxWidth: "45%" }}>
+            <Text style={[TYPE.subhead, { fontWeight: "700", color: COLORS.coral, textAlign: "right" }]}>
               {t("notifications.markAllRead")}
             </Text>
           </PressableScale>

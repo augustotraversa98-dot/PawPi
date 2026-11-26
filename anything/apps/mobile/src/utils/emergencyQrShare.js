@@ -10,7 +10,6 @@ import { Platform, Share } from "react-native";
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 
-export const QR_EXPORT_PIXELS = 1024;
 const EXPORT_TIMEOUT_MS = 8000;
 
 /** A safe file name for the exported QR, e.g. "pawpi-qr-nino.png". */
@@ -35,23 +34,26 @@ export function buildQrSharePayload({ petName, url, t }) {
   };
 }
 
-/** Promise form of the SVG's callback-style toDataURL. Resolves to bare base64 (no line breaks). */
-export function qrToBase64(svg, pixels = QR_EXPORT_PIXELS) {
+/**
+ * Promise form of the SVG's callback-style toDataURL. Resolves to bare base64 (no line breaks).
+ *
+ * No size option on purpose: on iOS react-native-svg only enlarges the CANVAS for a requested width/height and
+ * keeps drawing at the on-screen size (a tiny QR in the corner of a blank image). Without it the export is the
+ * on-screen QR at the device's pixel density (about 530 px on a 3x iPhone).
+ */
+export function qrToBase64(svg) {
   return new Promise((resolve, reject) => {
     if (!svg?.toDataURL) {
       reject(new Error("QR code is not ready"));
       return;
     }
     const timer = setTimeout(() => reject(new Error("QR export timed out")), EXPORT_TIMEOUT_MS);
-    svg.toDataURL(
-      (data) => {
-        clearTimeout(timer);
-        const base64 = String(data || "").replace(/\s+/g, "");
-        if (base64) resolve(base64);
-        else reject(new Error("QR export was empty"));
-      },
-      { width: pixels, height: pixels },
-    );
+    svg.toDataURL((data) => {
+      clearTimeout(timer);
+      const base64 = String(data || "").replace(/\s+/g, "");
+      if (base64) resolve(base64);
+      else reject(new Error("QR export was empty"));
+    });
   });
 }
 

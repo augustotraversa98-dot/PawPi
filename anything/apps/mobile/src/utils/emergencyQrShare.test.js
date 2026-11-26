@@ -18,7 +18,7 @@ jest.mock("expo-file-system", () => ({
 jest.mock("expo-sharing", () => ({ isAvailableAsync: jest.fn(), shareAsync: jest.fn() }));
 
 import * as Sharing from "expo-sharing";
-import { buildQrSharePayload, qrFileName, qrToBase64, shareQrImage, QR_EXPORT_PIXELS } from "./emergencyQrShare";
+import { buildQrSharePayload, qrFileName, qrToBase64, shareQrImage } from "./emergencyQrShare";
 
 const es = require("@/i18n/locales/es.json");
 const t = (key, vars = {}) =>
@@ -54,9 +54,9 @@ test("the share text is localized and carries the link", () => {
   });
 });
 
-test("the QR is exported large, as bare base64", async () => {
+test("the QR is exported as bare base64, with no size option (iOS would not scale the drawing)", async () => {
   await expect(qrToBase64(svg)).resolves.toBe("aGVsbG8=");
-  expect(svg.toDataURL.mock.calls[0][1]).toEqual({ width: QR_EXPORT_PIXELS, height: QR_EXPORT_PIXELS });
+  expect(svg.toDataURL.mock.calls[0]).toHaveLength(1);
 });
 
 test("a QR that is not ready or comes out empty is an error", async () => {
