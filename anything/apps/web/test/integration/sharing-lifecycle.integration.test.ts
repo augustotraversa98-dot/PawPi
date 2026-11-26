@@ -614,7 +614,11 @@ describe("H. old builds (30-32): shapes unchanged", () => {
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 describe("I. migration 0142 not applied: friendly, never a 500", () => {
-  const restoreSchema = async () => { await raw.unsafe(MIG_0142()); };
+  // 0142 rewrites the notification type list, so the later migration that widens it goes back on top.
+  const restoreSchema = async () => {
+    await raw.unsafe(MIG_0142());
+    await raw.unsafe(readFileSync(join(MIGRATIONS_DIR, "0147_vet_sharing_sections.sql"), "utf8"));
+  };
 
   it("no leave function -> 503 sharing_lifecycle_unavailable (nothing changes); the member can still be revoked by the owner", async () => {
     await grant(1, FAMILY, "family");
