@@ -6,7 +6,7 @@
 
 import { KNOWN_API_PREFIXES } from './areas.js';
 
-export const PAGE_ROUTE = '/__page'; // SPA pages, static assets, /integrations proxy -- anything outside /api
+export const PAGE_ROUTE = '/__page'; // SPA pages, static assets -- anything outside /api
 export const UNMATCHED_ROUTE = 'unmatched'; // /api/... that no handler matched (404/405) or an unusable path
 export const OVERFLOW_ROUTE = 'overflow'; // fallback normalizer safety valve (see below)
 
