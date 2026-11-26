@@ -18,6 +18,35 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-26 — Night run: finder flow, vet sharing by parts and by invite, build 36 from `103d79b6`, uploaded for TestFlight
+Report: [`night-run/2026-11-26/REPORT-build34-vet-sharing.md`](night-run/2026-11-26/REPORT-build34-vet-sharing.md).
+- **Merged:** finder flow (#804, #807); vet sharing by parts with an end date (#811, #814, #816, #817, #815, #810); vet invite by link (#818, #821, #822, #823, #820); keeping access changes consistent (#819); maintenance (#809, #808, #813, #824). #802 and #812 stay drafts until the new build is live.
+- **Database (production, all 2026-11-26):** `0146` (before the run; `verify_0146.sql` 19/19 PASS), `0147` (about 11:19 Buenos Aires; 24/24 PASS), `0148` (about 12:55; 15/15 PASS). After 0148, row 24 of `verify_0147.sql` reads FAIL, expected: 0148 adds one notification type.
+- **Build:** iOS 1.0.5 (36) from `103d79b6`, built and uploaded to App Store Connect for TestFlight on 2026-11-26 (Apple processing not verified); not submitted to App Review. The first attempt (number 34) failed at signing because the stored profile lacked the Time Sensitive Notifications capability; the owner removed it and rebuilt with their Apple sign-in, which created a new one.
+- **Not tested:** real push delivery and Focus break-through, a physical phone, Android, VoiceOver, installing the build signed with the new profile.
+- **Waiting for the owner:** test on TestFlight; App Store Connect privacy answers; submit to App Review; after it is live, say "build 34 is live" to merge #802 with #812 and decide the `PRIVACY_VERSION` / `TERMS_VERSION` bump.
+
+**Device checklist** (own account and dog, never the demo account):
+
+- [ ] **1. Version:** More > Settings: the footer shows `PawPi v1.0.5 (36)`.
+- [ ] **2. Keyboard:** edit the medical profile (contact name, notes), the vet summary questions, a weight note and your dog's profile. Typing keeps the keyboard open and the field visible.
+- [ ] **3. Emergency card:** taps respond at once. "Share QR" (image and link) and "Copy link" work.
+- [ ] **4. Notifications:** the filter buttons are fully visible, also with larger text.
+- [ ] **5. Back:** open a screen from the More menu and go back: the menu opens again.
+- [ ] **6. AI consent:** Health > Vet Record > "Scan or upload a document". The app asks before AI reads it; "Not now" leaves it unread. In Settings (Privacy & data) turn "Let PawPi read my documents" on and off.
+- [ ] **7. Finder:** with the emergency card on "Relay (private)", open your tag link on another phone, leave a phone or email and a message. You (and family members with access) get a notification with "Call" / "Send email".
+- [ ] **8. Urgent notification:** do step 7 the first time with a Focus on: it should break through (Time Sensitive notifications allowed for PawPi). A second message within 10 minutes arrives as a normal one, and so can later tests the same day (intended).
+- [ ] **9. Emergency card settings:** with "Phone" selected and no number, the tag page shows the message form. "Show my emergency contact on the pet tag" is off by default; on, the tag page shows it; off, it is gone.
+- [ ] **10. Share by parts, with an end date:** Health > Vet Record > Share. Nothing is pre-selected. Pick a vet you have a booking with, two parts and 7 days, "Review", agree, "Give access". The list shows exactly those parts and the end date. "Revoke access".
+- [ ] **11. Replace:** share again with one other part: only the new choice remains.
+- [ ] **12. Pending request:** on a vet's request for the record, More > My Hub > Who has access (Data Access) > "Choose what to share": only the ticked parts are given.
+- [ ] **13. Invite:** at the bottom of the sharing sheet, "Invite a vet by link": read the rules, "Create link and share", send it to a second account with a published vet business, open it on the web, ask for access. Nothing in the record is visible until you approve. Approve some parts. Create another invite and use "Withdraw invite" before it is opened.
+- [ ] **14. Vet side (web):** the dog appears under Clinical > "Shared with us"; only the shared parts show; after you revoke, access ends on refresh.
+- [ ] **15. Permission texts:** with the iPhone in Spanish, the permission questions PawPi shows (for example camera, photos, location) read in Spanish. The seven newly added texts (motion, contacts, Face ID, two for reminders, two for "always" location) belong to permissions the app does not ask for in normal use, so you may not see them.
+- [ ] **16. Website and sign-in** (the website part needs no build): on the web, sign in and save a change in the provider panel; create an account from an invite; use "forgot password". In the app, sign in with email, Apple and Google, save a change and upload a photo.
+
+---
+
 ## 2026-11-26 — Privacy Policy wording for vet invite links (EN + ES; website only, no build)
 - Section 7 of `content/legal/privacy.{en,es}.md` and the `docs/legal/` mirrors: new passage on inviting a vet by link (expiry, single use, withdrawal, what an invited vet business sees, the owner's approval, what is stored), and the provider bullet now names invite links.
 - "Last updated" stays November 26, 2026; `PRIVACY_VERSION` / `TERMS_VERSION` unchanged.
@@ -50,7 +79,7 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
-## 2026-11-26 — Emergency / finder flow: owner decides what is shared, family notified, tighter limits, 90-day retention — migration 0146 APPLIED 2026-11-26 (verify 19/19 PASS); website deploys with the merge, app changes need EAS build 34
+## 2026-11-26 — Emergency / finder flow: owner decides what is shared, family notified, tighter limits, 90-day retention — migration 0146 APPLIED 2026-11-26 (verify 19/19 PASS); website merged (#804), app changes are in build 36 (uploaded for TestFlight)
 - **Finder form** on `/p/tag/[token]`: name (optional), phone and/or email (one required), message. Shown in relay mode, and in phone / email mode when nothing is saved. "The family was told" appears only when the server says so; a failed send keeps what was typed.
 - **Public pages** show the owner's phone or email only when the owner chose that mode; relay and none publish neither. A **full vet link** no longer shows the medical profile's emergency contact when the setting is relay or none. New owner switch **Show my emergency contact on the pet tag** (default OFF).
 - **Notification** goes to the owner and every active family member / caregiver, with Call / Send email buttons and a push. Each member's own settings apply ("Lost pet alerts" switch, quiet hours); the owner's push ignores them.
@@ -58,7 +87,7 @@ commits. Keep this file in step with the master plan every time priorities chang
 - **Retention:** finder details are deleted after 90 days (hourly push-receipts job + read filter). Details: `docs/emergency-finder.md`.
 - Migration `0146_emergency_finder_contact.sql` + `supabase/verify_0146.sql` (19 rows). `app.json` gains only the time-sensitive entitlement (new native build; the provisioning profile must be regenerated).
 - Database: 0146 was applied to production on 2026-11-26 and `supabase/verify_0146.sql` returned 19 of 19 PASS (migration history name `0146_emergency_finder_contact`; the applied SQL is the repo file with comments removed from inside function bodies, same behaviour).
-- Remaining order: merge (deploys web) → build 34 (app changes).
+- Merged in #804; the app part is in build 36.
 
 ---
 

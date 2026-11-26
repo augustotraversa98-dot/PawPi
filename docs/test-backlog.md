@@ -11,13 +11,49 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ---
 
-## Privacy page: vet invite links (website, after this privacy-wording PR deploys)
+## 📦 EAS build 36 (v1.0.5) — built 2026-11-26, test this one
+
+| Item | Value |
+|---|---|
+| Version / EAS iOS build number | 1.0.5 (**36**) |
+| EAS build | https://expo.dev/accounts/augusto-firulais/projects/pawpi/builds/ff7a63c0-abdd-4fc8-a966-e64145a49dad (FINISHED) |
+| Built from commit | `103d79b6` (`main`, through #824) |
+| Profile | `production` |
+| App Store Connect upload | **Uploaded 2026-11-26** ([submission](https://expo.dev/accounts/augusto-firulais/projects/pawpi/submissions/3c540a4e-28c6-4461-bf97-83d234340d05)); Apple processing completion not checked. |
+| App Review | **Not submitted.** Nothing released. |
+
+The first attempt (number 34) failed at signing: the stored profile lacked the Time Sensitive Notifications capability ([build 4481eb68](https://expo.dev/accounts/augusto-firulais/projects/pawpi/builds/4481eb68-2fa4-4d66-bcb4-1cf1e8e50d90)). The owner removed that profile and rebuilt with their Apple sign-in, which created a new one.
+
+**Testable on this build:** the "App" steps of the *Emergency / finder flow* section below (headed "needs EAS build 34" until now), and the app changes of night run 2026-11-25 ([`REPORT-testflight-fixes.md`](night-run/2026-11-25/REPORT-testflight-fixes.md): keyboard, emergency card, notifications, Back, AI consent). **Nothing here is device-verified yet.** Not tested at all: real push and Focus break-through, a physical phone, Android, VoiceOver, installing the build signed with the new profile.
+
+**Device checklist** (same list as "What to test" in [the run report](night-run/2026-11-26/REPORT-build34-vet-sharing.md), which also has it in Spanish). Use your own account and dog, never the demo account.
+
+- [ ] **1. Version:** More > Settings: the footer shows `PawPi v1.0.5 (36)`.
+- [ ] **2. Keyboard:** edit the medical profile (contact name, notes), the vet summary questions, a weight note and your dog's profile. Typing keeps the keyboard open and the field visible.
+- [ ] **3. Emergency card:** taps respond at once. "Share QR" (image and link) and "Copy link" work.
+- [ ] **4. Notifications:** the filter buttons are fully visible, also with larger text.
+- [ ] **5. Back:** open a screen from the More menu and go back: the menu opens again.
+- [ ] **6. AI consent:** Health > Vet Record > "Scan or upload a document". The app asks before AI reads it; "Not now" leaves it unread. In Settings (Privacy & data) turn "Let PawPi read my documents" on and off.
+- [ ] **7. Finder:** with the emergency card on "Relay (private)", open your tag link on another phone, leave a phone or email and a message. You (and family members with access) get a notification with "Call" / "Send email".
+- [ ] **8. Urgent notification:** do step 7 the first time with a Focus on: it should break through (Time Sensitive notifications allowed for PawPi). A second message within 10 minutes arrives as a normal one, and so can later tests the same day (intended).
+- [ ] **9. Emergency card settings:** with "Phone" selected and no number, the tag page shows the message form. "Show my emergency contact on the pet tag" is off by default; on, the tag page shows it; off, it is gone.
+- [ ] **10. Share by parts, with an end date:** Health > Vet Record > Share. Nothing is pre-selected. Pick a vet you have a booking with, two parts and 7 days, "Review", agree, "Give access". The list shows exactly those parts and the end date. "Revoke access".
+- [ ] **11. Replace:** share again with one other part: only the new choice remains.
+- [ ] **12. Pending request:** on a vet's request for the record, More > My Hub > Who has access (Data Access) > "Choose what to share": only the ticked parts are given.
+- [ ] **13. Invite:** at the bottom of the sharing sheet, "Invite a vet by link": read the rules, "Create link and share", send it to a second account with a published vet business, open it on the web, ask for access. Nothing in the record is visible until you approve. Approve some parts. Create another invite and use "Withdraw invite" before it is opened.
+- [ ] **14. Vet side (web):** the dog appears under Clinical > "Shared with us"; only the shared parts show; after you revoke, access ends on refresh.
+- [ ] **15. Permission texts:** with the iPhone in Spanish, the permission questions PawPi shows (for example camera, photos, location) read in Spanish. The seven newly added texts (motion, contacts, Face ID, two for reminders, two for "always" location) belong to permissions the app does not ask for in normal use, so you may not see them.
+- [ ] **16. Website and sign-in** (the website part needs no build): on the web, sign in and save a change in the provider panel; create an account from an invite; use "forgot password". In the app, sign in with email, Apple and Google, save a change and upload a photo.
+
+---
+
+## Privacy page: vet invite links (website; merged in #820)
 
 - [ ] `https://www.pawpi.info/privacy` in ES and EN: section 7 has "Invitar a una veterinaria con un enlace" / "Inviting a vet by link" (two paragraphs, just before how access ends), and the date is 26 November 2026.
 
 ---
 
-## Privacy page: sharing the vet record (website, after the privacy-wording PR deploys)
+## Privacy page: sharing the vet record (website; merged in #815)
 
 - [ ] `https://www.pawpi.info/privacy` in ES and EN: section 7 has "Compartir la historia clínica de tu perro con un negocio" / "Sharing your dog's Vet Record with a business", with the eight parts as a list, and the date is 26 November 2026.
 
@@ -42,17 +78,17 @@ Every section below that says "needs EAS build 33" or "next EAS build" is testab
 
 ---
 
-## 📱 To test — Emergency / finder flow (0146 APPLIED 2026-11-26, verify 19/19 PASS; web after merge + Railway deploy; app needs EAS build 34)
+## 📱 To test — Emergency / finder flow (0146 APPLIED 2026-11-26, verify 19/19 PASS; website merged in #804; app: build 36)
 
-Database: nothing to run. Use your own dog's tag link, never the demo account. Details: [`emergency-finder.md`](emergency-finder.md).
+Database: nothing to run (0146, 0147 and 0148 were applied on 2026-11-26; verify 19/19, 24/24 and 15/15 PASS. After 0148, row 24 of `verify_0147.sql` reads FAIL, expected). Use your own dog's tag link, never the demo account. Details: [`emergency-finder.md`](emergency-finder.md).
 
-**Website (after the PR is merged and deployed; no build needed)**
+**Website (merged; no build needed)**
 - [ ] **1.** Send a message from your dog's tag page on another phone: it says thanks and the notification appears in your app.
 - [ ] **2.** Emergency card on **Phone** with the number empty: the tag page shows the message form.
 - [ ] **3.** Emergency card on **Relay**: no owner phone / email on the tag page or on a vet link, and no emergency contact on a full vet link.
-- [ ] **Privacy page** (after the privacy-wording PR deploys): `https://www.pawpi.info/privacy` in ES and EN is dated 26 November 2026 and sections 2, 7 and 9 mention the person who found your dog.
+- [ ] **Privacy page** (merged in #807): `https://www.pawpi.info/privacy` in ES and EN is dated 26 November 2026 and sections 2, 7 and 9 mention the person who found your dog.
 
-**App (build 34)**
+**App (build 36)**
 - [ ] **4.** Turn on a Focus, send a message from the tag page on another phone: the "Alguien encontró a …" banner breaks through. A second message within 10 minutes arrives as an ordinary notification (intended).
 - [ ] **5.** Notification list: **Llamar** / **Enviar email** open the phone and mail apps. A family member's phone gets the notification too.
 - [ ] **6.** Emergency card, **Mostrar mi contacto de emergencia en la chapa**: off by default; on, the tag page shows it; off again, it is gone.
