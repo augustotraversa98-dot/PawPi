@@ -32,6 +32,7 @@ const ERROR_KEYS = {
   400: "vetShare.error.rejected",
   404: "vetShare.error.gone",
   409: "vetShare.error.changed",
+  429: "vetShare.error.tooMany",
 };
 
 const text = [TYPE.callout, { color: COLORS.warmBrown, lineHeight: 20 }];

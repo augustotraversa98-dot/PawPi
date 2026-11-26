@@ -326,6 +326,7 @@ test.each([
   [400, /wasn't accepted, so nothing was shared/],
   [404, /no longer available for sharing/],
   [409, /changed while you were choosing/],
+  [429, /too many tries in a short time, so nothing was shared/],
   [500, /couldn't confirm the result/],
   [undefined, /couldn't confirm the result/],
 ])("a %s refusal has its own clear message and re-reads access", (status, body) => {

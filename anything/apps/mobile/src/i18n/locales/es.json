@@ -4054,6 +4054,7 @@
       "rejected": "No se aceptó tu elección, así que no se compartió nada. Revisala y probá de nuevo. Si sigue pasando, actualizá la app.",
       "gone": "Ya no se puede compartir con este perro o con este negocio. No se compartió nada.",
       "changed": "El acceso cambió mientras elegías, así que no se compartió nada. Revisá quién tiene acceso y probá de nuevo.",
+      "tooMany": "Hubo demasiados intentos en poco tiempo, así que no se compartió nada. Esperá un rato y probá de nuevo.",
       "unconfirmed": "No pudimos confirmar el resultado. Revisá quién tiene acceso antes de probar de nuevo."
     },
     "notSharedTitle": "No se compartió nada",

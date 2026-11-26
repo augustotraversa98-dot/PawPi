@@ -4054,6 +4054,7 @@
       "rejected": "Your choice wasn't accepted, so nothing was shared. Check it and try again. If it keeps happening, update the app.",
       "gone": "This dog or this business is no longer available for sharing. Nothing was shared.",
       "changed": "Access changed while you were choosing, so nothing was shared. Check who has access and try again.",
+      "tooMany": "There were too many tries in a short time, so nothing was shared. Wait a while and try again.",
       "unconfirmed": "We couldn't confirm the result. Check who has access before trying again."
     },
     "notSharedTitle": "Nothing was shared",
