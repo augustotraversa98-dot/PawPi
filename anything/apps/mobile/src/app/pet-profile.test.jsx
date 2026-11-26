@@ -59,6 +59,15 @@ jest.mock("@/hooks/useMomentAuthors", () => ({
   useMomentAuthors: () => ({ data: mockAuthors }),
 }));
 jest.mock("@/components/Feed/BarkModal", () => ({ BarkModal: () => null }));
+// Friends' streaks (the server decides who qualifies): records which dogs the screen asks about.
+let mockFriendStreaks = {};
+const mockFriendStreakAsks = jest.fn();
+jest.mock("@/hooks/useFriendStreaks", () => ({
+  useFriendStreaks: (ids) => {
+    mockFriendStreakAsks(ids);
+    return { streaks: mockFriendStreaks, refetch: jest.fn() };
+  },
+}));
 jest.mock("@/hooks/useFeedPosts", () => ({
   useTogglePaw: () => ({ mutate: jest.fn() }),
   useUpdatePostCaption: () => ({ mutateAsync: jest.fn() }),
@@ -115,6 +124,8 @@ beforeEach(() => {
   mockHandlePost.mockReset();
   mockPush.mockReset();
   mockNavigate.mockReset();
+  mockFriendStreaks = {};
+  mockFriendStreakAsks.mockReset();
   mockParams = { petId: "7", dogName: "Buddy", ownerName: "Alice" };
   mockProfile = {
     pet: {
@@ -458,5 +469,40 @@ describe("removing a moment from the dog profile", () => {
     expect(openFirstMoment({ dog: own, me: 10, authors: new Map([[MOMENT.id, 20]]) })).toBe(
       "del=false|edit=false",
     );
+  });
+});
+
+describe("a friend's streak", () => {
+  const asked = () => mockFriendStreakAsks.mock.calls.at(-1)[0];
+
+  test("a friend's dog with a live streak shows the flame chip with its number", () => {
+    mockViewer = { id: 4 };
+    mockFriendStreaks = { 7: 12 };
+    const { getByText, getByLabelText } = render(<PetProfileScreen />);
+    expect(asked()).toEqual([7]);
+    expect(getByText("🔥 12")).toBeTruthy();
+    expect(getByLabelText("12 day streak")).toBeTruthy();
+  });
+
+  test("nothing extra when the server returns no streak for the dog", () => {
+    mockViewer = { id: 4 };
+    const { queryByText } = render(<PetProfileScreen />);
+    expect(queryByText(/🔥/)).toBeNull();
+  });
+
+  test("the viewer's own dog is never asked about", () => {
+    mockViewer = { id: 7 };
+    render(<PetProfileScreen />);
+    expect(asked()).toEqual([]);
+  });
+
+  test("opened by handle: asks with the pet's real id, and a shared (household) dog is left out", () => {
+    mockViewer = { id: 7, is_shared: true, access_role: "family" };
+    mockParams = { petId: "rexthedog" };
+    render(<PetProfileScreen />);
+    expect(asked()).toEqual([]);
+    mockViewer = { id: 4 };
+    render(<PetProfileScreen />);
+    expect(asked()).toEqual([7]);
   });
 });

@@ -9,13 +9,21 @@ import { streakCount } from "@/utils/careRing";
 import { COLORS } from "@/constants/colors";
 
 export function StreakChip({ petId, style }) {
-  const { t } = useTranslation();
   const { data } = useCareRing(petId);
   const count = streakCount(data);
-  if (!petId || count <= 0) return null;
+  if (!petId) return null;
+  return <StreakBadge count={count} style={style} />;
+}
+
+// The chip itself, for a count already known (a friend's dog — their Care Ring is private).
+export function StreakBadge({ count, style, accessibilityLabel }) {
+  const { t } = useTranslation();
+  if (!(count > 0)) return null;
   return (
     <View style={[styles.chip, style]} accessibilityRole="text">
-      <Text style={styles.text}>{t("health.careRing.streakChip", { count })}</Text>
+      <Text style={styles.text} accessibilityLabel={accessibilityLabel}>
+        {t("health.careRing.streakChip", { count })}
+      </Text>
     </View>
   );
 }

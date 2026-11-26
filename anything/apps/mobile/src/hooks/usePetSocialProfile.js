@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { friendStreaksKey } from "@/hooks/useFriendStreaks";
 
 // (AUDIT A-31) The profile payload's `isFollowing` depends on the VIEWER pet, so
 // the cache must be keyed on both. Keying on petId alone served a stale
@@ -106,6 +107,8 @@ export function useToggleFollow(petId) {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["petProfile", petId] });
+      // Following decides whose streak the viewer sees.
+      queryClient.invalidateQueries({ queryKey: friendStreaksKey });
     },
   });
 }
