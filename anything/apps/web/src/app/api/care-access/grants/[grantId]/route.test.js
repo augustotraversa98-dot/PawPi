@@ -3,7 +3,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // PATCH /api/care-access/grants/[grantId] — owner approves / denies / revokes a
 // grant. auth() and `sql` are mocked at the module boundary; resolveUserId runs
 // for real against the mocked sql. The sql call order is: 1) profile lookup,
-// 2) load the grant scoped to me (id + owner_user_id), last) the UPDATE.
+// 2) load the grant scoped to me (id + owner_user_id), on approve 3) the invite
+// rule's check, last) the UPDATE.
 // Lifecycle is on the row; NO care_access_audit row is ever written here.
 
 import { PATCH } from './route';
@@ -70,6 +71,7 @@ describe('PATCH /api/care-access/grants/[grantId]', () => {
   it('approve: pending → active sets granted_at, no audit row', async () => {
     arrange(
       [{ id: 9, status: 'pending' }], // load
+      [], // not an invite request that needs sections
       [{ id: 9, status: 'active' }], // update
     );
 
@@ -88,7 +90,7 @@ describe('PATCH /api/care-access/grants/[grantId]', () => {
   });
 
   it('approve: 409 when the grant stopped being pending before the write', async () => {
-    arrange([{ id: 9, status: 'pending' }], []); // load, update matches nothing
+    arrange([{ id: 9, status: 'pending' }], [], []); // load, check, update matches nothing
     const res = await PATCH(patchReq({ action: 'approve' }), PARAMS);
     expect(res.status).toBe(409);
     expect(lastQueryText()).toContain("status = 'pending'");
@@ -97,6 +99,7 @@ describe('PATCH /api/care-access/grants/[grantId]', () => {
   it('approve with expiresAt sets expires_at', async () => {
     arrange(
       [{ id: 9, status: 'pending' }], // load
+      [], // check
       [{ id: 9, status: 'active', expires_at: '2027-01-01' }], // update
     );
 
@@ -107,6 +110,18 @@ describe('PATCH /api/care-access/grants/[grantId]', () => {
     expect(res.status).toBe(200);
     expect(lastQueryText()).toContain('expires_at');
     expect(lastValues()).toContain('2027-01-01');
+  });
+
+  it("approve: 409 choose_sections for an invite request without a booking, nothing written", async () => {
+    arrange(
+      [{ id: 9, status: 'pending' }], // load
+      [{ '?column?': 1 }], // invite request without a booking
+    );
+
+    const res = await PATCH(patchReq({ action: 'approve' }), PARAMS);
+    expect(res.status).toBe(409);
+    expect((await res.json()).code).toBe('choose_sections');
+    expect(allQueryText()).not.toContain('UPDATE care_access_grants');
   });
 
   it('approve on a non-pending grant → 409', async () => {
