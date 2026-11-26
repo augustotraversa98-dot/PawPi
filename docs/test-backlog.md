@@ -11,6 +11,12 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ---
 
+## Privacy page: sharing the vet record (website, after the privacy-wording PR deploys)
+
+- [ ] `https://www.pawpi.info/privacy` in ES and EN: section 7 has "Compartir la historia clínica de tu perro con un negocio" / "Sharing your dog's Vet Record with a business", with the eight parts as a list, and the date is 26 November 2026.
+
+---
+
 ## 📦 EAS build 33 (v1.0.5) — built 2026-11-25, test this one
 
 | Item | Value |

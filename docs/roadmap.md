@@ -18,6 +18,12 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-26 — Privacy Policy wording for sharing the vet record (EN + ES; website only, no build)
+- Section 7 of `content/legal/privacy.{en,es}.md` and the `docs/legal/` mirrors: new part on sharing the Vet Record with a business (parts, duration, older full access, revoking, notice to the business, limits), and the provider bullet corrected. Section 14 now names business access.
+- The wording says the business's team is notified when access is given or ended: merge only once that notice is live. "Last updated" stays November 26, 2026; `PRIVACY_VERSION` / `TERMS_VERSION` unchanged.
+
+---
+
 ## 2026-11-26 — CI check: no new components declared inside components (mobile) — tooling only, no app, server or migration change
 - `npm run lint:components` runs in the `mobile (jest)` job: Biome 2.6.7 (one new dev dependency) with only `noNestedComponentDefinitions` (the pattern behind the keyboard bug fixed in #799).
 - 14 existing cases in 10 files are a committed baseline (`anything/apps/mobile/scripts/nested-components-baseline.json`): warnings, not fixed. A new one fails.
