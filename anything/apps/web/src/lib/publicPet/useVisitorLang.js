@@ -1,35 +1,27 @@
-import { useEffect, useState } from "react";
-import { pickVisitorLang } from "./lang";
+import { useEffect, useSyncExternalStore } from "react";
+import { DEFAULT_VISITOR_LANG, htmlLang, isVisitorLangPath, langParam } from "./lang";
+import { getVisitorLang, setVisitorLang, subscribeVisitorLang } from "./langStore";
 
-function initialLang() {
-  if (typeof window === "undefined") return "es";
-  const { languages, language } = window.navigator;
-  return pickVisitorLang({
-    search: window.location.search,
-    languages: languages?.length ? languages : [language],
-  });
-}
+const serverLang = () => DEFAULT_VISITOR_LANG;
 
-// The page's language and its setter. The choice is written into the address bar (without navigating) and onto
-// <html lang>, which the server renders as "en" for these pages.
+// The page's language and its setter. The server, which cannot know the viewer's choice, renders Spanish.
 export function useVisitorLang() {
-  const [lang, setLangState] = useState(initialLang);
+  const lang = useSyncExternalStore(subscribeVisitorLang, getVisitorLang, serverLang);
 
   useEffect(() => {
-    const root = document.documentElement;
-    const before = root.lang;
-    root.lang = lang === "es" ? "es-AR" : "en";
-    return () => {
-      root.lang = before;
-    };
+    document.documentElement.lang = htmlLang(lang);
   }, [lang]);
 
-  const setLang = (next) => {
-    setLangState(next);
-    const url = new URL(window.location.href);
-    url.searchParams.set("lang", next);
-    window.history.replaceState(window.history.state, "", url);
-  };
+  return { lang, setLang: setVisitorLang };
+}
 
-  return { lang, setLang };
+// The language root.tsx puts on <html lang> for the pages that follow the viewer. The server render and the
+// hydration pass both use ?lang (else Spanish), so they match; the viewer's own language applies right after.
+export function useRootVisitorLang(pathname, search) {
+  const follows = isVisitorLangPath(pathname);
+  return useSyncExternalStore(
+    subscribeVisitorLang,
+    () => (follows ? getVisitorLang() : DEFAULT_VISITOR_LANG),
+    () => langParam(search) ?? DEFAULT_VISITOR_LANG,
+  );
 }

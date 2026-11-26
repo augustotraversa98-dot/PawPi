@@ -1,0 +1,13 @@
+{
+  "slice": "storefront, profile, services, products and locations",
+  "files": [
+    "components/ProviderStorefront.jsx",
+    "components/StorefrontEditor.jsx",
+    "components/StorefrontPreview.jsx",
+    "components/ProviderProfile.jsx",
+    "components/ProviderServices.jsx",
+    "components/ProviderShop.jsx",
+    "components/ProviderLocations.jsx",
+    "lib/storefrontEditor.js"
+  ]
+}

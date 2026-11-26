@@ -206,13 +206,22 @@ describe("server-rendered head", () => {
   it("stays out of the rest of the web app", () => {
     expect(html("/provider")).toBe("");
     expect(html("/account/signin")).toBe("");
-    expect(documentLang("/provider", "")).toBe("en");
+    expect(documentLang("/account/signin", "")).toBe("en");
   });
 
   it("sets <html lang> from the page language", () => {
     expect(documentLang("/", "")).toBe("es-AR");
     expect(documentLang("/privacy/", "")).toBe("es-AR");
     expect(documentLang("/support", "?lang=en")).toBe("en");
+  });
+
+  it("starts the provider panel and the private-link pages in Spanish, unless ?lang or the viewer says English", () => {
+    for (const path of ["/provider", "/provider/bookings", "/p/tag/abc", "/vet-invite"]) {
+      expect(documentLang(path, "")).toBe("es-AR");
+      expect(documentLang(path, "?lang=en")).toBe("en");
+      expect(documentLang(path, "", "en")).toBe("en");
+      expect(documentLang(path, "?lang=en", "es")).toBe("es-AR");
+    }
   });
 
   it.each(LANGS)("homepage (%s): social card and honest JSON-LD", (lang, search) => {

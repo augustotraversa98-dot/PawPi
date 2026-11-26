@@ -1,6 +1,7 @@
 import { langFromSearch } from "@/lib/legal/lang";
 import { APP_STORE_ID, SITE_URL, appStoreUrl } from "@/lib/brand/tokens";
 import { HOME_COPY } from "@/lib/home/copy";
+import { DEFAULT_VISITOR_LANG, htmlLang, isVisitorLangPath, langParam } from "@/lib/publicPet/lang";
 
 // <head> data for the public pages that must be in the SERVER-rendered HTML: link-preview crawlers and
 // Safari's smart banner read the raw document and never run our scripts. components/brand/PublicHead.jsx
@@ -23,8 +24,13 @@ export function isPrivateLinkPath(pathname) {
   return /^\/+(p|vet-invite)(\/|$)/i.test(String(pathname || ""));
 }
 
-// <html lang> for a public page; the rest of the web app is English.
-export function documentLang(pathname, search) {
+// <html lang>. A public page follows ?lang (Spanish by default). The provider panel and the private-link pages follow
+// the viewer's language (lib/publicPet/lang.js), passed in by the browser; without it, ?lang or Spanish. The rest of
+// the web app is English.
+export function documentLang(pathname, search, visitorLang) {
+  if (isVisitorLangPath(pathname)) {
+    return htmlLang(visitorLang ?? langParam(search) ?? DEFAULT_VISITOR_LANG);
+  }
   if (!isPublicPath(pathname)) return "en";
   return langFromSearch(search) === "en" ? "en" : "es-AR";
 }

@@ -6,6 +6,11 @@ import {
   useRespondToInvite,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
+import invitesCopy from "../i18n/invites";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { fill } from "../i18n/lib/format";
+import { providerTypeName, roleName } from "../i18n/lib/labels";
+import { serverErrorMessage } from "../i18n/lib/serverError";
 
 // Pending provider invitations for the logged-in user (the staff-accept surface,
 // closing the c2c gap). Deliberately NOT behind the active-provider gate: an
@@ -20,14 +25,16 @@ const ROLE_BADGE = {
   vet: { bg: "#E5F4EC", fg: "#1F7A4D" },
 };
 
-function RoleBadge({ role }) {
+function RoleBadge({ role, lang }) {
   const s = ROLE_BADGE[role] || ROLE_BADGE.staff;
   return (
     <span
-      className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold capitalize"
+      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+        lang === "en" ? "capitalize" : ""
+      }`}
       style={{ backgroundColor: s.bg, color: s.fg }}
     >
-      {role || "—"}
+      {roleName(role, lang) || "—"}
     </span>
   );
 }
@@ -53,6 +60,7 @@ function InviteLogo({ invite }) {
 }
 
 export default function ProviderInvites() {
+  const { t, lang } = useProviderCopy(invitesCopy);
   const navigate = useNavigate();
   const { data: invites, isLoading, isError, error } = useMyProviderInvites();
   const respond = useRespondToInvite();
@@ -62,12 +70,12 @@ export default function ProviderInvites() {
       { providerId: invite.provider_id },
       {
         onSuccess: () => {
-          toast.success(`You've joined ${invite.provider_name || "the team"}`);
+          toast.success(fill(t.joined, { team: invite.provider_name || t.theTeam }));
           // The provider is now resolvable by the shell — land on the dashboard.
           navigate("/provider/bookings");
         },
         onError: (err) =>
-          toast.error(err?.message || "Couldn't accept the invitation"),
+          toast.error(serverErrorMessage(err, lang, t.acceptFailed)),
       },
     );
   };
@@ -76,9 +84,9 @@ export default function ProviderInvites() {
     respond.mutate(
       { providerId: invite.provider_id, action: "decline" },
       {
-        onSuccess: () => toast.success("Invitation declined"),
+        onSuccess: () => toast.success(t.declined),
         onError: (err) =>
-          toast.error(err?.message || "Couldn't decline the invitation"),
+          toast.error(serverErrorMessage(err, lang, t.declineFailed)),
       },
     );
   };
@@ -103,11 +111,9 @@ export default function ProviderInvites() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-[#3B241B]">
-              Pending invitations
+              {t.title}
             </h1>
-            <p className="text-sm text-[#7A6254]">
-              Providers that invited you to join their team
-            </p>
+            <p className="text-sm text-[#7A6254]">{t.subtitle}</p>
           </div>
         </div>
 
@@ -118,24 +124,24 @@ export default function ProviderInvites() {
                 className="h-5 w-5 animate-spin"
                 style={{ color: COLORS.coral }}
               />
-              Loading invitations…
+              {t.loading}
             </div>
           ) : isError ? (
             <div className="px-6 py-16 text-center">
               <p className="font-semibold text-[#B23B30]">
-                Couldn't load invitations
+                {t.loadErrorTitle}
               </p>
               <p className="mt-1 text-sm text-[#7A6254]">
-                {error?.message || "Please try again."}
+                {serverErrorMessage(error, lang, t.loadErrorBody)}
               </p>
             </div>
           ) : (invites ?? []).length === 0 ? (
             <div className="px-6 py-16 text-center">
               <p className="text-base font-semibold text-[#3B241B]">
-                No pending invitations
+                {t.emptyTitle}
               </p>
               <p className="mt-1 text-sm text-[#7A6254]">
-                When a provider invites you to their team, it'll show up here.
+                {t.emptyBody}
               </p>
             </div>
           ) : (
@@ -150,17 +156,17 @@ export default function ProviderInvites() {
                     <InviteLogo invite={invite} />
                     <div className="min-w-[160px] flex-1">
                       <div className="font-semibold text-[#3B241B]">
-                        {invite.provider_name || "Unnamed provider"}
+                        {invite.provider_name || t.unnamed}
                       </div>
                       <div className="mt-0.5 flex items-center gap-2 text-xs text-[#7A6254]">
                         {invite.provider_type && (
-                          <span className="capitalize">
-                            {invite.provider_type}
+                          <span className={lang === "en" ? "capitalize" : ""}>
+                            {providerTypeName(invite.provider_type, lang)}
                           </span>
                         )}
                         <span>·</span>
-                        <span>invited as</span>
-                        <RoleBadge role={invite.role} />
+                        <span>{t.invitedAs}</span>
+                        <RoleBadge role={invite.role} lang={lang} />
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -176,7 +182,7 @@ export default function ProviderInvites() {
                         ) : (
                           <Check className="h-4 w-4" />
                         )}
-                        Accept
+                        {t.accept}
                       </button>
                       <button
                         type="button"
@@ -190,7 +196,7 @@ export default function ProviderInvites() {
                         }}
                       >
                         <X className="h-4 w-4" />
-                        Decline
+                        {t.decline}
                       </button>
                     </div>
                   </li>

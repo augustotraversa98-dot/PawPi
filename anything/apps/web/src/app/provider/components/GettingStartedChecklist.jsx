@@ -11,38 +11,21 @@ import {
   useProviderLocations,
   useProviderPosts,
 } from "../hooks/useProviders";
+import dashboardCopy from "../i18n/dashboard";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { fill } from "../i18n/lib/format";
 
 // "Getting started" activation card on the provider dashboard (ticket 2.99). A persistent card at
 // the top of the dashboard whose items each DERIVE completion from existing provider data (no new
 // table). It retires at 100% after a brief success state. Web mirror of the mobile owner checklist.
 
-// Per-item copy + the screen each row jumps to.
-const ITEM_META = {
-  profile: {
-    title: "Complete your business profile",
-    desc: "Add a logo and a short description",
-    to: "/provider/profile",
-  },
-  offering: {
-    title: "Add what you offer",
-    desc: "List a service or a product",
-    to: "/provider/services",
-  },
-  hours: {
-    title: "Set your hours",
-    desc: "Add your open hours so people can book",
-    to: "/provider/profile",
-  },
-  location: {
-    title: "Add a location",
-    desc: "Put your business on the map",
-    to: "/provider/locations",
-  },
-  post: {
-    title: "Share your first post",
-    desc: "Introduce your business to followers",
-    to: "/provider/storefront",
-  },
+// The screen each row jumps to. Its words are in ../i18n/dashboard (gettingStarted.items.<key>).
+const ITEM_SCREEN = {
+  profile: "/provider/profile",
+  offering: "/provider/services",
+  hours: "/provider/profile",
+  location: "/provider/locations",
+  post: "/provider/storefront",
 };
 
 const CELEBRATED_KEY = (providerId) =>
@@ -50,6 +33,7 @@ const CELEBRATED_KEY = (providerId) =>
 const CELEBRATION_MS = 4000;
 
 export default function GettingStartedChecklist({ providerId }) {
+  const t = useProviderCopy(dashboardCopy).t.gettingStarted;
   const navigate = useNavigate();
 
   const { data: detail } = useProvider(providerId);
@@ -110,10 +94,8 @@ export default function GettingStartedChecklist({ providerId }) {
         style={{ borderColor: COLORS.coral }}
       >
         <PawPrint className="h-9 w-9" style={{ color: COLORS.coral }} fill={COLORS.coral} />
-        <p className="mt-2 text-lg font-bold text-[#3B241B]">You're all set! 🎉</p>
-        <p className="mt-1 text-sm text-[#7A6254]">
-          Your storefront has everything it needs to shine.
-        </p>
+        <p className="mt-2 text-lg font-bold text-[#3B241B]">{t.doneTitle}</p>
+        <p className="mt-1 text-sm text-[#7A6254]">{t.doneBody}</p>
       </div>
     );
   }
@@ -135,9 +117,9 @@ export default function GettingStartedChecklist({ providerId }) {
           </span>
         </div>
         <div>
-          <h2 className="text-base font-bold text-[#3B241B]">Getting started</h2>
+          <h2 className="text-base font-bold text-[#3B241B]">{t.title}</h2>
           <p className="text-sm text-[#7A6254]">
-            {activation.completed} of {activation.total} done — finish setting up your storefront.
+            {fill(t.progress, { completed: activation.completed, total: activation.total })}
           </p>
         </div>
       </div>
@@ -154,13 +136,13 @@ export default function GettingStartedChecklist({ providerId }) {
       {/* Checklist rows. */}
       <ul className="mt-3">
         {activation.items.map((item) => {
-          const meta = ITEM_META[item.key];
+          const meta = t.items[item.key];
           return (
             <li key={item.key}>
               <button
                 type="button"
                 data-testid={`provider-gs-item-${item.key}`}
-                onClick={() => navigate(meta.to)}
+                onClick={() => navigate(ITEM_SCREEN[item.key])}
                 className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left hover:bg-[#FFF7EF]"
               >
                 <span
