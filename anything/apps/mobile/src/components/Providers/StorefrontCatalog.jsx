@@ -121,7 +121,7 @@ export default function StorefrontCatalog({ shop, petId, onClose }) {
             <CatalogEmptyState body={t("storefront.noProducts")} />
           </View>
         ) : (
-          <RefreshableScrollView contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 140 }}>
+          <RefreshableScrollView inPageSheet contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 140 }}>
             <StorefrontBrowse
               products={products}
               favorites={favorites}

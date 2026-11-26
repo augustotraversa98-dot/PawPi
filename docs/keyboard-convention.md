@@ -17,8 +17,41 @@ local to one screen. This is the single shared mechanism plus a CI guard so a ne
 4. **Never** hand-roll `Modal transparent > KeyboardAvoidingView > View height/maxHeight:"90%"` again, and never put
    a `<TextInput>` in a plain `ScrollView`/`FlatList`. `src/components/keyboardSafety.guard.test.js` fails CI for both.
 5. Do not edit presentation heights by hand. Use `computeSheetHeight` and friends in `src/utils/keyboardLayout.js`.
+6. **Never declare a component inside another component around a text field.** `const Field = () => <TextInput/>`
+   inside a screen or modal is a new component type on every render: React remounts it on each keystroke and the
+   keyboard closes. Declare it at module scope and pass props (or call a plain `renderField()` function).
+7. **A keyboard-aware scroll view inside `presentationStyle="pageSheet"` passes `inPageSheet`**, and runs to the
+   bottom of the sheet (pinned footers belong in `KeyboardSafeSheet`).
+8. A pinned footer must never float over the form while typing. An absolutely positioned footer switches to
+   `position: "relative"` (taking its own space) while `useKeyboardMetrics().keyboardVisible`.
+9. Do not swap a screen's branch (spinner, empty state) in a way that unmounts the search field the user is typing in.
 
-## Root cause of the Quick Check bug (and why it was app-wide)
+All of 1, 2, 6 and 7 are enforced by `keyboardSafety.guard.test.js`. (The mobile package has no ESLint setup, so
+`react/no-unstable-nested-components` cannot be switched on without new dependencies; guard rule 6 covers the text
+field cases.)
+
+## What `KeyboardAwareScrollView` guarantees
+
+* While the keyboard is up the focused field is kept above it (and above any pinned footer), with a 16pt margin. It
+  re-checks when focus moves to another field, when the content grows (multiline caret), and when the keyboard
+  changes height.
+* Only the innermost scroll view holding the focused field scrolls; screens behind a modal stay put.
+* Taps keep working (`keyboardShouldPersistTaps="handled"`); dragging dismisses the keyboard on iOS.
+
+## The TextInput wrapper (do not break this)
+
+Metro replaces React Native's `TextInput` with `polyfills/native/textinput.native.jsx`. That wrapper **must keep
+`TextInput.State`**. Without it `State.currentlyFocusedInput()` was unavailable in the app and no focused field was
+ever scrolled into view on iPhone or Android, while jest (which does not apply the alias) stayed green. This is why
+earlier keyboard fixes did not hold on device. Pinned by `components/textInputPolyfill.test.js`.
+
+## Page sheets
+
+Inside an iOS `pageSheet` modal, `measureInWindow` reports positions relative to the sheet (measured on an iPhone
+16 Pro Max simulator: 62pt off), while the keyboard frame is in screen coordinates. `inPageSheet` adds
+`computeSheetOffset(windowHeight, scrollViewBottom)` to every measurement.
+
+## Root cause of the Quick Check bug (history)
 
 The old sheets were `Modal transparent > KeyboardAvoidingView(padding) > View height:"90%"` with a fixed header, an
 instruction block, a fixed footer (hint + button) and `paddingBottom: insets.bottom + 20`, around a `flex:1` scroll view.
@@ -38,8 +71,8 @@ Two more defects compounded it:
   edge (the notes field under the last area) never scrolled, so it stayed hidden under the footer. It now measures
   against the **visible** bottom (`min(scroll view bottom, keyboard top)`).
 
-`pageSheet` is not the cause: a pageSheet is nearly full height; its problem is only that `KeyboardAvoidingView` measures
-against the screen, not the sheet (hence KeyboardAwareScrollView). The new shared sheets use a transparent Modal that
+A pageSheet's problem is coordinates: layout is measured against the sheet, not the screen (see "Page sheets"
+above). The new shared sheets use a transparent Modal that
 covers the whole window, where keyboard coordinates are exact, so the layout is driven by the real keyboard overlap
 (`useKeyboardMetrics`: show, hide AND frame changes, e.g. switching EN/ES keyboards) instead of `KeyboardAvoidingView`.
 
@@ -56,6 +89,8 @@ covers the whole window, where keyboard coordinates are exact, so the layout is 
 * Android: the window resizes (adjustResize), so no extra padding is added there; the chrome still collapses.
 
 ## Migrated vs deliberately left
+
+Migrated to `KeyboardSafeSheet` (screen, 2026-11-25): Vet Summary.
 
 Migrated to `KeyboardSafeSheet` (sheet): Quick Check (both modes), MedicationModal, MedicalCareIssueModal, PlaceReviewModal,
 WriteReviewModal, walking request sheet, CaregiverLogWalkModal. (screen): Medication/Preventive/Vaccine/MedicalCare/Feeding/

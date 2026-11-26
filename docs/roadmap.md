@@ -18,6 +18,16 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-25 — Keyboard and text fields, app-wide (TestFlight build 33 bugs) — mobile-only, needs the next EAS build, no migration, no dependency change
+- **Root cause of "the keyboard hides the field" on iPhone:** the app's `TextInput` wrapper (`polyfills/native/textinput.native.jsx`) dropped React Native's static `TextInput.State`, so `KeyboardAwareScrollView` could never find the focused field. It only added padding; it never scrolled. Jest does not apply that Metro alias, so tests passed. Fixed and pinned by a test.
+- **Keyboard closing on every letter** (Edit Medical Profile): form pieces were declared inside the modal and remounted on each keystroke. Moved to module scope; a new guard rule fails CI for any component-inside-component around a text field.
+- `KeyboardAwareScrollView` now follows the focused field when focus moves, when a multiline field grows and when the keyboard changes size; only the innermost form scrolls; `inPageSheet` corrects iOS page-sheet measurements (required there, guarded by CI).
+- Vet Summary moved onto `KeyboardSafeSheet` (Return key goes to the next question). Dog profile edit: the Save footer no longer covers the field being typed. Map search in Stores & Vets opens its sheet fully on focus.
+- Final rules: [`docs/keyboard-convention.md`](keyboard-convention.md).
+- Owner device check (needs the next build): type in Edit Medical Profile (every field, including Notes), Vet Summary question 3, Emergency Card contact, a Quick Check note, a Weight note, and the dog name step in onboarding. Android and hardware keyboards were not tested.
+
+---
+
 ## 2026-11-25 — Website welcomes search engines and AI crawlers (robots.txt + privacy guard) — web-only, Railway deploy on merge, no EAS build, no migration; Cloudflare dashboard settings changed by owner
 - `public/robots.txt` is now the whole policy: content signals `search=yes, ai-input=yes, ai-train=yes` (one line to change them), `Allow: /` and `/.well-known/`, `Disallow` for `/api/`, `/account/`, `/provider`, `/admin`, `/p/`.
 - **Privacy guard:** the private-link pet pages (`/p/tag/[token]`, `/p/card/[token]`) now also carry a server-rendered `<meta name="robots" content="noindex, nofollow">`. A crawler that obeys the Disallow never reads that tag, so a bare tag or card URL posted publicly could still be listed without its content.

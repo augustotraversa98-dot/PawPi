@@ -278,7 +278,7 @@ function SightingModal({ report, onClose, insets }) {
             <X size={20} color={C.warmBrown} />
           </TouchableOpacity>
         </View>
-        <KeyboardAwareScrollView contentContainerStyle={{ padding: 20 }}>
+        <KeyboardAwareScrollView inPageSheet contentContainerStyle={{ padding: 20 }}>
           <Text style={{ fontSize: 14, color: C.mutedBrown, marginBottom: 14 }}>
             {t("lostFound.sightingHint", { name: report?.pet_name || "" })}
           </Text>

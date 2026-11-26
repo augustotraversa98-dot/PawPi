@@ -8,8 +8,14 @@
 import React from "react";
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { StyleSheet } from "react-native";
 
 let mockCurrentPet;
+let mockKeyboardVisible = false;
+jest.mock("@/hooks/useKeyboardMetrics", () => () => ({
+  keyboardVisible: mockKeyboardVisible,
+  keyboardOverlap: mockKeyboardVisible ? 336 : 0,
+}));
 
 jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
 
@@ -175,5 +181,27 @@ describe("Dog Profile edit — handle availability", () => {
     const alertSpy = require("react-native").Alert.alert;
     expect(alertSpy).toHaveBeenCalled();
     expect(String(alertSpy.mock.calls[0][1])).toMatch(/just took/i);
+  });
+});
+
+describe("Dog Profile edit — the Save footer never covers the field being typed", () => {
+  const footerStyle = (api) =>
+    StyleSheet.flatten(api.getByTestId("profile-edit-footer").props.style);
+
+  afterEach(() => {
+    mockKeyboardVisible = false;
+  });
+
+  it("floats over the bottom of the screen at rest", () => {
+    mockCurrentPet = { id: 1, name: "Rex" };
+    expect(footerStyle(renderScreen()).position).toBe("absolute");
+  });
+
+  it("takes its own space above the keyboard while typing", () => {
+    mockCurrentPet = { id: 1, name: "Rex" };
+    mockKeyboardVisible = true;
+    const style = footerStyle(renderScreen());
+    expect(style.position).toBe("relative");
+    expect(style.paddingBottom).toBeLessThanOrEqual(16);
   });
 });

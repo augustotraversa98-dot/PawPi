@@ -331,6 +331,7 @@ export default function WeightModal({ visible, onClose }) {
 
           {/* Content */}
           <KeyboardAwareScrollView
+            inPageSheet
             style={{ flex: 1 }}
             contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
             keyboardShouldPersistTaps="handled"

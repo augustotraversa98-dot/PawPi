@@ -7,7 +7,7 @@
 
 import React from "react";
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
-import { StyleSheet } from "react-native";
+import { StyleSheet, TextInput } from "react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 jest.mock("react-native-safe-area-context", () => ({
@@ -232,5 +232,34 @@ describe("EditMedicalProfileModal — birthday vs. estimated age", () => {
     const body = requestBody();
     expect(body).not.toHaveProperty("ageYears");
     expect(body).not.toHaveProperty("ageMonths");
+  });
+});
+
+// TestFlight build 33: the keyboard closed after every letter, because the form pieces
+// were declared inside the modal and remounted on each keystroke.
+describe("EditMedicalProfileModal — typing keeps the keyboard open", () => {
+  const renderModal = () =>
+    renderWithClient(
+      <EditMedicalProfileModal visible petId={1} initialData={{ pet: {} }} onClose={jest.fn()} />,
+    );
+
+  it("never remounts a text field while typing in it (every field)", () => {
+    const api = renderModal();
+    const fields = () => api.UNSAFE_getAllByType(TextInput);
+    const total = fields().length;
+    expect(total).toBeGreaterThanOrEqual(12);
+    for (let i = 0; i < total; i++) {
+      const before = fields()[i];
+      fireEvent.changeText(before, "1");
+      fireEvent.changeText(fields()[i], "12");
+      expect(fields()[i]).toBe(before);
+      expect(fields()[i].props.value).toBe("12");
+    }
+  });
+
+  it("is built on the shared keyboard-safe shell with Save pinned outside the scroll", () => {
+    const api = renderModal();
+    expect(api.getByTestId("keyboard-sheet-scroll")).toBeTruthy();
+    expect(api.getByTestId("keyboard-sheet-footer")).toBeTruthy();
   });
 });

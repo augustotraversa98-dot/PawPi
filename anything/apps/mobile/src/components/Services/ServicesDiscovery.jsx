@@ -110,6 +110,24 @@ const LOCATION_PATIENCE_MS = 3000;
 // the top of displayItems, so its pin is always within the cap).
 const MAX_MAP_MARKERS = 60;
 
+// Background of the map results sheet. Module scope: declared inline it was a new
+// component on every keystroke of the search field above it.
+function SheetBackground({ style }) {
+  return (
+    <GlassSurface
+      glassColor={MATERIALS.glassTintStrong}
+      style={[
+        style,
+        {
+          borderRadius: RADIUS.sheet,
+          borderWidth: 1,
+          borderColor: MATERIALS.glassBorder,
+        },
+      ]}
+    />
+  );
+}
+
 function formatKm(km) {
   if (km == null) return null;
   const n = Number(km);
@@ -649,6 +667,9 @@ export default function ServicesDiscovery({
         setSort={setSort}
         sorts={sorts}
         placeholder={t("discover.searchUnifiedPlaceholder")}
+        // Map layout: the search field heads a bottom sheet that can rest low enough
+        // to be under the keyboard, so open the sheet fully while typing.
+        onSearchFocus={() => sheetRef.current?.snapToIndex?.(snapPoints.length - 1)}
       />
       <View style={{ marginBottom: SPACING.md + 2 }}>
         <PressableScale
@@ -845,19 +866,7 @@ export default function ServicesDiscovery({
           // solid under Reduce Transparency — all handled by GlassSurface), with a
           // warm branded grabber. Matches the iOS 26 sheet look.
           handleIndicatorStyle={{ backgroundColor: MATERIALS.hairline, width: 40 }}
-          backgroundComponent={({ style }) => (
-            <GlassSurface
-              glassColor={MATERIALS.glassTintStrong}
-              style={[
-                style,
-                {
-                  borderRadius: RADIUS.sheet,
-                  borderWidth: 1,
-                  borderColor: MATERIALS.glassBorder,
-                },
-              ]}
-            />
-          )}
+          backgroundComponent={SheetBackground}
         >
           <BottomSheetFlatList
             data={displayItems}

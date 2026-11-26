@@ -74,6 +74,7 @@ export default function ProviderListControls({
   setSort,
   placeholder,
   sorts = PROVIDER_SORTS,
+  onSearchFocus,
 }) {
   const { t } = useTranslation();
   const searchPlaceholder = placeholder || t("providers.searchPlaceholder");
@@ -98,6 +99,7 @@ export default function ProviderListControls({
         <TextInput
           value={query}
           onChangeText={setQuery}
+          onFocus={onSearchFocus}
           placeholder={searchPlaceholder}
           placeholderTextColor={COLORS.mutedBrown}
           autoCorrect={false}

@@ -18,9 +18,18 @@
 //     <KeyboardAvoidingView>: that is exactly the layout that left a sliver of scroll area (the
 //     Quick Check bug). Use KeyboardSafeSheet.
 //  5. Allowlists must stay honest: every entry still exists and still triggers the rule it excuses.
+//  6. No component declared INSIDE another component may hold or wrap a text field (and none at all
+//     in a file that renders a <TextInput>). It is a new component type on every render, so React
+//     remounts it on each keystroke and the keyboard closes (EditMedicalProfileModal, build 33).
+//  7. A KeyboardAwareScrollView / RefreshableScrollView inside a pageSheet <Modal> passes
+//     `inPageSheet`: iOS measures relative to the sheet there, so without it the keyboard still
+//     covers the focused field.
 
 const fs = require("fs");
 const path = require("path");
+// Already installed as a dependency of the babel transform jest runs with.
+const { parse } = require("@babel/parser");
+const traverse = require("@babel/traverse").default;
 
 const SRC = path.resolve(__dirname, "..");
 
@@ -129,6 +138,118 @@ const FILES = sourceFiles(SRC)
   .filter((f) => !/^components\/(KeyboardAwareScrollView|KeyboardSafeSheet|KeyboardSafeFormModal|KeyboardAvoidingAnimatedView|RefreshableScrollView)\.jsx$/.test(f.rel));
 const WITH_INPUT = FILES.filter((f) => uses(f.src, "TextInput"));
 
+// Components that render a text field of their own: wrapping one counts like wrapping a TextInput.
+const INPUT_TAGS = new Set([
+  "TextInput",
+  ...Object.keys(FIELD_ONLY)
+    .filter((file) => file.startsWith("components/"))
+    .map((file) => path.basename(file, ".jsx")),
+]);
+
+const holdsInput = (nodePath) => {
+  let found = false;
+  nodePath.traverse({
+    JSXOpeningElement(p) {
+      if (INPUT_TAGS.has(p.node.name.name)) found = true;
+    },
+  });
+  return found;
+};
+
+const returnsJsx = (fnPath) => {
+  if (/^JSX(Element|Fragment)$/.test(fnPath.node.body.type)) return true;
+  let found = false;
+  fnPath.traverse({
+    JSXElement() {
+      found = true;
+    },
+    JSXFragment() {
+      found = true;
+    },
+  });
+  return found;
+};
+
+/** Nested components that would remount a text field: ["line:Name", ...]. */
+function unstableInputComponents(src) {
+  const ast = parse(src, { sourceType: "module", plugins: ["jsx", "typescript"] });
+  const fileHasInput = /<TextInput\b/.test(src);
+  const usedAsElement = new Set();
+  const wrapsInput = new Set();
+  const passedAsComponentProp = new Set();
+  traverse(ast, {
+    JSXElement(p) {
+      const name = p.node.openingElement.name.name;
+      if (!name) return;
+      usedAsElement.add(name);
+      if (holdsInput(p)) wrapsInput.add(name);
+    },
+    JSXAttribute(p) {
+      const value = p.node.value?.expression;
+      if (/Component$|^component$/.test(p.node.name.name) && value?.type === "Identifier") {
+        passedAsComponentProp.add(value.name);
+      }
+    },
+  });
+
+  const found = [];
+  traverse(ast, {
+    Function(p) {
+      if (!p.getFunctionParent()) return;
+      const parent = p.parentPath;
+      let name = p.node.id?.name;
+      let asProp = false;
+      if (!name && parent.isVariableDeclarator()) name = parent.node.id.name;
+      // const X = memo(...) / useCallback(...)
+      if (!name && parent.isCallExpression() && parent.parentPath.isVariableDeclarator()) {
+        name = parent.parentPath.node.id.name;
+      }
+      // ListHeaderComponent={() => ...}
+      if (parent.isJSXExpressionContainer() && parent.parentPath.isJSXAttribute()) {
+        const attribute = parent.parentPath.node.name.name;
+        if (/Component$|^component$/.test(attribute)) {
+          name = attribute;
+          asProp = true;
+        }
+      }
+      if (!name || !returnsJsx(p)) return;
+      const isComponent =
+        asProp || passedAsComponentProp.has(name) || (/^[A-Z]/.test(name) && usedAsElement.has(name));
+      if (!isComponent) return;
+      if (fileHasInput || wrapsInput.has(name) || holdsInput(p)) {
+        found.push(`${p.node.loc.start.line}:${name}`);
+      }
+    },
+  });
+  return found;
+}
+
+/** Keyboard-aware scroll views inside a pageSheet Modal that lack `inPageSheet`: lines. */
+function pageSheetScrollsWithoutFlag(src) {
+  const ast = parse(src, { sourceType: "module", plugins: ["jsx", "typescript"] });
+  const found = [];
+  traverse(ast, {
+    JSXOpeningElement(p) {
+      const name = p.node.name.name;
+      if (name !== "KeyboardAwareScrollView" && name !== "RefreshableScrollView") return;
+      const sheet = p.findParent(
+        (q) =>
+          q.isJSXElement() &&
+          q.node.openingElement.name.name === "Modal" &&
+          q.node.openingElement.attributes.some(
+            (a) =>
+              a.name?.name === "presentationStyle" &&
+              src.slice(a.start, a.end).includes("pageSheet"),
+          ),
+      );
+      if (sheet && !p.node.attributes.some((a) => a.name?.name === "inPageSheet")) {
+        found.push(p.node.loc.start.line);
+      }
+    },
+  });
+  return found;
+}
+
 describe("keyboard-safety guard", () => {
   it("scans a plausible number of text-field files (guards against a broken scanner)", () => {
     expect(WITH_INPUT.length).toBeGreaterThan(40);
@@ -196,6 +317,22 @@ describe("keyboard-safety guard", () => {
     }
   });
 
+  it("rule 6: no component declared inside a component holds or wraps a text field", () => {
+    const offenders = FILES.flatMap((f) =>
+      unstableInputComponents(f.src).map((hit) => `${f.rel}:${hit}`),
+    );
+    // Fix: move the component to module scope and pass what it needs as props (or call it as a
+    // plain function, {renderRow()}, so React sees no new component type).
+    expect(offenders).toEqual([]);
+  });
+
+  it("rule 7: a keyboard-aware scroll view inside a pageSheet modal passes inPageSheet", () => {
+    const offenders = FILES.flatMap((f) =>
+      pageSheetScrollsWithoutFlag(f.src).map((line) => `${f.rel}:${line}`),
+    );
+    expect(offenders).toEqual([]);
+  });
+
   it("every migrated form sheet really renders through the shared container", () => {
     // Anything that imports KeyboardSafeSheet must actually render it (no dead import left behind
     // by a half-finished migration).
@@ -206,6 +343,34 @@ describe("keyboard-safety guard", () => {
   });
 
   describe("analyzer sanity", () => {
+    it("flags a pageSheet scroll view without inPageSheet", () => {
+      const bad = `const F = () => <Modal presentationStyle="pageSheet"><KeyboardAwareScrollView /></Modal>;`;
+      const good = `const F = () => <Modal presentationStyle="pageSheet"><KeyboardAwareScrollView inPageSheet /></Modal>;`;
+      const other = `const F = () => <Modal><KeyboardAwareScrollView /></Modal>;`;
+      expect(pageSheetScrollsWithoutFlag(bad)).toEqual([1]);
+      expect(pageSheetScrollsWithoutFlag(good)).toEqual([]);
+      expect(pageSheetScrollsWithoutFlag(other)).toEqual([]);
+    });
+
+    it("flags nested components around text fields and clears the safe shapes", () => {
+      const inside = `function F() { const Field = () => <TextInput />; return <View><Field /></View>; }`;
+      const wrapper = `function F() { const Section = ({ children }) => <View>{children}</View>;
+        return <Section><BirthdayOrAgeField /></Section>; }`;
+      const listProp = `function F() { return <List ListHeaderComponent={() => <TextInput />} />; }`;
+      const byName = `function F() { const Header = () => <TextInput />; return <List ListHeaderComponent={Header} />; }`;
+      expect(unstableInputComponents(inside)).toEqual(["1:Field"]);
+      expect(unstableInputComponents(wrapper)).toEqual(["1:Section"]);
+      expect(unstableInputComponents(listProp)).toEqual(["1:ListHeaderComponent"]);
+      expect(unstableInputComponents(byName)).toEqual(["1:Header"]);
+
+      const moduleScope = `const Field = () => <TextInput />; function F() { return <Field />; }`;
+      const renderFunction = `function F() { const renderField = () => <TextInput />; return <View>{renderField()}</View>; }`;
+      const unrelated = `function F() { const Row = () => <Text />; return <Row />; }`;
+      expect(unstableInputComponents(moduleScope)).toEqual([]);
+      expect(unstableInputComponents(renderFunction)).toEqual([]);
+      expect(unstableInputComponents(unrelated)).toEqual([]);
+    });
+
     it("flags a TextInput in a plain ScrollView and clears one under a KeyboardAwareScrollView", () => {
       const bad = `<Modal><ScrollView><View><TextInput value={a > b ? 1 : 2} /></View></ScrollView></Modal>`;
       const good = `<ScrollView><KeyboardAwareScrollView><TextInput /></KeyboardAwareScrollView></ScrollView>`;

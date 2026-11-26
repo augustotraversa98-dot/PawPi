@@ -1,6 +1,6 @@
 import React from "react";
-import { Keyboard, TextInput as RNTextInput } from "react-native";
-import { render, act } from "@testing-library/react-native";
+import { Dimensions, Keyboard, TextInput as RNTextInput } from "react-native";
+import { render, act, fireEvent } from "@testing-library/react-native";
 import KeyboardAwareScrollView, {
   KEYBOARD_INPUT_MARGIN,
   computeKeyboardPadding,
@@ -168,5 +168,176 @@ describe("KeyboardAwareScrollView — scrolls into the visible area, not just ab
     });
     addSpy.mockRestore();
     focusSpy.mockRestore();
+  });
+});
+
+// Night run 2026-11-25: with the keyboard already up, the field the user moves to (or the
+// line they are typing in a growing field) has to stay visible, and only the scroll view
+// that holds that field may move.
+describe("KeyboardAwareScrollView — follows the focused field while the keyboard is up", () => {
+  let handlers;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    handlers = {};
+    jest.spyOn(Keyboard, "addListener").mockImplementation((name, cb) => {
+      (handlers[name] = handlers[name] || []).push(cb);
+      return { remove: () => {} };
+    });
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  const emit = (name, screenY = KEYBOARD_TOP) =>
+    act(() => {
+      (handlers[name] || []).forEach((cb) =>
+        cb({ endCoordinates: { screenY, height: 852 - screenY } }),
+      );
+    });
+  const settle = () => act(() => jest.advanceTimersByTime(500));
+
+  // A scroll view whose window bottom is 852 (keyboard top 516 covers its lower part).
+  const fakeScroll = (ref) => {
+    ref.current.getNativeScrollRef = () => ({
+      measureInWindow: (cb) => cb(0, 100, 390, 752),
+    });
+    ref.current.getInnerViewRef = () => ({});
+    ref.current.scrollTo = jest.fn();
+    return ref.current.scrollTo;
+  };
+  const input = (y, { contained = true, height = 40 } = {}) => ({
+    measureInWindow: (cb) => cb(20, y, 300, height),
+    measureLayout: (_node, ok, fail) => (contained ? ok() : fail()),
+  });
+  const focus = (value) =>
+    jest.spyOn(RNTextInput.State, "currentlyFocusedInput").mockReturnValue(value);
+
+  const renderOne = (props) => {
+    const ref = React.createRef();
+    const api = render(
+      <KeyboardAwareScrollView ref={ref} testID="kasv" {...props}>
+        <RNTextInput />
+      </KeyboardAwareScrollView>,
+    );
+    return { api, ref, scrollTo: fakeScroll(ref) };
+  };
+
+  it("scrolls to the next field when focus moves, without a new keyboard event", () => {
+    const onFocus = jest.fn();
+    const { api, scrollTo } = renderOne({ onFocus });
+    focus(input(300));
+    emit("keyboardWillShow");
+    expect(scrollTo).not.toHaveBeenCalled(); // already visible
+
+    focus(input(600));
+    fireEvent(api.getByTestId("kasv"), "focus", { nativeEvent: {} });
+    settle();
+
+    expect(scrollTo).toHaveBeenCalledWith({
+      y: 640 + KEYBOARD_INPUT_MARGIN - KEYBOARD_TOP,
+      animated: true,
+    });
+    expect(onFocus).toHaveBeenCalled();
+  });
+
+  it("follows the caret when a multiline field grows", () => {
+    const onContentSizeChange = jest.fn();
+    const { api, scrollTo } = renderOne({ onContentSizeChange });
+    focus(input(420, { height: 40 }));
+    emit("keyboardWillShow");
+    expect(scrollTo).not.toHaveBeenCalled();
+
+    focus(input(420, { height: 120 })); // two more lines
+    fireEvent(api.getByTestId("kasv"), "contentSizeChange", 390, 900);
+    settle();
+
+    expect(scrollTo).toHaveBeenCalledWith({
+      y: 540 + KEYBOARD_INPUT_MARGIN - KEYBOARD_TOP,
+      animated: true,
+    });
+    expect(onContentSizeChange).toHaveBeenCalledWith(390, 900);
+  });
+
+  it("re-adjusts when the keyboard gets taller (iOS frame change)", () => {
+    const { scrollTo } = renderOne();
+    focus(input(420));
+    emit("keyboardWillShow");
+    emit("keyboardWillChangeFrame", 440);
+    settle();
+    expect(scrollTo).toHaveBeenCalledWith({
+      y: 460 + KEYBOARD_INPUT_MARGIN - 440,
+      animated: true,
+    });
+  });
+
+  // Simulator measurement of the Weight sheet: everything is reported 62pt higher than it
+  // is on screen, so without the correction a covered field looks visible.
+  it("corrects sheet-relative measurements inside a pageSheet", () => {
+    jest.spyOn(Dimensions, "get").mockReturnValue({ width: 440, height: 956 });
+    const sheetScroll = (ref) => {
+      const scrollTo = fakeScroll(ref);
+      ref.current.getNativeScrollRef = () => ({
+        measureInWindow: (cb) => cb(0, 180, 440, 714),
+      });
+      return scrollTo;
+    };
+    const inSheet = renderOne({ inPageSheet: true });
+    sheetScroll(inSheet.ref);
+    focus(input(484, { height: 80 })); // really spans 546..626; keyboard top 611
+    emit("keyboardWillShow", 611);
+
+    expect(inSheet.ref.current.scrollTo).toHaveBeenCalledWith({
+      y: 626 + KEYBOARD_INPUT_MARGIN - 611,
+      animated: true,
+    });
+  });
+
+  it("does nothing on focus or content changes while the keyboard is down", () => {
+    const { api, scrollTo } = renderOne();
+    focus(input(600));
+    fireEvent(api.getByTestId("kasv"), "focus", { nativeEvent: {} });
+    fireEvent(api.getByTestId("kasv"), "contentSizeChange", 390, 900);
+    settle();
+    emit("keyboardWillShow");
+    scrollTo.mockClear();
+    emit("keyboardWillHide", 852);
+    fireEvent(api.getByTestId("kasv"), "contentSizeChange", 390, 950);
+    settle();
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+
+  it("does not scroll for a field that is not inside it (screen behind a modal)", () => {
+    const { scrollTo } = renderOne();
+    focus(input(600, { contained: false }));
+    emit("keyboardWillShow");
+    settle();
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+
+  it("only the innermost scroll view moves when forms are nested", () => {
+    const outer = React.createRef();
+    const inner = React.createRef();
+    const api = render(
+      <KeyboardAwareScrollView ref={outer} testID="outer">
+        <KeyboardAwareScrollView ref={inner} testID="inner">
+          <RNTextInput />
+        </KeyboardAwareScrollView>
+      </KeyboardAwareScrollView>,
+    );
+    const outerScroll = fakeScroll(outer);
+    const innerScroll = fakeScroll(inner);
+    focus(input(600)); // contained in both, as far as the native tree knows
+
+    // One native focus event, bubbling innermost first.
+    const event = { nativeEvent: {} };
+    fireEvent(api.getByTestId("inner"), "focus", event);
+    fireEvent(api.getByTestId("outer"), "focus", event);
+    emit("keyboardWillShow");
+    settle();
+
+    expect(innerScroll).toHaveBeenCalled();
+    expect(outerScroll).not.toHaveBeenCalled();
   });
 });

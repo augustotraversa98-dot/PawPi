@@ -186,6 +186,7 @@ export function AddVetRecordModal({ visible, recordType, onClose, petId, onSaved
         </View>
 
         <KeyboardAwareScrollView
+          inPageSheet
           style={{ flex: 1 }}
           contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
         >

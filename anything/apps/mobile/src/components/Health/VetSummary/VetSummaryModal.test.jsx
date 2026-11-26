@@ -86,3 +86,24 @@ test("loading state shows a spinner, not fabricated data", () => {
   const { queryByTestId } = render(<VetSummaryModal visible onClose={jest.fn()} />);
   expect(queryByTestId("vetsummary-recap")).toBeNull();
 });
+
+test("is built on the shared keyboard-safe shell, so questions stay above the keyboard", () => {
+  const { getByTestId } = render(<VetSummaryModal visible onClose={jest.fn()} />);
+  expect(getByTestId("keyboard-sheet-scroll")).toBeTruthy();
+  expect(getByTestId("keyboard-sheet-header")).toBeTruthy();
+});
+
+test("typing never remounts a question field; Return moves on without closing the keyboard", () => {
+  const { getByTestId } = render(<VetSummaryModal visible onClose={jest.fn()} />);
+  [0, 1, 2].forEach((i) => {
+    const before = getByTestId(`question-${i}`);
+    fireEvent.changeText(before, "Why?");
+    expect(getByTestId(`question-${i}`)).toBe(before);
+    expect(before.props.value).toBe("Why?");
+  });
+  expect(getByTestId("question-0").props.returnKeyType).toBe("next");
+  expect(getByTestId("question-0").props.blurOnSubmit).toBe(false);
+  expect(getByTestId("question-2").props.returnKeyType).toBe("done");
+  expect(getByTestId("question-2").props.blurOnSubmit).toBe(true);
+  expect(() => fireEvent(getByTestId("question-0"), "submitEditing")).not.toThrow();
+});

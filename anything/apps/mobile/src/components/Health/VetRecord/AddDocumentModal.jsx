@@ -417,6 +417,7 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
 
   const renderForm = () => (
     <KeyboardAwareScrollView
+      inPageSheet
       style={{ flex: 1 }}
       contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
     >

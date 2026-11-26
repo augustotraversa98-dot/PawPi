@@ -242,6 +242,7 @@ export default function PeeTrackerModal({ visible, onClose }) {
           </View>
 
           <KeyboardAwareScrollView
+            inPageSheet
             style={{ flex: 1 }}
             contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
             keyboardShouldPersistTaps="handled"

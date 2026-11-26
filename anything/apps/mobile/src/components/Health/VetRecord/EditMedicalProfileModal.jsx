@@ -22,6 +22,269 @@ import { PressableScale } from "@/components/ui";
 import { defaultWeightUnit } from "@/utils/weightUnit";
 import { parseDateValue } from "@/utils/canonicalDateTime";
 
+// The form pieces live at MODULE scope on purpose. Declared inside the modal they were a
+// new component type on every render, so each keystroke unmounted and remounted the
+// TextInput and the keyboard closed (docs/keyboard-convention.md, guarded by
+// keyboardSafety.guard.test.js).
+function FormSection({ title, children }) {
+  return (
+    <View style={{ marginBottom: SPACING.xxl }}>
+      <Text
+        style={[
+          TYPE.subhead,
+          {
+            fontWeight: "700",
+            color: COLORS.mutedBrown,
+            marginBottom: SPACING.md,
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+          },
+        ]}
+      >
+        {title}
+      </Text>
+      {children}
+    </View>
+  );
+}
+
+function FormInput({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  keyboardType = "default",
+  multiline = false,
+  error,
+}) {
+  return (
+    <View style={{ marginBottom: SPACING.lg }}>
+      <Text
+        style={[
+          TYPE.subhead,
+          { fontWeight: "600", color: COLORS.warmBrown, marginBottom: SPACING.xs + 2 },
+        ]}
+      >
+        {label}
+      </Text>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={COLORS.mutedBrown + "80"}
+        keyboardType={keyboardType}
+        multiline={multiline}
+        numberOfLines={multiline ? 3 : 1}
+        style={{
+          backgroundColor: MATERIALS.surface,
+          borderRadius: RADIUS.control,
+          padding: 14,
+          fontSize: 14,
+          color: COLORS.warmBrown,
+          borderWidth: 1.5,
+          borderColor: error ? "#FF6B6B" : MATERIALS.hairline,
+          ...(multiline && {
+            height: 80,
+            textAlignVertical: "top",
+          }),
+        }}
+      />
+      {error && (
+        <Text
+          style={{
+            fontSize: 12,
+            color: "#FF6B6B",
+            marginTop: 4,
+          }}
+        >
+          {error}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+function FormDateField({ label, value, onChange, error, maximumDate }) {
+  return (
+    <View style={{ marginBottom: 16 }}>
+      <Text
+        style={{
+          fontSize: 13,
+          fontWeight: "600",
+          color: COLORS.warmBrown,
+          marginBottom: 6,
+        }}
+      >
+        {label}
+      </Text>
+      <DateField
+        value={value}
+        onChange={onChange}
+        maximumDate={maximumDate}
+        fieldStyle={{
+          padding: 14,
+          borderWidth: 1.5,
+          borderColor: error ? "#FF6B6B" : MATERIALS.hairline,
+        }}
+        textStyle={{ fontSize: 14 }}
+      />
+      {error && (
+        <Text
+          style={{
+            fontSize: 12,
+            color: "#FF6B6B",
+            marginTop: 4,
+          }}
+        >
+          {error}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+function GenderSelector({ selected, onSelect }) {
+  const { t } = useTranslation();
+  return (
+    <View style={{ marginBottom: 16 }}>
+      <Text
+        style={{
+          fontSize: 13,
+          fontWeight: "600",
+          color: COLORS.warmBrown,
+          marginBottom: 6,
+        }}
+      >
+        {t("editMedicalProfile.fieldGender")}
+      </Text>
+      <View style={{ flexDirection: "row", gap: 10 }}>
+        {["male", "female"].map((option) => (
+          <PressableScale
+            key={option}
+            testID={`gender-${option}`}
+            onPress={() => onSelect(option)}
+            style={{
+              flex: 1,
+              backgroundColor: selected === option ? COLORS.coral : MATERIALS.surface,
+              borderRadius: RADIUS.control,
+              paddingVertical: SPACING.md,
+              alignItems: "center",
+              borderWidth: 1.5,
+              borderColor: selected === option ? COLORS.coral : MATERIALS.hairline,
+            }}
+          >
+            <Text
+              style={[
+                TYPE.callout,
+                { fontWeight: "600", color: selected === option ? "#FFF" : COLORS.warmBrown },
+              ]}
+            >
+              {t(`healthDataUi.editMedicalProfileModal.${option}`)}
+            </Text>
+          </PressableScale>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function WeightUnitSelector({ selected, onSelect }) {
+  const { t } = useTranslation();
+  return (
+    <View style={{ marginBottom: 16 }}>
+      <Text
+        style={{
+          fontSize: 13,
+          fontWeight: "600",
+          color: COLORS.warmBrown,
+          marginBottom: 6,
+        }}
+      >
+        {t("editMedicalProfile.fieldWeightUnit")}
+      </Text>
+      <View style={{ flexDirection: "row", gap: 10 }}>
+        {["kg", "lbs"].map((unit) => (
+          <PressableScale
+            key={unit}
+            onPress={() => onSelect(unit)}
+            style={{
+              flex: 1,
+              backgroundColor: selected === unit ? COLORS.coral : MATERIALS.surface,
+              borderRadius: RADIUS.control,
+              paddingVertical: SPACING.md,
+              alignItems: "center",
+              borderWidth: 1.5,
+              borderColor: selected === unit ? COLORS.coral : MATERIALS.hairline,
+            }}
+          >
+            <Text
+              style={[
+                TYPE.callout,
+                { fontWeight: "600", color: selected === unit ? "#FFF" : COLORS.warmBrown },
+              ]}
+            >
+              {unit}
+            </Text>
+          </PressableScale>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function SpayedNeuteredSelector({ selected, onSelect }) {
+  const { t } = useTranslation();
+  return (
+    <View style={{ marginBottom: 16 }}>
+      <Text
+        style={{
+          fontSize: 13,
+          fontWeight: "600",
+          color: COLORS.warmBrown,
+          marginBottom: 6,
+        }}
+      >
+        {t("editMedicalProfile.fieldSpayNeuter")}
+      </Text>
+      <View style={{ flexDirection: "row", gap: 10 }}>
+        {SPAY_NEUTER_OPTIONS.map(
+          (option) => (
+            <PressableScale
+              key={option}
+              onPress={() => onSelect(option)}
+              style={{
+                flex: 1,
+                backgroundColor:
+                  selected === option ? COLORS.coral : MATERIALS.surface,
+                borderRadius: RADIUS.control,
+                paddingVertical: SPACING.md,
+                paddingHorizontal: SPACING.sm,
+                alignItems: "center",
+                borderWidth: 1.5,
+                borderColor:
+                  selected === option ? COLORS.coral : MATERIALS.hairline,
+              }}
+            >
+              <Text
+                style={[
+                  TYPE.footnote,
+                  {
+                    fontWeight: "600",
+                    color: selected === option ? "#FFF" : COLORS.warmBrown,
+                    textAlign: "center",
+                  },
+                ]}
+              >
+                {t(SPAY_NEUTER_KEYS[option])}
+              </Text>
+            </PressableScale>
+          ),
+        )}
+      </View>
+    </View>
+  );
+}
+
 export default function EditMedicalProfileModal({
   visible,
   onClose,
@@ -235,250 +498,6 @@ export default function EditMedicalProfileModal({
     }
   };
 
-  const FormSection = ({ title, children }) => (
-    <View style={{ marginBottom: SPACING.xxl }}>
-      <Text
-        style={[
-          TYPE.subhead,
-          {
-            fontWeight: "700",
-            color: COLORS.mutedBrown,
-            marginBottom: SPACING.md,
-            textTransform: "uppercase",
-            letterSpacing: 0.5,
-          },
-        ]}
-      >
-        {title}
-      </Text>
-      {children}
-    </View>
-  );
-
-  const FormInput = ({
-    label,
-    value,
-    onChangeText,
-    placeholder,
-    keyboardType = "default",
-    multiline = false,
-    error,
-  }) => (
-    <View style={{ marginBottom: SPACING.lg }}>
-      <Text
-        style={[
-          TYPE.subhead,
-          { fontWeight: "600", color: COLORS.warmBrown, marginBottom: SPACING.xs + 2 },
-        ]}
-      >
-        {label}
-      </Text>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={COLORS.mutedBrown + "80"}
-        keyboardType={keyboardType}
-        multiline={multiline}
-        numberOfLines={multiline ? 3 : 1}
-        style={{
-          backgroundColor: MATERIALS.surface,
-          borderRadius: RADIUS.control,
-          padding: 14,
-          fontSize: 14,
-          color: COLORS.warmBrown,
-          borderWidth: 1.5,
-          borderColor: error ? "#FF6B6B" : MATERIALS.hairline,
-          ...(multiline && {
-            height: 80,
-            textAlignVertical: "top",
-          }),
-        }}
-      />
-      {error && (
-        <Text
-          style={{
-            fontSize: 12,
-            color: "#FF6B6B",
-            marginTop: 4,
-          }}
-        >
-          {error}
-        </Text>
-      )}
-    </View>
-  );
-
-  const FormDateField = ({ label, value, onChange, error, maximumDate }) => (
-    <View style={{ marginBottom: 16 }}>
-      <Text
-        style={{
-          fontSize: 13,
-          fontWeight: "600",
-          color: COLORS.warmBrown,
-          marginBottom: 6,
-        }}
-      >
-        {label}
-      </Text>
-      <DateField
-        value={value}
-        onChange={onChange}
-        maximumDate={maximumDate}
-        fieldStyle={{
-          padding: 14,
-          borderWidth: 1.5,
-          borderColor: error ? "#FF6B6B" : MATERIALS.hairline,
-        }}
-        textStyle={{ fontSize: 14 }}
-      />
-      {error && (
-        <Text
-          style={{
-            fontSize: 12,
-            color: "#FF6B6B",
-            marginTop: 4,
-          }}
-        >
-          {error}
-        </Text>
-      )}
-    </View>
-  );
-
-  const GenderSelector = () => (
-    <View style={{ marginBottom: 16 }}>
-      <Text
-        style={{
-          fontSize: 13,
-          fontWeight: "600",
-          color: COLORS.warmBrown,
-          marginBottom: 6,
-        }}
-      >
-        {t("editMedicalProfile.fieldGender")}
-      </Text>
-      <View style={{ flexDirection: "row", gap: 10 }}>
-        {["male", "female"].map((option) => (
-          <PressableScale
-            key={option}
-            testID={`gender-${option}`}
-            onPress={() => setGender(option)}
-            style={{
-              flex: 1,
-              backgroundColor: gender === option ? COLORS.coral : MATERIALS.surface,
-              borderRadius: RADIUS.control,
-              paddingVertical: SPACING.md,
-              alignItems: "center",
-              borderWidth: 1.5,
-              borderColor: gender === option ? COLORS.coral : MATERIALS.hairline,
-            }}
-          >
-            <Text
-              style={[
-                TYPE.callout,
-                { fontWeight: "600", color: gender === option ? "#FFF" : COLORS.warmBrown },
-              ]}
-            >
-              {t(`healthDataUi.editMedicalProfileModal.${option}`)}
-            </Text>
-          </PressableScale>
-        ))}
-      </View>
-    </View>
-  );
-
-  const WeightUnitSelector = () => (
-    <View style={{ marginBottom: 16 }}>
-      <Text
-        style={{
-          fontSize: 13,
-          fontWeight: "600",
-          color: COLORS.warmBrown,
-          marginBottom: 6,
-        }}
-      >
-        {t("editMedicalProfile.fieldWeightUnit")}
-      </Text>
-      <View style={{ flexDirection: "row", gap: 10 }}>
-        {["kg", "lbs"].map((unit) => (
-          <PressableScale
-            key={unit}
-            onPress={() => setWeightUnit(unit)}
-            style={{
-              flex: 1,
-              backgroundColor: weightUnit === unit ? COLORS.coral : MATERIALS.surface,
-              borderRadius: RADIUS.control,
-              paddingVertical: SPACING.md,
-              alignItems: "center",
-              borderWidth: 1.5,
-              borderColor: weightUnit === unit ? COLORS.coral : MATERIALS.hairline,
-            }}
-          >
-            <Text
-              style={[
-                TYPE.callout,
-                { fontWeight: "600", color: weightUnit === unit ? "#FFF" : COLORS.warmBrown },
-              ]}
-            >
-              {unit}
-            </Text>
-          </PressableScale>
-        ))}
-      </View>
-    </View>
-  );
-
-  const SpayedNeuteredSelector = () => (
-    <View style={{ marginBottom: 16 }}>
-      <Text
-        style={{
-          fontSize: 13,
-          fontWeight: "600",
-          color: COLORS.warmBrown,
-          marginBottom: 6,
-        }}
-      >
-        {t("editMedicalProfile.fieldSpayNeuter")}
-      </Text>
-      <View style={{ flexDirection: "row", gap: 10 }}>
-        {SPAY_NEUTER_OPTIONS.map(
-          (option) => (
-            <PressableScale
-              key={option}
-              onPress={() => setSpayedNeuteredStatus(option)}
-              style={{
-                flex: 1,
-                backgroundColor:
-                  spayedNeuteredStatus === option ? COLORS.coral : MATERIALS.surface,
-                borderRadius: RADIUS.control,
-                paddingVertical: SPACING.md,
-                paddingHorizontal: SPACING.sm,
-                alignItems: "center",
-                borderWidth: 1.5,
-                borderColor:
-                  spayedNeuteredStatus === option ? COLORS.coral : MATERIALS.hairline,
-              }}
-            >
-              <Text
-                style={[
-                  TYPE.footnote,
-                  {
-                    fontWeight: "600",
-                    color: spayedNeuteredStatus === option ? "#FFF" : COLORS.warmBrown,
-                    textAlign: "center",
-                  },
-                ]}
-              >
-                {t(SPAY_NEUTER_KEYS[option])}
-              </Text>
-            </PressableScale>
-          ),
-        )}
-      </View>
-    </View>
-  );
-
   return (
     <KeyboardSafeFormModal
       visible={visible}
@@ -524,7 +543,7 @@ export default function EditMedicalProfileModal({
           maximumDate={new Date()}
           error={errors.adoptionDate}
         />
-        <GenderSelector />
+        <GenderSelector selected={gender} onSelect={setGender} />
         <FormInput
           label={t("editMedicalProfile.fieldWeight")}
           value={currentWeight}
@@ -533,11 +552,11 @@ export default function EditMedicalProfileModal({
           keyboardType="decimal-pad"
           error={errors.currentWeight}
         />
-        <WeightUnitSelector />
+        <WeightUnitSelector selected={weightUnit} onSelect={setWeightUnit} />
       </FormSection>
 
       <FormSection title={t("editMedicalProfile.sectionMedical")}>
-        <SpayedNeuteredSelector />
+        <SpayedNeuteredSelector selected={spayedNeuteredStatus} onSelect={setSpayedNeuteredStatus} />
         <FormDateField
           label={t("editMedicalProfile.fieldSpayNeuterDate")}
           value={spayedNeuteredDate}

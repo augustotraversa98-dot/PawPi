@@ -231,7 +231,7 @@ export default function PhotoCheckModal({ visible, onClose, onSave, onSelectArea
         </View>
 
         {/* Content */}
-        <KeyboardAwareScrollView style={{ flex: 1 }}>
+        <KeyboardAwareScrollView inPageSheet style={{ flex: 1 }}>
           {step === "select" && (
             <View style={{ padding: 16 }}>
               <Text
