@@ -99,11 +99,97 @@ export async function assertCareAccess(
   const grant = grants[0];
 
   // 3. append-only audit row — provider→pet-data access is always logged.
-  await sql`
-    INSERT INTO care_access_audit (grant_id, staff_user_id, action, resource)
-    VALUES (${grant.id}, ${staffUserId}, ${action}, ${resource})
-  `;
+  await recordCareAccess(grant.id, staffUserId, action, resource);
 
   // 4. hand the caller the grant it just earned.
+  return grant;
+}
+
+/** One append-only care_access_audit row. */
+export async function recordCareAccess(grantId, staffUserId, action, resource) {
+  await sql`
+    INSERT INTO care_access_audit (grant_id, staff_user_id, action, resource)
+    VALUES (${grantId}, ${staffUserId}, ${action}, ${resource})
+  `;
+}
+
+// ── Sharing the vet record by section (migration 0147, docs/vet-sharing-design.md) ──
+// A grant by section carries exactly the scope below and a list of sections. The scope is deliberately NOT part of
+// VALID_CARE_SCOPES: no route accepts it as a requested scope and assertCareAccess is never asked for it, so a check
+// that does not know about sections denies such a grant. Only the provider record route and the private media route
+// read sections, through the two functions below. Grants by section are read only.
+
+export const RECORD_SECTIONS_SCOPE = 'record_sections';
+
+export const RECORD_SECTIONS = [
+  'profile',
+  'emergency_contact',
+  'insurance',
+  'vet_notes',
+  'vaccines',
+  'files',
+  'photos',
+  'lab_results',
+];
+
+// How long the owner shares for: expiry key → Postgres interval. null = until the owner revokes.
+export const SHARE_EXPIRY_INTERVALS = {
+  '7d': '7 days',
+  '30d': '30 days',
+  '1y': '1 year',
+  until_revoked: null,
+};
+
+/**
+ * The active, unexpired grant by section that THIS provider holds on the pet, given by the pet's current owner, when the
+ * caller is active staff of that provider. Returns null otherwise. Writes nothing: the caller records the access once it
+ * knows what is being read. Read only the sections listed on the returned grant.
+ */
+export async function findSectionGrant(petId, providerId, staffUserId) {
+  const grants = await sql`
+    SELECT g.*
+    FROM care_access_grants g
+    JOIN provider_staff ps
+      ON ps.provider_id = g.provider_id
+     AND ps.user_profile_id = ${staffUserId}
+     AND ps.status = 'active'
+    JOIN pets p
+      ON p.id = g.pet_id AND p.owner_user_id = g.owner_user_id
+    WHERE g.pet_id = ${petId}
+      AND g.provider_id = ${providerId}
+      AND g.status = 'active'
+      AND (g.expires_at IS NULL OR g.expires_at > now())
+      AND g.sections IS NOT NULL
+    ORDER BY g.id DESC
+    LIMIT 1
+  `;
+  return grants?.[0] ?? null;
+}
+
+/**
+ * Assert that a private file of the pet belongs to a row of a section this provider was given: a document ('files') or a
+ * photo check ('photos') of the same pet that points at exactly this key. Records the read on success.
+ *
+ * @returns {Promise<object>} the grant row
+ * @throws {CareAccessError} 403 when there is no such grant, or the file is outside what it shares
+ */
+export async function assertSharedFileAccess(petId, providerId, key, { staffUserId }) {
+  const grant = await findSectionGrant(petId, providerId, staffUserId);
+  if (!grant) {
+    throw new CareAccessError('No active care-access grant for this file');
+  }
+  const files = grant.sections.includes('files');
+  const photos = grant.sections.includes('photos');
+  const rows = await sql`
+    SELECT 1 AS found
+    WHERE (${files}::boolean AND EXISTS (
+            SELECT 1 FROM vet_documents WHERE pet_id = ${petId} AND file_url = ${key}))
+       OR (${photos}::boolean AND EXISTS (
+            SELECT 1 FROM health_photo_checks WHERE pet_id = ${petId} AND image_url = ${key}))
+  `;
+  if (rows.length === 0) {
+    throw new CareAccessError('This file is not part of what was shared');
+  }
+  await recordCareAccess(grant.id, staffUserId, 'read', `media:${key}`);
   return grant;
 }

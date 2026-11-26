@@ -8,14 +8,20 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 import { createSignedMediaUrl } from "@/app/api/utils/mediaAccess";
-import { assertCareAccess } from "@/app/api/utils/careAccess";
+import {
+  assertCareAccess,
+  assertSharedFileAccess,
+} from "@/app/api/utils/careAccess";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/app/api/utils/currentUser", () => ({ resolveUserId: vi.fn() }));
 vi.mock("@/app/api/utils/petLogAccess", () => ({
   resolvePetLogOwner: vi.fn(),
 }));
-vi.mock("@/app/api/utils/careAccess", () => ({ assertCareAccess: vi.fn() }));
+vi.mock("@/app/api/utils/careAccess", () => ({
+  assertCareAccess: vi.fn(),
+  assertSharedFileAccess: vi.fn(),
+}));
 // withSavepoint just runs its callback in these unit tests (no real tx).
 vi.mock("@/app/api/utils/requestContext", () => ({
   withRequestContext: (fn) => fn,
@@ -101,6 +107,7 @@ it("302 for a provider with a medical_read grant (via ?providerId)", async () =>
 it("403 for a provider WITHOUT the grant (assertCareAccess throws)", async () => {
   resolvePetLogOwner.mockResolvedValue({ error: "Pet not found or access denied", status: 403 });
   assertCareAccess.mockRejectedValue(Object.assign(new Error("no grant"), { status: 403 }));
+  assertSharedFileAccess.mockRejectedValue(Object.assign(new Error("not shared"), { status: 403 }));
   const res = await GET(req("pets/5/a.jpg", 12));
   expect(res.status).toBe(403);
   expect(createSignedMediaUrl).not.toHaveBeenCalled();
@@ -111,4 +118,22 @@ it("does not attempt the provider branch without ?providerId (owner/family only)
   const res = await GET(req("pets/5/a.jpg"));
   expect(res.status).toBe(403);
   expect(assertCareAccess).not.toHaveBeenCalled();
+});
+
+it("302 for a provider whose grant by section includes the file", async () => {
+  resolvePetLogOwner.mockResolvedValue({ error: "Pet not found or access denied", status: 403 });
+  assertCareAccess.mockRejectedValue(Object.assign(new Error("no grant"), { status: 403 }));
+  assertSharedFileAccess.mockResolvedValue({ id: 700 });
+  createSignedMediaUrl.mockResolvedValue("https://sb/sign/media-private/pets/5/a.jpg?token=sec");
+  const res = await GET(req("pets/5/a.jpg", 12));
+  expect(res.status).toBe(302);
+  expect(assertSharedFileAccess).toHaveBeenCalledWith(5, 12, "pets/5/a.jpg", { staffUserId: 7 });
+});
+
+it("a medical_read grant never reaches the by-section check", async () => {
+  resolvePetLogOwner.mockResolvedValue({ error: "Pet not found or access denied", status: 403 });
+  assertCareAccess.mockResolvedValue({ id: 99 });
+  createSignedMediaUrl.mockResolvedValue("https://sb/sign/x?token=y");
+  await GET(req("pets/5/a.jpg", 12));
+  expect(assertSharedFileAccess).not.toHaveBeenCalled();
 });

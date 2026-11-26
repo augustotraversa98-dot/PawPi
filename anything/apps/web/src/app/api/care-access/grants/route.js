@@ -1,8 +1,13 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
-import { withRequestContext } from "@/app/api/utils/requestContext";
-import { VALID_CARE_SCOPES } from "@/app/api/utils/careAccess";
+import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
+import {
+  VALID_CARE_SCOPES,
+  RECORD_SECTIONS,
+  RECORD_SECTIONS_SCOPE,
+  SHARE_EXPIRY_INTERVALS,
+} from "@/app/api/utils/careAccess";
 
 // GET /api/care-access/grants — the OWNER's trust view: who has (or requested)
 // access to which of my pets. Ticket 7 (docs/provider-design.md §2 + §4 item 7).
@@ -15,6 +20,9 @@ import { VALID_CARE_SCOPES } from "@/app/api/utils/careAccess";
 // Returns the grant rows joined with the provider name + pet name so the trust UI
 // can render "Dr. Smith — Rex" without extra lookups. Optional ?petId / ?status
 // filters narrow the list. Newest first.
+//
+// `sections` is null for a grant by scope. `status` is the EFFECTIVE status: a
+// pending or active row past its expires_at reads 'expired' (also for ?status).
 //
 // DB is porsager's tagged-template `sql` (SCHEMA_NOTES "neon→porsager"): every
 // query is a tagged template; params bind via `${}`. The optional filters are
@@ -45,7 +53,8 @@ async function GET(request, { params }) {
         g.owner_user_id,
         g.provider_id,
         g.scopes,
-        g.status,
+        g.sections,
+        eff.status,
         g.requested_by,
         g.booking_id,
         g.granted_at,
@@ -56,11 +65,17 @@ async function GET(request, { params }) {
         pr.name AS provider_name,
         p.name AS pet_name
       FROM care_access_grants g
+      CROSS JOIN LATERAL (
+        SELECT CASE
+          WHEN g.status IN ('pending', 'active') AND g.expires_at <= now() THEN 'expired'
+          ELSE g.status
+        END AS status
+      ) eff
       LEFT JOIN providers pr ON pr.id = g.provider_id
       LEFT JOIN pets p ON p.id = g.pet_id
       WHERE g.owner_user_id = ${userId}
         AND (${petId}::int IS NULL OR g.pet_id = ${petId}::int)
-        AND (${status}::text IS NULL OR g.status = ${status}::text)
+        AND (${status}::text IS NULL OR eff.status = ${status}::text)
       ORDER BY g.created_at DESC
     `;
 
@@ -80,14 +95,82 @@ async function GET(request, { params }) {
 // _write scope is ever granted by this owner-facing share.
 const DEFAULT_CLINIC_SCOPES = ["medical_read"];
 
+// Why a by-section body is refused, or null when it is valid.
+function invalidShareBySection(body, sections, expiry) {
+  if (Object.hasOwn(body, "scopes")) {
+    return "scopes cannot be combined with sections or expiry";
+  }
+  if (
+    !Array.isArray(sections) ||
+    sections.length === 0 ||
+    !sections.every((s) => RECORD_SECTIONS.includes(s))
+  ) {
+    return "sections must be a non-empty array of valid section keys";
+  }
+  if (typeof expiry !== "string" || !Object.hasOwn(SHARE_EXPIRY_INTERVALS, expiry)) {
+    return `expiry must be one of ${Object.keys(SHARE_EXPIRY_INTERVALS).join(", ")}`;
+  }
+  return null;
+}
+
+// End the active grant for this pet and provider, if any, and create the new one with exactly the
+// chosen sections and expiry. Both statements run on the request transaction: both apply or neither
+// does. A vet's PENDING request is left alone, so the insert is refused by the one-open-grant index.
+async function shareBySection({ userId, petId, providerId, sections, interval }) {
+  const chosen = RECORD_SECTIONS.filter((s) => sections.includes(s));
+  // One share at a time per pet and provider: a concurrent second one waits, then replaces the first.
+  await sql`SELECT pg_advisory_xact_lock(hashtext(${`care_access_grant:${petId}:${providerId}`}))`;
+  await sql`
+    UPDATE care_access_grants
+    SET status = 'revoked', revoked_at = NOW(), updated_at = NOW()
+    WHERE owner_user_id = ${userId}
+      AND pet_id = ${petId}
+      AND provider_id = ${providerId}
+      AND status = 'active'
+  `;
+  const created = await sql`
+    INSERT INTO care_access_grants (
+      pet_id,
+      owner_user_id,
+      provider_id,
+      scopes,
+      sections,
+      status,
+      requested_by,
+      granted_at,
+      expires_at
+    ) VALUES (
+      ${petId},
+      ${userId},
+      ${providerId},
+      ${[RECORD_SECTIONS_SCOPE]},
+      ${chosen},
+      ${"active"},
+      ${"owner"},
+      NOW(),
+      NOW() + ${interval}::interval
+    )
+    RETURNING *
+  `;
+  return created[0];
+}
+
 // POST /api/care-access/grants — OWNER-INITIATED sharing (booking detail → "Share clinic
 // history"). The owner is the granting authority, so this creates an ACTIVE grant directly
 // (requested_by='owner', status='active') — no provider request / owner approval round-trip.
 // Mirrors the access-requests column shape (pet_id, owner_user_id, provider_id, scopes, status,
 // requested_by). OWNER-context: the pet must belong to the caller (another owner's pet → 404).
 //
-// DEDUP: if an ACTIVE, non-expired grant to this provider already COVERS the requested scopes
-// (existing.scopes ⊇ requested), return it instead of inserting a duplicate.
+// Two body shapes:
+//   • { petId, providerId, scopes? } — a grant by scope, 'medical_read' by default, no expiry.
+//     DEDUP: if an ACTIVE, non-expired grant to this provider already COVERS the requested
+//     scopes (existing.scopes ⊇ requested), return it instead of inserting a duplicate.
+//     While an active grant BY SECTION exists this answers 409 'sectioned_grant_exists': it is
+//     never widened by this shape.
+//   • { petId, providerId, sections, expiry } — a grant by section (docs/vet-sharing-design.md):
+//     exactly what the owner chose, nothing by default. An active grant for the same pet and
+//     provider ends and a new row replaces it (shareBySection).
+// A grant past its date is closed first, so it never blocks a new one.
 async function POST(request) {
   try {
     const session = await auth();
@@ -101,13 +184,23 @@ async function POST(request) {
     }
 
     const body = (await request.json()) ?? {};
-    const { petId, providerId, scopes } = body;
+    const { petId, providerId, scopes, sections, expiry } = body;
 
     if (!petId || !providerId) {
       return Response.json(
         { error: "petId and providerId are required" },
         { status: 400 },
       );
+    }
+
+    // Naming either field at all selects the by-section shape, which then requires both.
+    const bySection =
+      Object.hasOwn(body, "sections") || Object.hasOwn(body, "expiry");
+    if (bySection) {
+      const invalid = invalidShareBySection(body, sections, expiry);
+      if (invalid) {
+        return Response.json({ error: invalid }, { status: 400 });
+      }
     }
 
     const scopeList =
@@ -140,31 +233,57 @@ async function POST(request) {
       return Response.json({ error: "Provider not found" }, { status: 404 });
     }
 
-    // Dedup: an active, non-expired grant already covering these scopes → return it, no insert.
-    const existing = await sql`
+    await sql`SELECT app_expire_care_grants(${petId}::int, ${providerId}::int)`;
+
+    if (bySection) {
+      const grant = await shareBySection({
+        userId,
+        petId,
+        providerId,
+        sections,
+        interval: SHARE_EXPIRY_INTERVALS[expiry],
+      });
+      return Response.json({ grant }, { status: 201 });
+    }
+
+    // An active, non-expired grant that answers this request without an insert: one by section
+    // (→ 409, listed first), or one already covering these scopes (→ returned as it is).
+    const findActive = () => sql`
       SELECT * FROM care_access_grants
       WHERE owner_user_id = ${userId}
         AND pet_id = ${petId}
         AND provider_id = ${providerId}
         AND status = 'active'
         AND (expires_at IS NULL OR expires_at > now())
-        AND scopes @> ${scopeList}::text[]
-      ORDER BY id DESC
+        AND (sections IS NOT NULL OR scopes @> ${scopeList}::text[])
+      ORDER BY (sections IS NOT NULL) DESC, id DESC
       LIMIT 1
     `;
+    const answerWith = (grant) =>
+      grant.sections
+        ? Response.json(
+            {
+              error: "This vet already has selected sections of the record shared",
+              code: "sectioned_grant_exists",
+            },
+            { status: 409 },
+          )
+        : Response.json({ grant, deduped: true });
+
+    const existing = await findActive();
     if (existing.length > 0) {
-      return Response.json({ grant: existing[0], deduped: true });
+      return answerWith(existing[0]);
     }
 
-    // (AUDIT A-26) The dedup SELECT above is a select-then-insert race: two
-    // concurrent requests can both find no existing grant and both insert. The
-    // partial UNIQUE(provider_id, pet_id) WHERE status IN ('pending','active')
-    // (migration 0128, hand-applied) makes the loser raise 23505; catch it and
-    // return the winner instead of a 500. Forward-compatible: before the index
-    // exists no 23505 is raised and this behaves exactly as before.
+    // (AUDIT A-26) The lookup above is a select-then-insert race: two concurrent
+    // requests can both find no existing grant and both insert. The partial
+    // UNIQUE(provider_id, pet_id) WHERE status IN ('pending','active')
+    // (migration 0128, hand-applied) makes the loser raise 23505. The insert runs
+    // in a savepoint so the winner can still be read afterwards.
+    // A vet's PENDING request also trips that index; it is not answered here.
     let created;
     try {
-      created = await sql`
+      created = await withSavepoint(async () => await sql`
         INSERT INTO care_access_grants (
           pet_id,
           owner_user_id,
@@ -183,18 +302,12 @@ async function POST(request) {
           NOW()
         )
         RETURNING *
-      `;
+      `);
     } catch (e) {
       if (e?.code === "23505") {
-        const winner = await sql`
-          SELECT * FROM care_access_grants
-          WHERE pet_id = ${petId} AND provider_id = ${providerId}
-            AND status IN ('pending', 'active')
-          ORDER BY id DESC
-          LIMIT 1
-        `;
+        const winner = await findActive();
         if (winner.length > 0) {
-          return Response.json({ grant: winner[0], deduped: true });
+          return answerWith(winner[0]);
         }
       }
       throw e;

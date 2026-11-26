@@ -2,7 +2,10 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
-import { assertCareAccess } from "@/app/api/utils/careAccess";
+import {
+  assertCareAccess,
+  assertSharedFileAccess,
+} from "@/app/api/utils/careAccess";
 import {
   parsePrivateMediaKey,
   createSignedMediaUrl,
@@ -24,6 +27,8 @@ import {
 //     grant check + append-only audit row are exactly the sanctioned provider→
 //     pet-data path (docs/provider-design.md §3). Used e.g. when a vet opens an
 //     attachment the owner sent in provider chat.
+//   • PROVIDER staff whose grant is BY SECTION (assertSharedFileAccess): only a
+//     file that belongs to a document or photo check of a shared section.
 // A caller who is neither gets the same 403/404 the owner-only gate returns —
 // existence is never leaked beyond "you can't see this".
 async function GET(request) {
@@ -67,7 +72,19 @@ async function GET(request) {
           );
           authorized = true;
         } catch {
-          // Not authorised via this provider → fall through to the deny below.
+          // No medical_read grant → try a grant by section below.
+        }
+        if (!authorized) {
+          try {
+            await withSavepoint(() =>
+              assertSharedFileAccess(parsed.petId, providerId, key, {
+                staffUserId: userId,
+              }),
+            );
+            authorized = true;
+          } catch {
+            // Not authorised via this provider → fall through to the deny below.
+          }
         }
       }
     }

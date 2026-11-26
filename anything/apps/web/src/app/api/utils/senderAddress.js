@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { BlockList, isIP } from "node:net";
 
-// WHO is sending an anonymous request, for limits a sender must not be able to talk its way around.
+// WHO is sending an anonymous request: the one definition every per-sender limit uses.
 //
 // The path to this server is client → (Cloudflare, for www.pawpi.info) → Railway edge → app, and the Railway domain
 // can also be called directly. So:
@@ -82,13 +82,23 @@ function ipv6Network(address) {
 const hash = (value) => createHash("sha256").update(value).digest("hex").slice(0, 32);
 
 /**
- * The rate-limit subject for an anonymous sender, or null when no address is known. Hashed, so the limiter's table
- * does not keep a readable address. A signed-in session is deliberately ignored: new accounts must not buy new limits.
+ * What counts as one sender: the visitor's IPv4 address or IPv6 /64, or null when no address is known. Readable, so
+ * hash it before keeping it.
  */
-export function anonymousSender(request) {
+export function senderNetwork(request) {
   const address = visitorAddress(request);
   if (!address) return null;
-  return `ip:${hash(isIP(address) === 6 ? ipv6Network(address) : address)}`;
+  return isIP(address) === 6 ? ipv6Network(address) : address;
+}
+
+/**
+ * The rate-limit subject for an anonymous sender, or null when no address is known. Hashed, so the limiter's table
+ * does not keep a readable address. It never looks at the session: a caller that limits signed-in users by account
+ * decides that first.
+ */
+export function anonymousSender(request) {
+  const network = senderNetwork(request);
+  return network ? `ip:${hash(network)}` : null;
 }
 
 /** The same sender, counted separately for one link token (which is not stored either). */
