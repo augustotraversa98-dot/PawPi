@@ -58,6 +58,37 @@ test("ES strings are real translations, not English left in place", () => {
   }
 });
 
+// These seven keys are also filled in by Expo config plugins, with an English-only
+// default, whenever app.json leaves them out. Dropping one from app.json would not
+// fail any check above (the key list is read from app.json), so it is pinned here.
+const pluginDefaultKeys = [
+  "NSMotionUsageDescription",
+  "NSLocationAlwaysAndWhenInUseUsageDescription",
+  "NSLocationAlwaysUsageDescription",
+  "NSRemindersUsageDescription",
+  "NSRemindersFullAccessUsageDescription",
+  "NSContactsUsageDescription",
+  "NSFaceIDUsageDescription",
+];
+
+test.each(pluginDefaultKeys)(
+  "%s is declared explicitly in app.json and both locales",
+  (key) => {
+    expect(usageKeys).toContain(key);
+    expect(en).toHaveProperty(key);
+    expect(es).toHaveProperty(key);
+  },
+);
+
+test("usage strings name the app instead of using a build placeholder", () => {
+  for (const strings of [infoPlist, en, es]) {
+    for (const key of usageKeys) {
+      expect(strings[key]).toContain("PawPi");
+      expect(strings[key]).not.toContain("$(");
+    }
+  }
+});
+
 test("the brand name is not translated", () => {
   expect(en.CFBundleDisplayName).toBe("PawPi");
   expect(es.CFBundleDisplayName).toBe("PawPi");

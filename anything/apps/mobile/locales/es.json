@@ -6,5 +6,12 @@
   "NSPhotoLibraryAddUsageDescription": "PawPi guarda en tu galería las fotos que creás en la app, como el recuadro compartible del momento diario de tu mascota.",
   "NSMicrophoneUsageDescription": "PawPi usa el micrófono para el audio de las videoconsultas de telemedicina veterinaria.",
   "NSCalendarsFullAccessUsageDescription": "PawPi agrega los turnos, reservas y recordatorios de tu mascota a tu calendario para que no se te pasen.",
-  "NSCalendarsUsageDescription": "PawPi agrega los turnos, reservas y recordatorios de tu mascota a tu calendario para que no se te pasen."
+  "NSCalendarsUsageDescription": "PawPi agrega los turnos, reservas y recordatorios de tu mascota a tu calendario para que no se te pasen.",
+  "NSMotionUsageDescription": "Permití que PawPi acceda al movimiento de tu dispositivo",
+  "NSLocationAlwaysAndWhenInUseUsageDescription": "Permití que PawPi acceda a tu ubicación",
+  "NSLocationAlwaysUsageDescription": "Permití que PawPi acceda a tu ubicación",
+  "NSRemindersUsageDescription": "Permití que PawPi acceda a tus recordatorios",
+  "NSRemindersFullAccessUsageDescription": "Permití que PawPi acceda a tus recordatorios",
+  "NSContactsUsageDescription": "Permití que PawPi acceda a tus contactos",
+  "NSFaceIDUsageDescription": "Permití que PawPi acceda a tus datos biométricos de Face ID."
 }
