@@ -2,7 +2,13 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { Hono } from 'hono';
 import { contextStorage } from 'hono/context-storage';
-import { securityHeaders, cspDirectives, cspNonce, CSP_DIRECTIVES } from './securityHeaders';
+import {
+  securityHeaders,
+  cspDirectives,
+  cspNonce,
+  CSP_DIRECTIVES,
+  PERMISSIONS_POLICY,
+} from './securityHeaders';
 
 // Same order as __create/index.ts: contextStorage() first, so cspNonce() can read the request.
 function makeApp(options) {
@@ -117,5 +123,60 @@ describe('securityHeaders with the Google Maps picker', () => {
     const before = structuredClone({ ...CSP_DIRECTIVES, scriptSrc: CSP_DIRECTIVES.scriptSrc.length });
     cspDirectives({ dev: true, maps: true });
     expect({ ...CSP_DIRECTIVES, scriptSrc: CSP_DIRECTIVES.scriptSrc.length }).toEqual(before);
+  });
+});
+
+describe('Permissions-Policy', () => {
+  const app = new Hono();
+  app.use('*', securityHeaders());
+  app.get('/', (c) => c.text('ok'));
+
+  const parse = (header) =>
+    Object.fromEntries(
+      header.split(', ').map((part) => {
+        const [name, value] = part.split('=');
+        return [name, value];
+      }),
+    );
+
+  it('is sent on every response', async () => {
+    const res = await app.request('/');
+    expect(res.headers.get('permissions-policy')).toBeTruthy();
+  });
+
+  it('allows only clipboard-write and fullscreen, same-origin only', async () => {
+    const policy = parse((await app.request('/')).headers.get('permissions-policy'));
+    const allowed = Object.entries(policy)
+      .filter(([, v]) => v !== '()')
+      .sort();
+    expect(allowed).toEqual([
+      ['clipboard-write', '(self)'],
+      ['fullscreen', '(self)'],
+    ]);
+  });
+
+  it('denies the sensitive features outright', async () => {
+    const policy = parse((await app.request('/')).headers.get('permissions-policy'));
+    for (const f of [
+      'camera',
+      'microphone',
+      'geolocation',
+      'payment',
+      'display-capture',
+      'clipboard-read',
+      'usb',
+      'serial',
+      'hid',
+      'publickey-credentials-get',
+      'browsing-topics',
+    ]) {
+      expect(policy[f], f).toBe('()');
+    }
+  });
+
+  it('never opens a feature to every origin or to a third party', () => {
+    for (const [feature, list] of Object.entries(PERMISSIONS_POLICY)) {
+      for (const item of list) expect(item, feature).toBe('self');
+    }
   });
 });
