@@ -4,7 +4,10 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 import { extractPetRecordsFromDocument } from "@/app/api/utils/enrichment/petRecords";
-import { EnrichmentNotConfiguredError } from "@/app/api/utils/enrichment/config";
+import {
+  EnrichmentNotConfiguredError,
+  isPetExtractionConfigured,
+} from "@/app/api/utils/enrichment/config";
 
 // AI-1 (night-run 2026-08-18d): POST /api/vet-record/documents/extract — read a STORED pet document
 // (photo or PDF) with Claude vision and return a PROPOSED record set. This route WRITES NOTHING —
@@ -13,8 +16,12 @@ import { EnrichmentNotConfiguredError } from "@/app/api/utils/enrichment/config"
 //
 // Gated: owner-OR-Editor via resolvePetLogOwner (a Viewer gets 403); dormant (no ANTHROPIC_API_KEY)
 // → 503; an unreadable/oversized/garbled file FAILS SOFT to an empty proposal (never a 500) so the
-// stored file is never lost. Body: { petId, url, filename, mimeType } — or { petId, documentId }
-// to look the stored file up by id.
+// stored file is never lost. Body: { petId, url, filename, mimeType, aiConsent: true } — or
+// { petId, documentId, aiConsent: true } to look the stored file up by id.
+//
+// CONSENT (Apple 5.1.2(i)): reading sends the file to Anthropic, so the caller must say the person
+// allowed it. Without `aiConsent: true` (the boolean) → 412 consent_required, before the stored file
+// is looked up, fetched or sent anywhere. Dormant (no key) keeps answering 503: nothing could be sent.
 
 async function POST(request) {
   try {
@@ -33,6 +40,10 @@ async function POST(request) {
     const gate = await resolvePetLogOwner(callerId, petId);
     if (gate.error) {
       return Response.json({ error: gate.error }, { status: gate.status });
+    }
+
+    if (isPetExtractionConfigured() && body.aiConsent !== true) {
+      return Response.json({ error: "consent_required" }, { status: 412 });
     }
 
     // Optional: resolve the stored file from a documentId (owner-scoped) when no url was passed.
