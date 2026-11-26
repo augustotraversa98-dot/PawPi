@@ -18,6 +18,18 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-26 — Emergency / finder flow: owner decides what is shared, family notified, tighter limits, 90-day retention — migration 0146 APPLIED 2026-11-26 (verify 19/19 PASS); website deploys with the merge, app changes need EAS build 34
+- **Finder form** on `/p/tag/[token]`: name (optional), phone and/or email (one required), message. Shown in relay mode, and in phone / email mode when nothing is saved. "The family was told" appears only when the server says so; a failed send keeps what was typed.
+- **Public pages** show the owner's phone or email only when the owner chose that mode; relay and none publish neither. A **full vet link** no longer shows the medical profile's emergency contact when the setting is relay or none. New owner switch **Show my emergency contact on the pet tag** (default OFF).
+- **Notification** goes to the owner and every active family member / caregiver, with Call / Send email buttons and a push. Each member's own settings apply ("Lost pet alerts" switch, quiet hours); the owner's push ignores them.
+- **Limits:** per sender 3 per 10 min and 10 per day, one urgent push per sender and tag per day; per pet 5 per 10 min and 30 per day, urgent 1 per 10 min and 4 per day.
+- **Retention:** finder details are deleted after 90 days (hourly push-receipts job + read filter). Details: `docs/emergency-finder.md`.
+- Migration `0146_emergency_finder_contact.sql` + `supabase/verify_0146.sql` (19 rows). `app.json` gains only the time-sensitive entitlement (new native build; the provisioning profile must be regenerated).
+- Database: 0146 was applied to production on 2026-11-26 and `supabase/verify_0146.sql` returned 19 of 19 PASS (migration history name `0146_emergency_finder_contact`; the applied SQL is the repo file with comments removed from inside function bodies, same behaviour).
+- Remaining order: merge (deploys web) → build 34 (app changes).
+
+---
+
 ## 2026-11-26 — Share the vet record with your vet from "Share" — mobile only, needs the next EAS build; no migration, no server change, no dependency change
 - Vet Record → **Share** (and Data Access → **Share with your vet**) now opens a sheet that can give access. Before, it only listed requests.
 - One read-only permission, listed in full with what is not shared. Consent starts off. **Revoke** is in the same sheet.

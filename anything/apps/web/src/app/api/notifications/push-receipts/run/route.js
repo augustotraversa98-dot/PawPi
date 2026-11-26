@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { secretEquals } from "@/app/api/utils/secretCompare";
 import { isNotifV2Enabled, softV2 } from "@/app/api/utils/notifV2";
 import { getExpoClient } from "@/app/api/utils/push";
+import { purgeFinderDetails } from "@/app/api/utils/finderRetention";
 
 // POST /api/notifications/push-receipts/run — Expo push RECEIPTS job (notifications v2, PR 3a).
 //
@@ -15,8 +16,13 @@ import { getExpoClient } from "@/app/api/utils/push";
 //                             no longer has it).
 // Then it sweeps notification_send_log older than 90 days.
 //
-// FLAG: does NOTHING (no query) unless NOTIF_V2_ENABLED is on. Missing schema (0131 not applied) -> a clean 200
-// no-op. Idempotent; a re-run only ever touches unresolved tickets. Never throws past the JSON response.
+// FINDER RETENTION: this job also deletes finder details older than 90 days (0146, docs/emergency-finder.md),
+// because it is the hourly notification clean-up that already runs. That part is NOT behind the flag below; the
+// response carries `finderDetailsCleared` (null = 0146 not applied, or it failed and was logged).
+//
+// FLAG: apart from that purge, does NOTHING (no query) unless NOTIF_V2_ENABLED is on. Missing schema (0131 not
+// applied) -> a clean 200 no-op. Idempotent; a re-run only ever touches unresolved tickets. Never throws past the
+// JSON response.
 
 const MIN_AGE_SECONDS = 15 * 60;
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -30,8 +36,9 @@ async function POST(request) {
   if (!secretEquals(request.headers.get("x-cron-secret") ?? "", secret)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const finderDetailsCleared = await purgeFinderDetails();
   if (!isNotifV2Enabled()) {
-    return Response.json({ skipped: "disabled" });
+    return Response.json({ skipped: "disabled", finderDetailsCleared });
   }
 
   const pending = await softV2(
@@ -39,7 +46,7 @@ async function POST(request) {
     null,
   );
   if (pending === null) {
-    return Response.json({ processed: 0, note: "push receipts schema not available" });
+    return Response.json({ processed: 0, note: "push receipts schema not available", finderDetailsCleared });
   }
 
   const now = Date.now();
@@ -109,6 +116,7 @@ async function POST(request) {
     stillPending,
     resolved,
     logRowsSwept: swept,
+    finderDetailsCleared,
   });
 }
 

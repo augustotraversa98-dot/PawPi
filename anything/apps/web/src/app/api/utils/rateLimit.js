@@ -70,7 +70,11 @@ export const RATE_LIMITS = {
   // never trips them; they exist to cap abuse (token probing, notification spam, storage/cost
   // flooding, payment attempts). The public-emergency buckets key by IP (no auth there).
   emergency_public_read: { limit: 60, windowSeconds: 300 }, // per-IP: caps blind token probing
-  emergency_relay: { limit: 10, windowSeconds: 3600 }, // per-IP: caps owner-notification spam
+  // Finder messages from the public tag (anonymous; keyed on utils/senderAddress.js, never on a session). The
+  // per-pet limits live in the database (0146); these three limit one sender.
+  emergency_relay: { limit: 3, windowSeconds: 600 }, // short window
+  emergency_relay_daily: { limit: 10, windowSeconds: 86400 }, // daily cap
+  emergency_relay_urgent: { limit: 1, windowSeconds: 86400 }, // one urgent push per sender per tag per day
   upload_create: { limit: 30, windowSeconds: 300 }, // caps storage/cost flooding
   checkout_create: { limit: 15, windowSeconds: 3600 }, // mirrors booking_create
   dm_message_create: { limit: 60, windowSeconds: 60 }, // fast enough for a real back-and-forth
@@ -183,8 +187,18 @@ export function rateLimitResponse({ retryAfterSeconds, locale }) {
  * `userId` is the caller's user_profiles.id. Pass it when the handler has already
  * resolved it; otherwise the transaction's identity GUC is used, so a handler that
  * has not resolved its user yet still gets per-user limiting for free.
+ *
+ * `subject` replaces that choice altogether (no identity read): for public routes that
+ * must key on the sender's address even when a session is present.
+ *
+ * `soft`: the caller only uses "over or not" and still serves the request, so reaching
+ * the limit is not logged as a 429.
  */
-export async function enforceRateLimit(bucket, request, { userId = null } = {}) {
+export async function enforceRateLimit(
+  bucket,
+  request,
+  { userId = null, subject: fixedSubject = null, soft = false } = {},
+) {
   const config = RATE_LIMITS[bucket];
   if (!config) {
     console.error(`[rateLimit] unknown bucket "${bucket}" — not limiting`);
@@ -206,11 +220,11 @@ export async function enforceRateLimit(bucket, request, { userId = null } = {}) 
     // can abort the request transaction.
     result = await withSavepoint(async () => {
       let id = userId;
-      if (id == null) {
+      if (id == null && !fixedSubject) {
         const rows = await sql`SELECT current_app_user_id() AS id`;
         id = rows?.[0]?.id ?? null;
       }
-      subject = rateLimitSubject({ userId: id, request });
+      subject = fixedSubject ?? rateLimitSubject({ userId: id, request });
       if (!subject) return { skip: true, id };
 
       const rows = await sql`
@@ -231,9 +245,11 @@ export async function enforceRateLimit(bucket, request, { userId = null } = {}) 
   if (!result || result.skip || !result.row || result.row.allowed !== false) return null;
 
   const retryAfterSeconds = Number(result.row.retry_after_seconds) || config.windowSeconds;
-  console.warn(
-    `[rateLimit] 429 ${bucket} for ${subject} (${result.row.hits} > ${config.limit} per ${config.windowSeconds}s)`,
-  );
+  if (!soft) {
+    console.warn(
+      `[rateLimit] 429 ${bucket} for ${subject} (${result.row.hits} > ${config.limit} per ${config.windowSeconds}s)`,
+    );
+  }
   const locale = pickLocale(request, await storedLocale(result.id));
   return rateLimitResponse({ retryAfterSeconds, locale });
 }

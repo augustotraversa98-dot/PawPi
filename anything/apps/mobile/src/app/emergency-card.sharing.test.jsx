@@ -66,6 +66,66 @@ test.each([
   expect(getByText(es[key])).toBeTruthy();
 });
 
+test.each([
+  ["phone", null, "contactPhoneMissing"],
+  ["phone", "ana@example.test", "contactPhoneMismatch"],
+  ["email", "  ", "contactEmailMissing"],
+  ["email", "11 5555", "contactEmailMismatch"],
+])("%s mode with %p says that finders will see nothing", (mode, value, key) => {
+  mockData.card.contact_mode = mode;
+  mockData.card.contact_value = value;
+  const { getByTestId } = render(<EmergencyCardScreen />);
+  expect(getByTestId("contact-warning").props.children).toBe(es[key]);
+});
+
+test.each([
+  ["phone", "11 5555"],
+  ["email", "ana@example.test"],
+  ["relay", null],
+  ["none", null],
+])("no warning for %s mode with %p", (mode, value) => {
+  mockData.card.contact_mode = mode;
+  mockData.card.contact_value = value;
+  const { queryByTestId } = render(<EmergencyCardScreen />);
+  expect(queryByTestId("contact-warning")).toBeNull();
+});
+
+// "Show my emergency contact on the pet tag" (default off; the server sends false / true, or nothing when it does
+// not support the setting yet).
+test("the tag emergency-contact switch is off by default, explained, and saves on tap", () => {
+  mockData.card.show_emergency_contact_on_tag = false;
+  const { getByTestId, getByText, queryByTestId } = render(<EmergencyCardScreen />);
+  const toggle = getByTestId("toggle-emergency-contact");
+  expect(toggle.props.value).toBe(false);
+  expect(getByText(es.showEmergencyContactOnTag)).toBeTruthy();
+  expect(getByText(es.showEmergencyContactOnTagHint)).toBeTruthy();
+  expect(queryByTestId("emergency-contact-missing")).toBeNull();
+  fireEvent(toggle, "valueChange", true);
+  expect(mockUpdate).toHaveBeenCalledWith({ show_emergency_contact_on_tag: true });
+});
+
+test("turned on without a saved emergency contact, it says the tag shows none", () => {
+  mockData.card.show_emergency_contact_on_tag = true;
+  const { getByTestId } = render(<EmergencyCardScreen />);
+  expect(getByTestId("emergency-contact-missing").props.children).toBe(es.emergencyContactMissing);
+});
+
+test.each([
+  [{ emergency_contact_name: "Ana", emergency_contact_phone: null }],
+  [{ emergency_contact_name: "", emergency_contact_phone: "11 6666" }],
+])("turned on with %o there is no warning", (medical) => {
+  mockData.card.show_emergency_contact_on_tag = true;
+  mockData.medical = medical;
+  const { queryByTestId } = render(<EmergencyCardScreen />);
+  expect(queryByTestId("emergency-contact-missing")).toBeNull();
+});
+
+test.each([[undefined], [null]])("no switch when the server does not support the setting (%p)", (value) => {
+  mockData.card.show_emergency_contact_on_tag = value;
+  const { queryByTestId } = render(<EmergencyCardScreen />);
+  expect(queryByTestId("toggle-emergency-contact")).toBeNull();
+});
+
 test("no English leaks into the Spanish card", () => {
   const { getByText, queryByText } = render(<EmergencyCardScreen />);
   expect(getByText("Perro")).toBeTruthy();

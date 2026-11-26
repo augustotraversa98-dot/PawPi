@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
-import { withRequestContext } from "@/app/api/utils/requestContext";
+import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
 
 // /api/emergency-card — the OWNER's Emergency Card (ticket 2.51). Owner-scoped (RLS R2c-style:
 // pet_emergency_cards is owner FOR ALL). The PUBLIC reads are elsewhere (/api/public/emergency/*
@@ -9,8 +9,12 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 // GET ?petId= : lazily create the card on first open (a permanent tag_token) and return the card
 //   settings + the assembled medical preview (from the LIVE owner-scoped sources — no duplication)
 //   + active vet links + the current lost status.
-// PATCH      : update the owner-controlled settings (show_medical_on_tag, contact_mode/value,
-//   blood_type, extra_notes, active).
+// PATCH      : update the owner-controlled settings (show_medical_on_tag,
+//   show_emergency_contact_on_tag, contact_mode/value, blood_type, extra_notes, active).
+//
+// show_emergency_contact_on_tag (0146, default off) is read through to_jsonb, so the route also works on a
+// database without the column: the value is then null, which is how the app knows to hide the switch, and
+// trying to change it answers 503.
 //
 // DB is porsager's tagged-template `sql` (SCHEMA_NOTES "neon→porsager").
 
@@ -63,7 +67,8 @@ async function GET(request) {
         VALUES (${petId}, ${ownerUserId}, ${tagToken})
         ON CONFLICT (pet_id) DO UPDATE SET updated_at = now()
         RETURNING id, pet_id, tag_token, show_medical_on_tag, contact_mode, contact_value,
-                  blood_type, extra_notes, active
+                  blood_type, extra_notes, active,
+                  to_jsonb(pet_emergency_cards) -> 'show_emergency_contact_on_tag' AS show_emergency_contact_on_tag
       `;
       card = cardRows[0];
     } else {
@@ -134,9 +139,31 @@ async function PATCH(request) {
     if (body.contact_mode !== undefined && !CONTACT_MODES.includes(body.contact_mode)) {
       return Response.json({ error: "Invalid contact_mode" }, { status: 400 });
     }
+    const showKin = body.show_emergency_contact_on_tag;
+    if (showKin !== undefined && typeof showKin !== "boolean") {
+      return Response.json({ error: "show_emergency_contact_on_tag must be a boolean" }, { status: 400 });
+    }
     const ownerUserId = await resolveOwner(session);
     if (ownerUserId === null) {
       return Response.json({ error: "User profile not found" }, { status: 404 });
+    }
+
+    // Its own statement (0146 column): a database without it must not break the other settings. Same owner scope.
+    if (showKin !== undefined) {
+      try {
+        await withSavepoint(
+          () => sql`
+            UPDATE pet_emergency_cards SET show_emergency_contact_on_tag = ${showKin}, updated_at = now()
+            WHERE pet_id = ${petId} AND owner_user_id = ${ownerUserId}
+          `,
+        );
+      } catch (e) {
+        if (e?.code !== "42703") throw e; // 42703 undefined_column = 0146 not applied yet
+        return Response.json(
+          { error: "This setting is not available yet", code: "finder_settings_unavailable" },
+          { status: 503 },
+        );
+      }
     }
 
     // COALESCE keeps unspecified fields. The owner_user_id WHERE + RLS scope the row; a
@@ -155,7 +182,8 @@ async function PATCH(request) {
         updated_at = now()
       WHERE pet_id = ${petId} AND owner_user_id = ${ownerUserId}
       RETURNING id, pet_id, tag_token, show_medical_on_tag, contact_mode, contact_value,
-                blood_type, extra_notes, active
+                blood_type, extra_notes, active,
+                to_jsonb(pet_emergency_cards) -> 'show_emergency_contact_on_tag' AS show_emergency_contact_on_tag
     `;
     if (updated.length === 0) {
       return Response.json({ error: "Card not found" }, { status: 404 });

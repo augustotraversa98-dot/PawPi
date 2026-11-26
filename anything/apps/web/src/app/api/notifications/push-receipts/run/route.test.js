@@ -30,7 +30,7 @@ const hoursAgo = (h) => new Date(Date.now() - h * 3600_000).toISOString();
 function routeSql(handlers) {
   sql.mockImplementation(async (strings, ...values) => {
     const q = strings.join("?");
-    for (const [needle, h] of Object.entries(handlers)) {
+    for (const [needle, h] of Object.entries({ app_purge_finder_details: [{ n: 0 }], ...handlers })) {
       if (q.includes(needle)) return typeof h === "function" ? h(values, q) : h;
     }
     throw new Error(`unexpected sql: ${q}`);
@@ -58,11 +58,42 @@ describe("auth + flag", () => {
     expect((await POST(run("nope"))).status).toBe(401);
     expect((await POST(run(null))).status).toBe(401);
   });
-  it("flag OFF → does NOTHING: no query, no Expo call", async () => {
+  it("flag OFF → only the finder retention purge runs: no receipts query, no Expo call", async () => {
+    routeSql({ app_purge_finder_details: [{ n: 2 }] });
     const res = await POST(run());
-    expect(await res.json()).toEqual({ skipped: "disabled" });
-    expect(sql).not.toHaveBeenCalled();
+    expect(await res.json()).toEqual({ skipped: "disabled", finderDetailsCleared: 2 });
+    expect(sql).toHaveBeenCalledTimes(1);
     expect(expoMock.getReceipts).not.toHaveBeenCalled();
+  });
+  it("a refused call never purges", async () => {
+    await POST(run("nope"));
+    delete process.env.CRON_SECRET;
+    await POST(run());
+    expect(sql).not.toHaveBeenCalled();
+  });
+});
+
+describe("finder retention purge", () => {
+  const fail = (code) => () => {
+    throw Object.assign(new Error("x"), { code });
+  };
+  it("0146 not applied → clean 200, nothing logged", async () => {
+    routeSql({ app_purge_finder_details: fail("42883") });
+    const res = await POST(run());
+    expect(res.status).toBe(200);
+    expect((await res.json()).finderDetailsCleared).toBeNull();
+    expect(console.error).not.toHaveBeenCalled();
+  });
+  it("a real failure is logged and does not stop the receipts work", async () => {
+    process.env.NOTIF_V2_ENABLED = "true";
+    routeSql({
+      app_purge_finder_details: fail("57014"),
+      app_pending_push_tickets: [],
+      app_notification_send_log_gc: [{ n: 0 }],
+    });
+    const body = await (await POST(run())).json();
+    expect(body).toMatchObject({ processed: 0, finderDetailsCleared: null });
+    expect(console.error).toHaveBeenCalledWith("[purgeFinderDetails] FAILED:", "x");
   });
 });
 
@@ -70,6 +101,7 @@ describe("flag ON", () => {
   beforeEach(() => {
     process.env.NOTIF_V2_ENABLED = "true";
   });
+  // (routeSql below answers the retention purge with 0 unless a case says otherwise.)
 
   it("schema not applied → clean 200 no-op", async () => {
     routeSql({ app_pending_push_tickets: () => { throw Object.assign(new Error("x"), { code: "42883" }); } });

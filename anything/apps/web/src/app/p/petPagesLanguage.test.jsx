@@ -115,11 +115,17 @@ describe("tag page language", () => {
     expect(screen.getByText(PET_PAGE_COPY.en.tag.relayHint)).toBeInTheDocument();
   });
 
-  it("acknowledges a sent message in Spanish", async () => {
+  it("asks for a contact, then acknowledges a sent message, in Spanish", async () => {
     browserSpeaks("es");
-    respond(TAG);
+    global.fetch = vi.fn(() =>
+      Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ card: TAG, ok: true }) }),
+    );
     render(<PublicTagPage />);
     await screen.findByText("Busdy");
+    fireEvent.click(screen.getByTestId("relay-send"));
+    expect(screen.getByRole("alert")).toHaveTextContent("Para que puedan contactarte, dejá un teléfono o un email.");
+    expectNoEnglish();
+    fireEvent.change(screen.getByLabelText("Tu teléfono"), { target: { value: "11 5555 0101" } });
     fireEvent.click(screen.getByTestId("relay-send"));
     expect(await screen.findByText("Gracias: ya avisamos a su familia.")).toBeInTheDocument();
   });
@@ -132,6 +138,20 @@ describe("tag page language", () => {
     respond({ ...TAG, contact: { mode, value } });
     render(<PublicTagPage />);
     expect(await screen.findByRole("link", { name: label })).toBeInTheDocument();
+    expectNoEnglish();
+  });
+
+  it("shows the emergency contact and the fallback form in Spanish", async () => {
+    browserSpeaks("es-AR");
+    respond({
+      ...TAG,
+      contact: { mode: "phone", value: null, accepts_message: true },
+      emergency_contact: { name: "Ana", phone: "11 6666 0202" },
+    });
+    render(<PublicTagPage />);
+    expect(await screen.findByRole("link", { name: "Llamar al contacto de emergencia" })).toBeInTheDocument();
+    expect(screen.getByText("Contacto de emergencia")).toBeInTheDocument();
+    expect(screen.getByTestId("relay-send")).toBeInTheDocument();
     expectNoEnglish();
   });
 

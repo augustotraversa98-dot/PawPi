@@ -9,7 +9,8 @@ import { auth } from '@/auth';
 import sql from '@/app/api/utils/sql';
 
 vi.mock('@/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/app/api/utils/sql', () => ({ default: vi.fn() }));
+// No real transaction here: withSavepoint runs the query directly.
+vi.mock('@/app/api/utils/sql', () => ({ default: vi.fn(), getActiveTx: () => null }));
 
 const SESSION = { user: { id: 42 }, expires: '9999999999' };
 
@@ -65,6 +66,9 @@ describe('GET /api/emergency-card', () => {
 });
 
 describe('PATCH /api/emergency-card', () => {
+  const patch = (body) =>
+    new Request('http://localhost/api/emergency-card', { method: 'PATCH', body: JSON.stringify(body) });
+
   it('rejects an invalid contact_mode', async () => {
     auth.mockResolvedValue(SESSION);
     const res = await PATCH(
@@ -90,6 +94,47 @@ describe('PATCH /api/emergency-card', () => {
     expect(res.status).toBe(200);
     const updateText = sql.mock.calls[1][0].join(' ');
     expect(updateText).toContain('owner_user_id =');
+  });
+
+  it('saves the tag emergency-contact opt-in with its own owner-scoped statement', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([{ id: 1 }]) // resolveOwner
+      .mockResolvedValueOnce([]) // the 0146 column
+      .mockResolvedValueOnce([{ id: 9, show_emergency_contact_on_tag: true }]); // main update returning
+    const res = await PATCH(patch({ petId: 5, show_emergency_contact_on_tag: true }));
+    expect(res.status).toBe(200);
+    expect((await res.json()).card.show_emergency_contact_on_tag).toBe(true);
+    const [strings, ...values] = sql.mock.calls[1];
+    expect(strings.join(' ')).toContain('show_emergency_contact_on_tag =');
+    expect(strings.join(' ')).toContain('owner_user_id =');
+    expect(values).toEqual([true, 5, 1]);
+  });
+
+  it('does not touch the opt-in when the request does not mention it', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([{ id: 1 }]).mockResolvedValueOnce([{ id: 9 }]);
+    await PATCH(patch({ petId: 5, active: true }));
+    expect(sql).toHaveBeenCalledTimes(2);
+    expect(sql.mock.calls[1][0].join(' ')).not.toContain('show_emergency_contact_on_tag =');
+  });
+
+  it.each([['yes'], [1], [null]])('rejects a non-boolean opt-in (%o) before any query', async (value) => {
+    auth.mockResolvedValue(SESSION);
+    const res = await PATCH(patch({ petId: 5, show_emergency_contact_on_tag: value }));
+    expect(res.status).toBe(400);
+    expect(sql).not.toHaveBeenCalled();
+  });
+
+  it('answers 503, changing nothing else, on a database without 0146', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([{ id: 1 }])
+      .mockRejectedValueOnce(Object.assign(new Error('no column'), { code: '42703' }));
+    const res = await PATCH(patch({ petId: 5, show_emergency_contact_on_tag: true, contact_mode: 'none' }));
+    expect(res.status).toBe(503);
+    expect((await res.json()).code).toBe('finder_settings_unavailable');
+    expect(sql).toHaveBeenCalledTimes(2);
   });
 
   it('404 when the owner has no such card', async () => {

@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { isNotifV2Enabled, softV2 } from "@/app/api/utils/notifV2";
+import { FINDER_RETENTION_DAYS } from "@/app/api/utils/finderRetention";
 
 // GET /api/notifications — the caller's own notifications, newest first, paginated
 // (ticket 2.26). RECIPIENT-SCOPED: the WHERE filter + the owner RLS policy both bind to
@@ -33,7 +34,19 @@ async function GET(request) {
         n.id,
         n.type,
         n.subject_ref,
-        n.body,
+        -- emergency_contact only (0146): the message and the finder's contact are never returned once older than
+        -- the retention period (the purge job deletes them; this holds even if it is late). Only the pet's name
+        -- stays. finder_contact is read through to_jsonb so this query also works without the column (then null).
+        CASE
+          WHEN n.type = 'emergency_contact' AND n.created_at < now() - make_interval(days => ${FINDER_RETENTION_DAYS})
+            THEN NULL
+          ELSE n.body
+        END AS body,
+        CASE
+          WHEN n.type = 'emergency_contact' AND n.created_at < now() - make_interval(days => ${FINDER_RETENTION_DAYS})
+            THEN jsonb_build_object('pet_name', to_jsonb(n) -> 'finder_contact' -> 'pet_name')
+          ELSE to_jsonb(n) -> 'finder_contact'
+        END AS finder_contact,
         n.read_at,
         n.created_at,
         -- PRIVACY (QA 2026-10-16 bug 04): the display name only — username can be e-mail derived.
