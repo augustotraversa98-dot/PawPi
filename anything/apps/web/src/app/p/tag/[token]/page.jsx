@@ -1,31 +1,17 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router";
+import { PET_PAGE_WRAP as wrap, PetPageHeader, PetRow } from "@/components/publicPet/PetPageParts";
+import { BRAND } from "@/lib/brand/tokens";
+import { useDocumentHead } from "@/lib/legal/head";
+import { PET_PAGE_COPY } from "@/lib/publicPet/copy";
+import { useVisitorLang } from "@/lib/publicPet/useVisitorLang";
 
 // PUBLIC pet tag page (ticket 2.51) — the permanent printed QR lands here. NO login, NO
 // app-install wall. Renders ONLY the basic fields the DEFINER fn whitelisted (+ medical iff the
 // owner enabled it). A stranger can relay a message to the owner (relay mode) or tap a direct
-// phone/email when the owner chose to expose it. Non-diagnostic by design.
+// phone/email when the owner chose to expose it. Non-diagnostic by design. EN + ES (lib/publicPet).
 
-const C = {
-  coral: "#FF6F61",
-  cream: "#FFF7EF",
-  card: "#FFFFFF",
-  warm: "#3B241B",
-  muted: "#7A6254",
-  line: "#FFD9B3",
-  danger: "#C2410C",
-};
-
-function Row({ label, value }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px solid ${C.line}` }}>
-      <span style={{ color: C.muted, fontWeight: 600 }}>{label}</span>
-      <span style={{ color: C.warm, fontWeight: 700, textAlign: "right" }}>
-        {value == null || value === "" ? "Not recorded" : value}
-      </span>
-    </div>
-  );
-}
+const LOST_RED = "#C2410C";
 
 export default function PublicTagPage() {
   const { token } = useParams();
@@ -33,6 +19,10 @@ export default function PublicTagPage() {
   const [card, setCard] = useState(null);
   const [msg, setMsg] = useState("");
   const [sent, setSent] = useState(false);
+  const { lang, setLang } = useVisitorLang();
+  const copy = PET_PAGE_COPY[lang];
+  const t = copy.tag;
+  useDocumentHead([{ title: t.documentTitle }]);
 
   useEffect(() => {
     let alive = true;
@@ -62,16 +52,29 @@ export default function PublicTagPage() {
     setSent(true);
   };
 
-  const wrap = { maxWidth: 480, margin: "0 auto", padding: 16, fontFamily: "system-ui, sans-serif" };
+  const header = <PetPageHeader lang={lang} setLang={setLang} copy={copy} />;
+  const page = { minHeight: "100vh", background: BRAND.cream };
 
   if (state === "loading") {
-    return <div style={{ ...wrap, color: C.muted }}>Loading…</div>;
+    return (
+      <div style={page}>
+        <div style={wrap}>
+          {header}
+          <p style={{ color: BRAND.muted, textAlign: "center" }}>{copy.loading}</p>
+        </div>
+      </div>
+    );
   }
   if (state === "notfound") {
     return (
-      <div style={{ ...wrap, textAlign: "center", color: C.muted }}>
-        <h2 style={{ color: C.warm }}>Tag not active</h2>
-        <p>This pet tag isn’t active right now.</p>
+      <div style={page}>
+        <div style={wrap}>
+          {header}
+          <div style={{ textAlign: "center", color: BRAND.muted }}>
+            <h2 style={{ color: BRAND.brown, fontSize: 20, fontWeight: 800, margin: "16px 0 8px" }}>{t.notActiveTitle}</h2>
+            <p>{t.notActiveBody}</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -80,99 +83,113 @@ export default function PublicTagPage() {
   const lost = card.lost;
   const contact = card.contact || {};
   const medical = card.medical;
+  const row = (label, value) => <PetRow label={label} value={value} emptyText={copy.notRecorded} />;
+  const contactLink = {
+    display: "block",
+    textAlign: "center",
+    background: BRAND.coral,
+    color: "#fff",
+    padding: 12,
+    borderRadius: 12,
+    textDecoration: "none",
+    fontWeight: 700,
+  };
 
   return (
-    <div style={{ minHeight: "100vh", background: C.cream }}>
+    <div style={page}>
       <div style={wrap}>
-        <div style={{ textAlign: "center", color: C.coral, fontWeight: 800, fontSize: 20, marginBottom: 8 }}>
-          🐾 PawPi
-        </div>
+        {header}
 
         {lost && (
           <div
             data-testid="lost-banner"
-            style={{ background: C.danger, color: "#fff", borderRadius: 12, padding: 12, marginBottom: 12, textAlign: "center", fontWeight: 700 }}
+            style={{ background: LOST_RED, color: "#fff", borderRadius: 12, padding: 12, marginBottom: 12, textAlign: "center", fontWeight: 700 }}
           >
-            This pet is reported LOST
-            {lost.reward ? ` · Reward: ${lost.reward}` : ""}
-            {lost.last_seen_area ? ` · Last seen: ${lost.last_seen_area}` : ""}
+            {[
+              t.lost,
+              lost.reward ? t.reward.replace("{value}", () => lost.reward) : null,
+              lost.last_seen_area ? t.lastSeen.replace("{value}", () => lost.last_seen_area) : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
           </div>
         )}
 
-        <div style={{ background: C.card, borderRadius: 16, padding: 16, border: `1px solid ${C.line}` }}>
+        <div style={{ background: BRAND.card, borderRadius: 16, padding: 16, border: `1px solid ${BRAND.peach}` }}>
           <div style={{ textAlign: "center" }}>
             {pet.avatar_url ? (
-              <img src={pet.avatar_url} alt={pet.name} style={{ width: 120, height: 120, borderRadius: 60, objectFit: "cover" }} />
+              <img src={pet.avatar_url} alt={pet.name || t.petFallback} style={{ width: 120, height: 120, borderRadius: 60, objectFit: "cover" }} />
             ) : (
-              <div style={{ width: 120, height: 120, borderRadius: 60, background: C.cream, margin: "0 auto", lineHeight: "120px", fontSize: 48 }}>🐶</div>
+              <div aria-hidden="true" style={{ width: 120, height: 120, borderRadius: 60, background: BRAND.cream, margin: "0 auto", lineHeight: "120px", fontSize: 48 }}>🐶</div>
             )}
-            <h1 style={{ color: C.warm, margin: "8px 0 2px" }}>{pet.name || "This pet"}</h1>
-            <p style={{ color: C.coral, fontWeight: 700, margin: 0 }}>This dog has a home 💛</p>
+            <h1 style={{ color: BRAND.brown, margin: "8px 0 2px", fontSize: 26, fontWeight: 800 }}>{pet.name || t.petFallback}</h1>
+            <p style={{ color: BRAND.coral, fontWeight: 700, margin: 0 }}>{t.hasHome}</p>
           </div>
 
           <div style={{ marginTop: 12 }}>
-            <Row label="Species" value={pet.species} />
-            <Row label="Breed" value={pet.breed} />
-            <Row label="Microchip" value={card.microchip_id} />
+            {row(copy.species, copy.speciesValues[String(pet.species || "").toLowerCase()] || pet.species)}
+            {row(copy.breed, pet.breed)}
+            {row(copy.microchip, card.microchip_id)}
           </div>
 
           {medical && (
             <div data-testid="medical-section" style={{ marginTop: 16 }}>
-              <h3 style={{ color: C.warm }}>Medical (for a vet)</h3>
-              <Row label="Blood type" value={medical.blood_type} />
-              <Row label="Spay/neuter" value={medical.spayed_neutered_status} />
-              <Row
-                label="Allergies"
-                value={(medical.allergies || []).map((a) => a.allergen).join(", ")}
-              />
-              <Row
-                label="Conditions"
-                value={(medical.conditions || []).map((c2) => c2.condition).join(", ")}
-              />
-              <Row label="Notes" value={medical.medical_notes} />
+              <h3 style={{ color: BRAND.brown, fontSize: 17, fontWeight: 800 }}>{t.medicalHeading}</h3>
+              {row(copy.bloodType, medical.blood_type)}
+              {row(copy.spayNeuter, copy.spayValues[medical.spayed_neutered_status] || medical.spayed_neutered_status)}
+              {row(copy.allergies, (medical.allergies || []).map((a) => a.allergen).join(", "))}
+              {row(copy.conditions, (medical.conditions || []).map((c) => c.condition).join(", "))}
+              {row(t.notes, medical.medical_notes)}
             </div>
           )}
 
           <div style={{ marginTop: 16 }}>
             {contact.mode === "phone" && contact.value && (
-              <a href={`tel:${contact.value}`} style={{ display: "block", textAlign: "center", background: C.coral, color: "#fff", padding: 12, borderRadius: 12, textDecoration: "none", fontWeight: 700 }}>
-                Call the owner
+              <a href={`tel:${contact.value}`} style={contactLink}>
+                {t.callOwner}
               </a>
             )}
             {contact.mode === "email" && contact.value && (
-              <a href={`mailto:${contact.value}`} style={{ display: "block", textAlign: "center", background: C.coral, color: "#fff", padding: 12, borderRadius: 12, textDecoration: "none", fontWeight: 700 }}>
-                Email the owner
+              <a href={`mailto:${contact.value}`} style={contactLink}>
+                {t.emailOwner}
               </a>
             )}
             {contact.mode === "relay" &&
               (sent ? (
-                <p data-testid="relay-sent" style={{ textAlign: "center", color: C.muted }}>
-                  Thanks — the owner has been notified.
+                <p data-testid="relay-sent" style={{ textAlign: "center", color: BRAND.muted }}>
+                  {t.relaySent}
                 </p>
               ) : (
                 <div>
+                  <label htmlFor="relay-message" style={{ display: "block", color: BRAND.brown, fontWeight: 700 }}>
+                    {t.relayLabel}
+                  </label>
+                  <p id="relay-hint" style={{ color: BRAND.brown, fontSize: 14, margin: "4px 0 8px" }}>
+                    {t.relayHint}
+                  </p>
                   <textarea
+                    id="relay-message"
                     data-testid="relay-message"
+                    aria-describedby="relay-hint"
+                    maxLength={500}
                     value={msg}
                     onChange={(e) => setMsg(e.target.value)}
-                    placeholder="Found this pet? Send the owner a message (e.g. where you are)."
-                    style={{ width: "100%", minHeight: 72, borderRadius: 12, border: `1px solid ${C.line}`, padding: 10, boxSizing: "border-box" }}
+                    placeholder={t.relayPlaceholder}
+                    style={{ width: "100%", minHeight: 96, borderRadius: 12, border: `1px solid ${BRAND.peach}`, padding: 10, boxSizing: "border-box", fontSize: 16, fontFamily: "inherit" }}
                   />
                   <button
                     data-testid="relay-send"
                     onClick={sendRelay}
-                    style={{ marginTop: 8, width: "100%", background: C.coral, color: "#fff", padding: 12, borderRadius: 12, border: "none", fontWeight: 700 }}
+                    style={{ marginTop: 8, width: "100%", background: BRAND.coral, color: "#fff", padding: 12, borderRadius: 12, border: "none", fontWeight: 700, cursor: "pointer" }}
                   >
-                    Contact the owner
+                    {t.relaySend}
                   </button>
                 </div>
               ))}
           </div>
         </div>
 
-        <p style={{ color: C.muted, fontSize: 12, textAlign: "center", marginTop: 16 }}>
-          PawPi organizes a pet’s existing information for a real vet. It does not provide a diagnosis.
-        </p>
+        <p style={{ color: BRAND.muted, fontSize: 12, textAlign: "center", marginTop: 16 }}>{copy.footer}</p>
       </div>
     </div>
   );
