@@ -21,7 +21,7 @@ and 12, and a names-only look at the Railway variable list for item 2. #827 (the
 | 8 | Finder rate-limit retention | [#835](https://github.com/augustotraversa98-dot/PawPi/pull/835) | draft | Apply migration **0151**, then `verify_0151.sql`. Nothing is overdue today, so it removes nothing on apply. |
 | 9 | Removed `/integrations` proxy | [#836](https://github.com/augustotraversa98-dot/PawPi/pull/836) | **merged** | Nothing. |
 | 10 | CORS origins | no PR (by design) | done, written to `STATE.md` | Read `STATE.md` (kept out of the repository on purpose; see below). One thing to confirm on the Railway dashboard. |
-| 11 | `@auth/core` bump | [#838](https://github.com/augustotraversa98-dot/PawPi/pull/838) | open, to be merged once its 4 checks are green (status updated in this report before it merges) | After deploy, sign in once by email and once with Google, from the app and the website. |
+| 11 | `@auth/core` bump | [#838](https://github.com/augustotraversa98-dot/PawPi/pull/838) | **merged** (4 checks green, incl. the full integration suite) | After deploy, sign in once by email and once with Google, from the app and the website. |
 | 12 | Field-encryption design | [#837](https://github.com/augustotraversa98-dot/PawPi/pull/837) | **merged** | Decide the six questions at the end of `docs/design-field-encryption.md`. |
 
 Duplicate check for items 3 and 4: no open PR or branch existed for either, and neither feature was on `main`, so neither was skipped.
