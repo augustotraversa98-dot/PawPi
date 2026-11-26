@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { recordBusinessEvent } from "@/lib/telemetry/business";
 import { withLoggedByNames } from "@/app/api/utils/loggedBy";
+import { parsePrivateMediaKey } from "@/app/api/utils/mediaAccess";
 
 async function POST(request) {
   try {
@@ -56,6 +57,15 @@ async function POST(request) {
       return Response.json(
         { error: access.error, ...(access.code ? { code: access.code } : {}) },
         { status: access.status },
+      );
+    }
+
+    // A caregiver (log-only role) may attach only a private media key for THIS pet, the shape /api/upload returns and
+    // /api/media serves (migration 0150 enforces the same in RLS). Answer clearly here instead of letting RLS abort the request.
+    if (access.role === "caregiver" && parsePrivateMediaKey(imageUrl)?.petId !== Number(petId)) {
+      return Response.json(
+        { error: "Photo must be an uploaded file for this pet", code: "invalid_photo_reference" },
+        { status: 400 },
       );
     }
 
