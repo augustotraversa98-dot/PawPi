@@ -12,6 +12,7 @@ import { bodyLimit } from 'hono/body-limit';
 import { requestId } from 'hono/request-id';
 import { createHonoServer } from 'react-router-hono-server/node';
 import { securityHeaders } from '../src/app/api/utils/securityHeaders.js';
+import { originGuard } from '../src/app/api/utils/originGuard.js';
 import { apiNotFound } from '../src/app/api/utils/apiNotFound.js';
 import { stampSessionExpired } from '../src/app/api/utils/sessionExpiredCode.js';
 import { blockProbePaths } from '../src/app/api/utils/probePaths.js';
@@ -178,6 +179,9 @@ if (process.env.CORS_ORIGINS) {
     })
   );
 }
+// Requests that change data on /api are accepted from this site, CORS_ORIGINS and callers that are not web pages
+// (src/app/api/utils/originGuard.js). After cors(), which answers preflights; before the session guard and the routes.
+app.use('/api/*', originGuard());
 for (const method of ['post', 'put', 'patch'] as const) {
   app[method](
     '*',
