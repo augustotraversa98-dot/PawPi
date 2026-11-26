@@ -4,7 +4,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "react-router dev",
-		"build": "react-router build",
+		"build": "react-router build && node scripts/check-public-env.mjs",
 		"start": "NODE_ENV=production node --import ./instrumentation.mjs ./build/server/index.js",
 		"typecheck": "react-router typegen && tsc --noEmit",
 		"test": "vitest run",
