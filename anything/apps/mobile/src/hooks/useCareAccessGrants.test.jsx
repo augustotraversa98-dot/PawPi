@@ -3,8 +3,9 @@
 //     no petId, hits /api/care-access/grants?petId=, returns grants[], throws on
 //     !ok;
 //   - useUpdateGrant PATCHes /api/care-access/grants/[grantId] with {action,
-//     expiresAt}, invalidates ["care-access-grants", petId] on success, and
-//     surfaces the backend error message (e.g. a 409 illegal transition).
+//     expiresAt}, invalidates ["care-access-grants", petId] on success and on
+//     refusal, and surfaces the backend error message (e.g. a 409 illegal
+//     transition).
 // fetch is mocked; no network, no DB.
 
 import React from "react";
@@ -173,4 +174,32 @@ describe("useUpdateGrant", () => {
       }),
     ).rejects.toThrow(/only a pending grant can be approved/i);
   });
+
+  test.each(["deny", "revoke"])(
+    "a refused %s also refreshes both grant lists, since access changed",
+    async (action) => {
+      global.fetch = jest.fn(async () => ({
+        ok: false,
+        status: 409,
+        json: async () => ({ error: "Refused" }),
+      }));
+      const client = makeClient();
+      const invalidateSpy = jest.spyOn(client, "invalidateQueries");
+
+      const { result } = renderHook(() => useUpdateGrant(7), {
+        wrapper: makeWrapper(client),
+      });
+
+      await act(async () => {
+        await expect(result.current.mutateAsync({ grantId: 5, action })).rejects.toThrow("Refused");
+      });
+
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ["care-access-grants", 7],
+      });
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ["care-access-grants", "all"],
+      });
+    },
+  );
 });

@@ -284,6 +284,7 @@ describe('the limit catalog', () => {
     expect(Object.keys(RATE_LIMITS).sort()).toEqual([
       'bark_create',
       'booking_create',
+      'care_share',
       'checkout_create',
       'dm_message_create',
       'emergency_public_read',

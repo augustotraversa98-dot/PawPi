@@ -23,6 +23,7 @@ import { notifyCareAccess } from "@/app/api/utils/careAccessNotify";
 //   approve : pending  → active  (granted_at=now(); optional expiresAt → expires_at)
 //   deny    : pending  → revoked (revoked_at=now())
 //   revoke  : active   → revoked (revoked_at=now())
+// Each UPDATE repeats the source status, so a change committed while the request ran also answers 409.
 //
 // DB is porsager's tagged-template `sql` (SCHEMA_NOTES "neon→porsager"): every
 // query is a tagged template; params bind via `${}`.
@@ -106,8 +107,16 @@ async function PATCH(request, { params }) {
             revoked_at = NOW(),
             updated_at = NOW()
         WHERE id = ${grantId} AND owner_user_id = ${userId}
+          AND status = 'pending'
         RETURNING *
       `;
+      // No longer pending: it was approved, shared or ended while this request ran.
+      if (updated.length === 0) {
+        return Response.json(
+          { error: "Only a pending grant can be denied" },
+          { status: 409 },
+        );
+      }
       return Response.json({ grant: updated[0] });
     }
 
@@ -124,8 +133,16 @@ async function PATCH(request, { params }) {
           revoked_at = NOW(),
           updated_at = NOW()
       WHERE id = ${grantId} AND owner_user_id = ${userId}
+        AND status = 'active'
       RETURNING *
     `;
+    // No longer active: a new share replaced it, or it ended, while this request ran. Nobody is told.
+    if (updated.length === 0) {
+      return Response.json(
+        { error: "Only an active grant can be revoked" },
+        { status: 409 },
+      );
+    }
     await notifyCareAccess({ type: "care_access_revoked", grant: updated[0], actor: userId });
     return Response.json({ grant: updated[0] });
   } catch (error) {
