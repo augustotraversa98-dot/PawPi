@@ -32,6 +32,8 @@ export const OWNER_PUSH_TYPES = {
   pet_share_revoked: { category: "owner_sharing", promotional: false },
   pet_share_left: { category: "owner_sharing", promotional: false },
   pet_share_owner_deleted: { category: "owner_sharing", promotional: false },
+  // A vet accepted the owner's invite link and asks to see the record: transactional, same category.
+  care_access_requested: { category: "owner_sharing", promotional: false },
 };
 
 export function ownerPushTypeInfo(type) {
@@ -111,6 +113,11 @@ const COPY = {
   pet_share_owner_deleted: {
     en: () => ({ title: "A shared dog was removed", body: "The owner deleted their account, so a dog is no longer shared with you." }),
     es: () => ({ title: "Se quitó un perro compartido", body: "El dueño borró su cuenta, así que un perro ya no está compartido con vos." }),
+  },
+  // Generic on purpose, like the sharing pushes: no names and nothing medical.
+  care_access_requested: {
+    en: () => ({ title: "A vet asks for access 🐾", body: "Nothing is shared unless you approve it. Tap to see the request." }),
+    es: () => ({ title: "Un veterinario pide acceso 🐾", body: "No se comparte nada si no lo aprobás. Tocá para ver el pedido." }),
   },
 };
 

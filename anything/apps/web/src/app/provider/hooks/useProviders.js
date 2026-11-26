@@ -156,6 +156,14 @@ export const petRecordUrl = (providerId, petId) =>
 export const accessRequestsUrl = (providerId) =>
   `/api/providers/${providerId}/access-requests`;
 
+// Pets whose record is shared with this business right now (no booking needed).
+export const sharedPetsKey = (providerId) => [
+  "provider-shared-pets",
+  String(providerId ?? ""),
+];
+export const sharedPetsUrl = (providerId) =>
+  `/api/providers/${providerId}/shared-pets`;
+
 export const petNotesUrl = (providerId, petId) =>
   `/api/providers/${providerId}/pets/${petId}/notes`;
 
@@ -1205,6 +1213,18 @@ export function usePetRecord(providerId, petId) {
     // Never auto-retry a 403 — it's a deliberate consent denial, not a blip.
     retry: (failureCount, error) =>
       error?.status !== 403 && failureCount < 1,
+  });
+}
+
+// The pets shared with this business now. Names only; the record stays behind its own gate.
+export function useSharedPets(providerId) {
+  return useQuery({
+    queryKey: sharedPetsKey(providerId),
+    queryFn: async () =>
+      (await getJson(sharedPetsUrl(providerId))).pets ?? [],
+    enabled: providerId != null && providerId !== "",
+    // Access can be given or ended at any moment by the owner.
+    staleTime: 0,
   });
 }
 
