@@ -18,17 +18,17 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
-## 2026-11-26 — Night run: finder flow, vet sharing by parts and by invite, build from `103d79b6` (IN PROGRESS, not yet in TestFlight)
+## 2026-11-26 — Night run: finder flow, vet sharing by parts and by invite, build 36 from `103d79b6`, uploaded for TestFlight
 Report: [`night-run/2026-11-26/REPORT-build34-vet-sharing.md`](night-run/2026-11-26/REPORT-build34-vet-sharing.md).
 - **Merged:** finder flow (#804, #807); vet sharing by parts with an end date (#811, #814, #816, #817, #815, #810); vet invite by link (#818, #821, #822, #823, #820); keeping access changes consistent (#819); maintenance (#809, #808, #813, #824). #802 and #812 stay drafts until the new build is live.
 - **Database (production, all 2026-11-26):** `0146` (before the run; `verify_0146.sql` 19/19 PASS), `0147` (about 11:19 Buenos Aires; 24/24 PASS), `0148` (about 12:55; 15/15 PASS). After 0148, row 24 of `verify_0147.sql` reads FAIL, expected: 0148 adds one notification type.
-- **Build:** iOS 1.0.5 from `103d79b6`. The first attempt (number 34) **failed at signing**: the provisioning profile lacked the Time Sensitive Notifications capability. The owner is refreshing the profile and rebuilding (number 34 or 35): **in progress**. Nothing in TestFlight yet; nothing submitted to App Review. Steps: [`test-backlog.md`](test-backlog.md).
-- **Not tested:** real push delivery and Focus break-through, a physical phone, Android, VoiceOver, the signing flow.
+- **Build:** iOS 1.0.5 (36) from `103d79b6`, built and uploaded to App Store Connect for TestFlight on 2026-11-26 (Apple processing not verified); not submitted to App Review. The first attempt (number 34) failed at signing because the stored profile lacked the Time Sensitive Notifications capability; the owner removed it and rebuilt with their Apple sign-in, which created a new one.
+- **Not tested:** real push delivery and Focus break-through, a physical phone, Android, VoiceOver, installing the build signed with the new profile.
 - **Waiting for the owner:** test on TestFlight; App Store Connect privacy answers; submit to App Review; after it is live, say "build 34 is live" to merge #802 with #812 and decide the `PRIVACY_VERSION` / `TERMS_VERSION` bump.
 
 **Device checklist** (own account and dog, never the demo account):
 
-- [ ] **1. Version:** More > Settings: the footer shows `PawPi v1.0.5 (34)`, or `(35)` if the number was not reset.
+- [ ] **1. Version:** More > Settings: the footer shows `PawPi v1.0.5 (36)`.
 - [ ] **2. Keyboard:** edit the medical profile (contact name, notes), the vet summary questions, a weight note and your dog's profile. Typing keeps the keyboard open and the field visible.
 - [ ] **3. Emergency card:** taps respond at once. "Share QR" (image and link) and "Copy link" work.
 - [ ] **4. Notifications:** the filter buttons are fully visible, also with larger text.
@@ -79,7 +79,7 @@ Report: [`night-run/2026-11-26/REPORT-build34-vet-sharing.md`](night-run/2026-11
 
 ---
 
-## 2026-11-26 — Emergency / finder flow: owner decides what is shared, family notified, tighter limits, 90-day retention — migration 0146 APPLIED 2026-11-26 (verify 19/19 PASS); website merged (#804), app changes need the build from `103d79b6` (number 34 or 35, in progress)
+## 2026-11-26 — Emergency / finder flow: owner decides what is shared, family notified, tighter limits, 90-day retention — migration 0146 APPLIED 2026-11-26 (verify 19/19 PASS); website merged (#804), app changes are in build 36 (uploaded for TestFlight)
 - **Finder form** on `/p/tag/[token]`: name (optional), phone and/or email (one required), message. Shown in relay mode, and in phone / email mode when nothing is saved. "The family was told" appears only when the server says so; a failed send keeps what was typed.
 - **Public pages** show the owner's phone or email only when the owner chose that mode; relay and none publish neither. A **full vet link** no longer shows the medical profile's emergency contact when the setting is relay or none. New owner switch **Show my emergency contact on the pet tag** (default OFF).
 - **Notification** goes to the owner and every active family member / caregiver, with Call / Send email buttons and a push. Each member's own settings apply ("Lost pet alerts" switch, quiet hours); the owner's push ignores them.
@@ -87,7 +87,7 @@ Report: [`night-run/2026-11-26/REPORT-build34-vet-sharing.md`](night-run/2026-11
 - **Retention:** finder details are deleted after 90 days (hourly push-receipts job + read filter). Details: `docs/emergency-finder.md`.
 - Migration `0146_emergency_finder_contact.sql` + `supabase/verify_0146.sql` (19 rows). `app.json` gains only the time-sensitive entitlement (new native build; the provisioning profile must be regenerated).
 - Database: 0146 was applied to production on 2026-11-26 and `supabase/verify_0146.sql` returned 19 of 19 PASS (migration history name `0146_emergency_finder_contact`; the applied SQL is the repo file with comments removed from inside function bodies, same behaviour).
-- Merged in #804. Remaining: the app build from `103d79b6` (number 34 or 35, in progress).
+- Merged in #804; the app part is in build 36.
 
 ---
 

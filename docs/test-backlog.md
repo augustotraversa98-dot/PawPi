@@ -11,31 +11,24 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ---
 
-## 📦 EAS build from `103d79b6` (v1.0.5, number 34 or 35) — IN PROGRESS, test this one when it reaches TestFlight
+## 📦 EAS build 36 (v1.0.5) — built 2026-11-26, test this one
 
 | Item | Value |
 |---|---|
+| Version / EAS iOS build number | 1.0.5 (**36**) |
+| EAS build | https://expo.dev/accounts/augusto-firulais/projects/pawpi/builds/ff7a63c0-abdd-4fc8-a966-e64145a49dad (FINISHED) |
 | Built from commit | `103d79b6` (`main`, through #824) |
-| Version | 1.0.5 |
-| First attempt (number 34) | **FAILED at signing** on 2026-11-26: the provisioning profile lacked the Time Sensitive Notifications capability ([build 4481eb68](https://expo.dev/accounts/augusto-firulais/projects/pawpi/builds/4481eb68-2fa4-4d66-bcb4-1cf1e8e50d90)) |
-| Rebuild: number / EAS build / status | **in progress** (owner, by hand, after refreshing the profile) |
-| TestFlight | **in progress:** nothing uploaded when this was written |
-| App Review | **Not submitted.** |
+| Profile | `production` |
+| App Store Connect upload | **Uploaded 2026-11-26** ([submission](https://expo.dev/accounts/augusto-firulais/projects/pawpi/submissions/3c540a4e-28c6-4461-bf97-83d234340d05)); Apple processing completion not checked. |
+| App Review | **Not submitted.** Nothing released. |
 
-**Finishing steps** (clean checkout of `103d79b6`, after `npx npm@10 ci` in `anything/apps/mobile`):
+The first attempt (number 34) failed at signing: the stored profile lacked the Time Sensitive Notifications capability ([build 4481eb68](https://expo.dev/accounts/augusto-firulais/projects/pawpi/builds/4481eb68-2fa4-4d66-bcb4-1cf1e8e50d90)). The owner removed that profile and rebuilt with their Apple sign-in, which created a new one.
 
-1. `eas credentials --platform ios`: `production` → Build Credentials → delete the **Provisioning Profile**; keep the **Distribution Certificate**.
-2. Optional, to keep the number 34: `eas build:version:set --platform ios --profile production`, enter `33`. Without this the next build is 35.
-3. `eas build --platform ios --profile production`: sign in to Apple when asked and let it create the new profile.
-4. `eas submit --platform ios --profile production --latest` (TestFlight; it does not submit to App Review).
-
-If it fails the same way, enable **Time Sensitive Notifications** for `com.pawpi.app` under Identifiers at developer.apple.com, then repeat steps 1 and 3.
-
-**Testable on this build:** the "App" steps of the *Emergency / finder flow* section below (headed "needs EAS build 34" until now), and the app changes of night run 2026-11-25 ([`REPORT-testflight-fixes.md`](night-run/2026-11-25/REPORT-testflight-fixes.md): keyboard, emergency card, notifications, Back, AI consent). **Nothing here is device-verified yet.** Not tested at all: real push and Focus break-through, a physical phone, Android, VoiceOver, the signing flow.
+**Testable on this build:** the "App" steps of the *Emergency / finder flow* section below (headed "needs EAS build 34" until now), and the app changes of night run 2026-11-25 ([`REPORT-testflight-fixes.md`](night-run/2026-11-25/REPORT-testflight-fixes.md): keyboard, emergency card, notifications, Back, AI consent). **Nothing here is device-verified yet.** Not tested at all: real push and Focus break-through, a physical phone, Android, VoiceOver, installing the build signed with the new profile.
 
 **Device checklist** (same list as "What to test" in [the run report](night-run/2026-11-26/REPORT-build34-vet-sharing.md), which also has it in Spanish). Use your own account and dog, never the demo account.
 
-- [ ] **1. Version:** More > Settings: the footer shows `PawPi v1.0.5 (34)`, or `(35)` if the number was not reset.
+- [ ] **1. Version:** More > Settings: the footer shows `PawPi v1.0.5 (36)`.
 - [ ] **2. Keyboard:** edit the medical profile (contact name, notes), the vet summary questions, a weight note and your dog's profile. Typing keeps the keyboard open and the field visible.
 - [ ] **3. Emergency card:** taps respond at once. "Share QR" (image and link) and "Copy link" work.
 - [ ] **4. Notifications:** the filter buttons are fully visible, also with larger text.
@@ -85,7 +78,7 @@ Every section below that says "needs EAS build 33" or "next EAS build" is testab
 
 ---
 
-## 📱 To test — Emergency / finder flow (0146 APPLIED 2026-11-26, verify 19/19 PASS; website merged in #804; app needs the build from `103d79b6`, in progress)
+## 📱 To test — Emergency / finder flow (0146 APPLIED 2026-11-26, verify 19/19 PASS; website merged in #804; app: build 36)
 
 Database: nothing to run (0146, 0147 and 0148 were applied on 2026-11-26; verify 19/19, 24/24 and 15/15 PASS. After 0148, row 24 of `verify_0147.sql` reads FAIL, expected). Use your own dog's tag link, never the demo account. Details: [`emergency-finder.md`](emergency-finder.md).
 
@@ -95,7 +88,7 @@ Database: nothing to run (0146, 0147 and 0148 were applied on 2026-11-26; verify
 - [ ] **3.** Emergency card on **Relay**: no owner phone / email on the tag page or on a vet link, and no emergency contact on a full vet link.
 - [ ] **Privacy page** (merged in #807): `https://www.pawpi.info/privacy` in ES and EN is dated 26 November 2026 and sections 2, 7 and 9 mention the person who found your dog.
 
-**App (the build from `103d79b6`, number 34 or 35)**
+**App (build 36)**
 - [ ] **4.** Turn on a Focus, send a message from the tag page on another phone: the "Alguien encontró a …" banner breaks through. A second message within 10 minutes arrives as an ordinary notification (intended).
 - [ ] **5.** Notification list: **Llamar** / **Enviar email** open the phone and mail apps. A family member's phone gets the notification too.
 - [ ] **6.** Emergency card, **Mostrar mi contacto de emergencia en la chapa**: off by default; on, the tag page shows it; off again, it is gone.
