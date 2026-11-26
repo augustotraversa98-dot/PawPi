@@ -289,7 +289,7 @@ describe("C. LOGGING per role", () => {
     ["wellness", "/health/wellness-logs", { petId: PET, checkType: "general", status: "good" }],
     ["general check", "/health/general-checks", { petId: PET, mood: "happy", energy: "high" }],
     ["medical care (non-vaccine)", "/health/medical-care-logs", { petId: PET, careType: "medication", name: "Apoquel", status: "given" }],
-    ["photo check", "/health/photo-checks", { petId: PET, bodyArea: "paws", imageUrl: "https://example.com/p.jpg" }],
+    ["photo check", "/health/photo-checks", { petId: PET, bodyArea: "paws", imageUrl: `pets/${PET}/p.jpg` }],
   ];
 
   for (const [label, path, body] of LOGS) {
