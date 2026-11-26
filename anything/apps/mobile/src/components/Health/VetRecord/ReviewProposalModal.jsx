@@ -306,7 +306,6 @@ export function ReviewProposalModal({ visible, proposal, petId, onClose, onAppli
         </>
       )}
     >
-      >
         <Text style={[TYPE.body, { color: COLORS.mutedBrown, marginBottom: 12 }]}>
           {rv("subtitle")}
         </Text>

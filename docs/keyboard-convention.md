@@ -40,7 +40,7 @@ All of 1, 2, 6 and 7 are enforced by `keyboardSafety.guard.test.js`.
 * A new case fails. Fix it: move the component outside its parent and pass props, or make it a lowercase function and
   call it (`{renderRow()}`). Do not add it to the baseline.
 * After fixing, renaming or moving a listed case, lower or remove its entry; an outdated entry also fails.
-* The one file Biome reports a syntax error for is listed under `unparsed`; a new syntax error fails.
+* A file Biome reports a syntax error for fails unless it is listed under `unparsed`. That list is empty.
 
 **What the rule does not detect** (checked with Biome 2.6.7): a component wrapped in `useCallback` / `useMemo` or
 returned by a factory (`styled(...)`), one chosen by a condition (`x ? () => <A/> : B`), an inline

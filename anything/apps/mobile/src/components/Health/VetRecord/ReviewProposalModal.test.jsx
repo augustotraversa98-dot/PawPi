@@ -77,6 +77,25 @@ test("renders the proposed records grouped by type", () => {
   expect(getByTestId("proposed-surgeries-0")).toBeTruthy();
 });
 
+// React Native only allows text inside <Text>; a stray character between elements logs an error on device.
+test("renders no text outside a Text element", () => {
+  const { toJSON } = render(
+    <ReviewProposalModal visible proposal={proposal} petId={3} onClose={jest.fn()} onApplied={jest.fn()} />,
+  );
+  const stray = [];
+  const walk = (node, parentType) => {
+    if (node == null) return;
+    if (Array.isArray(node)) return node.forEach((child) => walk(child, parentType));
+    if (typeof node === "string") {
+      if (parentType !== "Text") stray.push(`${parentType}: ${node}`);
+      return;
+    }
+    walk(node.children, node.type);
+  };
+  walk(toJSON(), "root");
+  expect(stray).toEqual([]);
+});
+
 test("confirm applies each included record to its VR-B route + marks the source", async () => {
   const onApplied = jest.fn();
   const onClose = jest.fn();
