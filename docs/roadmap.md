@@ -18,6 +18,13 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-26 — CI check: no new components declared inside components (mobile) — tooling only, no app, server or migration change
+- `npm run lint:components` runs in the `mobile (jest)` job: Biome 2.6.7 (one new dev dependency) with only `noNestedComponentDefinitions` (the pattern behind the keyboard bug fixed in #799).
+- 14 existing cases in 10 files are a committed baseline (`anything/apps/mobile/scripts/nested-components-baseline.json`): warnings, not fixed. A new one fails.
+- Found by the check, not fixed: a stray `>` in `ReviewProposalModal.jsx` (also baselined). Details and limits: `docs/keyboard-convention.md`.
+
+---
+
 ## 2026-11-26 — Emergency / finder flow: owner decides what is shared, family notified, tighter limits, 90-day retention — migration 0146 APPLIED 2026-11-26 (verify 19/19 PASS); website deploys with the merge, app changes need EAS build 34
 - **Finder form** on `/p/tag/[token]`: name (optional), phone and/or email (one required), message. Shown in relay mode, and in phone / email mode when nothing is saved. "The family was told" appears only when the server says so; a failed send keeps what was typed.
 - **Public pages** show the owner's phone or email only when the owner chose that mode; relay and none publish neither. A **full vet link** no longer shows the medical profile's emergency contact when the setting is relay or none. New owner switch **Show my emergency contact on the pet tag** (default OFF).

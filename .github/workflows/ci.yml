@@ -77,6 +77,12 @@ jobs:
             jest-${{ runner.os }}-${{ hashFiles('anything/apps/mobile/package-lock.json', 'anything/apps/mobile/package.json', 'anything/apps/mobile/babel.config.js') }}-
             jest-${{ runner.os }}-
 
+      # One lint rule (anything/apps/mobile/biome.json): no component declared inside a component. Existing cases are a
+      # committed baseline and only warn; a new one fails. Takes about a second, so it runs before the tests.
+      - name: Check for components declared inside components
+        if: steps.areas.outputs.run == 'true'
+        run: npm run lint:components
+
       - name: Run tests
         if: steps.areas.outputs.run == 'true'
         run: npm test
