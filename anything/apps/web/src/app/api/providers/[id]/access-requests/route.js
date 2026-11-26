@@ -95,6 +95,10 @@ async function POST(request, { params }) {
       }
     }
 
+    // A grant past its date gives no access and must not block a new request:
+    // close it first (the database only closes rows whose expires_at has passed).
+    await sql`SELECT app_expire_care_grants(${petId}::int, ${providerId}::int)`;
+
     // Dedup: a live grant (pending OR active) for this (pet, provider) already
     // exists — re-request is only allowed after it is revoked/expired.
     const existing = await sql`

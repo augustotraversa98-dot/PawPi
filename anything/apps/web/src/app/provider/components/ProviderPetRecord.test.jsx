@@ -110,7 +110,9 @@ describe("ProviderPetRecord — consent states", () => {
       screen.getByText(/Request clinical access for Rex/i),
     ).toBeInTheDocument();
     // The consent/audit line is always visible.
-    expect(screen.getByText(/every view and entry is logged/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/every view and entry is logged/i),
+    ).toBeInTheDocument();
   });
 
   it("Request calls useRequestAccess with the 3 clinical scopes + bookingId", () => {
@@ -134,7 +136,9 @@ describe("ProviderPetRecord — consent states", () => {
     expect(
       await screen.findByText(/waiting for the owner to approve/i),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /refresh/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /refresh/i }),
+    ).toBeInTheDocument();
   });
 
   it("a 409 on request is treated as pending (not a hard error)", async () => {
@@ -163,9 +167,7 @@ describe("ProviderPetRecord — consent states", () => {
   it("granted + null profile → medical profile empty state", () => {
     setRecord({ data: { ...GRANTED, medical_profile: null } });
     renderScreen();
-    expect(
-      screen.getByText(/No medical profile on file/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/No medical profile on file/i)).toBeInTheDocument();
   });
 
   it("a post-load 403 (stale data + error) flips back to the access panel, not the record", () => {
@@ -173,7 +175,9 @@ describe("ProviderPetRecord — consent states", () => {
     setRecord({ data: GRANTED, isError: true, error: { status: 403 } });
     renderScreen();
     // The access panel wins; the stale record is NOT shown.
-    expect(screen.getByText(/Request clinical access for Rex/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Request clinical access for Rex/i),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Healthy on exam")).not.toBeInTheDocument();
   });
 });
@@ -189,13 +193,14 @@ describe("ProviderPetRecord — writes", () => {
     expect(addNoteMutate).not.toHaveBeenCalled();
 
     // With a note → posts { note }.
-    fireEvent.change(
-      screen.getByPlaceholderText(/Exam findings/i),
-      { target: { value: "Recheck in 2 weeks" } },
-    );
+    fireEvent.change(screen.getByPlaceholderText(/Exam findings/i), {
+      target: { value: "Recheck in 2 weeks" },
+    });
     fireEvent.click(screen.getByRole("button", { name: /add note/i }));
     await waitFor(() => expect(addNoteMutate).toHaveBeenCalledTimes(1));
-    expect(addNoteMutate.mock.calls[0][0]).toEqual({ note: "Recheck in 2 weeks" });
+    expect(addNoteMutate.mock.calls[0][0]).toEqual({
+      note: "Recheck in 2 weeks",
+    });
   });
 
   it("Add vaccination requires a name and then calls useAddVaccination", async () => {
@@ -213,7 +218,9 @@ describe("ProviderPetRecord — writes", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /add vaccination/i }));
     await waitFor(() => expect(addVaccinationMutate).toHaveBeenCalledTimes(1));
-    expect(addVaccinationMutate.mock.calls[0][0]).toEqual({ name: "Bordetella" });
+    expect(addVaccinationMutate.mock.calls[0][0]).toEqual({
+      name: "Bordetella",
+    });
   });
 
   it("a write that 403s drops back to the access panel and refetches", async () => {
@@ -229,5 +236,113 @@ describe("ProviderPetRecord — writes", () => {
     fireEvent.click(screen.getByRole("button", { name: /add note/i }));
 
     await waitFor(() => expect(refetch).toHaveBeenCalled());
+  });
+});
+
+const SHARED = {
+  sharedSections: [
+    "emergency_contact",
+    "insurance",
+    "vet_notes",
+    "vaccines",
+    "files",
+    "photos",
+    "lab_results",
+  ],
+  medical_profile: {
+    emergency_contact_name: "Ana",
+    emergency_contact_phone: "555-0100",
+    insurance_provider: "Insurer Co",
+    insurance_policy_number: "POL-9",
+  },
+  notes: GRANTED.notes,
+  vaccinations: GRANTED.vaccinations,
+  documents: [
+    { id: 1, name: "X-ray report", file_url: "pets/55/xray.pdf" },
+    { id: 2, name: "Old scan", file_url: "file:///var/mobile/scan.jpg" },
+  ],
+  photo_checks: [
+    {
+      id: 1,
+      body_area: "ears",
+      image_url: "pets/55/ear.jpg",
+      created_at: "2026-06-02",
+    },
+  ],
+  lab_results: [
+    {
+      id: 1,
+      test_name: "Blood panel",
+      test_date: "2026-06-03",
+      results: "In range",
+    },
+  ],
+};
+
+describe("ProviderPetRecord — shared by section", () => {
+  it("shows the shared sections and files, read only", () => {
+    setRecord({ data: SHARED });
+    renderScreen();
+    for (const text of [
+      "Ana",
+      "POL-9",
+      "Healthy on exam",
+      "Rabies",
+      "X-ray report",
+      "Blood panel",
+    ]) {
+      expect(screen.getByText(text)).toBeInTheDocument();
+    }
+    expect(screen.getByTestId("not-shared-sections")).toHaveTextContent(
+      "Medical profile",
+    );
+    expect(screen.getByRole("link", { name: "Open file" })).toHaveAttribute(
+      "href",
+      "/api/media?key=pets%2F55%2Fxray.pdf&providerId=3",
+    );
+    expect(screen.getByText("File not available")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Ears" })).toHaveAttribute(
+      "src",
+      "/api/media?key=pets%2F55%2Fear.jpg&providerId=3",
+    );
+    // No write form of any kind.
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText(/Exam findings/i),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Rabies")).not.toBeInTheDocument();
+  });
+
+  it("renders nothing of a section that was not shared, even if data arrived", () => {
+    setRecord({ data: { ...SHARED, sharedSections: ["vaccines"] } });
+    renderScreen();
+    expect(screen.getByText("Rabies")).toBeInTheDocument();
+    for (const text of [
+      "Ana",
+      "POL-9",
+      "Healthy on exam",
+      "X-ray report",
+      "Blood panel",
+    ]) {
+      expect(screen.queryByText(text)).not.toBeInTheDocument();
+    }
+    expect(screen.getByTestId("shared-sections")).toHaveTextContent(
+      "Vaccinations",
+    );
+    expect(screen.getByTestId("not-shared-sections")).toHaveTextContent(
+      "Insurance",
+    );
+  });
+
+  it("reads in es-AR for a Spanish-language browser", () => {
+    const languages = vi
+      .spyOn(window.navigator, "languages", "get")
+      .mockReturnValue(["es-AR"]);
+    setRecord({ data: { ...SHARED, sharedSections: ["vaccines"] } });
+    renderScreen();
+    expect(screen.getByText("Historia clínica — Rex")).toBeInTheDocument();
+    expect(screen.getByText(/Solo lectura/)).toBeInTheDocument();
+    expect(screen.getByText("01/05/2026")).toBeInTheDocument();
+    languages.mockRestore();
   });
 });

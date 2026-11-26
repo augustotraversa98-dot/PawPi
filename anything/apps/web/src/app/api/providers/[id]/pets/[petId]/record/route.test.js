@@ -10,7 +10,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "./route";
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
-import { assertCareAccess } from "@/app/api/utils/careAccess";
+import {
+  assertCareAccess,
+  findSectionGrant,
+  recordCareAccess,
+} from "@/app/api/utils/careAccess";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
@@ -22,7 +26,22 @@ vi.mock("@/app/api/utils/careAccess", () => {
       this.status = 403;
     }
   }
-  return { assertCareAccess: vi.fn(), CareAccessError };
+  return {
+    assertCareAccess: vi.fn(),
+    findSectionGrant: vi.fn(),
+    recordCareAccess: vi.fn(),
+    RECORD_SECTIONS: [
+      "profile",
+      "emergency_contact",
+      "insurance",
+      "vet_notes",
+      "vaccines",
+      "files",
+      "photos",
+      "lab_results",
+    ],
+    CareAccessError,
+  };
 });
 
 const SESSION = { user: { id: 42 }, expires: "9999999999" };
@@ -64,7 +83,9 @@ describe("GET /api/providers/[id]/pets/[petId]/record", () => {
       medical_profile: PROFILE,
       notes: NOTES,
       vaccinations: VAX,
+      sharedSections: null,
     });
+    expect(findSectionGrant).not.toHaveBeenCalled();
 
     // Gated with the read scope/action against this pet+provider.
     expect(assertCareAccess).toHaveBeenCalledWith(
@@ -105,5 +126,46 @@ describe("GET /api/providers/[id]/pets/[petId]/record", () => {
     expect(res.status).toBe(403);
     // Only the profile lookup ran; no medical reads after the gate threw.
     expect(sql).toHaveBeenCalledTimes(1);
+  });
+
+  it("no medical_read but a grant by section → only those sections are queried", async () => {
+    auth.mockResolvedValue(SESSION);
+    const VAX = [{ id: 9, name: "Rabies" }];
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce(VAX); // pet_vaccinations, the only section read
+    const { CareAccessError } = await import("@/app/api/utils/careAccess");
+    assertCareAccess.mockRejectedValue(new CareAccessError("denied"));
+    findSectionGrant.mockResolvedValue({ id: 700, sections: ["vaccines"] });
+
+    const res = await GET(new Request(reqUrl), PARAMS);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      sharedSections: ["vaccines"],
+      medical_profile: null,
+      notes: [],
+      vaccinations: VAX,
+      documents: [],
+      photo_checks: [],
+      lab_results: [],
+    });
+    expect(sql).toHaveBeenCalledTimes(2);
+    expect(findSectionGrant).toHaveBeenCalledWith("55", "100", 7);
+    expect(recordCareAccess).toHaveBeenCalledWith(700, 7, "read", "medical_record");
+  });
+
+  it("a profile-type section is read through app_shared_medical_profile, never the table", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([{ id: 1, insurance_provider: "Insurer" }]);
+    const { CareAccessError } = await import("@/app/api/utils/careAccess");
+    assertCareAccess.mockRejectedValue(new CareAccessError("denied"));
+    findSectionGrant.mockResolvedValue({ id: 700, sections: ["insurance"] });
+
+    const res = await GET(new Request(reqUrl), PARAMS);
+    expect((await res.json()).medical_profile.insurance_provider).toBe("Insurer");
+    expect(allQueryText()).toContain("app_shared_medical_profile");
+    expect(allQueryText()).not.toContain("FROM pet_medical_profiles");
   });
 });

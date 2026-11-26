@@ -11,7 +11,8 @@ import { auth } from '@/auth';
 import sql from '@/app/api/utils/sql';
 
 vi.mock('@/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/app/api/utils/sql', () => ({ default: vi.fn() }));
+// getActiveTx → null: no request transaction here, so withSavepoint runs its callback directly.
+vi.mock('@/app/api/utils/sql', () => ({ default: vi.fn(), getActiveTx: () => null }));
 
 const SESSION = { user: { id: 42 }, expires: '9999999999' };
 const PROFILE_ROW = { id: 7, auth_user_id: 42 };
@@ -96,7 +97,8 @@ describe('GET /api/care-access/grants', () => {
 });
 
 // POST /api/care-access/grants — owner-initiated "Share clinic history". sql call order:
-// 1) resolveUserId profile, 2) pet-ownership, 3) provider-published, 4) dedup, 5) INSERT.
+// 1) resolveUserId profile, 2) pet-ownership, 3) provider-published, 4) close expired grants,
+// 5) dedup, 6) INSERT.
 const postReq = (body) =>
   new Request('http://localhost/api/care-access/grants', {
     method: 'POST',
@@ -128,6 +130,7 @@ describe('POST /api/care-access/grants', () => {
       .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId → 7
       .mockResolvedValueOnce([{ id: 5 }]) // pet belongs to me
       .mockResolvedValueOnce([{ id: 9 }]) // provider published
+      .mockResolvedValueOnce([]) // close expired
       .mockResolvedValueOnce([]) // dedup: none
       .mockResolvedValueOnce([
         { id: 100, pet_id: 5, owner_user_id: 7, provider_id: 9, scopes: ['medical_read'], status: 'active', requested_by: 'owner' },
@@ -156,6 +159,7 @@ describe('POST /api/care-access/grants', () => {
       .mockResolvedValueOnce([PROFILE_ROW])
       .mockResolvedValueOnce([{ id: 5 }])
       .mockResolvedValueOnce([{ id: 9 }])
+      .mockResolvedValueOnce([]) // close expired
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ id: 100, status: 'active' }]);
 
@@ -181,6 +185,7 @@ describe('POST /api/care-access/grants', () => {
       .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
       .mockResolvedValueOnce([{ id: 5 }]) // pet
       .mockResolvedValueOnce([{ id: 9 }]) // provider
+      .mockResolvedValueOnce([]) // close expired
       .mockResolvedValueOnce([existing]); // dedup HIT → return
 
     const res = await POST(postReq({ petId: 5, providerId: 9 }));
@@ -204,6 +209,7 @@ describe('POST /api/care-access/grants', () => {
       .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
       .mockResolvedValueOnce([{ id: 5 }]) // pet
       .mockResolvedValueOnce([{ id: 9 }]) // provider
+      .mockResolvedValueOnce([]) // close expired
       .mockResolvedValueOnce([]) // dedup: none
       .mockRejectedValueOnce(Object.assign(new Error('dup'), { code: '23505' })) // INSERT loses
       .mockResolvedValueOnce([winner]); // winner SELECT
@@ -236,5 +242,72 @@ describe('POST /api/care-access/grants', () => {
 
     const res = await POST(postReq({ petId: 5, providerId: 9 }));
     expect(res.status).toBe(404);
+  });
+
+  it("409 'sectioned_grant_exists' for the by-scope shape over an active grant by section, no INSERT", async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([{ id: 5 }])
+      .mockResolvedValueOnce([{ id: 9 }])
+      .mockResolvedValueOnce([]) // close expired
+      .mockResolvedValueOnce([{ id: 60, scopes: ['record_sections'], sections: ['vaccines'] }]);
+
+    const res = await POST(postReq({ petId: 5, providerId: 9 }));
+    expect(res.status).toBe(409);
+    expect((await res.json()).code).toBe('sectioned_grant_exists');
+    expect(allQueryTexts().some((t) => t.includes('INSERT INTO care_access_grants'))).toBe(false);
+  });
+});
+
+describe('POST /api/care-access/grants by section', () => {
+  const VALID = { petId: 5, providerId: 9, sections: ['vaccines'], expiry: '7d' };
+
+  it.each([
+    ['sections without expiry', { expiry: undefined }],
+    ['expiry without sections', { sections: undefined }],
+    ['empty sections', { sections: [] }],
+    ['sections that are not a list', { sections: 'vaccines' }],
+    ['an unknown section', { sections: ['vaccines', 'allergies'] }],
+    ['a scope name as a section', { sections: ['medical_read'] }],
+    ['an unknown expiry', { expiry: '2d' }],
+    ['an expiry that is not a string', { expiry: ['7d'] }],
+    ['an object property name as expiry', { expiry: 'toString' }],
+    ['null sections', { sections: null }],
+    ['scopes together with sections', { scopes: ['medical_read'] }],
+    ['empty scopes together with sections', { scopes: [] }],
+  ])('400 for %s, before any grant query', async (_label, change) => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]);
+
+    const res = await POST(postReq({ ...VALID, ...change }));
+    expect(res.status).toBe(400);
+    expect(sql).toHaveBeenCalledTimes(1);
+  });
+
+  it('the record_sections scope cannot be asked for by the by-scope shape', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([PROFILE_ROW]);
+    const res = await POST(postReq({ petId: 5, providerId: 9, scopes: ['record_sections'] }));
+    expect(res.status).toBe(400);
+  });
+
+  it('201: stores only the record_sections scope, the chosen sections in order and the interval', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockImplementation(async (strings) => {
+      const text = strings.join(' ');
+      if (text.includes('FROM user_profiles')) return [PROFILE_ROW];
+      if (text.includes('INSERT INTO care_access_grants')) return [{ id: 101 }];
+      return [{ id: 5 }];
+    });
+
+    const res = await POST(
+      postReq({ ...VALID, sections: ['lab_results', 'profile', 'profile'], expiry: '30d' }),
+    );
+    expect(res.status).toBe(201);
+    expect(await res.json()).toEqual({ grant: { id: 101 } });
+    expect(allBound()).toContainEqual(['record_sections']);
+    expect(allBound()).toContainEqual(['profile', 'lab_results']);
+    expect(allBound()).toContain('30 days');
   });
 });
