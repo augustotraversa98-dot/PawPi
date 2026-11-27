@@ -21,7 +21,7 @@ commits. Keep this file in step with the master plan every time priorities chang
 ## 2026-11-27 — Night run: TestFlight feedback on build 36, build 37 from `41423911`, uploaded for TestFlight
 Report: [`night-run/2026-11-26/REPORT-testflight-feedback.md`](night-run/2026-11-26/REPORT-testflight-feedback.md).
 - **Merged:** finder phone and email switches (#843); vet record shared by link with no account (#845), by in-app invitation (#851), screens updating at once (#852); Spanish by default (#844, #846–#849, #853); fewer Health subtitles (#840); friend streaks (#841); birthday posts (#842); birth date, growing age estimate and adoption date (#850); pre-build fixes (#854).
-- **Database:** `0152`–`0156` written and **not applied**; apply in order with their verify files. After them, `verify_0147.sql` row 24 and `verify_0148.sql` row 15 read FAIL, expected.
+- **Database:** `0152`–`0156` **applied to production 2026-11-27** (about 09:32–09:37 Buenos Aires); their verify files all PASS (11/20/17/5/10). `verify_0147.sql` row 24 and `verify_0148.sql` row 15 are expected to read FAIL (notification type counts; not re-run).
 - **Build:** iOS 1.0.5 (37) uploaded to App Store Connect for TestFlight (processing not verified); not submitted to App Review.
 - **Not tested:** a physical phone, push, camera, Android, VoiceOver.
 - **Suggested next:** accept comma decimals in business-panel price fields (some forms silently drop the cents).

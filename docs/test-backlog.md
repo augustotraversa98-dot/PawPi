@@ -21,8 +21,8 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 | App Store Connect upload | **Uploaded 2026-11-27** ([submission](https://expo.dev/accounts/augusto-firulais/projects/pawpi/submissions/f4d19d44-0650-483b-a74b-79712f9124cb)); Apple processing not checked. |
 | App Review | **Not submitted.** The earlier submission was not touched. |
 
-- [ ] **First:** apply migrations `0152` → `0156` in order, running each `verify_NNNN.sql` right after (every row PASS). Until
-  then items 1, 2, 3, 7 and the growing age estimate are hidden or unavailable.
+- [x] Database `0152` → `0156` **applied to production 2026-11-27**, each `verify_NNNN.sql` run right after: every row PASS
+  (11, 20, 17, 5 and 10 rows). Items 1, 2, 3, 7 and the growing age estimate are on. Details in section 3 of the report.
 - [ ] Run the phone checklist (English and Spanish) in
   [the run report](night-run/2026-11-26/REPORT-testflight-feedback.md), section 8. Most important on a real phone: sharing by
   link (2), inviting a vet (3), the screen updating by itself (4), Spanish by default (5), birth date and age (9).

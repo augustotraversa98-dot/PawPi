@@ -8,8 +8,8 @@ Plain-language report. Times are Buenos Aires time.
 - **iOS 1.0.5 (37) was built from `41423911`** and uploaded to App Store Connect for TestFlight on 2026-11-27 at about 01:20 (Apple's
   processing was not checked). Nothing was submitted to App Review, and the earlier
   App Store submission was not touched.
-- **Apply five database changes (0152 to 0156) before testing.** Until then the features of items 1, 2, 3, 7 and the
-  growing estimate of item 9 are hidden or say they are not available (section 3).
+- **The five database changes (0152 to 0156) were applied on 2026-11-27 and every one of their checks passed**
+  (section 3).
 - The website changes are already live: Spanish business panel, public pet pages, and the new server parts.
 - A walkthrough in the iPhone Simulator against a local copy found no crash and no blocker. **Nothing was tested on a real
   phone.**
@@ -18,16 +18,16 @@ Plain-language report. Times are Buenos Aires time.
 
 | Item | PR | What changes | Reaches people through |
 |---|---|---|---|
-| 1. Phone and email for a finder | #843 | Two switches instead of one choice; with both off you choose private message or nothing | Public tag pages now; app switches in the new build; needs 0152 |
-| 2. Share by link, no account | #845 | A link shows the parts you tick to anyone who has it, until the date or until you remove it; optional "add notes", marked as external | Website now; app screens in the new build; needs 0153 |
-| 3. Invite a vet directly | #851 | Search a vet on PawPi, send, the vet accepts or declines | Website now; app screens in the new build; needs 0154 |
+| 1. Phone and email for a finder | #843 | Two switches instead of one choice; with both off you choose private message or nothing | Public tag pages now; app switches in the new build; database 0152 (applied) |
+| 2. Share by link, no account | #845 | A link shows the parts you tick to anyone who has it, until the date or until you remove it; optional "add notes", marked as external | Website now; app screens in the new build; database 0153 (applied) |
+| 3. Invite a vet directly | #851 | Search a vet on PawPi, send, the vet accepts or declines | Website now; app screens in the new build; database 0154 (applied) |
 | 4. Screens update at once | #852 | Sharing screens refresh themselves; a repeated tap or request gives one result | Mostly the new build |
 | 5. Spanish by default | #844, #846, #847, #849, #853 | The business web panel is in Spanish by default, with an ES / EN switch | Website now |
 | 5. Spanish by default | #848 | App: a phone in neither language opens in Spanish; business types and breeds in Spanish; public pet pages in Spanish unless the browser is English | Website now; app part in the new build |
 | 6. Fewer subtitles | #840 | The repeated lines on the Health tab are removed or shortened | New build |
-| 7. Friends' streaks | #841 | Flame and number next to a friend's dog from 7 days | New build; needs 0155 |
+| 7. Friends' streaks | #841 | Flame and number next to a friend's dog from 7 days | New build; database 0155 (applied) |
 | 8. Birthday posts | #842 | Festive frame and cake on the birthday; no notification | New build (single posts already had part of this) |
-| 9. Birth date, estimate, adoption date | #850 | Birth date first; an estimated age that grows; separate optional adoption date | New build; the growing estimate needs 0156 |
+| 9. Birth date, estimate, adoption date | #850 | Birth date first; an estimated age that grows; separate optional adoption date | New build; database 0156 (applied) for the growing estimate |
 | Walkthrough fixes | #854 | Six small defects found in the pre-build check | Website and new build |
 
 All of these, and the walkthrough fixes (#854), were squash-merged with the four checks green. Draft #802 and #812 were not touched. No sign-in or login code was changed.
@@ -36,24 +36,34 @@ Merging: later pull requests were each brought up to the latest `main` and re-ch
 when GitHub showed no conflict, and `main`'s checks were confirmed afterwards. No commit from the other session landed on
 `main` during the run, so there was no conflict with it.
 
-## 3. Database changes: **not applied yet**
+## 3. Database changes: **applied and checked on 2026-11-27**
 
-Nothing was run against the production database. The website works without these; the features that need them stay hidden
-or say they are not available. In the Supabase SQL editor, apply each file and run its check **before** the next one:
+Applied to the production database at the owner's request, about 09:32 to 09:37, in order, each followed by its check
+before the next one:
 
-| Order | Migration | Check (every row PASS) | Turns on |
-|---|---|---|---|
-| 1 | `0152_emergency_contact_channels.sql` | `verify_0152.sql` (11 rows) | Item 1 |
-| 2 | `0153_vet_record_links.sql` | `verify_0153.sql` (20 rows) | Item 2 |
-| 3 | `0154_vet_share_offers.sql` | `verify_0154.sql` (17 rows) | Item 3 |
-| 4 | `0155_friend_streaks.sql` | `verify_0155.sql` (5 rows) | Item 7 |
-| 5 | `0156_pet_age_estimate.sql` | `verify_0156.sql` (10 rows) | Item 9 growing estimate |
+| Order | Migration | Check | Result | Turns on |
+|---|---|---|---|---|
+| 1 | `0152_emergency_contact_channels.sql` | `verify_0152.sql` | **11 of 11 PASS** | Item 1 |
+| 2 | `0153_vet_record_links.sql` | `verify_0153.sql` | **20 of 20 PASS** | Item 2 |
+| 3 | `0154_vet_share_offers.sql` | `verify_0154.sql` | **17 of 17 PASS** | Item 3 |
+| 4 | `0155_friend_streaks.sql` | `verify_0155.sql` | **5 of 5 PASS** | Item 7 |
+| 5 | `0156_pet_age_estimate.sql` | `verify_0156.sql` | **10 of 10 PASS** | Item 9 growing estimate |
 
-These five were applied in this order, each followed by its check, on a throwaway local database: every row passed, and
-applying them a second time changed nothing. After all five, exactly two older check rows read FAIL, both expected because
-they count notification types: `verify_0147.sql` row 24 (it already did after 0148) and `verify_0148.sql` row 15. The local
-database used a different superuser from Supabase's, so run the checks there too. If 0146, 0147, 0151, 0099 or 0152 is
-ever run again, run the newer files that replace their functions again (each file's header says which).
+- Every function these files create or replace matches the repository (compared by checksum). The files' opening comment
+  blocks were not sent.
+- Before applying, one older function (`app_emergency_card_json`, from 0146) differed from the repository only by missing
+  comment lines.
+- Existing data is unchanged: the same number of emergency cards, dogs, vet notes, access grants and notifications; the
+  emergency cards' earlier fields and the dogs' ages are identical; every emergency card still builds.
+- Run again afterwards: `verify_0099.sql`, `verify_0146.sql` and `verify_0151.sql`, every row PASS, and the row of
+  `verify_0152.sql` that 0156 could affect. `verify_0147.sql` and `verify_0148.sql` were **not** run again; row 24 of the
+  first and row 15 of the second count notification types and are expected to read FAIL.
+- Supabase advisors: security reports nothing. Performance shows the same four kinds of notice as before; "unused index"
+  includes at least one new index.
+- Live site afterwards: pages load, signed-out requests are refused, a made-up share link is refused, and the hosting
+  logs showed no server error in the preceding hour. No signed-in action was tried.
+- If 0146, 0147, 0151, 0099 or 0152 is ever run again, run the newer files that replace their functions again (each
+  file's header says which).
 
 ## 4. The build
 
@@ -111,7 +121,6 @@ the stored age. An old build that saves back the age it was shown does not overw
 
 ## 6. Deferred, and why
 
-- **The five database changes:** applying them is your step.
 - **Privacy version:** the privacy policy text changed (items 1, 2 and 3); the consent version number was not bumped. Draft
   #812 edits nearby privacy text; it still showed no conflict when checked.
 - **ITMS-90725 (iOS 27 SDK, April 2027):** logged in `docs/test-backlog.md`; Xcode 27 is not available yet.
@@ -154,7 +163,7 @@ Seen and **not** fixed (older behaviour):
 
 ## 8. What to test on a real phone
 
-Apply the database changes first. Use your own account and dog, never the demo account.
+The database changes are applied. Use your own account and dog, never the demo account.
 
 ### English
 - [ ] **0. Version:** More > Settings shows `PawPi v1.0.5 (37)`.
