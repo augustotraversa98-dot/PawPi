@@ -4000,6 +4000,7 @@
     "anonymous": "Cambios de alguien externo",
     "addedViaLink": "{{name}} · agregado desde un enlace compartido · {{date}}",
     "noteBell": "agregó una nota a {{pet}} desde un enlace compartido",
+    "summaryAuthor": "{{name}} (enlace compartido)",
     "error": {
       "unavailableTitle": "Todavía no disponible",
       "unavailable": "Compartir con un enlace todavía no está disponible. No se compartió nada.",

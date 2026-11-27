@@ -28,6 +28,8 @@ export function buildPrivateMediaKey(petId, uuid, ext) {
   return `pets/${Number(petId)}/${uuid}.${ext}`;
 }
 
+const SIGN_TIMEOUT_MS = 5000;
+
 // Ask Supabase Storage for a short-lived signed URL for a private object. Uses
 // the service-role key (server-only). Returns the absolute URL or throws.
 export async function createSignedMediaUrl(key, expiresIn = 60) {
@@ -46,6 +48,8 @@ export async function createSignedMediaUrl(key, expiresIn = 60) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ expiresIn }),
+      // A storage service that does not answer must not hold the request open.
+      signal: AbortSignal.timeout(SIGN_TIMEOUT_MS),
     },
   );
   if (!res.ok) {

@@ -58,6 +58,12 @@ export function vetNoteAuthor(t, note) {
   return note?.vet_name || null;
 }
 
+/** The author as a one-line summary shows it, where nothing else says that a note came through a record link. */
+export function vetNoteSummaryAuthor(t, note) {
+  if (note?.via_record_link) return t("recordLink.summaryAuthor", { name: linkNoteAuthor(t, note) });
+  return vetNoteAuthor(t, note);
+}
+
 /** "Shared by Sam" when the owner's public name is known, else "Shared with you". Never an e-mail or a raw handle-as-name. */
 export function sharedByLabel(t, ownerName) {
   return ownerName ? t("sharedDog.sharedBy", { name: ownerName }) : t("sharedDog.sharedWithYou");

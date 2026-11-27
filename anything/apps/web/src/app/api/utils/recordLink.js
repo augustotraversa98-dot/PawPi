@@ -22,6 +22,10 @@ export const RECORD_LINK_EXPIRIES = { "7d": "7 days", "30d": "30 days", "1y": "1
 export const RECORD_LINK_OPEN_LIMIT = 10;
 export const RECORD_LINK_NOTE_MAX = 2000;
 export const RECORD_LINK_FILE_SECONDS = 60;
+// The most a public route reads: a token and a few fields, or a token and a note of RECORD_LINK_NOTE_MAX characters
+// however its JSON escapes them.
+export const RECORD_LINK_BODY_BYTES = 1024;
+export const RECORD_LINK_NOTE_BODY_BYTES = 16 * 1024;
 
 export const recordLinkUrl = (origin, token) => `${origin}/shared-record#${token}`;
 
@@ -34,6 +38,36 @@ export const answer = (body, status = 200) => Response.json(body, { status, head
 export const linkNotValid = () =>
   answer({ error: "This link is not available", code: "link_not_valid" }, 403);
 
+export const tooLarge = () => answer({ error: "Request too large", code: "too_large" }, 413);
+
+/**
+ * The JSON object of a request body of at most `maxBytes`, for the public routes to read before any database work. A
+ * body that is absent or not an object reads as {}; a longer one as null, without reading the rest of it.
+ */
+export async function readSmallJson(request, maxBytes) {
+  if (Number(request.headers.get("content-length")) > maxBytes) return null;
+  const reader = request.body?.getReader();
+  if (!reader) return {};
+  const chunks = [];
+  let size = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > maxBytes) {
+        reader.cancel().catch(() => {});
+        return null;
+      }
+      chunks.push(value);
+    }
+    const parsed = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 // The table, a column or a function of 0153 is not there yet.
 const MISSING_SCHEMA = new Set(["42P01", "42703", "42883"]);
 export const isMissingSchema = (error) => MISSING_SCHEMA.has(error?.code);
@@ -44,8 +78,9 @@ export const limitPublicRequest = (bucket, request) =>
 
 /**
  * A vet note as the owner, the family and a provider read it. A note added through a link keeps the label the database
- * wrote in vet_name and repeats it in the fields app versions released before links show, so none of them reads it as
- * the owner's own. Any other note is returned as it is.
+ * wrote in vet_name, which says it came from a shared link, and repeats it in the fields app versions released before
+ * links show. Versions that know links show external_author_name and their own mark. Any other note is returned as it
+ * is.
  */
 export function presentVetNote(note) {
   if (!note?.via_record_link) return note;

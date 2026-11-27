@@ -217,7 +217,7 @@ returned only then. At most 10 links in use per owner (409 `link_limit`); creati
 
 **Whoever has the link** opens `/shared-record`, with no account. The page takes the token from after the `#`, keeps it
 in the tab's session storage, removes it from the address bar and sends it only in a request body. The page and the
-answers are `no-store`, `noindex` and `no-referrer`. Three public routes, each rate limited per sender address and each
+answers are `no-store`, `noindex` and `no-referrer`. Three public routes, each reading a small, size-capped body (413 beyond it), rate limited per sender address and
 checking the link on every call (not revoked, not expired, the pet still belongs to the link's owner):
 
 | Route | Answer |
@@ -235,10 +235,12 @@ returned separately. No user ids, storage keys or file addresses are in the reco
 **Notes added through a link** are only additions: nothing can be changed or deleted through a link. The author is the
 signed-in visitor's display name, read by the database from the request's identity, never from the request body;
 otherwise the note has no name and reads "Anonymous" / "Cambios de alguien externo". `vet_notes.via_record_link` marks
-them; `vet_name` holds the same label in the owner's language, and the notes routes answer `created_by_name` /
-`created_by_role` so earlier app versions do not read them as the owner's. They are labelled in the app's vet record, on
-the provider record page, in the vet summary data, and they do not count towards `app_pet_has_vet_relationship`. If the
-signed-in author deletes their account, the name becomes "Former member".
+them. `vet_name` holds that label in the owner's language followed by "(shared link)" / "(enlace compartido)", and the
+notes routes answer it as `created_by_name` too (with `created_by_role` `editor`), so app versions released before
+links show where such a note came from and never read it as the owner's; the vet summary data carries the same text.
+The current app, the provider record page and the link page show `external_author_name` with their own mark. The three
+link columns are written only by the database, never by the application role. Link notes do not count towards
+`app_pet_has_vet_relationship`. If the signed-in author deletes their account, the name becomes "Former member".
 
 Tests: `web/test/integration/vet-record-links.integration.test.ts`, `web/src/app/shared-record/page.test.jsx`,
 `mobile/src/components/Health/VetShare/RecordLinks.test.jsx`.

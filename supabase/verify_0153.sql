@@ -1,5 +1,5 @@
 -- Verification for migration 0153 (sharing the vet record by link). Run in the Supabase SQL editor AFTER applying 0153.
--- EVERY row should read PASS (19 rows). Read-only (catalog queries only).
+-- EVERY row should read PASS (20 rows). Read-only (catalog queries only).
 with
 tbl as (
   select c.oid, c.relrowsecurity, c.relforcerowsecurity
@@ -207,6 +207,7 @@ checks as (
                               and prosrc like '%length(v_note) > 2000%'
                               and prosrc like '%now() - interval ''24 hours'') >= 10%'
                               and prosrc like '%true, v_link.id, v_name%'
+                              and prosrc like '%then '' (shared link)'' else '' (enlace compartido)'' end%'
                               and prosrc !~* '\m(delete|care_access_grants)\M')
               then 'PASS' else 'FAIL' end
 
@@ -243,6 +244,7 @@ checks as (
          case when exists (select 1 from pg_trigger t join fn on fn.oid = t.tgfoid
                            where t.tgrelid = to_regclass('public.vet_notes') and t.tgname = 'vet_notes_record_link_author_gone'
                              and t.tgenabled = 'O' and fn.proname = 'app_record_link_note_author_gone'
+                             and fn.prosrc like '%''Former member (shared link)'' else ''Ex integrante (enlace compartido)''%'
                              and fn.app_can and not fn.exposed and fn.config like 'search_path=%pg_temp%')
               then 'PASS' else 'FAIL' end
 
@@ -256,6 +258,23 @@ checks as (
                               and position('bucket = ''emergency_public_read''' in prosrc) > 0
                               and position('interval ''90 days''' in prosrc) > 0
                               and position('type = ''emergency_contact''' in prosrc) > 0)
+              then 'PASS' else 'FAIL' end
+
+  union all
+  -- tgtype 23: for each row (1) + before (2) + insert (4) + update (16).
+  select 20, 'the application role cannot set or change the record link columns of a vet note',
+         coalesce((select 'tgtype=' || t.tgtype::text || ' enabled=' || t.tgenabled::text from pg_trigger t
+                   where t.tgrelid = to_regclass('public.vet_notes') and t.tgname = 'vet_notes_record_link_guard'), '(missing)'),
+         case when exists (select 1 from pg_trigger t join fn on fn.oid = t.tgfoid
+                           where t.tgrelid = to_regclass('public.vet_notes') and t.tgname = 'vet_notes_record_link_guard'
+                             and t.tgenabled = 'O' and t.tgtype = 23 and t.tgqual is null and cardinality(t.tgattr::int2[]) = 0
+                             and fn.proname = 'app_vet_note_link_fields_guard' and not fn.prosecdef
+                             and fn.app_can and not fn.exposed and fn.config like 'search_path=%pg_temp%'
+                             and fn.prosrc like '%if current_user = ''pawpi_app'' then%'
+                             and fn.prosrc like '%if new.via_record_link or new.record_link_id is not null or new.external_author_name is not null then%'
+                             and fn.prosrc like '%new.via_record_link is distinct from old.via_record_link%'
+                             and fn.prosrc like '%new.record_link_id is distinct from old.record_link_id%'
+                             and fn.prosrc like '%new.external_author_name is distinct from old.external_author_name%')
               then 'PASS' else 'FAIL' end
 )
 select ord, check_name, detail, status from checks order by ord;

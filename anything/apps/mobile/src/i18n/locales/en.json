@@ -4000,6 +4000,7 @@
     "anonymous": "Anonymous",
     "addedViaLink": "{{name}} · added through a shared link · {{date}}",
     "noteBell": "added a note to {{pet}} through a shared link",
+    "summaryAuthor": "{{name}} (shared link)",
     "error": {
       "unavailableTitle": "Not available yet",
       "unavailable": "Sharing by link isn't available yet. Nothing was shared.",

@@ -41,17 +41,6 @@ const asObject = (v) => {
   return {};
 };
 
-const LINK_NOTE_SUFFIX = { en: "shared link", es: "enlace compartido" };
-
-// A note added through a record link is marked in the summary's own author text too, in the owner's language, so it is
-// never read as the owner's or their vet's.
-async function labelLinkNotes(notes, ownerUserId) {
-  if (!notes.some((n) => n.via_link)) return notes;
-  const rows = await sql`SELECT app_recipient_locale(${ownerUserId}) AS locale`;
-  const suffix = LINK_NOTE_SUFFIX[rows?.[0]?.locale === "en" ? "en" : "es"];
-  return notes.map((n) => (n.via_link ? { ...n, vet_name: `${n.vet_name} (${suffix})` } : n));
-}
-
 async function GET(request) {
   try {
     const session = await auth();
@@ -121,9 +110,7 @@ async function GET(request) {
       sql`SELECT allergen, severity FROM pet_allergies WHERE pet_id = ${petId} AND owner_user_id = ${userId}`,
       sql`SELECT condition, status FROM pet_conditions WHERE pet_id = ${petId} AND owner_user_id = ${userId}`,
       sql`SELECT name, date_given FROM pet_vaccinations WHERE pet_id = ${petId} AND owner_user_id = ${userId} ORDER BY date_given DESC NULLS LAST`,
-      // to_jsonb(n) reads the mark of a note added through a record link (0153) also on a database without the column.
-      sql`SELECT n.note_date, n.note, n.vet_name, (to_jsonb(n) ->> 'via_record_link') = 'true' AS via_link
-          FROM vet_notes n
+      sql`SELECT note_date, note, vet_name FROM vet_notes
           WHERE pet_id = ${petId} AND owner_user_id = ${userId} AND note_date BETWEEN ${from} AND ${to}
           ORDER BY note_date DESC`,
     ]);
@@ -232,7 +219,7 @@ async function GET(request) {
       allergies,
       conditions,
       vaccinations,
-      vetNotes: await labelLinkNotes(notes, userId),
+      vetNotes: notes,
       disclaimer:
         "PawPi helps you track changes and prepare better conversations with your veterinarian. It does not diagnose or replace professional veterinary care.",
     };

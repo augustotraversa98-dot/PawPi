@@ -64,7 +64,12 @@ import {
 import { Card, PressableScale } from "@/components/ui";
 import { breedLabel } from "@/data/dogBreeds";
 import { spayNeuterLabel } from "@/utils/healthText";
-import { linkNoteAuthor, memberDisplayName, vetNoteAuthor } from "@/utils/sharingLabels";
+import {
+  linkNoteAuthor,
+  memberDisplayName,
+  vetNoteAuthor,
+  vetNoteSummaryAuthor,
+} from "@/utils/sharingLabels";
 import { usePetPermissions } from "@/hooks/usePetPermissions";
 
 // Ordered sub-tabs of the "Medical history" group. Each key drives its own
@@ -1336,9 +1341,9 @@ export default function HealthVetRecord() {
                       date: formatDisplayDate(historyNotes[0].note_date),
                     },
                   )}
-                  {vetNoteAuthor(t, historyNotes[0])
+                  {vetNoteSummaryAuthor(t, historyNotes[0])
                     ? t("health.vetRecord.notesSummaryBy", {
-                        name: vetNoteAuthor(t, historyNotes[0]),
+                        name: vetNoteSummaryAuthor(t, historyNotes[0]),
                       })
                     : ""}
                 </Text>

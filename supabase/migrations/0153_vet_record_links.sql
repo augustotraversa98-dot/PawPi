@@ -6,7 +6,8 @@
 --     at most a year and whether notes may be added. Only sha256(token) is stored. ENABLE + FORCE RLS: only the owner
 --     reads, creates or revokes their links; there is no delete policy.
 --  2. vet_notes gains via_record_link, record_link_id and external_author_name: a note added through a link is marked,
---     and carries the signed-in author's display name or none.
+--     and carries the signed-in author's display name or none. Its vet_name says it came from a shared link. Only the
+--     database writes these three columns: not the application role.
 --  3. app_record_link_view, app_record_link_file and app_record_link_add_note: the ONLY way a link holder reaches
 --     anything. Each is keyed on the token hash and checks on every call that the link is not revoked, not expired and
 --     that its owner still owns the pet, and answers for the granted sections only.
@@ -97,7 +98,8 @@ begin
      and old.created_by_user_id is not null
      and new.created_by_user_id is distinct from old.created_by_user_id then
     new.external_author_name := 'Former member';
-    new.vet_name := case when app_recipient_locale(new.owner_user_id) = 'en' then 'Former member' else 'Ex integrante' end;
+    new.vet_name := case when app_recipient_locale(new.owner_user_id) = 'en'
+                         then 'Former member (shared link)' else 'Ex integrante (enlace compartido)' end;
   end if;
   return new;
 end
@@ -107,6 +109,35 @@ drop trigger if exists vet_notes_record_link_author_gone on vet_notes;
 create trigger vet_notes_record_link_author_gone
   before update of created_by_user_id on vet_notes
   for each row execute function app_record_link_note_author_gone();
+
+-- The three record link columns are written only by app_record_link_add_note, the trigger above and the foreign keys,
+-- all of which run as their owner. The application role neither sets nor changes them.
+create or replace function app_vet_note_link_fields_guard()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  if current_user = 'pawpi_app' then
+    if tg_op = 'INSERT' then
+      if new.via_record_link or new.record_link_id is not null or new.external_author_name is not null then
+        raise exception 'vet_notes: the record link columns are written by the database only' using errcode = '42501';
+      end if;
+    elsif new.via_record_link is distinct from old.via_record_link
+          or new.record_link_id is distinct from old.record_link_id
+          or new.external_author_name is distinct from old.external_author_name then
+      raise exception 'vet_notes: the record link columns are written by the database only' using errcode = '42501';
+    end if;
+  end if;
+  return new;
+end
+$$;
+
+-- Fires after the trigger above (triggers run in name order), so it sees the row as it will be stored.
+drop trigger if exists vet_notes_record_link_guard on vet_notes;
+create trigger vet_notes_record_link_guard
+  before insert or update on vet_notes
+  for each row execute function app_vet_note_link_fields_guard();
 
 -- ── 3. what a link holder reaches ──────────────────────────────────────────────────────────────────────────────
 -- The shared record as one value, or null when the link is unknown, revoked, expired or the pet changed owner. A section
@@ -323,14 +354,15 @@ begin
     v_date := (now() at time zone 'America/Buenos_Aires')::date;
   end;
 
-  -- vet_name carries a label in the owner's language, so a screen that knows nothing about links never reads the note
-  -- as the owner's own.
+  -- vet_name carries a label in the owner's language that says the note came from a shared link, so a screen that
+  -- knows nothing about links reads it neither as the owner's own nor as one of their vets'.
   insert into vet_notes (
     pet_id, owner_user_id, vet_name, note_date, note, created_by_user_id,
     via_record_link, record_link_id, external_author_name
   ) values (
     v_link.pet_id, v_link.owner_user_id,
-    coalesce(v_name, case when v_locale = 'en' then 'Anonymous' else 'Cambios de alguien externo' end),
+    coalesce(v_name, case when v_locale = 'en' then 'Anonymous' else 'Cambios de alguien externo' end)
+      || case when v_locale = 'en' then ' (shared link)' else ' (enlace compartido)' end,
     v_date, v_note, v_user,
     true, v_link.id, v_name
   )
@@ -396,6 +428,7 @@ $$;
 
 -- ── privileges ─────────────────────────────────────────────────────────────────────────────────────────────────
 revoke execute on function app_record_link_note_author_gone() from public;
+revoke execute on function app_vet_note_link_fields_guard() from public;
 revoke execute on function app_record_link_view(text) from public;
 revoke execute on function app_record_link_file(text, text, integer) from public;
 revoke execute on function app_record_link_add_note(text, text) from public;
@@ -408,6 +441,7 @@ begin
   foreach r in array array['anon', 'authenticated'] loop
     if exists (select 1 from pg_roles where rolname = r) then
       execute format('revoke execute on function app_record_link_note_author_gone() from %I', r);
+      execute format('revoke execute on function app_vet_note_link_fields_guard() from %I', r);
       execute format('revoke execute on function app_record_link_view(text) from %I', r);
       execute format('revoke execute on function app_record_link_file(text, text, integer) from %I', r);
       execute format('revoke execute on function app_record_link_add_note(text, text) from %I', r);
@@ -420,6 +454,7 @@ begin
 end
 $$;
 grant execute on function app_record_link_note_author_gone() to pawpi_app;
+grant execute on function app_vet_note_link_fields_guard() to pawpi_app;
 grant execute on function app_record_link_view(text) to pawpi_app;
 grant execute on function app_record_link_file(text, text, integer) to pawpi_app;
 grant execute on function app_record_link_add_note(text, text) to pawpi_app;

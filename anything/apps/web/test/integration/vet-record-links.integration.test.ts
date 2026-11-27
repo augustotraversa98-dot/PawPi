@@ -5,6 +5,7 @@
 //   E. notes through a link and who they are from          F. such a note unlocks nothing and is labelled everywhere
 //   G. limits                                              H. the database rules on their own; invites stay invites
 //   I. a database without 0153                             J. verify_0153.sql passes, can fail, re-applies
+//   K. request bodies, signing and the characters the database cannot hold
 
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -19,11 +20,12 @@ import {
 
 const authState = vi.hoisted(() => ({ session: null as any }));
 vi.mock("@/auth", () => ({ auth: async () => authState.session }));
-const signed = vi.hoisted(() => ({ calls: [] as [string, number][] }));
+const signed = vi.hoisted(() => ({ calls: [] as [string, number][], whileSigning: null as null | (() => Promise<void>) }));
 vi.mock("@/app/api/utils/mediaAccess", async (importOriginal) => ({
   ...((await importOriginal()) as object),
   createSignedMediaUrl: async (key: string, seconds: number) => {
     signed.calls.push([key, seconds]);
+    await signed.whileSigning?.();
     return `https://storage.example.test/signed/${signed.calls.length}`;
   },
 }));
@@ -114,7 +116,7 @@ beforeAll(async () => {
   ({ api } = (await import("../../__create/route-builder")) as any);
 });
 afterAll(async () => { await raw.end(); await app.end(); });
-afterEach(async () => { await resetDb(raw); authState.session = null; signed.calls = []; vi.restoreAllMocks(); });
+afterEach(async () => { await resetDb(raw); authState.session = null; signed.calls = []; signed.whileSigning = null; vi.restoreAllMocks(); });
 
 const ids = { docPrivate: 0, docPublic: 0, docForeign: 0, photo: 0, otherPetDoc: 0 };
 
@@ -410,12 +412,15 @@ describe("E. notes through a link", () => {
     expect((await res.json()).note).toMatchObject({ author_name: null });
     const [row] = await noteRows();
     expect(row).toMatchObject({
-      pet_id: PET, owner_user_id: OWNER.profileId, note: "Looks healthy", vet_name: "Cambios de alguien externo",
+      pet_id: PET, owner_user_id: OWNER.profileId, note: "Looks healthy",
+      vet_name: "Cambios de alguien externo (enlace compartido)",
       created_by_user_id: null, created_by_role: null, external_author_name: null, record_link_id: id,
     });
     const [shown] = (await ownerNotes()).filter((n) => n.via_record_link);
+    // App versions released before links show vet_name and created_by_name: both say where the note came from.
     expect(shown).toMatchObject({
-      vet_name: "Cambios de alguien externo", created_by_name: "Cambios de alguien externo",
+      vet_name: "Cambios de alguien externo (enlace compartido)",
+      created_by_name: "Cambios de alguien externo (enlace compartido)",
       created_by_role: "editor", external_author_name: null,
     });
     expect(shown).not.toHaveProperty("created_by_user_id");
@@ -428,7 +433,9 @@ describe("E. notes through a link", () => {
     await raw`update user_profiles set preferred_locale = 'en' where id = ${OWNER.profileId}`;
     const { token } = await link(writable);
     expect((await addNote(token, "x")).status).toBe(201);
-    expect((await noteRows())[0].vet_name).toBe("Anonymous");
+    expect((await noteRows())[0].vet_name).toBe("Anonymous (shared link)");
+    expect((await addNote(token, "y", VET)).status).toBe(201);
+    expect((await noteRows())[1]).toMatchObject({ vet_name: "Dr. Paula Gómez (shared link)", external_author_name: "Dr. Paula Gómez" });
   });
 
   it("signed in: the account's name, taken from the session and never from the body", async () => {
@@ -439,11 +446,15 @@ describe("E. notes through a link", () => {
     expect(res.status).toBe(201);
     expect((await res.json()).note.author_name).toBe("Dr. Paula Gómez");
     const [row] = await noteRows();
-    expect(row).toMatchObject({ vet_name: "Dr. Paula Gómez", external_author_name: "Dr. Paula Gómez", created_by_user_id: VET.profileId });
+    expect(row).toMatchObject({
+      vet_name: "Dr. Paula Gómez (enlace compartido)", external_author_name: "Dr. Paula Gómez", created_by_user_id: VET.profileId,
+    });
     expect(JSON.stringify(row)).not.toContain("Mallory");
     expect(row.note_date.toISOString().slice(0, 4)).not.toBe("2000");
     const [shown] = (await ownerNotes()).filter((n) => n.via_record_link);
-    expect(shown).toMatchObject({ created_by_name: "Dr. Paula Gómez", vet_name: "Dr. Paula Gómez" });
+    expect(shown).toMatchObject({
+      created_by_name: "Dr. Paula Gómez (enlace compartido)", vet_name: "Dr. Paula Gómez (enlace compartido)",
+    });
   });
 
   it("signed in without a public name: the account name; an e-mail address is never shown", async () => {
@@ -452,7 +463,16 @@ describe("E. notes through a link", () => {
     await raw`update auth_users set name = 'someone@example.com' where id = ${NAMELESS.authUserId}`;
     expect((await (await addNote(token, "b", NAMELESS)).json()).note.author_name).toBeNull();
     const rows = await noteRows();
-    expect(rows[1]).toMatchObject({ vet_name: "Cambios de alguien externo", created_by_user_id: NAMELESS.profileId });
+    expect(rows[1]).toMatchObject({ vet_name: "Cambios de alguien externo (enlace compartido)", created_by_user_id: NAMELESS.profileId });
+  });
+
+  it("a display name that matches the owner's vet still reads as coming from a shared link", async () => {
+    await raw`update pet_medical_profiles set primary_vet_name = 'Dr. Paula Gómez' where pet_id = ${PET}`;
+    const { token } = await link(writable);
+    await addNote(token, "x", VET);
+    const [shown] = (await ownerNotes()).filter((n) => n.via_record_link);
+    expect(shown.vet_name).toBe("Dr. Paula Gómez (enlace compartido)");
+    expect(shown.created_by_name).toBe(shown.vet_name);
   });
 
   it("signed in before ever using the app: gets the account's name", async () => {
@@ -467,7 +487,7 @@ describe("E. notes through a link", () => {
   it("the owner using their own link is named, and the note is still marked as added through it", async () => {
     const { token } = await link(writable);
     expect((await addNote(token, "mine", OWNER)).status).toBe(201);
-    expect((await noteRows())[0]).toMatchObject({ vet_name: "Olivia Owner", via_record_link: true });
+    expect((await noteRows())[0]).toMatchObject({ vet_name: "Olivia Owner (enlace compartido)", via_record_link: true });
   });
 
   it("is refused when the link does not allow notes, whoever asks", async () => {
@@ -537,7 +557,7 @@ describe("E. notes through a link", () => {
     expect(rows).toHaveLength(2);
     for (const row of rows) {
       expect(row.external_author_name).toBe("Former member");
-      expect(row.vet_name).toBe("Ex integrante");
+      expect(row.vet_name).toBe("Ex integrante (enlace compartido)");
     }
     expect(JSON.stringify(rows)).not.toContain("Paula");
   });
@@ -650,6 +670,59 @@ describe("H. the database rules, and invites stay invites", () => {
     ).rejects.toThrow(/row-level security/);
   });
 
+  it("the application role cannot set or change the record link columns of a note", async () => {
+    const { id, token } = await link({ sections: ["vet_notes"], allowNotes: true });
+    expect((await addNote(token, "through the link", VET)).status).toBe(201);
+    const [linked] = await noteRows();
+    const [plain] = await raw`select * from vet_notes where not via_record_link`;
+    const refused = /written by the database only/;
+    const insert = (user: number, columns: Record<string, unknown>) =>
+      asApp(user, (tx) => tx`insert into vet_notes ${tx({
+        pet_id: PET, owner_user_id: OWNER.profileId, note_date: "2026-03-01", note: "x", ...columns,
+      })}`);
+    for (const user of [OWNER.profileId, FAMILY.profileId]) {
+      await expect(insert(user, { via_record_link: true })).rejects.toThrow(refused);
+      await expect(insert(user, { via_record_link: true, record_link_id: id })).rejects.toThrow(refused);
+      await expect(insert(user, { via_record_link: true, external_author_name: "Someone" })).rejects.toThrow(refused);
+      for (const change of [
+        { via_record_link: false, record_link_id: null, external_author_name: null },
+        { record_link_id: null },
+        { external_author_name: "Someone else" },
+      ]) {
+        await expect(
+          asApp(user, (tx) => tx`update vet_notes set ${tx(change)} where id = ${linked.id}`),
+        ).rejects.toThrow(refused);
+      }
+      await expect(
+        asApp(user, (tx) => tx`update vet_notes set via_record_link = true where id = ${plain.id}`),
+      ).rejects.toThrow(refused);
+    }
+    // Changing whose it is would rename the note: refused the same way.
+    await expect(
+      asApp(OWNER.profileId, (tx) => tx`update vet_notes set created_by_user_id = null where id = ${linked.id}`),
+    ).rejects.toThrow(refused);
+    expect(await noteRows()).toEqual([linked]);
+
+    // Everything else about a note works as before.
+    await insert(OWNER.profileId, {});
+    expect((await asApp(OWNER.profileId, (tx) => tx`update vet_notes set note = 'edited' where id = ${linked.id}`)).count).toBe(1);
+    expect((await asApp(OWNER.profileId, (tx) => tx`delete from vet_notes where id = ${linked.id}`)).count).toBe(1);
+  });
+
+  it("removing a link or its author still updates its notes", async () => {
+    const { id, token } = await link({ sections: ["vet_notes"], allowNotes: true });
+    await addNote(token, "x", VET);
+    await raw`delete from care_record_links where id = ${id}`;
+    expect((await noteRows())[0]).toMatchObject({ via_record_link: true, record_link_id: null });
+    // The foreign key's own update, started by the application role.
+    await asApp(VET.profileId, (tx) => tx`select app_delete_my_account(false)`);
+    expect((await noteRows())[0]).toMatchObject({ external_author_name: "Former member", created_by_user_id: null });
+    // The foreign key's own updates also work when the application role's statement starts them.
+    await addNote((await link({ sections: ["vet_notes"], allowNotes: true })).token, "y");
+    expect((await asApp(OWNER.profileId, (tx) => tx`delete from pets where id = ${PET}`)).count).toBe(1);
+    expect(await noteRows()).toHaveLength(0);
+  });
+
   it("cannot store a link that outlives a year, has no section or an unknown one", async () => {
     const insert = (sections: string[], length: string) => raw`
       insert into care_record_links (pet_id, owner_user_id, token_hash, sections, expires_at)
@@ -687,6 +760,8 @@ describe("I. a database without 0153", () => {
     await raw.unsafe(`
       drop trigger if exists vet_notes_record_link_author_gone on vet_notes;
       drop function if exists app_record_link_note_author_gone();
+      drop trigger if exists vet_notes_record_link_guard on vet_notes;
+      drop function if exists app_vet_note_link_fields_guard();
       drop function if exists app_record_link_view(text);
       drop function if exists app_record_link_file(text, text, integer);
       drop function if exists app_record_link_add_note(text, text);
@@ -749,21 +824,22 @@ describe("J. verify_0153.sql", () => {
     await raw.unsafe(migration("0153_vet_record_links.sql"));
     await raw.unsafe(migration("0153_vet_record_links.sql"));
     const rows = (await raw.unsafe(verify0153())) as any[];
-    expect(rows).toHaveLength(19);
+    expect(rows).toHaveLength(20);
     for (const r of rows) expect(r.status, `${r.ord} ${r.check_name} :: ${r.detail}`).toBe("PASS");
   });
 
-  it("can fail: an exposed function, a looser policy, a counted link note and a missing trigger are flagged", async () => {
+  it("can fail: an exposed function, a looser policy, a counted link note and missing triggers are flagged", async () => {
     try {
       await raw.unsafe(`
         grant execute on function app_record_link_view(text) to public;
         create policy care_record_links_anyone on care_record_links for select using (true);
         drop trigger vet_notes_record_link_author_gone on vet_notes;
+        drop trigger vet_notes_record_link_guard on vet_notes;
         create or replace function app_pet_has_vet_relationship(p_pet_id integer) returns boolean
           language sql stable security definer set search_path = public, pg_temp
           as $$ select exists (select 1 from vet_notes vn where vn.pet_id = p_pet_id) $$;
       `);
-      expect(await failing()).toEqual([3, 12, 17, 18]);
+      expect(await failing()).toEqual([3, 12, 17, 18, 20]);
     } finally {
       await raw.unsafe("drop policy if exists care_record_links_anyone on care_record_links");
       await raw.unsafe(migration("0153_vet_record_links.sql"));
@@ -772,3 +848,73 @@ describe("J. verify_0153.sql", () => {
     expect(await failing()).toEqual([]);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+describe("K. request bodies, signing and the characters the database cannot hold", () => {
+  const post = (path: string, body: string, headers: Record<string, string> = {}) => {
+    as(null);
+    return req(`/public/record-link/${path}`, "POST", body, headers);
+  };
+
+  it.each([["open", 1024], ["file", 1024], ["notes", 16 * 1024]])(
+    "%s refuses a body over %i bytes before counting it",
+    async (path, cap) => {
+      const { token } = await link({ sections: ["files"], allowNotes: true });
+      const big = JSON.stringify({ token, note: "x", kind: "document", id: ids.docPrivate, pad: "p".repeat(cap) });
+      for (const headers of [{}, { "content-length": String(big.length) }] as Record<string, string>[]) {
+        const res = await post(path, big, { "x-real-ip": "10.9.1.1", ...headers });
+        expect(res.status).toBe(413);
+        expect(res.headers.get("cache-control")).toBe("no-store");
+        expect((await res.json()).code).toBe("too_large");
+      }
+      expect(await raw`select * from rate_limit_hits where bucket like 'record_link_%' and bucket <> 'record_link_create'`).toHaveLength(0);
+      expect(await noteRows()).toHaveLength(0);
+      expect(signed.calls).toEqual([]);
+    },
+  );
+
+  it("accepts the longest note however it is escaped, and reads a broken body as an empty one", async () => {
+    const { token } = await link({ sections: ["vet_notes"], allowNotes: true });
+    // Every character written as a six-character JSON escape: the longest a note of that length can arrive.
+    const escaped = `{"token":"${token}","note":"${"\\u0041".repeat(2000)}"}`;
+    expect((await post("notes", escaped)).status).toBe(201);
+    expect((await noteRows())[0].note).toBe("A".repeat(2000));
+    for (const path of ["open", "file", "notes"]) expect((await post(path, "not json")).status).toBe(403);
+  });
+
+  it("signs a file only after the request's transaction has ended", async () => {
+    const { token } = await link({ sections: ["files"] });
+    let counted: number | undefined;
+    // Seen from another connection, the attempt is already counted: the transaction is committed.
+    signed.whileSigning = async () => {
+      counted = (await raw`select coalesce(sum(hits), 0)::int as n from rate_limit_hits where bucket = 'record_link_file'`)[0].n;
+    };
+    expect((await file(token, "document", ids.docPrivate, { "x-real-ip": "10.9.1.2" })).status).toBe(200);
+    expect(counted).toBe(1);
+  });
+
+  it("answers 502 when the storage service cannot sign", async () => {
+    const { token } = await link({ sections: ["files"] });
+    signed.whileSigning = async () => { throw new Error("timed out"); };
+    const res = await file(token, "document", ids.docPrivate);
+    expect(res.status).toBe(502);
+    expect(JSON.stringify(await res.json())).not.toContain("timed out");
+  });
+
+  it("leaves a NUL character out of a note and of a name", async () => {
+    const nul = String.fromCharCode(0);
+    const { token } = await link({ sections: ["vet_notes"], allowNotes: true });
+    expect((await addNote(token, `before${nul}after`)).status).toBe(201);
+    expect((await noteRows())[0].note).toBe("beforeafter");
+    const empty = await addNote(token, `${nul} ${nul}`);
+    expect(empty.status).toBe(400);
+    expect((await empty.json()).code).toBe("bad_note");
+
+    await raw`insert into auth_users (id, name, email) values (60, 'Nul Vet', 'nul@example.test')`;
+    authState.session = { user: { id: 60, name: `Nul${nul} Vet` } };
+    const res = await req("/public/record-link/notes", "POST", { token, note: "signed in" });
+    expect(res.status).toBe(201);
+    expect((await res.json()).note.author_name).toBe("Nul Vet");
+  });
+});
+
