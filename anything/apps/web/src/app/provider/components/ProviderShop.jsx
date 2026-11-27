@@ -18,6 +18,7 @@ import shopCopy from "../i18n/shop";
 import { useProviderCopy } from "../i18n/lib/useProviderCopy";
 import { fill, formatMoney } from "../i18n/lib/format";
 import { serverErrorMessage } from "../i18n/lib/serverError";
+import { dollarsToCents } from "../lib/money";
 
 // /provider/shop — the SHOP's catalog/inventory + order workspace (ticket 2.11). Manage
 // PRODUCTS (price, stock, Rx flag, active) and advance incoming ORDERS' FULFILLMENT
@@ -146,9 +147,13 @@ function CreateProductForm({ providerId }) {
 
   const submit = async (e) => {
     e.preventDefault();
-    const priceCents = Math.round(parseFloat(price) * 100);
-    if (!name || !Number.isFinite(priceCents) || priceCents < 0) {
+    const { cents: priceCents, error: priceError } = dollarsToCents(price, lang);
+    if (!name || !price.trim()) {
       toast.error(t.form.invalid);
+      return;
+    }
+    if (priceError) {
+      toast.error(priceError);
       return;
     }
     try {

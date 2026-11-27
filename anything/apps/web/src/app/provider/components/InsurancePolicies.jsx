@@ -6,7 +6,7 @@ import {
   useInsurancePolicyAction,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
-import { centsToCurrency, dollarsToCents } from "../lib/money";
+import { centsToCurrency, centsToInput, dollarsToCents } from "../lib/money";
 import insuranceCopy from "../i18n/insurance";
 import { useProviderCopy } from "../i18n/lib/useProviderCopy";
 import { fill } from "../i18n/lib/format";
@@ -21,9 +21,7 @@ import { serverErrorMessage } from "../i18n/lib/serverError";
 function IssueRow({ policy, onIssue, disabled }) {
   const { t, lang } = useProviderCopy(insuranceCopy);
   const [number, setNumber] = useState(policy.policy_number || "");
-  const [price, setPrice] = useState(
-    policy.premium_cents != null ? (policy.premium_cents / 100).toFixed(2) : "",
-  );
+  const [price, setPrice] = useState(centsToInput(policy.premium_cents, lang));
   const [period, setPeriod] = useState(policy.billing_period || "monthly");
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[#FFF1E2] pt-3">
@@ -37,7 +35,8 @@ function IssueRow({ policy, onIssue, disabled }) {
       <input
         value={price}
         onChange={(e) => setPrice(e.target.value)}
-        placeholder="0.00"
+        placeholder={centsToInput(0, lang)}
+        inputMode="decimal"
         className="w-24 rounded-lg border border-[#FFD9B3] px-2 py-1 text-sm"
       />
       <select

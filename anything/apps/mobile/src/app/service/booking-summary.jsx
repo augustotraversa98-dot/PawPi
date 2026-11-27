@@ -32,6 +32,7 @@ import BookingStatusChip, {
 import { formatDisplayDate, formatDisplayTime } from "@/utils/canonicalDateTime";
 import { deriveOpenNow } from "@/utils/providerHours";
 import { friendlyErrorMessage } from "@/utils/appAlert";
+import { formatMoney as money } from "@/utils/money";
 
 // BOOKING DETAIL (My Activity → a booking, upcoming OR past). Shows WHAT service, WHAT was done
 // (notes), status, when, provider, pet, the LOCATION (with directions + message provider), and
@@ -40,12 +41,6 @@ import { friendlyErrorMessage } from "@/utils/appAlert";
 // medical record (the shared sheet: chosen parts and length; revoke here). COMPLETED bookings add "Leave a review" (reusing
 // the existing WriteReviewModal; the backend re-checks the completed + one-per-booking gate).
 // Links out to existing screens; rebuilds no management UI. No Book CTA.
-
-// Mirrors more/hub.jsx money(): minor units → "ARS 100.00".
-function money(cents, currency) {
-  if (cents == null) return null;
-  return `${currency || "ARS"} ${(cents / 100).toFixed(2)}`;
-}
 
 export default function BookingSummaryScreen() {
   const insets = useSafeAreaInsets();

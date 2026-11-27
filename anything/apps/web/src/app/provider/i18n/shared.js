@@ -35,7 +35,7 @@ export default {
       until: "{day} until {time}",
     },
     inputs: {
-      invalidAmount: "Enter a valid amount (e.g. 12.50)",
+      invalidAmount: "Enter a valid amount (e.g. 12.50 or 1,250.00)",
       invalidMinutes: "Enter a whole number of minutes",
     },
   },
@@ -72,7 +72,7 @@ export default {
       until: "{day} hasta las {time}",
     },
     inputs: {
-      invalidAmount: "Ingresá un importe válido (por ejemplo, 12.50)",
+      invalidAmount: "Ingresá un importe válido (por ejemplo, 12,50 o 1.250,00)",
       invalidMinutes: "Ingresá los minutos en un número entero",
     },
   },

@@ -13,6 +13,7 @@ let mockPlaces;
 let mockBrowse; // { listings, sort } for the 2.86 unified browse grid
 let mockSingleListing; // the 2.56 single-listing fetch result (or null for 404)
 let mockApply; // captures the apply mutation (ticket 2.57 requested_placement)
+let mockCheckout; // captures the donation / fee checkout
 let mockLocationStatus; // 'granted' | 'denied'
 
 // The shared apply views (AdoptionListingViews) now render their CTA off the real English
@@ -61,7 +62,7 @@ jest.mock("@/hooks/useProviders", () => ({
   useMyAdoptionApplications: () => ({ data: [] }),
   useAdoptionFavorites: () => ({ data: [] }),
   useToggleAdoptionFavorite: () => ({ mutate: jest.fn() }),
-  useAdoptionCheckout: () => ({ mutateAsync: jest.fn() }),
+  useAdoptionCheckout: () => ({ mutateAsync: mockCheckout }),
   useStartThread: () => ({ mutate: jest.fn(), isPending: false }),
 }));
 
@@ -86,6 +87,7 @@ beforeEach(() => {
   mockSingleListing = REX; // the direct single-listing fetch resolves the dog
   mockPlaces = []; // no places → browse renders no listings, so "Rex" can only come from the modal
   mockApply = jest.fn(() => Promise.resolve({ application: { id: 1 } }));
+  mockCheckout = jest.fn(() => Promise.resolve({}));
   mockLocationStatus = "denied"; // default: no GPS → fall back to most-recent
 });
 
@@ -326,3 +328,35 @@ test("detail omits unknown facts and the map when the shelter has no coords", as
   await findByText("Apply to adopt");
   expect(queryByTestId("shelter-map")).toBeNull(); // no coords → no map (no fake location)
 });
+
+// ── Donation amount — typed by the owner in a native prompt ──
+async function donate(typed) {
+  mockParams = { listingId: "5", providerId: "3" };
+  mockPlaces = [];
+  jest.spyOn(Alert, "alert").mockImplementation(() => {});
+  jest.spyOn(Alert, "prompt").mockImplementation((_title, _body, onOk) => onOk(typed));
+  const { findByText } = render(<AdoptionScreen />);
+  fireEvent.press(await findByText("Donate to this place"));
+}
+
+test.each([
+  ["49,90", 4990],
+  ["49.90", 4990],
+  ["1.500", 150000], // no i18n in this test → the app's fallback separators (Spanish)
+])("a donation typed as %j is charged as %i cents", async (typed, cents) => {
+  await donate(typed);
+  await waitFor(() => expect(mockCheckout).toHaveBeenCalledTimes(1));
+  expect(mockCheckout.mock.calls[0][0]).toMatchObject({ kind: "donation", amount_cents: cents });
+});
+
+test.each(["49,905", "cincuenta", "0", ""])(
+  "a donation typed as %j is refused with a message and nothing is charged",
+  async (typed) => {
+    await donate(typed);
+    expect(Alert.alert).toHaveBeenCalledWith(
+      "Donate",
+      "Enter a valid amount (e.g. 12.50 or 1,250.00)",
+    );
+    expect(mockCheckout).not.toHaveBeenCalled();
+  },
+);

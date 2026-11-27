@@ -65,11 +65,6 @@ function copyForCapability(capability) {
   return CAPABILITY_COPY[capability] ?? DEFAULT_COPY;
 }
 
-function formatPrice(cents) {
-  if (cents == null) return null;
-  return `$${(cents / 100).toFixed(2)}`;
-}
-
 function SectionLabel({ children }) {
   return (
     <Text
@@ -435,8 +430,8 @@ export default function BookingFormModal({
             marginBottom: 18,
           }}
         >
-          {formatPrice(service.price_cents)
-            ? `${t("booking.bookingService", { name: service.name })} · ${formatPrice(service.price_cents)}`
+          {formatMoney(service.price_cents, provider?.currency)
+            ? `${t("booking.bookingService", { name: service.name })} · ${formatMoney(service.price_cents, provider?.currency)}`
             : t("booking.bookingService", { name: service.name })}
         </Text>
       ) : (
@@ -457,8 +452,8 @@ export default function BookingFormModal({
               <Chip
                 key={s.id}
                 label={
-                  formatPrice(s.price_cents)
-                    ? `${s.name} · ${formatPrice(s.price_cents)}`
+                  formatMoney(s.price_cents, provider?.currency)
+                    ? `${s.name} · ${formatMoney(s.price_cents, provider?.currency)}`
                     : s.name
                 }
                 selected={serviceId === s.id}
@@ -490,7 +485,7 @@ export default function BookingFormModal({
               paymentPolicy === "deposit"
                 ? "booking.depositRequired"
                 : "booking.paymentRequired",
-              { amount: formatPrice(chargeCents), noun: noun },
+              { amount: formatMoney(chargeCents, provider?.currency), noun: noun },
             )}
           </Text>
         </View>

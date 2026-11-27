@@ -93,17 +93,22 @@ const DEFAULT_EXTRACTORS = {
 
 // --- tabular rows → catalog (plain parsing, no LLM) --------------------------
 
-// Resolve a row value by trying several header aliases, case-insensitively.
-function pick(row, aliases) {
+// Resolve a row value by trying several header aliases, case-insensitively. pickCell keeps the cell's type.
+function pickCell(row, aliases) {
   const keys = Object.keys(row || {});
   for (const alias of aliases) {
     const k = keys.find((key) => key.trim().toLowerCase() === alias);
     if (k != null) {
       const v = row[k];
-      if (v != null && String(v).trim() !== "") return String(v).trim();
+      if (v != null && String(v).trim() !== "") return v;
     }
   }
   return undefined;
+}
+
+function pick(row, aliases) {
+  const v = pickCell(row, aliases);
+  return v === undefined ? undefined : String(v).trim();
 }
 
 const NAME_ALIASES = ["name", "title", "item", "service", "product", "treatment"];
@@ -120,7 +125,10 @@ export function rowsToCatalog(rows) {
   for (const row of rows || []) {
     const name = pick(row, NAME_ALIASES);
     if (!name) continue; // no name → not a usable proposal (no fake data)
-    const price = pick(row, PRICE_ALIASES);
+    // A spreadsheet number (49.9) stays a number, so the review screen writes it with the viewer's decimal
+    // separator. Text ("$ 49,90") stays as written in the file.
+    const cell = pickCell(row, PRICE_ALIASES);
+    const price = typeof cell === "number" ? cell : pick(row, PRICE_ALIASES);
     const description = pick(row, DESC_ALIASES);
     const duration = pick(row, DURATION_ALIASES);
     if (duration !== undefined) {

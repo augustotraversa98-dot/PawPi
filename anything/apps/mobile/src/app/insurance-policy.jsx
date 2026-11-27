@@ -17,6 +17,7 @@ import {
   useApplyPolicy,
 } from "@/hooks/useInsurance";
 import { friendlyErrorMessage } from "@/utils/appAlert";
+import { formatMoney as money } from "@/utils/money";
 
 // Insurance apply / policy hub (ticket 2.72, extends the 2.54 marketplace). LEAD-GEN ONLY for v1
 // (2026-08-21): from a plan, the owner READS + ACCEPTS the insurer's terms/disclaimer and applies
@@ -31,11 +32,6 @@ const STATUS_KEY = {
   lapsed: "leftoverUi.insurancePolicy.status.lapsed",
   cancelled: "leftoverUi.insurancePolicy.status.cancelled",
 };
-
-function money(cents) {
-  if (cents == null) return null;
-  return `$${(cents / 100).toFixed(2)}`;
-}
 
 export default function InsurancePolicyScreen() {
   const insets = useSafeAreaInsets();

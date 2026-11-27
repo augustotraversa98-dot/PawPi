@@ -132,7 +132,13 @@ test("renders the summary fields and the empty 'Paid' state (no fake number)", a
 test("shows the settled amount when a payment is recorded", async () => {
   mockDetail = ok({ ...COMPLETED, paid: { amount_cents: 10000, currency: "ARS" } });
   const { getByText } = render(<BookingSummaryScreen />);
-  await waitFor(() => expect(getByText("ARS 100.00")).toBeTruthy());
+  await waitFor(() => expect(getByText("$100")).toBeTruthy());
+});
+
+test("a 4990-cent payment reads back as $49,90 on the confirmation", async () => {
+  mockDetail = ok({ ...COMPLETED, paid: { amount_cents: 4990, currency: "ARS" } });
+  const { getByText } = render(<BookingSummaryScreen />);
+  await waitFor(() => expect(getByText("$49,90")).toBeTruthy());
 });
 
 test("shows the booking status as a styled chip (completed → Completed)", async () => {

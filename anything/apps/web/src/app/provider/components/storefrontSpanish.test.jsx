@@ -269,13 +269,13 @@ describe("services in Spanish", () => {
     fireEvent.change(within(dialog).getByPlaceholderText("Control anual"), {
       target: { value: "Baño" },
     });
-    fireEvent.change(within(dialog).getByPlaceholderText("50.00"), { target: { value: "x" } });
+    fireEvent.change(within(dialog).getByPlaceholderText("50,00"), { target: { value: "x" } });
     submit();
     expect(
-      await within(dialog).findByText("Ingresá un importe válido (por ejemplo, 12.50)"),
+      await within(dialog).findByText("Ingresá un importe válido (por ejemplo, 12,50 o 1.250,00)"),
     ).toBeInTheDocument();
     act(() => setVisitorLang("en"));
-    expect(within(dialog).getByText("Enter a valid amount (e.g. 12.50)")).toBeInTheDocument();
+    expect(within(dialog).getByText("Enter a valid amount (e.g. 12.50 or 1,250.00)")).toBeInTheDocument();
     expect(fetch).not.toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ method: "POST" }),
@@ -309,7 +309,7 @@ describe("products in Spanish", () => {
     expect(await screen.findByText("Pedido #12")).toBeInTheDocument();
     expect(await screen.findByText("ARS 49,90 · 4 en stock")).toBeInTheDocument();
     expect(screen.getByText("Pago: Pagado · Entrega: Recibido")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Precio (por ejemplo, 49.90)")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Precio (por ejemplo, 49,90)")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Agregar producto" }));
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith("Ingresá un nombre y un precio válido."),

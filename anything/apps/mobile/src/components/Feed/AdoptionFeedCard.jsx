@@ -4,6 +4,7 @@ import { View, Text, TouchableOpacity } from "react-native";
 import { Image } from "expo-image";
 import { Heart, ChevronRight, Dog } from "lucide-react-native";
 import { COLORS } from "@/constants/colors";
+import { formatMoney } from "@/utils/money";
 
 function ageLabel(years, months) {
   const y = years || 0;
@@ -18,7 +19,7 @@ function ageLabel(years, months) {
 function money(cents, currency = "ARS", freeLabel = "Free to adopt") {
   if (cents == null) return null;
   if (cents === 0) return freeLabel;
-  return `${currency} ${(cents / 100).toFixed(2)}`;
+  return formatMoney(cents, currency);
 }
 
 // Phase 2 ticket 2.13 — an "adopt this dog" suggestion card, rendered INLINE in the feed between

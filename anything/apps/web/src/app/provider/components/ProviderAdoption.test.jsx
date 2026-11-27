@@ -137,7 +137,7 @@ describe("ProviderAdoption", () => {
     // The modal opens PREFILLED with the info the business wrote (previously unreachable).
     expect(screen.getByText("Edit Rex")).toBeTruthy();
     expect(screen.getByDisplayValue("Beagle")).toBeTruthy();
-    expect(screen.getByDisplayValue("50")).toBeTruthy(); // 5000 cents -> "50"
+    expect(screen.getByDisplayValue("50.00")).toBeTruthy(); // 5000 cents -> "50.00"
     expect(screen.getByDisplayValue("A gentle boy")).toBeTruthy();
 
     // Change the story and re-save — the whole set (info + media) persists via PATCH.

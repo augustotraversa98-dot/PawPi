@@ -106,7 +106,7 @@ export default {
       added: "Producto agregado",
       addFailed: "No pudimos agregar el producto",
       name: "Nombre del producto",
-      price: "Precio (por ejemplo, 49.90)",
+      price: "Precio (por ejemplo, 49,90)",
       stock: "Cantidad en stock",
       category: "Categoría (alimento, juguetes, medicamentos…)",
       photos: "Fotos del producto",

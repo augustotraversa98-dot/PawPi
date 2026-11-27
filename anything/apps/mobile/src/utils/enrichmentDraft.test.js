@@ -1,5 +1,6 @@
 import {
   priceToCents,
+  hasInvalidPrice,
   durationToMin,
   toServiceRows,
   rowToServiceBody,
@@ -15,6 +16,29 @@ describe("priceToCents", () => {
     expect(priceToCents("")).toBeNull();
     expect(priceToCents("free")).toBeNull();
     expect(priceToCents(null)).toBeNull();
+  });
+});
+
+describe("prices in the viewer's separators", () => {
+  it("reads thousands instead of cutting them off", () => {
+    expect(priceToCents("1.500", "es")).toBe(150000);
+    expect(priceToCents("1.234,56", "es")).toBe(123456);
+    expect(priceToCents("1,234.56", "en")).toBe(123456);
+  });
+
+  it("flags a selected, named row whose price has no single reading", () => {
+    const row = { name: "Bath", price: "$45 - $60", selected: true };
+    expect(hasInvalidPrice(row, "es")).toBe(true);
+    expect(priceToCents(row.price, "es")).toBeNull();
+    expect(hasInvalidPrice({ ...row, selected: false }, "es")).toBe(false);
+    expect(hasInvalidPrice({ ...row, name: " " }, "es")).toBe(false);
+    expect(hasInvalidPrice({ ...row, price: "" }, "es")).toBe(false);
+  });
+
+  it("writes a spreadsheet number with the viewer's separator", () => {
+    const [row] = toServiceRows([{ name: "Bath", price: 49.9 }], "es");
+    expect(row.price).toBe("49,90");
+    expect(rowToServiceBody(row, "es").price_cents).toBe(4990);
   });
 });
 

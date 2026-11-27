@@ -36,7 +36,11 @@ import {
 } from "@/hooks/useProviders";
 import useUpload from "@/utils/useUpload";
 import { isValidCoord } from "@/utils/walkBuddies";
-import { toServiceRows, rowToServiceBody } from "@/utils/enrichmentDraft";
+import {
+  toServiceRows,
+  rowToServiceBody,
+  hasInvalidPrice,
+} from "@/utils/enrichmentDraft";
 import { friendlyErrorMessage } from "@/utils/appAlert";
 import { withAppLanguage } from "@/utils/webLinks";
 
@@ -395,6 +399,8 @@ function ProviderOnboarding() {
   // Best-effort per service so one bad row doesn't abort the rest; the business already exists.
   const saveReviewed = async () => {
     if (!review?.provider?.id) return;
+    // An unreadable price is shown on its row; nothing is saved until it is fixed.
+    if (review.serviceRows.some((r) => hasInvalidPrice(r))) return;
     setBuilding(true);
     try {
       const desc = (review.description || "").trim();
@@ -702,6 +708,7 @@ function ProviderOnboarding() {
 function ReviewStep({ review, setDescription, setRow, onSave, saving }) {
   const { t } = useTranslation();
   const { description, serviceRows, photos } = review;
+  const priceBlocksSave = serviceRows.some((row) => hasInvalidPrice(row));
   return (
     <View>
       <Header
@@ -779,6 +786,11 @@ function ReviewStep({ review, setDescription, setRow, onSave, saving }) {
                     style={[inputStyle, { width: 96, paddingVertical: 10 }]}
                   />
                 </View>
+                {hasInvalidPrice(row) && (
+                  <Text testID={`price-error-${row.key}`} style={[priceErrorStyle, { marginTop: 8 }]}>
+                    {t("common.invalidAmount")}
+                  </Text>
+                )}
               </View>
             ))}
           </View>
@@ -792,6 +804,11 @@ function ReviewStep({ review, setDescription, setRow, onSave, saving }) {
       )}
 
       <View style={{ height: 28 }} />
+      {priceBlocksSave && (
+        <Text accessibilityRole="alert" style={[priceErrorStyle, { marginBottom: 12 }]}>
+          {t("common.invalidAmount")}
+        </Text>
+      )}
       <PrimaryButton
         label={saving ? t("vetBusinessAccess.saving") : t("vetBusinessAccess.saveAndFinish")}
         onPress={onSave}
@@ -974,6 +991,12 @@ function SecondaryButton({ label, onPress }) {
     </TouchableOpacity>
   );
 }
+
+const priceErrorStyle = {
+  fontSize: 13,
+  fontWeight: "700",
+  color: COLORS.terracotta,
+};
 
 const inputStyle = {
   borderWidth: 2,

@@ -209,6 +209,34 @@ test("proposed services show the review screen; Save & finish applies them via t
   expect(await screen.findByText("Your business is created!")).toBeTruthy();
 });
 
+async function reachReview(price) {
+  mockEnrich.mockResolvedValue({ draft: { services: [{ name: "Annual checkup", price: "$50" }] } });
+  const screen = render(<VetBusinessAccessScreen />);
+  fillName(screen);
+  fireEvent.press(screen.getByText("Veterinary clinic"));
+  fireEvent.press(screen.getByText("Build my profile"));
+  expect(await screen.findByText("Review your profile")).toBeTruthy();
+  fireEvent.changeText(screen.getByDisplayValue("$50"), price);
+  return screen;
+}
+
+test("a price typed as 49,90 is created as 4990 cents", async () => {
+  const screen = await reachReview("49,90");
+  fireEvent.press(screen.getByText("Save & finish"));
+  await waitFor(() => expect(mockCreateService).toHaveBeenCalledTimes(1));
+  expect(mockCreateService.mock.calls[0][0]).toMatchObject({ price_cents: 4990 });
+});
+
+test("an unreadable price shows an error and nothing is saved", async () => {
+  const screen = await reachReview("49,90 aprox");
+  expect(screen.getByTestId("price-error-svc-0")).toBeTruthy();
+  fireEvent.press(screen.getByText("Save & finish"));
+  await Promise.resolve();
+  expect(mockCreateService).not.toHaveBeenCalled();
+  expect(mockUpdate).not.toHaveBeenCalled();
+  expect(screen.getByText("Review your profile")).toBeTruthy();
+});
+
 test("tapping a selected service again de-selects it", () => {
   const screen = render(<VetBusinessAccessScreen />);
   fillName(screen);

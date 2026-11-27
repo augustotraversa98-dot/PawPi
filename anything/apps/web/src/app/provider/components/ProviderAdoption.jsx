@@ -35,6 +35,7 @@ import adoptionCopy from "../i18n/adoption";
 import { useProviderCopy } from "../i18n/lib/useProviderCopy";
 import { fill, formatMoney, plural } from "../i18n/lib/format";
 import { serverErrorMessage } from "../i18n/lib/serverError";
+import { centsToInput, dollarsToCents } from "../lib/money";
 
 // /provider/adoption — the adoption PLACE's listing + application workspace (ticket 2.12).
 // Manage adoptable DOGS (in the dog-profile field shape) and REVIEW incoming APPLICATIONS
@@ -257,14 +258,19 @@ function CreateListingForm({ providerId }) {
       toast.error(t.age[age.error]);
       return;
     }
-    const feeCents = fee ? Math.round(parseFloat(fee) * 100) : 0;
+    // Blank = free. An unreadable amount stops the save.
+    const feeAmount = dollarsToCents(fee, lang);
+    if (feeAmount.error) {
+      toast.error(feeAmount.error);
+      return;
+    }
     try {
       await create.mutateAsync({
         name,
         breed: breed || null,
         age_years: age.age_years,
         age_months: age.age_months,
-        adoption_fee_cents: Number.isFinite(feeCents) ? feeCents : 0,
+        adoption_fee_cents: feeAmount.cents ?? 0,
         story: story || null,
         photo_urls: photos,
         video_url: videoUrl || null,
@@ -706,7 +712,7 @@ function ListingRow({ listing: l, onEdit, onRemove, onRelist, relistPending }) {
 // via the existing useUpdateAdoptableListing PATCH (which COALESCEs unspecified fields). Previously
 // only media was editable, so a business couldn't fix a name/story/fee or see the info it wrote.
 function ListingEditModal({ listing, onClose, onSave, saving }) {
-  const { t } = useProviderCopy(adoptionCopy);
+  const { t, lang } = useProviderCopy(adoptionCopy);
   const [name, setName] = useState(listing.name || "");
   const [breed, setBreed] = useState(listing.breed || "");
   const [ageYears, setAgeYears] = useState(
@@ -715,11 +721,7 @@ function ListingEditModal({ listing, onClose, onSave, saving }) {
   const [ageMonths, setAgeMonths] = useState(
     listing.age_months != null ? String(listing.age_months) : "",
   );
-  const [fee, setFee] = useState(
-    listing.adoption_fee_cents != null
-      ? (listing.adoption_fee_cents / 100).toString()
-      : "",
-  );
+  const [fee, setFee] = useState(centsToInput(listing.adoption_fee_cents, lang));
   const [story, setStory] = useState(listing.story || "");
   const [status, setStatus] = useState(listing.status || "available");
   const [photos, setPhotos] = useState(
@@ -742,14 +744,18 @@ function ListingEditModal({ listing, onClose, onSave, saving }) {
       toast.error(t.age[age.error]);
       return;
     }
-    const feeCents = fee === "" ? 0 : Math.round(parseFloat(fee) * 100);
+    const feeAmount = dollarsToCents(fee, lang);
+    if (feeAmount.error) {
+      toast.error(feeAmount.error);
+      return;
+    }
     onSave({
       name: name.trim(),
       breed: breed.trim() || null,
       // Always sent (value or null) so clearing the field clears the stored age.
       age_years: age.age_years,
       age_months: age.age_months,
-      adoption_fee_cents: Number.isFinite(feeCents) && feeCents >= 0 ? feeCents : 0,
+      adoption_fee_cents: feeAmount.cents ?? 0,
       // Empty string clears the story (PATCH COALESCE keeps a field only when null is sent).
       story: story,
       status,
