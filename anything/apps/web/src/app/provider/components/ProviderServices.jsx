@@ -20,6 +20,11 @@ import {
   dollarsToCents,
   parseDurationMin,
 } from "../lib/money";
+import servicesCopy from "../i18n/services";
+import sharedCopy from "../i18n/shared";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { fill } from "../i18n/lib/format";
+import { serverErrorMessage } from "../i18n/lib/serverError";
 
 // Services management (c2b). Lists ALL of the provider's services — active AND
 // inactive (inactive rows are dimmed + badged). Owner/admin can add, edit,
@@ -27,6 +32,9 @@ import {
 // These are exactly the services the owner booking screen lists, so editing here
 // changes what owners can pick. Loaded inside the shell, so providerId is set.
 export default function ProviderServices({ providerId }) {
+  const { t, lang } = useProviderCopy(servicesCopy);
+  const failed = (fallback) => (err) =>
+    toast.error(serverErrorMessage(err, lang, fallback, servicesCopy));
   const { data: services, isLoading, isError, error } =
     useProviderServices(providerId);
   // Walk packages (ticket B2) show as a sibling section for walker-capable providers only.
@@ -46,33 +54,28 @@ export default function ProviderServices({ providerId }) {
         { serviceId: editing.id, ...body },
         {
           onSuccess: () => {
-            toast.success("Service updated");
+            toast.success(t.updated);
             setEditing(null);
           },
-          onError: (err) => toast.error(err?.message || "Couldn't save service"),
+          onError: failed(t.saveFailed),
         },
       );
     } else {
       create.mutate(body, {
         onSuccess: () => {
-          toast.success("Service added");
+          toast.success(t.added);
           setEditing(null);
         },
-        onError: (err) => toast.error(err?.message || "Couldn't add service"),
+        onError: failed(t.addFailed),
       });
     }
   };
 
   const onDeactivate = (s) => {
-    if (
-      window.confirm(
-        `Deactivate "${s.name}"? It will stop appearing for owners to book. Past appointments keep their service, and you can reactivate it later.`,
-      )
-    ) {
+    if (window.confirm(fill(t.confirmDeactivate, { name: s.name }))) {
       deactivate.mutate(s.id, {
-        onSuccess: () => toast.success("Service deactivated"),
-        onError: (err) =>
-          toast.error(err?.message || "Couldn't deactivate service"),
+        onSuccess: () => toast.success(t.deactivated),
+        onError: failed(t.deactivateFailed),
       });
     }
   };
@@ -81,9 +84,8 @@ export default function ProviderServices({ providerId }) {
     update.mutate(
       { serviceId: s.id, active: true },
       {
-        onSuccess: () => toast.success("Service reactivated"),
-        onError: (err) =>
-          toast.error(err?.message || "Couldn't reactivate service"),
+        onSuccess: () => toast.success(t.reactivated),
+        onError: failed(t.reactivateFailed),
       },
     );
   };
@@ -102,10 +104,8 @@ export default function ProviderServices({ providerId }) {
             <Tag className="h-5 w-5" style={{ color: COLORS.terracotta }} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-[#3B241B]">Services</h1>
-            <p className="text-sm text-[#7A6254]">
-              What pet owners can book with you
-            </p>
+            <h1 className="text-2xl font-bold text-[#3B241B]">{t.title}</h1>
+            <p className="text-sm text-[#7A6254]">{t.subtitle}</p>
           </div>
         </div>
 
@@ -116,7 +116,7 @@ export default function ProviderServices({ providerId }) {
           style={{ backgroundColor: COLORS.coral }}
         >
           <Plus className="h-4 w-4" />
-          Add service
+          {t.add}
         </button>
       </div>
 
@@ -130,40 +130,32 @@ export default function ProviderServices({ providerId }) {
               className="h-5 w-5 animate-spin"
               style={{ color: COLORS.coral }}
             />
-            Loading services…
+            {t.loading}
           </div>
         ) : isError ? (
           <div className="px-6 py-16 text-center">
-            <p className="font-semibold text-[#B23B30]">
-              Couldn't load services
-            </p>
+            <p className="font-semibold text-[#B23B30]">{t.loadErrorTitle}</p>
             <p className="mt-1 text-sm text-[#7A6254]">
-              {error?.message || "Please try again."}
+              {serverErrorMessage(error, lang, t.tryAgain, servicesCopy)}
             </p>
           </div>
         ) : list.length === 0 ? (
           <div className="px-6 py-16 text-center">
-            <p className="text-base font-semibold text-[#3B241B]">
-              No services yet
-            </p>
-            <p className="mt-1 text-sm text-[#7A6254]">
-              Add a service so pet owners can book it.
-            </p>
+            <p className="text-base font-semibold text-[#3B241B]">{t.emptyTitle}</p>
+            <p className="mt-1 text-sm text-[#7A6254]">{t.emptyBody}</p>
           </div>
         ) : (
           <table className="w-full border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-[#FFF1E2] bg-[#FFFBF6]">
-                {["Service", "Duration", "Price", "Deposit", "Status", "Actions"].map(
-                  (h) => (
-                    <th
-                      key={h}
-                      className="px-4 py-3 text-xs font-bold uppercase tracking-wide text-[#7A6254]"
-                    >
-                      {h}
-                    </th>
-                  ),
-                )}
+                {Object.entries(t.columns).map(([column, label]) => (
+                  <th
+                    key={column}
+                    className="px-4 py-3 text-xs font-bold uppercase tracking-wide text-[#7A6254]"
+                  >
+                    {label}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -202,13 +194,15 @@ export default function ProviderServices({ providerId }) {
                       </div>
                     </td>
                     <td className="px-4 py-3 align-top text-[#3B241B]">
-                      {s.duration_min != null ? `${s.duration_min} min` : "—"}
+                      {s.duration_min != null
+                        ? fill(t.minutesShort, { minutes: s.duration_min })
+                        : "—"}
                     </td>
                     <td className="px-4 py-3 align-top text-[#3B241B]">
-                      {centsToCurrency(s.price_cents)}
+                      {centsToCurrency(s.price_cents, lang)}
                     </td>
                     <td className="px-4 py-3 align-top text-[#3B241B]">
-                      {centsToCurrency(s.deposit_cents)}
+                      {centsToCurrency(s.deposit_cents, lang)}
                     </td>
                     <td className="px-4 py-3 align-top">
                       {inactive ? (
@@ -216,21 +210,21 @@ export default function ProviderServices({ providerId }) {
                           className="inline-block rounded-full px-2.5 py-1 text-xs font-semibold"
                           style={{ backgroundColor: "#EFEAE6", color: "#7A6254" }}
                         >
-                          Inactive
+                          {t.inactive}
                         </span>
                       ) : (
                         <span
                           className="inline-block rounded-full px-2.5 py-1 text-xs font-semibold"
                           style={{ backgroundColor: "#E5F4EC", color: "#1F7A4D" }}
                         >
-                          Active
+                          {t.active}
                         </span>
                       )}
                     </td>
                     <td className="px-4 py-3 align-top">
                       <div className="flex flex-wrap items-center gap-2">
                         <RowButton
-                          label="Edit"
+                          label={t.edit}
                           Icon={Pencil}
                           onClick={() => setEditing(s)}
                           disabled={busy}
@@ -238,7 +232,7 @@ export default function ProviderServices({ providerId }) {
                         />
                         {inactive ? (
                           <RowButton
-                            label="Reactivate"
+                            label={t.reactivate}
                             Icon={Power}
                             onClick={() => onReactivate(s)}
                             disabled={busy}
@@ -246,7 +240,7 @@ export default function ProviderServices({ providerId }) {
                           />
                         ) : (
                           <RowButton
-                            label="Deactivate"
+                            label={t.deactivate}
                             Icon={Ban}
                             onClick={() => onDeactivate(s)}
                             disabled={busy}
@@ -289,6 +283,9 @@ const inputCls =
 // converted to integer cents on submit; numeric validation mirrors
 // invalidServiceFields and blocks the mutation before any POST/PATCH fires.
 function ServiceFormModal({ service, onClose, onSubmit, saving }) {
+  const { t } = useProviderCopy(servicesCopy);
+  // Amount and duration errors are worded in the shared dictionary, looked up at render.
+  const { t: shared } = useProviderCopy(sharedCopy);
   const isEdit = service != null;
   const {
     register,
@@ -330,22 +327,22 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
     // error and returns WITHOUT calling onSubmit (so no request is made).
     const duration = parseDurationMin(values.duration_min);
     if (duration.error) {
-      setError("duration_min", { type: "validate", message: duration.error });
+      setError("duration_min", { type: "validate" });
       return;
     }
     const price = dollarsToCents(values.price);
     if (price.error) {
-      setError("price", { type: "validate", message: price.error });
+      setError("price", { type: "validate" });
       return;
     }
     const deposit = dollarsToCents(values.deposit);
     if (deposit.error) {
-      setError("deposit", { type: "validate", message: deposit.error });
+      setError("deposit", { type: "validate" });
       return;
     }
     const nightly = dollarsToCents(values.nightly_rate);
     if (nightly.error) {
-      setError("nightly_rate", { type: "validate", message: nightly.error });
+      setError("nightly_rate", { type: "validate" });
       return;
     }
 
@@ -367,17 +364,17 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
       role="dialog"
       aria-modal="true"
-      aria-label={isEdit ? "Edit service" : "Add service"}
+      aria-label={isEdit ? t.form.editTitle : t.form.addTitle}
     >
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-7 shadow-xl">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-xl font-bold text-[#3B241B]">
-            {isEdit ? "Edit service" : "Add service"}
+            {isEdit ? t.form.editTitle : t.form.addTitle}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t.form.close}
             className="rounded-lg p-1.5 text-[#7A6254] hover:bg-[#FFF7EF]"
           >
             <X className="h-5 w-5" />
@@ -385,23 +382,22 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
         </div>
 
         <form onSubmit={handleSubmit(submit)} className="space-y-4">
-          <Field label="Service name" error={errors.name?.message} required>
+          <Field label={t.form.name} error={errors.name && t.form.nameRequired} required>
             <input
               type="text"
-              placeholder="Annual checkup"
+              placeholder={t.form.namePlaceholder}
               {...register("name", {
-                required: "Service name is required",
-                validate: (v) =>
-                  v.trim().length > 0 || "Service name is required",
+                required: true,
+                validate: (v) => v.trim().length > 0,
               })}
               className={inputCls}
             />
           </Field>
 
           <Field
-            label="Duration"
-            hint="minutes"
-            error={errors.duration_min?.message}
+            label={t.form.duration}
+            hint={t.form.durationHint}
+            error={errors.duration_min && shared.inputs.invalidMinutes}
           >
             <input
               type="text"
@@ -410,13 +406,14 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
               {...register("duration_min")}
               className={inputCls}
             />
-            <p className="mt-1 text-xs text-[#7A6254]">
-              How long a booking of this service lasts — this sets the slot length customers
-              see. Leave blank to use 30 minutes.
-            </p>
+            <p className="mt-1 text-xs text-[#7A6254]">{t.form.durationHelp}</p>
           </Field>
 
-          <Field label="Price" hint="$" error={errors.price?.message}>
+          <Field
+            label={t.form.price}
+            hint="$"
+            error={errors.price && shared.inputs.invalidAmount}
+          >
             <input
               type="text"
               inputMode="decimal"
@@ -428,7 +425,7 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
 
           {/* Less-common fields (Phase 3): still submit their values when collapsed. */}
           <AdvancedSection>
-            <Field label="Description" hint="Optional">
+            <Field label={t.form.description} hint={t.form.optional}>
               <textarea
                 rows={2}
                 {...register("description")}
@@ -436,7 +433,11 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
               />
             </Field>
 
-            <Field label="Deposit" hint="$" error={errors.deposit?.message}>
+            <Field
+              label={t.form.deposit}
+              hint="$"
+              error={errors.deposit && shared.inputs.invalidAmount}
+            >
               <input
                 type="text"
                 inputMode="decimal"
@@ -446,25 +447,19 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
               />
             </Field>
 
-            <Field
-              label="Payment for booking"
-              hint="when a customer requests this service"
-            >
+            <Field label={t.form.payment} hint={t.form.paymentHint}>
               <select {...register("payment_policy")} className={inputCls}>
-                <option value="none">No online payment — pay in person</option>
-                <option value="deposit">Deposit up front (the Deposit amount)</option>
-                <option value="full">Full price up front (the Price)</option>
+                <option value="none">{t.form.paymentNone}</option>
+                <option value="deposit">{t.form.paymentDeposit}</option>
+                <option value="full">{t.form.paymentFull}</option>
               </select>
-              <p className="mt-1 text-xs text-[#7A6254]">
-                Customers pay when they request the booking. If you decline a paid
-                request, they're refunded automatically.
-              </p>
+              <p className="mt-1 text-xs text-[#7A6254]">{t.form.paymentHelp}</p>
             </Field>
 
             <Field
-              label="Nightly rate"
-              hint="daycare/boarding only — $ per night"
-              error={errors.nightly_rate?.message}
+              label={t.form.nightlyRate}
+              hint={t.form.nightlyRateHint}
+              error={errors.nightly_rate && shared.inputs.invalidAmount}
             >
               <input
                 type="text"
@@ -473,13 +468,10 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
                 {...register("nightly_rate")}
                 className={inputCls}
               />
-              <p className="mt-1 text-xs text-[#7A6254]">
-                For a daycare stay, the customer is charged this rate × the number of
-                nights (when Payment is set to Full). Leave blank for other services.
-              </p>
+              <p className="mt-1 text-xs text-[#7A6254]">{t.form.nightlyRateHelp}</p>
             </Field>
 
-            <ImageUploader label="Photos" value={images} onChange={setImages} />
+            <ImageUploader label={t.form.photos} value={images} onChange={setImages} />
           </AdvancedSection>
 
           <div className="flex justify-end gap-3 pt-2">
@@ -488,7 +480,7 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
               onClick={onClose}
               className="rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-4 py-2.5 text-sm font-bold text-[#7A6254]"
             >
-              Cancel
+              {t.form.cancel}
             </button>
             <button
               type="submit"
@@ -497,7 +489,7 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
               style={{ backgroundColor: COLORS.coral }}
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isEdit ? "Save changes" : "Add service"}
+              {isEdit ? t.form.save : t.form.addTitle}
             </button>
           </div>
         </form>

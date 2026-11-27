@@ -2,6 +2,7 @@
 // React) so the drag/reorder logic, the save-payload diff, and the optimistic-save/rollback
 // orchestration are unit-testable directly — jsdom can't simulate real pointer drags, so the
 // tests drive these functions instead of the Dnd surface.
+import storefrontCopy from "../i18n/storefront";
 
 // Move the item `activeId` to the slot currently held by `overId`. Pure — returns a NEW array.
 // A no-op (returns a copy) when an id is missing/equal or not present in the list.
@@ -27,14 +28,14 @@ export function discountPct(priceCents, compareAtCents) {
 // compare_at_cents > price_cents, so the discount's struck "was" price must be GREATER than the
 // current selling price (the server enforces the same rule with a 422). The ticket names this
 // the "sale-price" input; per the schema the stored field is the higher compare-at price, so we
-// validate > current price. Returns an error string, or null when valid / cleared.
-export function validateCompareAt(compareAtCents, priceCents) {
+// validate > current price. Returns an error string in `lang`, or null when valid / cleared.
+export function validateCompareAt(compareAtCents, priceCents, lang = "en") {
   if (compareAtCents == null) return null; // cleared → no discount
   if (!Number.isInteger(compareAtCents) || compareAtCents <= 0) {
-    return "Enter a valid amount";
+    return storefrontCopy[lang].compareAtErrors.invalid;
   }
   if (compareAtCents <= priceCents) {
-    return "Compare-at price must be higher than the current price";
+    return storefrontCopy[lang].compareAtErrors.notHigher;
   }
   return null;
 }

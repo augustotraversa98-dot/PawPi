@@ -18,7 +18,11 @@ import {
   useDeleteLocation,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
-import { WEEKDAYS, hoursToRows, rowsToHours, hoursSummary } from "../lib/hours";
+import { WEEKDAYS, hoursToRows, rowsToHours, hoursSummary, weekdayName } from "../lib/hours";
+import locationsCopy from "../i18n/locations";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { fill } from "../i18n/lib/format";
+import { serverErrorMessage } from "../i18n/lib/serverError";
 import LocationMapPicker, { mapsConfigured } from "./LocationMapPicker";
 import AdvancedSection from "./AdvancedSection";
 
@@ -28,6 +32,9 @@ import AdvancedSection from "./AdvancedSection";
 // the confirm copy makes that permanence clear. Loaded inside the shell, so
 // providerId is always resolved.
 export default function ProviderLocations({ providerId }) {
+  const { t, lang } = useProviderCopy(locationsCopy);
+  const failed = (fallback) => (err) =>
+    toast.error(serverErrorMessage(err, lang, fallback, locationsCopy));
   const { data: locations, isLoading, isError, error } =
     useProviderLocations(providerId);
 
@@ -44,33 +51,28 @@ export default function ProviderLocations({ providerId }) {
         { locationId: editing.id, ...body },
         {
           onSuccess: () => {
-            toast.success("Location updated");
+            toast.success(t.updated);
             setEditing(null);
           },
-          onError: (err) =>
-            toast.error(err?.message || "Couldn't save location"),
+          onError: failed(t.saveFailed),
         },
       );
     } else {
       create.mutate(body, {
         onSuccess: () => {
-          toast.success("Location added");
+          toast.success(t.added);
           setEditing(null);
         },
-        onError: (err) => toast.error(err?.message || "Couldn't add location"),
+        onError: failed(t.addFailed),
       });
     }
   };
 
   const onDelete = (loc) => {
-    if (
-      window.confirm(
-        `Permanently delete "${loc.name || "this location"}"? This cannot be undone. Past appointments stay but are unlinked from this location.`,
-      )
-    ) {
+    if (window.confirm(fill(t.confirmDelete, { name: loc.name || t.thisLocation }))) {
       del.mutate(loc.id, {
-        onSuccess: () => toast.success("Location deleted"),
-        onError: (err) => toast.error(err?.message || "Couldn't delete location"),
+        onSuccess: () => toast.success(t.deleted),
+        onError: failed(t.deleteFailed),
       });
     }
   };
@@ -89,10 +91,8 @@ export default function ProviderLocations({ providerId }) {
             <MapPin className="h-5 w-5" style={{ color: COLORS.terracotta }} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-[#3B241B]">Locations</h1>
-            <p className="text-sm text-[#7A6254]">
-              Where you see pets — shown to owners when they book
-            </p>
+            <h1 className="text-2xl font-bold text-[#3B241B]">{t.title}</h1>
+            <p className="text-sm text-[#7A6254]">{t.subtitle}</p>
           </div>
         </div>
 
@@ -103,35 +103,31 @@ export default function ProviderLocations({ providerId }) {
           style={{ backgroundColor: COLORS.coral }}
         >
           <Plus className="h-4 w-4" />
-          Add location
+          {t.add}
         </button>
       </div>
 
       {isLoading ? (
         <div className="flex items-center justify-center gap-3 rounded-2xl border border-[#FFD9B3] bg-white px-6 py-16 text-[#7A6254]">
           <Loader2 className="h-5 w-5 animate-spin" style={{ color: COLORS.coral }} />
-          Loading locations…
+          {t.loading}
         </div>
       ) : isError ? (
         <div className="rounded-2xl border border-[#FFD9B3] bg-white px-6 py-16 text-center">
-          <p className="font-semibold text-[#B23B30]">Couldn't load locations</p>
+          <p className="font-semibold text-[#B23B30]">{t.loadErrorTitle}</p>
           <p className="mt-1 text-sm text-[#7A6254]">
-            {error?.message || "Please try again."}
+            {serverErrorMessage(error, lang, t.tryAgain, locationsCopy)}
           </p>
         </div>
       ) : list.length === 0 ? (
         <div className="rounded-2xl border border-[#FFD9B3] bg-white px-6 py-16 text-center">
-          <p className="text-base font-semibold text-[#3B241B]">
-            No locations yet
-          </p>
-          <p className="mt-1 text-sm text-[#7A6254]">
-            Add a location so owners know where to find you.
-          </p>
+          <p className="text-base font-semibold text-[#3B241B]">{t.emptyTitle}</p>
+          <p className="mt-1 text-sm text-[#7A6254]">{t.emptyBody}</p>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {list.map((loc) => {
-            const summary = hoursSummary(loc.hours_json);
+            const summary = hoursSummary(loc.hours_json, lang);
             const busy = del.isPending && del.variables === loc.id;
             return (
               <div
@@ -141,7 +137,7 @@ export default function ProviderLocations({ providerId }) {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3 className="text-base font-bold text-[#3B241B]">
-                      {loc.name || "Unnamed location"}
+                      {loc.name || t.unnamed}
                     </h3>
                     {loc.address && (
                       <p className="mt-0.5 text-sm text-[#7A6254]">
@@ -151,14 +147,14 @@ export default function ProviderLocations({ providerId }) {
                   </div>
                   <div className="flex flex-shrink-0 items-center gap-2">
                     <RowButton
-                      label="Edit"
+                      label={t.edit}
                       Icon={Pencil}
                       onClick={() => setEditing(loc)}
                       disabled={busy}
                       variant="muted"
                     />
                     <RowButton
-                      label="Delete"
+                      label={t.delete}
                       Icon={Trash2}
                       onClick={() => onDelete(loc)}
                       disabled={busy}
@@ -204,12 +200,12 @@ const inputCls =
 
 // Parse an optional coordinate text input. Returns { value } (undefined when
 // blank) or { error }. Mirrors invalidLocationFields server-side.
-function parseCoord(raw, { min, max, label }) {
+function parseCoord(raw, { min, max }) {
   const str = String(raw ?? "").trim();
   if (str === "") return { value: undefined };
   const value = Number(str);
   if (!Number.isFinite(value) || value < min || value > max) {
-    return { error: `${label} must be between ${min} and ${max}` };
+    return { error: true };
   }
   return { value };
 }
@@ -218,6 +214,7 @@ function parseCoord(raw, { min, max, label }) {
 // open/close grid; lat/lng are plain numeric inputs (no map this ticket) and are
 // validated client-side before any request. An empty hours editor never blocks.
 function LocationFormModal({ location, onClose, onSubmit, saving }) {
+  const { t, lang } = useProviderCopy(locationsCopy);
   const isEdit = location != null;
   const {
     register,
@@ -259,18 +256,14 @@ function LocationFormModal({ location, onClose, onSubmit, saving }) {
     }));
 
   const submit = (values) => {
-    const lat = parseCoord(values.lat, { min: -90, max: 90, label: "Latitude" });
+    const lat = parseCoord(values.lat, { min: -90, max: 90 });
     if (lat.error) {
-      setError("lat", { type: "validate", message: lat.error });
+      setError("lat", { type: "validate" });
       return;
     }
-    const lng = parseCoord(values.lng, {
-      min: -180,
-      max: 180,
-      label: "Longitude",
-    });
+    const lng = parseCoord(values.lng, { min: -180, max: 180 });
     if (lng.error) {
-      setError("lng", { type: "validate", message: lng.error });
+      setError("lng", { type: "validate" });
       return;
     }
 
@@ -290,17 +283,17 @@ function LocationFormModal({ location, onClose, onSubmit, saving }) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
       role="dialog"
       aria-modal="true"
-      aria-label={isEdit ? "Edit location" : "Add location"}
+      aria-label={isEdit ? t.form.editTitle : t.form.addTitle}
     >
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-7 shadow-xl">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-xl font-bold text-[#3B241B]">
-            {isEdit ? "Edit location" : "Add location"}
+            {isEdit ? t.form.editTitle : t.form.addTitle}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t.form.close}
             className="rounded-lg p-1.5 text-[#7A6254] hover:bg-[#FFF7EF]"
           >
             <X className="h-5 w-5" />
@@ -308,19 +301,19 @@ function LocationFormModal({ location, onClose, onSubmit, saving }) {
         </div>
 
         <form onSubmit={handleSubmit(submit)} className="space-y-4">
-          <Field label="Location name" hint="Optional">
+          <Field label={t.form.name} hint={t.form.optional}>
             <input
               type="text"
-              placeholder="Main clinic"
+              placeholder={t.form.namePlaceholder}
               {...register("name")}
               className={inputCls}
             />
           </Field>
 
-          <Field label="Address" hint="Optional">
+          <Field label={t.form.address} hint={t.form.optional}>
             <input
               type="text"
-              placeholder="123 Bark Street"
+              placeholder={t.form.addressPlaceholder}
               {...register("address")}
               className={inputCls}
             />
@@ -328,10 +321,10 @@ function LocationFormModal({ location, onClose, onSubmit, saving }) {
 
           {/* Less-common fields (Phase 3): still submit their values when collapsed. */}
           <AdvancedSection>
-            <Field label="Phone" hint="Optional">
+            <Field label={t.form.phone} hint={t.form.optional}>
               <input
                 type="text"
-                placeholder="+1 555 0100"
+                placeholder={t.form.phonePlaceholder}
                 {...register("phone")}
                 className={inputCls}
               />
@@ -340,11 +333,9 @@ function LocationFormModal({ location, onClose, onSubmit, saving }) {
             <div>
               <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-[#3B241B]">
                 <MapPin className="h-4 w-4 text-[#B8A99D]" />
-                Pin on map
+                {t.form.pin}
                 <span className="text-xs font-normal text-[#B8A99D]">
-                  {mapsConfigured()
-                    ? "Click or drag to set the exact spot"
-                    : "Optional"}
+                  {mapsConfigured() ? t.form.pinHint : t.form.optional}
                 </span>
               </p>
               <LocationMapPicker
@@ -353,14 +344,16 @@ function LocationFormModal({ location, onClose, onSubmit, saving }) {
                 onPick={onPick}
               />
               {mapsConfigured() && (
-                <p className="mb-3 mt-1.5 text-xs text-[#B8A99D]">
-                  The pin keeps the coordinates below in sync.
-                </p>
+                <p className="mb-3 mt-1.5 text-xs text-[#B8A99D]">{t.form.pinSync}</p>
               )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Latitude" hint="Optional" error={errors.lat?.message}>
+              <Field
+                label={t.form.latitude}
+                hint={t.form.optional}
+                error={errors.lat && t.form.latitudeRange}
+              >
                 <input
                   type="text"
                   inputMode="decimal"
@@ -369,7 +362,11 @@ function LocationFormModal({ location, onClose, onSubmit, saving }) {
                   className={inputCls}
                 />
               </Field>
-              <Field label="Longitude" hint="Optional" error={errors.lng?.message}>
+              <Field
+                label={t.form.longitude}
+                hint={t.form.optional}
+                error={errors.lng && t.form.longitudeRange}
+              >
                 <input
                   type="text"
                   inputMode="decimal"
@@ -383,18 +380,18 @@ function LocationFormModal({ location, onClose, onSubmit, saving }) {
             <div>
               <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-[#3B241B]">
                 <Clock className="h-4 w-4 text-[#B8A99D]" />
-                Opening hours
-                <span className="text-xs font-normal text-[#B8A99D]">Optional</span>
+                {t.form.hours}
+                <span className="text-xs font-normal text-[#B8A99D]">{t.form.optional}</span>
               </p>
               <div className="space-y-2">
                 {WEEKDAYS.map((day) => (
                   <div key={day.key} className="flex items-center gap-3">
                     <span className="w-10 text-sm font-semibold text-[#7A6254]">
-                      {day.label}
+                      {weekdayName(day.key, lang)}
                     </span>
                     <input
                       type="time"
-                      aria-label={`${day.label} open`}
+                      aria-label={fill(t.form.dayOpen, { day: weekdayName(day.key, lang) })}
                       value={hourRows[day.key]?.open ?? ""}
                       onChange={(e) => setHour(day.key, "open", e.target.value)}
                       className="flex-1 rounded-lg border-2 border-[#FFD9B3] bg-[#FFF7EF] px-2 py-1.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
@@ -402,7 +399,7 @@ function LocationFormModal({ location, onClose, onSubmit, saving }) {
                     <span className="text-[#B8A99D]">–</span>
                     <input
                       type="time"
-                      aria-label={`${day.label} close`}
+                      aria-label={fill(t.form.dayClose, { day: weekdayName(day.key, lang) })}
                       value={hourRows[day.key]?.close ?? ""}
                       onChange={(e) => setHour(day.key, "close", e.target.value)}
                       className="flex-1 rounded-lg border-2 border-[#FFD9B3] bg-[#FFF7EF] px-2 py-1.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
@@ -419,7 +416,7 @@ function LocationFormModal({ location, onClose, onSubmit, saving }) {
               onClick={onClose}
               className="rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-4 py-2.5 text-sm font-bold text-[#7A6254]"
             >
-              Cancel
+              {t.form.cancel}
             </button>
             <button
               type="submit"
@@ -428,7 +425,7 @@ function LocationFormModal({ location, onClose, onSubmit, saving }) {
               style={{ backgroundColor: COLORS.coral }}
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isEdit ? "Save changes" : "Add location"}
+              {isEdit ? t.form.save : t.form.addTitle}
             </button>
           </div>
         </form>

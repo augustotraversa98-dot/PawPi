@@ -10,6 +10,10 @@ import {
   useDeleteProviderPost,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
+import storefrontCopy from "../i18n/storefront";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { fill } from "../i18n/lib/format";
+import { serverErrorMessage } from "../i18n/lib/serverError";
 import ImageUploader from "./ImageUploader";
 import VideoUploader from "./VideoUploader";
 import StorefrontPreview from "./StorefrontPreview";
@@ -20,6 +24,7 @@ import StorefrontPreview from "./StorefrontPreview";
 // (services/items/reviews come from their own sections). Real data only — empty
 // states where there's nothing.
 export default function ProviderStorefront({ providerId }) {
+  const { t } = useProviderCopy(storefrontCopy);
   // Two views of the storefront: EDIT (cover + posts composer, existing) and a read-only
   // "View as customer" preview (Phase 2b) that renders the store as a customer sees it.
   const [view, setView] = useState("edit");
@@ -37,20 +42,18 @@ export default function ProviderStorefront({ providerId }) {
           <Store className="h-5 w-5" style={{ color: COLORS.terracotta }} />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-[#3B241B]">Storefront</h1>
-          <p className="text-sm text-[#7A6254]">
-            Your cover image and the posts owners see when they open your store.
-          </p>
+          <h1 className="text-xl font-bold text-[#3B241B]">{t.title}</h1>
+          <p className="text-sm text-[#7A6254]">{t.subtitle}</p>
         </div>
       </div>
 
       {/* Edit vs. read-only customer preview. */}
       <div className="mb-6 inline-flex rounded-xl border p-1" style={{ borderColor: COLORS.peach }}>
         <ViewTab active={view === "edit"} onClick={() => setView("edit")} Icon={Pencil}>
-          Edit
+          {t.views.edit}
         </ViewTab>
         <ViewTab active={view === "preview"} onClick={() => setView("preview")} Icon={Eye}>
-          View as customer
+          {t.views.preview}
         </ViewTab>
       </div>
 
@@ -66,7 +69,7 @@ export default function ProviderStorefront({ providerId }) {
           />
 
           <h2 className="mb-3 mt-8 text-sm font-bold uppercase tracking-wide text-[#7A6254]">
-            Posts
+            {t.posts.heading}
           </h2>
           <PostList
             providerId={providerId}
@@ -97,6 +100,7 @@ function ViewTab({ active, onClick, Icon, children }) {
 }
 
 function CoverEditor({ providerId }) {
+  const { t, lang } = useProviderCopy(storefrontCopy);
   const { data, isLoading } = useProvider(providerId);
   const update = useUpdateProviderProfile(providerId);
   const cover = data?.provider?.cover_image_url;
@@ -105,9 +109,9 @@ function CoverEditor({ providerId }) {
   const onChange = async (next) => {
     try {
       await update.mutateAsync({ cover_image_url: next[0] ?? null });
-      toast.success(next[0] ? "Cover updated" : "Cover removed");
+      toast.success(next[0] ? t.cover.updated : t.cover.removed);
     } catch (err) {
-      toast.error(err.message || "Couldn't update the cover");
+      toast.error(serverErrorMessage(err, lang, t.cover.failed, storefrontCopy));
     }
   };
 
@@ -119,16 +123,17 @@ function CoverEditor({ providerId }) {
       {isLoading ? (
         <div className="flex items-center gap-2 text-[#7A6254]">
           <Loader2 className="h-4 w-4 animate-spin" style={{ color: COLORS.coral }} />
-          Loading…
+          {t.loading}
         </div>
       ) : (
-        <ImageUploader label="Cover image" value={value} onChange={onChange} max={1} />
+        <ImageUploader label={t.cover.label} value={value} onChange={onChange} max={1} />
       )}
     </div>
   );
 }
 
 function ComposePost({ providerId, editing, onDone }) {
+  const { t, lang } = useProviderCopy(storefrontCopy);
   const create = useCreateProviderPost(providerId);
   const update = useUpdateProviderPost(providerId);
   const [body, setBody] = useState("");
@@ -175,7 +180,7 @@ function ComposePost({ providerId, editing, onDone }) {
   const submit = async (e) => {
     e.preventDefault();
     if (body.trim().length === 0 && images.length === 0 && !video) {
-      toast.error("Add some text, a photo, or a video.");
+      toast.error(t.compose.empty);
       return;
     }
     // Video moment vs. photo post — exactly one media kind per post.
@@ -191,18 +196,19 @@ function ComposePost({ providerId, editing, onDone }) {
     try {
       if (isEditing) {
         await update.mutateAsync({ postId: editing.id, ...payload });
-        toast.success("Post updated");
+        toast.success(t.compose.updated);
         onDone?.();
       } else {
         await create.mutateAsync(payload);
-        toast.success("Posted");
+        toast.success(t.compose.posted);
         setBody("");
         setImages([]);
         setVideo(null);
         setVideoThumb(null);
       }
     } catch (err) {
-      toast.error(err.message || (isEditing ? "Couldn't update" : "Couldn't post"));
+      const fallback = isEditing ? t.compose.updateFailed : t.compose.postFailed;
+      toast.error(serverErrorMessage(err, lang, fallback, storefrontCopy));
     }
   };
 
@@ -217,26 +223,26 @@ function ComposePost({ providerId, editing, onDone }) {
     >
       {isEditing && (
         <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#7A6254]">
-          Editing post
+          {t.compose.editing}
         </p>
       )}
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
         rows={3}
-        placeholder="Share an announcement, a photo, or an update…"
+        placeholder={t.compose.placeholder}
         className="w-full resize-y rounded-lg border px-3 py-2 text-sm"
         style={{ borderColor: COLORS.peach }}
       />
       {/* A post is either photos OR one video moment — show one path at a time so it's unambiguous. */}
       {!video && (
         <div className="mt-3">
-          <ImageUploader label="Photos" value={images} onChange={setImages} />
+          <ImageUploader label={t.compose.photos} value={images} onChange={setImages} />
         </div>
       )}
       {images.length === 0 && (
         <div className="mt-3">
-          <VideoUploader label="Video (optional)" value={video} onChange={onVideoChange} />
+          <VideoUploader label={t.compose.video} value={video} onChange={onVideoChange} />
         </div>
       )}
       <div className="mt-4 flex items-center gap-2">
@@ -249,11 +255,11 @@ function ComposePost({ providerId, editing, onDone }) {
           <Send className="h-4 w-4" />
           {isEditing
             ? pending
-              ? "Saving…"
-              : "Save changes"
+              ? t.compose.saving
+              : t.compose.save
             : pending
-              ? "Posting…"
-              : "Post"}
+              ? t.compose.posting
+              : t.compose.post}
         </button>
         {isEditing && (
           <button
@@ -263,7 +269,7 @@ function ComposePost({ providerId, editing, onDone }) {
             style={{ borderColor: COLORS.peach }}
           >
             <X className="h-4 w-4" />
-            Cancel
+            {t.compose.cancel}
           </button>
         )}
       </div>
@@ -272,6 +278,7 @@ function ComposePost({ providerId, editing, onDone }) {
 }
 
 function PostList({ providerId, editingId, onEdit }) {
+  const { t, lang } = useProviderCopy(storefrontCopy);
   const { data: posts, isLoading, isError, error } = useProviderPosts(providerId);
   const del = useDeleteProviderPost(providerId);
 
@@ -279,14 +286,14 @@ function PostList({ providerId, editingId, onEdit }) {
     return (
       <div className="flex items-center gap-2 py-12 text-[#7A6254]">
         <Loader2 className="h-5 w-5 animate-spin" style={{ color: COLORS.coral }} />
-        Loading posts…
+        {t.posts.loading}
       </div>
     );
   }
   if (isError) {
     return (
       <p className="py-8 text-sm text-[#B4452F]">
-        {error?.message || "Couldn't load posts."}
+        {serverErrorMessage(error, lang, t.posts.loadFailed, storefrontCopy)}
       </p>
     );
   }
@@ -297,19 +304,18 @@ function PostList({ providerId, editingId, onEdit }) {
         style={{ borderColor: COLORS.peach, backgroundColor: "#fff" }}
       >
         <Store className="mx-auto h-8 w-8" style={{ color: COLORS.terracotta }} />
-        <p className="mt-3 font-semibold text-[#3B241B]">No posts yet</p>
-        <p className="mt-1 text-sm text-[#7A6254]">
-          Your first post will show on your storefront.
-        </p>
+        <p className="mt-3 font-semibold text-[#3B241B]">{t.posts.emptyTitle}</p>
+        <p className="mt-1 text-sm text-[#7A6254]">{t.posts.emptyBody}</p>
       </div>
     );
   }
 
   const remove = (id) => {
-    if (window.confirm("Delete this post? It will disappear from your storefront.")) {
+    if (window.confirm(t.posts.confirmDelete)) {
       del.mutate(id, {
-        onSuccess: () => toast.success("Post deleted"),
-        onError: (err) => toast.error(err.message || "Couldn't delete"),
+        onSuccess: () => toast.success(t.posts.deleted),
+        onError: (err) =>
+          toast.error(serverErrorMessage(err, lang, t.posts.deleteFailed, storefrontCopy)),
       });
     }
   };
@@ -331,21 +337,21 @@ function PostList({ providerId, editingId, onEdit }) {
                 <p className="whitespace-pre-wrap text-sm text-[#3B241B]">{p.body}</p>
               ) : (
                 <p className="inline-flex items-center gap-1 text-sm text-[#7A6254]">
-                  <ImageIcon className="h-4 w-4" /> Photo post
+                  <ImageIcon className="h-4 w-4" /> {t.posts.photoPost}
                 </p>
               )}
             </div>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => onEdit?.(p)}
-                aria-label="Edit post"
+                aria-label={t.posts.editAria}
                 className="rounded-lg p-1.5 text-[#7A6254] hover:bg-[#FFF7EF]"
               >
                 <Pencil className="h-4 w-4" />
               </button>
               <button
                 onClick={() => remove(p.id)}
-                aria-label="Delete post"
+                aria-label={t.posts.deleteAria}
                 className="rounded-lg p-1.5 text-[#B4452F] hover:bg-[#FBE6E4]"
               >
                 <Trash2 className="h-4 w-4" />
@@ -358,7 +364,7 @@ function PostList({ providerId, editingId, onEdit }) {
                 <img
                   key={`${p.id}-${i}`}
                   src={url}
-                  alt={`Post ${p.id} image ${i + 1}`}
+                  alt={fill(t.posts.imageAlt, { id: p.id, position: i + 1 })}
                   className="h-20 w-20 rounded-lg object-cover"
                   style={{ backgroundColor: COLORS.cream }}
                 />
