@@ -74,8 +74,11 @@ export async function updateGrantShare({ request, grantId, userId, body }) {
   await sql`SELECT pg_advisory_xact_lock(hashtext(${`care_access_grant:${petId}:${providerId}`}))`;
   const keep = choice.expiry === KEEP;
   const interval = keep ? null : SHARE_EXPIRY_INTERVALS[choice.expiry];
-  // The parts and the permission change in one statement: a permission is never wider than the parts.
-  const updated = supported
+  // The parts and the permission change in one statement: a permission is never wider than the parts. Whether the
+  // permission is written depends on the row having it, not on whether adding works yet, so "view only" always removes
+  // a permission the access already carries.
+  const stored = before.edit_sections !== undefined;
+  const updated = stored
     ? await sql`
         UPDATE care_access_grants
         SET sections = ${choice.sections},

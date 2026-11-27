@@ -261,6 +261,16 @@ describe("the database", () => {
     }
   });
 
+  it("while adding is not available yet, view only still removes a permission the access carries", async () => {
+    const before = await share();
+    expect(before.edit_sections).toEqual(["vaccines"]);
+    const support = (await import("@/app/api/utils/editAccess")) as any;
+    vi.spyOn(support, "editAccessSupported").mockResolvedValue(false);
+    const narrowed = await edit(before.id, { sections: ["files"], editSections: [] });
+    expect(narrowed.status).toBe(200);
+    expect((await grants())[0]).toMatchObject({ sections: ["files"], edit_sections: [] });
+  });
+
   it("before 0158 a grant's parts are still edited, view only", async () => {
     const before = await share({ editSections: [] });
     try {
