@@ -8,6 +8,7 @@ import {
   ProviderAuthError,
 } from "@/app/api/utils/providerAuth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { isPriceCents } from "@/lib/decimal";
 
 // PATCH /api/providers/[id]/rx-fulfillment-orders/[orderId] — the dispensing provider acts on a
 // fulfillment (Wave 7 ticket 2.71): set price, accept, advance status, cancel. Capability-gated to
@@ -48,7 +49,7 @@ async function PATCH(request, { params }) {
     if (
       price_cents !== undefined &&
       price_cents !== null &&
-      !(Number.isInteger(price_cents) && price_cents >= 0)
+      !isPriceCents(price_cents)
     ) {
       return Response.json(
         { error: "price_cents must be a non-negative integer" },

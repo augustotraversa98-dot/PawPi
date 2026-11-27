@@ -49,8 +49,8 @@ export function formatMoney(cents, currency = "ARS") {
 //   - Thousands groups are 1-3 digits (not starting with 0) then exactly 3 each.
 //   - Anything else ("49,", "49.905", "0.500") is invalid. Nothing is ever rounded or cut off.
 
-// provider money columns are Postgres int4.
-const MAX_CENTS = 2147483647;
+// $999.999.999.999,99 (cents columns are bigint). The server's twin is MAX_PRICE_CENTS in apps/web/src/lib/decimal.js.
+const MAX_CENTS = 99999999999999;
 
 // A typed amount → integer cents. `lang` defaults to the app's language. Returns:
 //   { cents: undefined }          blank

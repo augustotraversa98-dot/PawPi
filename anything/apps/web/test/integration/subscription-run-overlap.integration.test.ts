@@ -150,7 +150,8 @@ describe('POST /api/payments/subscriptions/run — overlap safety', () => {
     const [order] = await raw<{ amount_cents: number; source_ref: string; owner_user_id: number }[]>`
       select amount_cents, source_ref, owner_user_id from orders
     `;
-    expect(order).toMatchObject({ amount_cents: 6000, source_ref: `subscription:${SUB}`, owner_user_id: A.profileId });
+    // this connection reads bigint as text; the app's own client reads it as a number (utils/sql.js)
+    expect({ ...order, amount_cents: Number(order.amount_cents) }).toMatchObject({ amount_cents: 6000, source_ref: `subscription:${SUB}`, owner_user_id: A.profileId });
     expect((await nextChargeAt(SUB)).getTime()).toBeGreaterThan(before.getTime());
   });
 

@@ -26,13 +26,14 @@ import { useDiscoverProviders } from "@/hooks/useProviders";
 import { useInsurancePlans, useSubmitInsuranceLead } from "@/hooks/useInsurance";
 import { friendlyErrorMessage } from "@/utils/appAlert";
 import { getDisplayAgeParts } from "@/utils/petAge";
+import { formatMoney } from "@/utils/money";
 
-function priceRange(p) {
-  const min = p.monthly_price_min;
-  const max = p.monthly_price_max;
-  if (min == null && max == null) return "—";
-  if (min != null && max != null) return `${min}–${max}/mo`;
-  return `${min ?? max}/mo`;
+// Monthly prices are stored as plain amounts (not cents) and carry no currency: pesos, like every price without one.
+function priceRange(p, t) {
+  const given = [p.monthly_price_min, p.monthly_price_max].filter((value) => value != null);
+  if (given.length === 0) return "—";
+  const price = given.map((value) => formatMoney(Math.round(Number(value) * 100))).join("–");
+  return t("insurance.perMonth", { price });
 }
 
 // The age sent with a quote request: whole years, marked "~" when it is an estimate.
@@ -173,7 +174,7 @@ export default function InsuranceScreen() {
                     <Text style={[TYPE.body, { fontWeight: "800", color: COLORS.warmBrown }]}>
                       {plan.name}{plan.tier ? ` · ${plan.tier}` : ""}
                     </Text>
-                    <Text style={[TYPE.body, { fontWeight: "800", color: COLORS.coral }]}>{priceRange(plan)}</Text>
+                    <Text style={[TYPE.body, { fontWeight: "800", color: COLORS.coral }]}>{priceRange(plan, t)}</Text>
                   </View>
                   {!!plan.deductible && (
                     <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: 2 }]}>{t("insurance.deductibleLabel", { value: plan.deductible })}</Text>
@@ -223,7 +224,7 @@ export default function InsuranceScreen() {
                   <View key={p.id} style={{ marginBottom: SPACING.sm }}>
                     <Text style={[TYPE.body, { fontWeight: "800", color: COLORS.warmBrown }]}>{p.name}</Text>
                     <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500" }]}>
-                      {t("insurance.compareRow", { price: priceRange(p), deductible: p.deductible || "—", reimb: p.reimbursement || "—" })}
+                      {t("insurance.compareRow", { price: priceRange(p, t), deductible: p.deductible || "—", reimb: p.reimbursement || "—" })}
                     </Text>
                   </View>
                 ))}

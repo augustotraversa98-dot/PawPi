@@ -35,6 +35,7 @@ import {
   removeSurfaceEventFromCalendar,
 } from "@/utils/calendarIntegration";
 import { friendlyErrorMessage } from "@/utils/appAlert";
+import { formatMoney } from "@/utils/money";
 import { combineDateTimeToISO } from "@/utils/canonicalDateTime";
 
 const statusLabel = (tr, status) =>
@@ -412,7 +413,7 @@ export default function TransportScreen() {
               </Text>
               {t.fare_amount != null && (
                 <Text style={[TYPE.body, { color: COLORS.warmBrown, fontWeight: "700", marginTop: SPACING.xs }]}>
-                  {tr("transport.fare")}: {t.fare_amount}
+                  {tr("transport.fare")}: {formatMoney(Math.round(Number(t.fare_amount) * 100))}
                 </Text>
               )}
               {t.paid ? (

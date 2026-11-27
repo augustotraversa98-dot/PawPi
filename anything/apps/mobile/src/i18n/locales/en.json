@@ -2807,6 +2807,7 @@
     "reimbursementLabel": "Reimbursement: {{value}}",
     "compare": "Compare",
     "compareRow": "{{price}} · Deductible {{deductible}} · Reimb. {{reimb}}",
+    "perMonth": "{{price}}/mo",
     "getQuote": "Get a quote",
     "applyBuy": "Apply",
     "getQuoteFor": "Get a quote: {{name}}",

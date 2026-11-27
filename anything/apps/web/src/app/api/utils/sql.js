@@ -26,6 +26,15 @@ NullishQueryFunction.transaction = () => {
 // SSL defaults to 'require' (Supabase). DATABASE_SSL=disable is an opt-in escape
 // hatch for SSL-less Postgres (the embedded integration harness, local dev); it
 // does NOT change production, where the env is unset and 'require' stands.
+// bigint (cents columns, COUNT, SUM of integers) arrives from porsager as text, which would make "price + deposit" glue
+// digits together. Read it as a number while a number is exact; anything larger stays text.
+export const INT8_AS_NUMBER = {
+  to: 20,
+  from: [20],
+  serialize: (value) => String(value),
+  parse: (text) => (Number.isSafeInteger(Number(text)) ? Number(text) : text),
+};
+
 function createSql(connectionString) {
   const u = new URL(connectionString);
   const port = u.port ? Number(u.port) : 5432;
@@ -45,6 +54,7 @@ function createSql(connectionString) {
     password: decodeURIComponent(u.password),
     prepare,
     ssl: process.env.DATABASE_SSL === 'disable' ? false : 'require',
+    types: { int8: INT8_AS_NUMBER },
     // PERF (docs/perf-audit-2026-10-23.md, finding 5): porsager's default recycles each connection after a
     // random 30-60 minutes, and every NEW connection costs TCP + TLS + auth + a type-fetch query (~3-5
     // cross-region round trips, ~0.8 s) that lands on whichever user request needed it: 4,700 DISCARD ALL

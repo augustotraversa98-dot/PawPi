@@ -111,7 +111,8 @@ describe('insurance_policies issue / read RLS', () => {
         update insurance_policies set policy_number = 'POL-9', premium_cents = 5000, billing_period = 'monthly', status = 'payment_pending'
         where id = ${POL_ID} returning policy_number, premium_cents, status
       `;
-      expect(r[0]).toMatchObject({ policy_number: 'POL-9', premium_cents: 5000, status: 'payment_pending' });
+      // this connection reads bigint as text; the app's own client reads it as a number (utils/sql.js)
+      expect({ ...r[0], premium_cents: Number(r[0].premium_cents) }).toMatchObject({ policy_number: 'POL-9', premium_cents: 5000, status: 'payment_pending' });
     });
   });
 

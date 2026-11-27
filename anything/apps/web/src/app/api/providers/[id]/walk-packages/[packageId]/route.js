@@ -7,6 +7,7 @@ import {
 } from "@/app/api/utils/providerAuth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { isPriceCents } from "@/lib/decimal";
 
 // One walk package — update (price/count/currency/active) and SOFT delete (active=false).
 // Ticket B2. owner|admin only + the 'walker' capability gate. Every write is scoped by BOTH the
@@ -47,7 +48,7 @@ async function PATCH(request, { params }) {
     if (
       price_cents !== undefined &&
       price_cents !== null &&
-      (!Number.isInteger(price_cents) || price_cents < 0)
+      !isPriceCents(price_cents)
     ) {
       return Response.json({ error: "price_cents must be a non-negative integer" }, { status: 400 });
     }
