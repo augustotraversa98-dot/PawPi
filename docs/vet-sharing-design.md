@@ -119,6 +119,16 @@ scopes keep meaning what they meant (a request approved as asked still grants th
 on a database without 0158, before anything is written). The lists answer `edit_sections` on every entry, and grants and
 links answer `editAccessAvailable`. Accepting an invitation copies its permission to the access.
 
+### Editing a share (migration 0159)
+
+`PATCH /api/care-access/grants/[grantId]` and `PATCH /api/care-access/links/[linkId]` accept
+`{action: "update", sections, editSections, expiry}`. Every field is required; `expiry` may also be `keep` (leave the
+end date). It changes the same row: the vet's access (or the link's address) updates at once, with no second share and no
+gap, and a waiting invitation to that business is withdrawn. Only the pet's owner, only access that is in use (409
+`grant_not_active` / `link_not_active`), counted against the sharing limit. A grant by scope cannot be edited (409
+`grant_not_editable`). Links are edited through `app_update_record_link` and may then end up to a year from that edit.
+The business is told (`care_access_granted`, with wording that says the access changed) when something actually changed.
+
 ## 2. What the vet sees
 
 Who: every active staff member of that provider. Read at request time: expiry and revocation apply to the next request.

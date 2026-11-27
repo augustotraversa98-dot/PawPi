@@ -825,13 +825,19 @@ describe("J. verify_0153.sql", () => {
   beforeAll(async () => {
     await raw.unsafe(`
       drop function if exists app_record_link_update_note(text, integer, text);
+      drop function if exists app_update_record_link(integer, text[], text[], text);
       drop trigger if exists care_record_links_sync_notes on care_record_links;
       alter table care_record_links drop column if exists edit_sections;
+      alter table care_record_links drop column if exists terms_changed_at;
+      alter table care_record_links drop constraint if exists care_record_links_expiry_check;
+      alter table care_record_links add constraint care_record_links_expiry_check
+        check (expires_at > created_at and expires_at <= created_at + interval '366 days');
     `);
   });
   afterAll(async () => {
     await raw.unsafe(migration("0157_record_link_note_edit.sql"));
     await raw.unsafe(migration("0158_share_edit_permission.sql"));
+    await raw.unsafe(migration("0159_edit_share.sql"));
   });
   const failing = async () =>
     ((await raw.unsafe(verify0153())) as any[]).filter((r) => r.status !== "PASS").map((r) => r.ord);

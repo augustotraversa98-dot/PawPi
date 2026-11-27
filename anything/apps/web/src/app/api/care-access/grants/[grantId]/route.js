@@ -4,6 +4,7 @@ import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { notifyCareAccess } from "@/app/api/utils/careAccessNotify";
 import { chooseSectionsFirst, inviteRequestNeedsSections } from "@/app/api/utils/vetInvite";
+import { updateGrantShare } from "@/app/api/utils/editShare";
 
 // PATCH /api/care-access/grants/[grantId] — the OWNER approves / denies / revokes
 // a care-access grant. Ticket 7 (docs/provider-design.md §2 Consent + §4 item 7).
@@ -24,6 +25,8 @@ import { chooseSectionsFirst, inviteRequestNeedsSections } from "@/app/api/utils
 //   approve : pending  → active  (granted_at=now(); optional expiresAt → expires_at)
 //   deny    : pending  → revoked (revoked_at=now())
 //   revoke  : active   → revoked (revoked_at=now())
+//   update  : active   → active  (a grant by section: parts, what may be added and end date, on the same row;
+//             utils/editShare.js)
 // Each UPDATE repeats the source status, so a change committed while the request ran also answers 409.
 // A pending request that came from an invite link, of a business with no booking for the dog, is not approved here:
 // 409 'choose_sections'. The owner shares chosen sections (POST /api/care-access/grants) or denies it.
@@ -31,7 +34,7 @@ import { chooseSectionsFirst, inviteRequestNeedsSections } from "@/app/api/utils
 // DB is porsager's tagged-template `sql` (SCHEMA_NOTES "neon→porsager"): every
 // query is a tagged template; params bind via `${}`.
 
-const VALID_ACTIONS = ["approve", "deny", "revoke"];
+const VALID_ACTIONS = ["approve", "deny", "revoke", "update"];
 
 async function PATCH(request, { params }) {
   try {
@@ -51,9 +54,13 @@ async function PATCH(request, { params }) {
 
     if (!VALID_ACTIONS.includes(action)) {
       return Response.json(
-        { error: "action must be one of approve, deny, revoke" },
+        { error: "action must be one of approve, deny, revoke, update" },
         { status: 400 },
       );
+    }
+
+    if (action === "update") {
+      return await updateGrantShare({ request, grantId, userId, body });
     }
 
     // Scope to MY grant. Not mine (or unknown) → 404. status drives the transition.

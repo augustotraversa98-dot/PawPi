@@ -3,10 +3,12 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
 import { answer, isMissingSchema } from "@/app/api/utils/recordLink";
+import { updateLinkShare } from "@/app/api/utils/editShare";
 
 // PATCH /api/care-access/links/[linkId] { action: 'revoke' } — the owner removes a record link. It stops working on the
 // next request made with it. 200 { link: { id, status: 'revoked', revoked_at } } (also when it was already revoked);
-// 404 for anyone else's. Never rate limited.
+// 404 for anyone else's. Removing is never rate limited.
+// { action: 'update', sections, editSections, expiry } changes what the same link opens (utils/editShare.js).
 async function PATCH(request, { params }) {
   try {
     const session = await auth();
@@ -20,13 +22,17 @@ async function PATCH(request, { params }) {
     }
 
     const body = (await request.json().catch(() => null)) ?? {};
-    if (body.action !== "revoke") {
-      return Response.json({ error: "action must be 'revoke'" }, { status: 400 });
+    if (body.action !== "revoke" && body.action !== "update") {
+      return Response.json({ error: "action must be 'revoke' or 'update'" }, { status: 400 });
     }
 
     const notFound = () => Response.json({ error: "Link not found" }, { status: 404 });
     if (!/^\d{1,9}$/.test(String(params.linkId))) return notFound();
     const linkId = Number(params.linkId);
+
+    if (body.action === "update") {
+      return await updateLinkShare({ request, linkId, userId, body });
+    }
 
     let revoked;
     try {
