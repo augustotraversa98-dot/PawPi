@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { grantMatchesChoice } from "@/utils/vetShare";
 import { showChange } from "@/utils/sharingRefresh";
+import { refreshWhoHasAccess, showVetAccess } from "@/hooks/useWhoHasAccess";
 
 // Owner-facing care-access "trust" hooks (docs/provider-design.md §2 Consent + §4
 // item 7). These wrap the owner-scoped grant routes shipped in T7:
@@ -60,10 +61,11 @@ async function patchGrant(grantId, action, expiresAt) {
   return response.json(); // { grant }
 }
 
-// Puts a grant the server answered with into the lists already read: this dog's and the one of every dog. A new grant
-// by section (`replaces` its business) also ends whatever that business had open for the dog, as the server does.
-function showGrant(queryClient, petId, grant, { replaces, providerName } = {}) {
-  return showChange(queryClient, ["care-access-grants"], (list, [, scope]) => {
+// Puts a grant the server answered with into the lists already read: this dog's, the one of every dog and "Who has
+// access". A new grant by section (`replaces` its business) also ends whatever that business had open for the dog, as
+// the server does.
+async function showGrant(queryClient, petId, grant, { replaces, providerName } = {}) {
+  await showChange(queryClient, ["care-access-grants"], (list, [, scope]) => {
     if (scope !== "all" && String(scope) !== String(petId)) return list;
     const next = list.map((g) => {
       if (g.id === grant.id) return { ...g, ...grant };
@@ -77,14 +79,24 @@ function showGrant(queryClient, petId, grant, { replaces, providerName } = {}) {
     if (replaces == null || list.some((g) => g.id === grant.id)) return next;
     return [{ provider_name: providerName, ...grant }, ...next];
   });
+  const listed = queryClient
+    .getQueriesData({ queryKey: ["care-access-grants"] })
+    .flatMap(([, list]) => list ?? [])
+    .find((g) => g.id === grant.id);
+  await showVetAccess(
+    queryClient,
+    { pet_id: petId, ...listed, ...grant },
+    { provider_name: listed?.provider_name ?? providerName, pet_name: listed?.pet_name },
+  );
 }
 
-// Both lists are read again; the promise lasts until the ones on screen have answered.
+// The lists are read again; the promise lasts until the ones on screen have answered.
 const refreshGrants = (queryClient, petId) =>
   Promise.all([
     queryClient.invalidateQueries({ queryKey: ["care-access-grants", petId] }),
     // (AUDIT A-24) The cross-pet list drives the bell badge.
     queryClient.invalidateQueries({ queryKey: ["care-access-grants", "all"] }),
+    refreshWhoHasAccess(queryClient),
   ]);
 
 // The ONLY way the app shares the vet record: the parts and the length the owner chose, both required. The answer is
@@ -138,19 +150,22 @@ export function useShareRecord({ onSuccess, onError } = {}) {
 
 // Approve / deny / revoke a single grant. The backend flips the grant's status
 // (approve pending→active, deny pending→revoked, revoke active→revoked), which
-// assertCareAccess honors instantly — so afterwards we just invalidate this pet's
-// grant list and the trust screen reflects the current state.
+// assertCareAccess honors instantly — so afterwards we just invalidate the grant
+// lists and the trust screen reflects the current state.
 export function useUpdateGrant(petId) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    // mutateAsync({ grantId, action: 'approve'|'deny'|'revoke', expiresAt? })
-    mutationFn: async ({ grantId, action, expiresAt }) => {
+    // mutateAsync({ grantId, action: 'approve'|'deny'|'revoke', expiresAt?, petId? }) — petId when the grant is for
+    // another dog than the hook's.
+    mutationFn: async ({ grantId, action, expiresAt, petId: grantPetId }) => {
       const data = await patchGrant(grantId, action, expiresAt);
-      if (data?.grant?.id != null) await showGrant(queryClient, data.grant.pet_id ?? petId, data.grant);
+      if (data?.grant?.id != null) {
+        await showGrant(queryClient, data.grant.pet_id ?? grantPetId ?? petId, data.grant);
+      }
       return data;
     },
     // Settled, not only success: a refused change means the grant is no longer as the screen shows it.
-    onSettled: () => refreshGrants(queryClient, petId),
+    onSettled: (_data, _error, variables) => refreshGrants(queryClient, variables?.petId ?? petId),
   });
 }

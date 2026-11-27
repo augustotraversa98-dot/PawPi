@@ -4260,7 +4260,7 @@
     "yourPet": "tu mascota",
     "noPetTitle": "No hay mascota seleccionada",
     "noPetBody": "Agregá o elegí una mascota para gestionar quién ve sus registros.",
-    "reassurance": "Acá ves el acceso que les diste a negocios sobre los registros de {{name}}, los enlaces que creaste y las solicitudes que esperan tu respuesta. Podés quitar el acceso desde acá. El acceso de tu familia y los enlaces de la tarjeta de emergencia se manejan aparte.",
+    "reassurance": "En “Quién tiene acceso” están todas las personas y enlaces que hoy pueden abrir datos de tus perros. Las solicitudes e invitaciones de esta pantalla son las de {{name}}.",
     "loadError": "No se pudieron cargar las solicitudes de acceso. Deslizá para refrescar.",
     "pendingSection": "Solicitudes pendientes",
     "noPending": "No hay solicitudes pendientes.",
@@ -4277,6 +4277,18 @@
       "healthLogsRead": "Ver registros de salud",
       "messaging": "Mensajería"
     }
+  },
+  "whoHasAccess": {
+    "recordLink": "Enlace que abre cualquiera",
+    "emergencyLink": "Enlace de la tarjeta de emergencia",
+    "opens": "abre datos de {{pet}}",
+    "family": "Puede ver y cambiar el perfil, las rutinas, los registros de salud y el historial veterinario de {{pet}}. No puede administrar con quién se comparte ni eliminar a {{pet}}.",
+    "caregiver": "Puede ver el perfil, las rutinas, los registros de salud y los datos médicos de emergencia de {{pet}}, y registrar paseos, comidas y cuidados. No ve el historial veterinario, las vacunas ni los turnos.",
+    "manageEmergency": "Gestionar en la tarjeta de emergencia",
+    "manageFamily": "Gestionar en Familia y cuidadores",
+    "loadError": "No se pudo cargar quién tiene acceso.",
+    "partial": "El acceso de tu familia y los enlaces de la tarjeta de emergencia se manejan aparte.",
+    "more": "{{count}} más"
   },
   "walkItem": {
     "walk": "Paseo",

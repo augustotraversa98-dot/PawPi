@@ -8,10 +8,11 @@ export const SHARING_KEYS = [
   ["care-access-invites"],
   ["care-record-links"],
   ["provider-share-offers"],
+  ["care-who-has-access"],
 ];
 
 // The lists an answer given elsewhere can change.
-const ANSWERED_KEYS = SHARING_KEYS.slice(0, 3);
+const ANSWERED_KEYS = [...SHARING_KEYS.slice(0, 3), ["care-who-has-access"]];
 
 const invalidate = (queryClient, keys, options) =>
   Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey }, options)));

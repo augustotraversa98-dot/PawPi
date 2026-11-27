@@ -271,14 +271,3 @@ test("lists each active link with its parts, end date and permission, and remove
   expect(writes()).toEqual([["/api/care-access/links/1", "PATCH", { action: "revoke" }]]);
 });
 
-test("without creating (Data access): only this dog's links, and nothing at all when there are none", async () => {
-  links = [link({ id: 2, pet_id: 8, pet_name: "Rex" })];
-  const none = wrap(<RecordLinks pet={pet} />);
-  await waitFor(() => expect(client.isFetching()).toBe(0));
-  expect(none.queryByTestId("record-links")).toBeNull();
-  links = [link({ id: 1 }), link({ id: 2, pet_id: 8 })];
-  const some = wrap(<RecordLinks pet={pet} />);
-  await waitFor(() => expect(some.getByTestId("record-link-row-1")).toBeTruthy());
-  expect(some.queryByTestId("record-link-row-2")).toBeNull();
-  expect(some.queryByTestId("record-link-start")).toBeNull();
-});

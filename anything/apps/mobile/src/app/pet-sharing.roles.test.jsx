@@ -21,7 +21,7 @@ jest.mock("react-i18next", () => ({
   useTranslation: () => require("@/i18n/testMock").makeReactI18nextMock(global.__lang || "en").useTranslation(),
 }));
 jest.mock("@/components/Pets/CaregiverLogWalkModal", () => () => null);
-jest.mock("@/hooks/usePetProfile", () => ({ useCurrentPet: () => mockCurrentPet }));
+jest.mock("@/hooks/usePetProfile", () => ({ useCurrentPet: () => mockCurrentPet, usePetProfile: () => ({ data: undefined }) }));
 jest.mock("@/hooks/useSearch", () => ({
   useDebouncedValue: (v) => v,
   useSearch: () => ({ data: { owners: [] }, isFetching: false }),

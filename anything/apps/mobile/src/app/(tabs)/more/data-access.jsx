@@ -25,24 +25,25 @@ import { friendlyErrorMessage } from "@/utils/appAlert";
 import { goBackOr } from "@/utils/navigationBack";
 import ShareWithVetSheet from "@/components/Health/VetShare/ShareWithVetSheet";
 import GrantAccess from "@/components/Health/VetShare/GrantAccess";
-import RecordLinks from "@/components/Health/VetShare/RecordLinks";
+import AccessList from "@/components/Health/VetShare/AccessList";
 import ShareOffers from "@/components/Health/VetShare/ShareOffers";
-import { useRecordLinks } from "@/hooks/useRecordLinks";
+import { useRevokeRecordLink } from "@/hooks/useRecordLinks";
 import { useShareOffers } from "@/hooks/useShareOffers";
 import { useSharingLive } from "@/hooks/useSharingLive";
+import { useWhoHasAccess } from "@/hooks/useWhoHasAccess";
 import {
   asksForRecord,
   grantAccessLines,
   hasBookingForPet,
-  isGrantActive,
   isGrantEnded,
   sectionsSupported,
 } from "@/utils/vetShare";
 
-// The owner's trust screen: see who has (or has requested) access to the active
-// pet's record, approve/deny pending requests, and revoke active access.
-// docs/provider-design.md §2 + §4 item 7. Pet-scoped via useCurrentPet, exactly
-// like the Vet Record it is reached from.
+// The owner's trust screen: see who has access to the owner's dogs' data, approve/deny
+// pending requests, and end access. docs/provider-design.md §2 + §4 item 7.
+// "Who has access" covers every dog and every way of sharing (the same list My Hub counts);
+// requests, invitations and ended access are the active pet's, like the Vet Record this is
+// reached from.
 export default function DataAccessScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -64,15 +65,21 @@ export default function DataAccessScreen() {
     refetch();
     refetchBookings();
   }, [petId, refetch, refetchBookings]);
-  // Only the owner has record links and invitations (RecordLinks and ShareOffers below read the same lists).
+  // Everything that can open one of the owner's dogs' data right now.
+  const access = useWhoHasAccess();
+  const removeLink = useRevokeRecordLink({
+    onError: () =>
+      Alert.alert(t("recordLink.error.removeTitle"), t("recordLink.error.remove")),
+  });
+  // Only the owner has invitations (ShareOffers below reads the same list).
   const isOwner = !!petId && !currentPet?.is_shared;
-  const links = useRecordLinks({ enabled: isOwner });
   const offers = useShareOffers({ enabled: isOwner });
   const refreshAll = () =>
     Promise.all([
       refetch(),
       refetchBookings(),
-      ...(currentPet?.is_shared ? [] : [links.refetch(), offers.refetch()]),
+      access.refetch(),
+      ...(currentPet?.is_shared ? [] : [offers.refetch()]),
     ]);
   // null = closed. { provider } shares with that one only (answering its request); {} lets the owner pick.
   const [shareSheet, setShareSheet] = useState(null);
@@ -82,13 +89,14 @@ export default function DataAccessScreen() {
   const changing = useRef(false);
   const latest = useRef(grants);
   latest.current = grants;
-  const act = (grantId, action) => {
+  const act = (grantId, action, grantPetId) => {
     if (changing.current) return;
     const current = latest.current?.find((g) => g.id === grantId);
     if (current && current.status !== (action === "revoke" ? "active" : "pending")) return;
     changing.current = true;
+    const otherDog = grantPetId != null && String(grantPetId) !== String(petId);
     updateGrant.mutate(
-      { grantId, action },
+      { grantId, action, ...(otherDog ? { petId: grantPetId } : {}) },
       {
         onError: (err) =>
           Alert.alert(t("dataAccess.errorTitle"), friendlyErrorMessage(err, "dataAccess.tryAgain")),
@@ -138,8 +146,34 @@ export default function DataAccessScreen() {
       }),
       [
         { text: t("common.cancel"), style: "cancel" },
-        { text: t("dataAccess.revoke"), style: "destructive", onPress: () => act(grant.id, "revoke") },
+        {
+          text: t("dataAccess.revoke"),
+          style: "destructive",
+          onPress: () => act(grant.id, "revoke", grant.pet_id),
+        },
       ],
+    );
+
+  const confirmRemoveLink = (link) =>
+    Alert.alert(
+      t("recordLink.removeTitle"),
+      t("recordLink.removeBody", { pet: link.pet_name || t("dataAccess.yourPet") }),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("recordLink.remove"),
+          style: "destructive",
+          onPress: () => removeLink.mutate(link.id),
+        },
+      ],
+    );
+
+  // Family sharing and emergency card links are ended on their own screens, opened for that dog.
+  const manage = (entry) =>
+    router.push(
+      entry.kind === "family"
+        ? `/pet-sharing?petId=${entry.pet_id}`
+        : `/emergency-card?petId=${entry.pet_id}`,
     );
 
   const header = (
@@ -204,7 +238,6 @@ export default function DataAccessScreen() {
 
   const all = grants ?? [];
   const pending = all.filter((g) => g.status === "pending");
-  const active = all.filter((g) => isGrantActive(g));
   const ended = all.filter((g) => isGrantEnded(g));
   const canChooseSections = sectionsSupported(all);
 
@@ -388,21 +421,18 @@ export default function DataAccessScreen() {
           {/* Invitations to a vet that are waiting for its answer. */}
           {!currentPet.is_shared ? <ShareOffers pet={currentPet} /> : null}
 
-          {/* Who has access */}
+          {/* Who has access: every dog, every way of sharing. */}
           <View style={{ height: 8 }} />
           <SectionTitle title={t("dataAccess.accessSection")} />
-          {active.length === 0 ? (
-            <EmptyRow icon={ShieldCheck} text={t("dataAccess.noAccess")} />
-          ) : (
-            active.map((g) => (
-              <GrantCard key={g.id} grant={g} relation="dataAccess.hasAccessTo">
-                {revokeButton(g)}
-              </GrantCard>
-            ))
-          )}
-
-          {/* Links that open parts of the record without signing in. */}
-          {!currentPet.is_shared ? <RecordLinks pet={currentPet} /> : null}
+          <AccessList
+            access={access}
+            currentPetId={petId}
+            onRevokeVet={confirmRevoke}
+            onRemoveLink={confirmRemoveLink}
+            onManage={manage}
+            revoking={updateGrant.isPending}
+            removing={removeLink.isPending}
+          />
 
           {ended.length > 0 ? (
             <>
