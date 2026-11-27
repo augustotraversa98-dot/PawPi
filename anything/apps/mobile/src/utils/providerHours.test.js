@@ -63,6 +63,20 @@ describe("deriveOpenNow", () => {
     expect(deriveOpenNow({ wed: ["09:00-13:00", "bogus"] }, WED_1030)).toBeNull();
   });
 
+  test('open all day is stored as 00:00-24:00 and is open at every minute', () => {
+    const h = { wed: { open: "00:00", close: "24:00" }, thu: "closed" };
+    expect(deriveOpenNow(h, new Date(2026, 7, 5, 0, 0))).toBe(true);
+    expect(deriveOpenNow(h, new Date(2026, 7, 5, 23, 59))).toBe(true);
+    // It ends with the day: nothing spills into a closed Thursday.
+    expect(deriveOpenNow(h, new Date(2026, 7, 6, 0, 0))).toBe(false);
+    expect(deriveOpenNow({ wed: "00:00-24:00" }, WED_1030)).toBe(true);
+  });
+
+  test("24:00 is only a closing time", () => {
+    expect(deriveOpenNow({ wed: { open: "24:00", close: "10:00" } }, WED_1030)).toBeNull();
+    expect(deriveOpenNow({ wed: { open: "09:00", close: "24:30" } }, WED_1030)).toBeNull();
+  });
+
   // The Open-now filter (ServicesDiscovery) keeps a provider when deriveOpenNow(hours) !== false
   // — i.e. keeps provably-open AND unknown, drops only provably-closed. This proves that exact
   // predicate over a mixed list, INCLUDING an overnight range and a multi-range day.

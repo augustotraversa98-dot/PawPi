@@ -116,6 +116,40 @@ describe('load_master re-run', () => {
     expect(taken).toMatchObject({ name: 'Name the owner chose', address: 'Owner street 5' });
   });
 
+  it("stores Google's hours in the app's shape", async () => {
+    const stats = await loadRows(raw, [
+      csvRow('open', { hours_json: JSON.stringify({ lunes: '10 a.m.–1 p.m., 4–8 p.m.', domingo: 'Cerrado' }) }),
+    ]);
+    expect(stats.unreadable_hours).toEqual([]);
+    expect((await snapshot('open')).hours_json).toEqual({
+      mon: [
+        { open: '10:00', close: '13:00' },
+        { open: '16:00', close: '20:00' },
+      ],
+      sun: 'closed',
+    });
+  });
+
+  it('leaves hours it cannot read empty and lists the listing', async () => {
+    const hours = (lunes: string) => ({ hours_json: JSON.stringify({ lunes }) });
+    await loadRows(raw, [csvRow('open', hours('9 a.m.–6 p.m.'))]);
+    const stats = await loadRows(raw, [csvRow('open', hours('Con cita previa'))]);
+    expect((await snapshot('open')).hours_json).toBeNull();
+    expect(stats.unreadable_hours).toEqual([
+      { external_id: 'open', name: 'Vet open', problems: [{ day: 'lunes', value: 'Con cita previa' }] },
+    ]);
+  });
+
+  it('keeps the hours a listing has when Google gives none', async () => {
+    await loadRows(raw, [csvRow('open')]);
+    const fromSite = { mon: { open: '09:00', close: '18:00' } };
+    await raw`update provider_locations set hours_json = ${raw.json(fromSite)}`;
+    for (const hours_json of ['', '{}']) {
+      await loadRows(raw, [csvRow('open', { hours_json })]);
+      expect((await snapshot('open')).hours_json).toEqual(fromSite);
+    }
+  });
+
   it('does not recreate a location a claimed business removed', async () => {
     await loadThenClaim();
     await raw`delete from provider_locations where provider_id = (select id from providers where external_id = 'taken')`;

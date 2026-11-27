@@ -30,6 +30,14 @@ MAX_SEARCHES=485 python3 serpapi_pull.py    # raise the cap to go deeper (page 2
 ```
 There are **988 queries still unrun** (deeper pages + areas not reached under the 235 cap).
 
+## Loading and opening hours
+`node supabase/seed/directory/load_master.mjs` (needs `DIRECTORY_DATABASE_URL`) refreshes only listings still
+`claim_status='unclaimed'` and converts Google's hours to the app's shape (`hours.mjs`). It prints every listing
+whose hours it could not read; those are stored empty.
+
+`node supabase/seed/directory/normalize_hours.mjs [--dry-run | --sql x.generated.sql]` converts rows stored in
+Google's format before that (run on production 2026-11-27; safe to re-run, a second run changes nothing).
+
 ## Enrichment of unclaimed vets (bio, services, prices, hours — never photos)
 Needs `anything/apps/web/node_modules`, `TINYFISH_API_KEY` in `./.env` (untracked), and migration 0162.
 Every write is limited to listings still `claim_status='unclaimed'` and is safe to re-run. Without

@@ -14,6 +14,9 @@
 //     business has claimed its listing (or the claim is pending), the loader writes
 //     nothing for it, neither the providers row nor its location: the owner's data is
 //     the source of truth from then on, not Google's. No field is exempt.
+//   - Google's opening hours are converted to the app's shape (hours.mjs). Hours that
+//     cannot be read are stored empty and listed in the output; when Google gives none,
+//     a listing keeps the hours it already has (e.g. from enrichment).
 //
 // Provider-type mapping (drop the CSV `provider_type` value in verbatim):
 //   'vet' | 'shop' | 'groomer' | 'pet_friendly'.
@@ -38,6 +41,7 @@
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { cleanWebsite } from "./backfill_website_url.mjs";
+import { normalizeGoogleHours } from "./hours.mjs";
 import { CSV_PATH, SEED_DIR, loadEnv, readCsv, webRequire } from "./lib.mjs";
 
 const WEB_DIR = join(SEED_DIR, "..", "..", "..", "anything", "apps", "web");
@@ -89,14 +93,17 @@ function parseNumericOrNull(v) {
   return Number.isFinite(n) ? n : null;
 }
 
-function parseHoursJson(v) {
-  if (!v) return null;
+/** The CSV's hours_json cell → normalizeGoogleHours' answer, with already-converted hours passed through. */
+function listingHours(cell) {
+  if (!cell) return { status: "empty", hours: null, problems: [] };
+  let raw;
   try {
-    const parsed = typeof v === "string" ? JSON.parse(v) : v;
-    return parsed && typeof parsed === "object" ? parsed : null;
+    raw = JSON.parse(cell);
   } catch {
-    return null;
+    return { status: "unreadable", hours: null, problems: [{ day: null, value: cell }] };
   }
+  const read = normalizeGoogleHours(raw);
+  return read.status === "other" ? { ...read, hours: raw } : read;
 }
 
 // ── load ─────────────────────────────────────────────────────────────────────
@@ -108,8 +115,9 @@ function parseHoursJson(v) {
  */
 async function upsertListing(sql, listing, directoryProfileId) {
   const { providerType, name, externalSource, externalId, slug, website } = listing;
-  const { address, lat, lng, phone, hoursJson, petPolicy } = listing;
+  const { address, lat, lng, phone, hours, petPolicy } = listing;
   return sql.begin(async (tx) => {
+    const hoursJson = hours.hours === null ? null : tx.json(hours.hours);
     // Upsert the provider row on the external key. ON CONFLICT preserves the
     // owner and never re-flips claim_status (a claimed row must never revert).
     // website_url is set on INSERT only; existing rows are filled by
@@ -150,7 +158,7 @@ async function upsertListing(sql, listing, directoryProfileId) {
           lat = ${lat},
           lng = ${lng},
           phone = ${phone},
-          hours_json = ${hoursJson},
+          hours_json = CASE WHEN ${hours.status === "empty"} THEN l.hours_json ELSE ${hoursJson}::jsonb END,
           pet_policy = ${petPolicy},
           updated_at = now()
         WHERE l.id = ${existingLoc.id}
@@ -185,6 +193,8 @@ export async function loadRows(sql, rows) {
     updated: 0,
     skipped_claimed: 0,
     errors: 0,
+    // Listings written with hours that could not be read: stored empty, for a person to look at.
+    unreadable_hours: [],
   };
 
   // Locate the system directory profile (created by 0124).
@@ -218,6 +228,7 @@ export async function loadRows(sql, rows) {
       continue;
     }
 
+    const hours = listingHours(row.hours_json);
     try {
       const outcome = await upsertListing(
         sql,
@@ -232,12 +243,15 @@ export async function loadRows(sql, rows) {
           lat: parseNumericOrNull(row.lat),
           lng: parseNumericOrNull(row.lng),
           phone: row.phone || null,
-          hoursJson: parseHoursJson(row.hours_json),
+          hours,
           petPolicy: row.pet_policy || null,
         },
         dir.id,
       );
       stats[outcome] += 1;
+      if (outcome !== "skipped_claimed" && hours.status === "unreadable") {
+        stats.unreadable_hours.push({ external_id: externalId, name, problems: hours.problems });
+      }
     } catch (err) {
       stats.errors += 1;
       console.error(
@@ -269,7 +283,11 @@ async function main() {
     await sql.end({ timeout: 5 });
   }
 
-  console.log("[loader] done", stats);
+  const { unreadable_hours: unreadable, ...counts } = stats;
+  console.log("[loader] done", { ...counts, unreadable_hours: unreadable.length });
+  for (const listing of unreadable) {
+    console.warn(`[loader] hours left empty — ${listing.external_id} ${listing.name}:`, JSON.stringify(listing.problems));
+  }
   if (stats.errors > 0) process.exit(2);
 }
 

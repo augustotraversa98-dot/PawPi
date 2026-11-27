@@ -102,6 +102,83 @@ describe("ProviderLocations", () => {
     });
   });
 
+  it("shows an imported listing's hours and saves them with the edit made", async () => {
+    // As the directory loader stores them.
+    setLocations([
+      {
+        ...MAIN,
+        hours_json: {
+          mon: [
+            { open: "10:00", close: "13:00" },
+            { open: "16:00", close: "20:00" },
+          ],
+          tue: { open: "00:00", close: "24:00" },
+          sun: "closed",
+        },
+      },
+    ]);
+    render(<ProviderLocations providerId={3} />);
+    expect(
+      screen.getByText("Mon 10:00–13:00, 16:00–20:00 · Tue 24 hours · Sun closed"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    const dialog = screen.getByRole("dialog");
+    const field = (label) => within(dialog).getByLabelText(label, { exact: true });
+    expect(field("Mon open").value).toBe("10:00");
+    expect(field("Mon close").value).toBe("13:00");
+    expect(field("Mon open 2").value).toBe("16:00");
+    expect(field("Mon close 2").value).toBe("20:00");
+    expect(field("Tue schedule").value).toBe("allDay");
+    expect(field("Sun schedule").value).toBe("closed");
+
+    fireEvent.change(field("Mon close 2"), { target: { value: "21:00" } });
+    fireEvent.change(field("Sun schedule"), { target: { value: "hours" } });
+    fireEvent.change(field("Sun open"), { target: { value: "10:00" } });
+    fireEvent.change(field("Sun close"), { target: { value: "14:00" } });
+    fireEvent.click(field("Add hours on Sun"));
+    fireEvent.change(field("Sun open 2"), { target: { value: "17:00" } });
+    fireEvent.change(field("Sun close 2"), { target: { value: "19:00" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: /save changes/i }));
+
+    await waitFor(() => expect(updateMutate).toHaveBeenCalledTimes(1));
+    expect(updateMutate.mock.calls[0][0].hours_json).toEqual({
+      mon: [
+        { open: "10:00", close: "13:00" },
+        { open: "16:00", close: "21:00" },
+      ],
+      tue: { open: "00:00", close: "24:00" },
+      sun: [
+        { open: "10:00", close: "14:00" },
+        { open: "17:00", close: "19:00" },
+      ],
+    });
+  });
+
+  it("removes the second range of a split day", async () => {
+    setLocations([
+      {
+        ...MAIN,
+        hours_json: {
+          mon: [
+            { open: "10:00", close: "13:00" },
+            { open: "16:00", close: "20:00" },
+          ],
+        },
+      },
+    ]);
+    render(<ProviderLocations providerId={3} />);
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(within(dialog).getByLabelText("Remove Mon hours 2"));
+    fireEvent.click(within(dialog).getByRole("button", { name: /save changes/i }));
+
+    await waitFor(() => expect(updateMutate).toHaveBeenCalledTimes(1));
+    expect(updateMutate.mock.calls[0][0].hours_json).toEqual({
+      mon: { open: "10:00", close: "13:00" },
+    });
+  });
+
   it("blocks an out-of-range latitude before any POST", async () => {
     render(<ProviderLocations providerId={3} />);
     fireEvent.click(screen.getByRole("button", { name: /add location/i }));

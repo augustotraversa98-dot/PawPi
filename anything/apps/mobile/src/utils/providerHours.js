@@ -13,7 +13,8 @@
 //   { open: "09:00", close: "17:00" }        → one range (object)
 //   [{ open, close }, ...]                    → multiple ranges (objects)
 // A range whose close < open spans midnight (overnight); close === open is degenerate and
-// treated as closed. Anything unrecognized → null.
+// treated as closed. "24:00" is accepted as a closing time (open all day is 00:00-24:00,
+// as the directory's hours are stored). Anything unrecognized → null.
 
 const DAY_ABBR = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 const DAY_FULL = [
@@ -26,12 +27,14 @@ const DAY_FULL = [
   "saturday",
 ];
 
-function toMinutes(s) {
+// `closing` also accepts "24:00", the end of the day.
+function toMinutes(s, { closing = false } = {}) {
   if (typeof s !== "string") return null;
   const m = s.trim().match(/^(\d{1,2})(?::(\d{2}))?$/);
   if (!m) return null;
   const h = Number(m[1]);
   const min = m[2] != null ? Number(m[2]) : 0;
+  if (closing && h === 24 && min === 0) return 24 * 60;
   if (!Number.isFinite(h) || h > 23 || min > 59) return null;
   return h * 60 + min;
 }
@@ -51,12 +54,12 @@ function normalizeRanges(value) {
       const parts = v.split("-");
       if (parts.length !== 2) return null;
       const o = toMinutes(parts[0]);
-      const c = toMinutes(parts[1]);
+      const c = toMinutes(parts[1], { closing: true });
       return o == null || c == null ? null : [o, c];
     }
     if (v && typeof v === "object") {
       const o = toMinutes(v.open);
-      const c = toMinutes(v.close);
+      const c = toMinutes(v.close, { closing: true });
       return o == null || c == null ? null : [o, c];
     }
     return null;
