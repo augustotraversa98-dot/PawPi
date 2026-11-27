@@ -5,6 +5,8 @@ import {
   enabledSocialProviderIds,
   googleProvider,
   appleNativeProvider,
+  appleBusinessWebProvider,
+  microsoftProvider,
   socialEnabled,
 } from "./oauthProviders";
 
@@ -214,5 +216,47 @@ describe("appleNativeProvider", () => {
     const [p] = appleNativeProvider({ env: { AUTH_APPLE_ID: "com.pawpi.app" }, adapter, verify });
     expect(await p.options.authorize({ rawNonce: "raw" })).toBeNull();
     expect(verify).not.toHaveBeenCalled();
+  });
+});
+
+describe("website providers for businesses: off until their keys exist", () => {
+  const appleKeys = {
+    AUTH_APPLE_ID: "com.pawpi.app",
+    AUTH_APPLE_TEAM_ID: "TEAM123456",
+    AUTH_APPLE_KEY_ID: "KEY1234567",
+    AUTH_APPLE_PRIVATE_KEY: TEST_APPLE_PRIVATE_KEY,
+  };
+
+  it("Apple on the web needs its own Services ID: the app's bundle id is never used for it", () => {
+    expect(appleBusinessWebProvider(appleKeys)).toEqual([]);
+    const [apple] = appleBusinessWebProvider({ ...appleKeys, AUTH_APPLE_WEB_ID: "com.pawpi.web" });
+    expect(apple.id).toBe("apple");
+    expect(apple.options.clientId).toBe("com.pawpi.web");
+    const claims = JSON.parse(Buffer.from(apple.options.clientSecret.split(".")[1], "base64url").toString());
+    expect(claims.sub).toBe("com.pawpi.web");
+  });
+
+  it("Apple on the web does not borrow a hand-made secret that belongs to another id", () => {
+    expect(appleBusinessWebProvider({ AUTH_APPLE_WEB_ID: "com.pawpi.web", AUTH_APPLE_SECRET: "static" })).toEqual([]);
+  });
+
+  it("Microsoft needs both keys", () => {
+    expect(microsoftProvider({})).toEqual([]);
+    expect(microsoftProvider({ AUTH_MICROSOFT_ID: "id" })).toEqual([]);
+    expect(microsoftProvider({ AUTH_MICROSOFT_SECRET: "secret" })).toEqual([]);
+  });
+
+  it("Microsoft accepts any account by default and never links accounts by email", () => {
+    const [ms] = microsoftProvider({ AUTH_MICROSOFT_ID: "id", AUTH_MICROSOFT_SECRET: "secret" });
+    expect(ms.id).toBe("microsoft-entra-id");
+    expect(ms.options.issuer).toBe("https://login.microsoftonline.com/common/v2.0");
+    expect(ms.options.allowDangerousEmailAccountLinking).toBeUndefined();
+    expect(ms.options.profile({ sub: "s", name: "N" })).toEqual({ id: "s", name: "N", email: null, image: null });
+  });
+
+  it("Microsoft can be limited to one directory", () => {
+    const issuer = "https://login.microsoftonline.com/11111111-2222-3333-4444-555555555555/v2.0";
+    const [ms] = microsoftProvider({ AUTH_MICROSOFT_ID: "id", AUTH_MICROSOFT_SECRET: "s", AUTH_MICROSOFT_ISSUER: issuer });
+    expect(ms.options.issuer).toBe(issuer);
   });
 });

@@ -12,7 +12,7 @@ import { bodyLimit } from 'hono/body-limit';
 import { requestId } from 'hono/request-id';
 import { createHonoServer } from 'react-router-hono-server/node';
 import { securityHeaders } from '../src/app/api/utils/securityHeaders.js';
-import { resolveSessionCookieSameSite } from '../src/app/api/utils/sessionCookie.js';
+import { endSessionOnProviderSignIn, resolveSessionCookieSameSite } from '../src/app/api/utils/sessionCookie.js';
 import { originGuard } from '../src/app/api/utils/originGuard.js';
 import { apiNotFound } from '../src/app/api/utils/apiNotFound.js';
 import { stampSessionExpired } from '../src/app/api/utils/sessionExpiredCode.js';
@@ -30,7 +30,12 @@ import { API_BASENAME, api } from './route-builder';
 // Credentials-style provider whose authorize() verifies a NATIVE Sign in with Apple identity
 // token. Both return [] when their env keys are absent, so with no keys the providers array is
 // byte-for-byte unchanged and email/password login is untouched. See oauthProviders.js.
-import { googleProvider, appleNativeProvider } from '../src/app/api/utils/oauthProviders.js';
+import {
+  googleProvider,
+  appleNativeProvider,
+  appleBusinessWebProvider,
+  microsoftProvider,
+} from '../src/app/api/utils/oauthProviders.js';
 // Server metrics (docs/observability/OPERATIONS.md section 3.1 "Server metrics"). All no-ops without an OTel SDK and
 // all wrapped so they can never throw into a request.
 import { recordHttpRequest } from '../src/lib/telemetry/httpMetrics.js';
@@ -318,13 +323,15 @@ if (process.env.AUTH_SECRET) {
         // handler that actually serves /api/auth/*, so Google/Apple never registered as OAuth
         // endpoints even with all keys set. Adding them here makes GET /api/auth/providers list
         // "google" + "apple-native". Both are [] without their keys → additive, never lock
-        // anyone out, email/password unchanged. Apple is the NATIVE provider (audience = the
-        // bundle id AUTH_APPLE_ID); the WEB Apple provider is intentionally NOT added (it needs a
-        // Services ID). The adapter is the same NeonAdapter the rest of auth uses, so an OAuth
+        // anyone out, email/password unchanged. "apple-native" is the app's provider (audience = the
+        // bundle id AUTH_APPLE_ID); the website's Apple provider needs its own Services ID
+        // (AUTH_APPLE_WEB_ID) and Microsoft its own keys, both [] until those are set. The adapter is the same NeonAdapter the rest of auth uses, so an OAuth
         // user's auth_users/auth_accounts rows are created in one place and the user_profiles row
         // is still created lazily on the first authenticated API call.
         ...googleProvider(process.env),
         ...appleNativeProvider({ env: process.env, adapter }),
+        ...appleBusinessWebProvider(process.env),
+        ...microsoftProvider(process.env),
         // Dev-only provider for simulated social sign-in (Google, Facebook, etc.)
         // Creates or finds a user by email without requiring a password.
         ...(process.env.NEXT_PUBLIC_CREATE_ENV === 'DEVELOPMENT'
@@ -463,6 +470,8 @@ if (process.env.AUTH_SECRET) {
     }))
   );
 }
+// Starting a Google / Apple / Microsoft sign-in ends whatever session the browser holds (see sessionCookie.js).
+app.use('/api/auth/signin/*', endSessionOnProviderSignIn());
 app.use('/api/auth/*', async (c, next) => {
   if (isAuthAction(c.req.path)) {
     return authHandler()(c, next);

@@ -39,12 +39,23 @@ describe("pickVisitorLang", () => {
 });
 
 describe("isVisitorLangPath", () => {
-  it.each(["/provider", "/provider/bookings", "/p/tag/abc", "/P/Card/abc", "/vet-invite", "/vet-invite/"])(
+  it.each([
+    "/provider",
+    "/provider/bookings",
+    "/p/tag/abc",
+    "/P/Card/abc",
+    "/vet-invite",
+    "/vet-invite/",
+    "/account/signin",
+    "/account/signup",
+    "/account/forgot-password",
+    "/account/reset-password/",
+  ])(
     "%s follows the viewer",
     (path) => expect(isVisitorLangPath(path)).toBe(true),
   );
 
-  it.each(["/", "/privacy", "/providers", "/account/signin", "/admin/moderation", "/vet-invites", "/pets", undefined])(
+  it.each(["/", "/privacy", "/providers", "/account/logout", "/admin/moderation", "/vet-invites", "/pets", undefined])(
     "%s does not",
     (path) => expect(isVisitorLangPath(path)).toBe(false),
   );

@@ -68,6 +68,12 @@ describe("POST /api/legal/consent", () => {
     expect(source).toBe("mobile_signup");
   });
 
+  it.each(["mobile_social", "web_social"])("records the %s source sent after a provider sign-in", async (source) => {
+    auth.mockResolvedValue(SESSION);
+    await POST(post({ source }));
+    expect(sql.mock.calls[0][4]).toBe(source);
+  });
+
   it("an unknown source is stored as null (not trusted verbatim)", async () => {
     auth.mockResolvedValue(SESSION);
     await POST(post({ source: "not_a_source" }));

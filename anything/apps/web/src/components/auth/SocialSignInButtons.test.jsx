@@ -8,9 +8,12 @@ import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 
 const signInWithGoogle = vi.fn();
 const signInWithApple = vi.fn();
+const signInWithMicrosoft = vi.fn();
 vi.mock("@/utils/useAuth", () => ({
-  default: () => ({ signInWithGoogle, signInWithApple }),
+  default: () => ({ signInWithGoogle, signInWithApple, signInWithMicrosoft }),
 }));
+const rememberSocialConsent = vi.fn();
+vi.mock("./RecordSocialConsent", () => ({ rememberSocialConsent: () => rememberSocialConsent() }));
 
 import SocialSignInButtons from "./SocialSignInButtons";
 
@@ -108,6 +111,26 @@ describe("SocialSignInButtons", () => {
     mockProviders({ google: { id: "google" } });
     render(<SocialSignInButtons />);
     expect(await screen.findByTestId("oauth-google")).toBeTruthy();
+  });
+
+  it("renders Microsoft only when the server lists it", async () => {
+    mockProviders({ "microsoft-entra-id": { id: "microsoft-entra-id" } });
+    render(<SocialSignInButtons callbackUrl="/provider" />);
+    const btn = await screen.findByTestId("oauth-microsoft");
+    expect(btn.textContent).toBe("Continue with Microsoft");
+    fireEvent.click(btn);
+    expect(signInWithMicrosoft).toHaveBeenCalledWith({ callbackUrl: "/provider" });
+    expect(screen.queryByTestId("oauth-google")).toBeNull();
+  });
+
+  it("shows the Terms line with the buttons and remembers the click that accepts it", async () => {
+    mockProviders({ google: { id: "google" } });
+    render(<SocialSignInButtons />);
+    const btn = await screen.findByTestId("oauth-google");
+    expect(screen.getByTestId("oauth-terms").textContent).toMatch(/By continuing this way, you agree to the Terms of Service and Privacy Policy/);
+    expect(rememberSocialConsent).not.toHaveBeenCalled();
+    fireEvent.click(btn);
+    expect(rememberSocialConsent).toHaveBeenCalledTimes(1);
   });
 
   it("renders nothing if the providers fetch fails (no crash)", async () => {

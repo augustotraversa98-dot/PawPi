@@ -56,6 +56,11 @@ function useAuth() {
     return signIn("apple", { ...options, callbackUrl: cb });
   }, [callbackUrl]);
 
+  const signInWithMicrosoft = useCallback((options) => {
+    const cb = callbackUrl ?? options?.callbackUrl;
+    return signIn("microsoft-entra-id", { ...options, callbackUrl: cb });
+  }, [callbackUrl]);
+
   return {
     signInWithCredentials,
     signUpWithCredentials,
@@ -63,6 +68,7 @@ function useAuth() {
     signInWithFacebook,
     signInWithTwitter,
     signInWithApple,
+    signInWithMicrosoft,
     signOut,
   }
 }
