@@ -3,7 +3,9 @@ import { PET_PAGE_BUTTON } from "@/components/publicPet/PetPageParts";
 import { BRAND } from "@/lib/brand/tokens";
 import { RECORD_LINK_COPY } from "@/lib/recordLink/copy";
 import { postRecordLink } from "@/lib/recordLink/request";
-import { RECORD_COPY, fill, formatRecordDate } from "@/app/provider/lib/recordCopy";
+import recordCopy from "@/app/provider/i18n/record";
+import { fill } from "@/app/provider/i18n/lib/format";
+import { formatRecordDate } from "@/app/provider/lib/record";
 
 // The parts of a record a link shares, and the one thing a link may allow: adding a vet note. Only the sections in
 // `record.sections` are drawn.
@@ -81,7 +83,7 @@ function Empty({ children }) {
 }
 
 function Fields({ section, values, lang }) {
-  const copy = RECORD_COPY[lang];
+  const copy = recordCopy[lang];
   const labels = copy[FIELD_COPY[section]];
   const rows = FIELDS[section].filter((key) => values?.[key]);
   if (rows.length === 0) return <Empty>{labels.empty}</Empty>;
@@ -105,7 +107,7 @@ function Fields({ section, values, lang }) {
 // Who a note is from, as the page names them.
 function noteAuthor(note, lang) {
   const t = RECORD_LINK_COPY[lang];
-  const notes = RECORD_COPY[lang].notes;
+  const notes = recordCopy[lang].notes;
   if (!note.via_link) return note.vet_name || t.owner;
   if (note.external_author_name === "Former member") return notes.formerMember;
   return note.external_author_name || notes.anonymous;
@@ -273,7 +275,7 @@ function FileButton({ lang, token, kind, entry, label, onReload, onClosed }) {
 }
 
 export default function RecordSections({ lang, record, token, signedIn, onReload, onClosed }) {
-  const copy = RECORD_COPY[lang];
+  const copy = recordCopy[lang];
   const t = RECORD_LINK_COPY[lang];
   const shared = ORDER.filter((key) => record.sections?.includes(key));
   const files = { lang, token, onReload, onClosed };

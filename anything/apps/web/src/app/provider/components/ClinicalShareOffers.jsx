@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { toast } from "sonner";
 import { useAnswerShareOffer, useShareOffers } from "../hooks/useShareOffers";
 import { COLORS } from "../lib/colors";
-import { RECORD_COPY } from "../lib/recordCopy";
+import recordCopy from "../i18n/record";
 import shareOffersCopy from "../i18n/shareOffers";
 import { useProviderCopy } from "../i18n/lib/useProviderCopy";
 import { fill, formatDate } from "../i18n/lib/format";
@@ -16,7 +16,7 @@ export default function ClinicalShareOffers({ providerId }) {
   const { t, lang } = useProviderCopy(shareOffersCopy);
   // A second click before the button is redrawn as disabled must not answer twice.
   const answering = useRef(false);
-  const sections = RECORD_COPY[lang].sections;
+  const sections = recordCopy[lang].sections;
   const offers = data?.offers ?? [];
 
   if (isError && offers.length === 0) {

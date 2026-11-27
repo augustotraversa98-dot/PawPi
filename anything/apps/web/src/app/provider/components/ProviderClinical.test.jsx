@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 // The bookings hook is mocked; react-router's Link is stubbed to an anchor so we
@@ -87,5 +87,32 @@ describe("ProviderClinical index", () => {
     setBookings([]);
     render(<ProviderClinical providerId={3} />);
     expect(screen.getByText("No pets yet")).toBeInTheDocument();
+  });
+});
+
+describe("ProviderClinical in Spanish", () => {
+  beforeEach(() => {
+    vi.spyOn(window.navigator, "languages", "get").mockReturnValue(["es-AR"]);
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it("words the list, and names a pet that has no name", () => {
+    setBookings([{ id: 1, pet_id: 55, pet_name: null }]);
+    render(<ProviderClinical providerId={3} />);
+    expect(screen.getByRole("heading", { name: "Historias clínicas" })).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: /mascota n\.º 55/i });
+    expect(link).toHaveTextContent("Abrir historia");
+    expect(link.getAttribute("href")).toBe("/provider/pets/55/record?bookingId=1");
+  });
+
+  it("words the empty list and a failed load", () => {
+    setBookings([]);
+    const first = render(<ProviderClinical providerId={3} />);
+    expect(screen.getByText("Todavía no hay mascotas")).toBeInTheDocument();
+    first.unmount();
+    setBookings(undefined, { isError: true, error: new Error("Failed to fetch bookings") });
+    render(<ProviderClinical providerId={3} />);
+    expect(screen.getByText("No se pudieron cargar las mascotas")).toBeInTheDocument();
+    expect(screen.getByText("Probá de nuevo.")).toBeInTheDocument();
   });
 });

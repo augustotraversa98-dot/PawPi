@@ -25,13 +25,11 @@ import {
   useAddVaccination,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
-import {
-  RECORD_COPY,
-  fill,
-  formatRecordDate,
-  recordFileHref,
-} from "../lib/recordCopy";
-import { useVisitorLang } from "../../../lib/publicPet/useVisitorLang";
+import recordCopy from "../i18n/record";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { fill } from "../i18n/lib/format";
+import { serverErrorMessage } from "../i18n/lib/serverError";
+import { formatRecordDate, recordFileHref } from "../lib/record";
 
 // Clinical record screen (c3). The ONLY provider UI that reads/writes pet MEDICAL
 // data — every read/write goes through the four assertCareAccess-gated routes via
@@ -69,8 +67,7 @@ export default function ProviderPetRecord({
   const requestAccess = useRequestAccess(providerId);
   const addNote = useAddVetNote(providerId, petId);
   const addVaccination = useAddVaccination(providerId, petId);
-  const { lang } = useVisitorLang();
-  const t = RECORD_COPY[lang];
+  const { t, lang } = useProviderCopy(recordCopy);
 
   // A request has been sent and is awaiting the owner's approval.
   const [requested, setRequested] = useState(false);
@@ -97,7 +94,7 @@ export default function ProviderPetRecord({
       record.refetch();
       return;
     }
-    toast.error(err?.message || fallbackMsg);
+    toast.error(serverErrorMessage(err, lang, fallbackMsg, recordCopy));
   };
 
   const onRequest = () => {
@@ -121,7 +118,7 @@ export default function ProviderPetRecord({
             record.refetch();
             return;
           }
-          toast.error(err?.message || t.toast.requestFailed);
+          toast.error(serverErrorMessage(err, lang, t.toast.requestFailed, recordCopy));
         },
       },
     );
@@ -186,7 +183,7 @@ export default function ProviderPetRecord({
         <div className="rounded-2xl border border-[#FFD9B3] bg-white px-6 py-16 text-center">
           <p className="font-semibold text-[#B23B30]">{t.loadErrorTitle}</p>
           <p className="mt-1 text-sm text-[#7A6254]">
-            {record.error?.message || t.tryAgain}
+            {serverErrorMessage(record.error, lang, t.tryAgain, recordCopy)}
           </p>
         </div>
       ) : sharedSections ? (
@@ -658,14 +655,14 @@ function VetNotesCard({ t, lang, notes, addNote, onWriteError, readOnly }) {
                 rows={2}
                 placeholder={t.notes.placeholder}
                 {...register("note", {
-                  required: t.notes.required,
-                  validate: (v) => v.trim().length > 0 || t.notes.required,
+                  required: true,
+                  validate: (v) => v.trim().length > 0,
                 })}
                 className="w-full resize-y rounded-xl border-2 border-[#FFD9B3] bg-white px-3 py-2.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
               />
               {errors.note && (
                 <p className="mt-1 text-xs font-semibold text-[#B23B30]">
-                  {errors.note.message}
+                  {t.notes.required}
                 </p>
               )}
             </div>
@@ -798,15 +795,14 @@ function VaccinationsCard({
                   type="text"
                   placeholder={t.vaccinations.placeholder}
                   {...register("name", {
-                    required: t.vaccinations.required,
-                    validate: (v) =>
-                      v.trim().length > 0 || t.vaccinations.required,
+                    required: true,
+                    validate: (v) => v.trim().length > 0,
                   })}
                   className="w-full rounded-xl border-2 border-[#FFD9B3] bg-white px-3 py-2.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
                 />
                 {errors.name && (
                   <p className="mt-1 text-xs font-semibold text-[#B23B30]">
-                    {errors.name.message}
+                    {t.vaccinations.required}
                   </p>
                 )}
               </div>

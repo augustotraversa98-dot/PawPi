@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   render,
   screen,
@@ -33,6 +33,7 @@ import {
   useAddVetNote,
   useAddVaccination,
 } from "../hooks/useProviders";
+import { toast } from "sonner";
 import ProviderPetRecord from "./ProviderPetRecord";
 
 const GRANTED = {
@@ -377,5 +378,35 @@ describe("ProviderPetRecord — notes added through a record link", () => {
     expect(screen.getByText("· Former member")).toBeInTheDocument();
     expect(screen.queryByText("· Cambios de alguien externo")).toBeNull();
     expect(screen.getByText("· Dr Prior")).toBeInTheDocument();
+  });
+});
+
+describe("ProviderPetRecord — Spanish", () => {
+  beforeEach(() => {
+    vi.spyOn(window.navigator, "languages", "get").mockReturnValue(["es-AR"]);
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it("words a refused load from the server in Spanish, and a generic one with its own text", () => {
+    setRecord({ isError: true, error: { status: 404, message: "Pet not found" } });
+    const first = renderScreen();
+    expect(screen.getByText("No encontramos esta mascota.")).toBeInTheDocument();
+    first.unmount();
+    setRecord({ isError: true, error: { status: 500, message: "Failed to load medical record" } });
+    renderScreen();
+    expect(screen.getByText("Probá de nuevo.")).toBeInTheDocument();
+  });
+
+  it("words the form rules and a refused write in Spanish", async () => {
+    setRecord({ data: GRANTED });
+    addNoteMutate.mockImplementation((_body, opts) => opts.onError({ status: 404, message: "Pet not found" }));
+    renderScreen();
+    fireEvent.click(screen.getByRole("button", { name: "Agregar nota" }));
+    expect(await screen.findByText("Escribí la nota")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Agregar vacuna" }));
+    expect(await screen.findByText("Escribí el nombre de la vacuna")).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText(/Hallazgos del examen/), { target: { value: "Control" } });
+    fireEvent.click(screen.getByRole("button", { name: "Agregar nota" }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("No encontramos esta mascota."));
   });
 });
