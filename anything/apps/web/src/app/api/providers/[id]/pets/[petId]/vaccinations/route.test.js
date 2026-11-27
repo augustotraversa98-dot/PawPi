@@ -26,6 +26,8 @@ vi.mock("@/app/api/utils/careAccess", () => {
 
 const SESSION = { user: { id: 42 }, expires: "9999999999" };
 const PROFILE_ROW = { id: 7, auth_user_id: 42 };
+// The database function of 0160 is not there.
+const NO_0160 = Object.assign(new Error("missing function"), { code: "42883" });
 const PET_OWNER_ROW = { owner_user_id: 3 };
 const PARAMS = { params: { id: "100", petId: "55" } };
 
@@ -68,7 +70,7 @@ describe("POST /api/providers/[id]/pets/[petId]/vaccinations", () => {
     const INSERTED = { id: 9, name: "Rabies", administered_by_provider_id: 100 };
     sql
       .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
-      .mockResolvedValueOnce([]) // a database without 0160: the older insert below
+      .mockRejectedValueOnce(NO_0160) // a database without 0160: the older insert below
       .mockResolvedValueOnce([PET_OWNER_ROW]) // pet owner
       .mockResolvedValueOnce([INSERTED]); // insert
     assertCareAccess.mockResolvedValue({ id: 555 });
@@ -100,13 +102,13 @@ describe("POST /api/providers/[id]/pets/[petId]/vaccinations", () => {
 
   it("insufficient scope (helper throws) → 403, nothing inserted", async () => {
     auth.mockResolvedValue(SESSION);
-    sql.mockResolvedValueOnce([PROFILE_ROW]);
+    sql.mockResolvedValueOnce([PROFILE_ROW]).mockRejectedValueOnce(NO_0160);
     const { CareAccessError } = await import("@/app/api/utils/careAccess");
     assertCareAccess.mockRejectedValue(new CareAccessError("denied"));
 
     const res = await POST(postReq({ name: "Rabies" }), PARAMS);
     expect(res.status).toBe(403);
-    // The profile lookup, then the question whether a share lets this business add: nothing is inserted.
+    // The profile lookup and the missing database function: nothing is inserted.
     expect(sql).toHaveBeenCalledTimes(2);
     expect(allQueryText()).not.toContain("INSERT INTO");
   });

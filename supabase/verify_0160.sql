@@ -1,7 +1,7 @@
 -- Verification for migration 0160 (a vet adding to the owner's vet record). Run in the Supabase SQL editor AFTER
 -- applying 0160. EVERY row should read PASS (8 rows). Read-only (catalog and data checks only).
--- After 0160, verify_0147 row 18 reads FAIL by design: app_provider_may_add is one more function that reads the
--- grants (verify_0147 row 24 already reads FAIL since 0148).
+-- After 0160, verify_0147 row 18 reads FAIL by design: the 0160 writing functions also read the grants (verify_0147
+-- row 24 already reads FAIL since 0148).
 with
 fn as (
   select p.oid, p.proname, p.prosecdef, p.prosrc, p.proowner,
@@ -72,10 +72,12 @@ checks as (
                              and prosrc like '%g.expires_at is null or g.expires_at > now()%'
                              and prosrc like '%p_section = any (g.edit_sections)%'
                              and prosrc like '%g.sections is null%')
-                and exists (select 1 from fn where proname = 'app_provider_add_record' and prosrc like '%app_provider_may_add(p_pet_id, p_provider_id, p_section)%')
+                and exists (select 1 from fn where proname = 'app_provider_add_record' and prosrc like '%app_provider_may_add(p_pet_id, p_provider_id, p_section)%'
+                              and prosrc like '%for share;%')
                 and exists (select 1 from fn where proname = 'app_provider_update_vet_note'
                               and prosrc like '%app_provider_may_add(p_pet_id, p_provider_id, ''vet_notes'')%'
-                              and prosrc like '%n.added_by_provider_id = p_provider_id%')
+                              and prosrc like '%n.added_by_provider_id = p_provider_id%'
+                              and prosrc like '%for share;%')
               then 'PASS' else 'FAIL' end
 
   union all

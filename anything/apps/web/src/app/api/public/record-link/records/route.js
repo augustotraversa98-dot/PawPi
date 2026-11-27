@@ -1,5 +1,6 @@
 import sql from "@/app/api/utils/sql";
-import { identifyVisitor, withoutNul } from "@/app/api/utils/recordLinkVisitor";
+import { identifyVisitor } from "@/app/api/utils/recordLinkVisitor";
+import { cleanText } from "@/app/api/utils/cleanText";
 import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
 import { refuseAddition } from "@/app/api/utils/recordLinkAdd";
 import {
@@ -39,7 +40,7 @@ async function addRecord(request, { body }) {
     const data = {};
     for (const field of FIELDS[body.section]) {
       const value = body.data?.[field];
-      if (typeof value === "string") data[field] = withoutNul(value);
+      if (typeof value === "string") data[field] = cleanText(value);
     }
 
     await identifyVisitor();

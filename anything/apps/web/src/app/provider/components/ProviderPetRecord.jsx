@@ -33,7 +33,7 @@ import recordCopy from "../i18n/record";
 import { useProviderCopy } from "../i18n/lib/useProviderCopy";
 import { fill } from "../i18n/lib/format";
 import { serverErrorMessage } from "../i18n/lib/serverError";
-import { formatRecordDate, recordFileHref } from "../lib/record";
+import { formatRecordDate, linkAuthorName, recordFileHref } from "../lib/record";
 
 // Clinical record screen (c3). The ONLY provider UI that reads/writes pet MEDICAL
 // data — every read/write goes through the four assertCareAccess-gated routes via
@@ -229,6 +229,16 @@ export default function ProviderPetRecord({
         </div>
       )}
     </div>
+  );
+}
+
+// Marks what someone added through a record link, so it is never read as a clinic's or the owner's entry.
+function FromLink({ t, row }) {
+  if (!row.via_record_link) return null;
+  return (
+    <span className="ml-0 mt-1 inline-block rounded-full bg-[#FFF1E2] px-2 py-0.5 text-xs font-semibold text-[#B75D32]">
+      {fill(t.fromLink, { name: linkAuthorName(row, t) })}
+    </span>
   );
 }
 
@@ -535,6 +545,7 @@ function FilesCard({ t, lang, providerId, documents, form }) {
                       {d.notes}
                     </p>
                   )}
+                  <FromLink t={t} row={d} />
                 </div>
                 {href ? (
                   <a
@@ -644,6 +655,7 @@ function LabResultsCard({ t, lang, results, form }) {
                   {r.notes}
                 </p>
               )}
+              <FromLink t={t} row={r} />
             </li>
           ))}
         </ul>
@@ -654,8 +666,7 @@ function LabResultsCard({ t, lang, results, form }) {
 
 // Who added a note through a record link: their name, or that it was someone with no account.
 function linkNoteAuthor(note, t) {
-  if (note.external_author_name === "Former member") return t.notes.formerMember;
-  return note.external_author_name || t.notes.anonymous;
+  return linkAuthorName(note, t);
 }
 
 function VetNotesCard({ t, lang, notes, addNote, editNote, onWriteError, readOnly }) {
@@ -941,6 +952,11 @@ function VaccinationsCard({
               >
                 <td className="px-4 py-2.5 font-semibold text-[#3B241B]">
                   {v.name}
+                  {v.via_record_link && (
+                    <span className="block">
+                      <FromLink t={t} row={v} />
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-2.5 text-[#3B241B]">
                   {formatRecordDate(v.date_given, lang)}

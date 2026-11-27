@@ -1,5 +1,6 @@
 import sql from "@/app/api/utils/sql";
-import { identifyVisitor, withoutNul } from "@/app/api/utils/recordLinkVisitor";
+import { identifyVisitor } from "@/app/api/utils/recordLinkVisitor";
+import { cleanText } from "@/app/api/utils/cleanText";
 import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
 import { refuseAddition } from "@/app/api/utils/recordLinkAdd";
 import { discardVetFile, documentData, readVetFile, storeVetFile } from "@/app/api/utils/vetFile";
@@ -49,9 +50,12 @@ async function readCappedForm(request) {
   }
 }
 
+// The sender's limit is counted before any of the upload is read.
+const limit = withRequestContext(
+  async (request) => (await limitPublicRequest("record_link_upload", request)) ?? { counted: true },
+);
+
 const check = withRequestContext(async (request, { token }) => {
-  const limited = await limitPublicRequest("record_link_upload", request);
-  if (limited) return limited;
   if (!isLinkToken(token)) return linkNotValid();
   let rows;
   try {
@@ -82,6 +86,8 @@ const save = withRequestContext(async (request, { token, data }) => {
 
 async function receive(request) {
   try {
+    const limited = await limit(request);
+    if (limited instanceof Response) return limited;
     const form = await readCappedForm(request);
     if (form === null) return tooLarge();
     if (form === undefined) return refuseAddition("bad_data");
@@ -91,7 +97,7 @@ async function receive(request) {
     if (allowed instanceof Response) return allowed;
 
     const clean = new Map(
-      ["name", "category", "documentDate", "notes"].map((k) => [k, withoutNul(form.get(k) ?? "")]),
+      ["name", "category", "documentDate", "notes"].map((k) => [k, cleanText(form.get(k) ?? "")]),
     );
     if (!String(clean.get("name")).trim()) return refuseAddition("bad_data");
     const file = await readVetFile(form.get("file"), RECORD_LINK_FILE_BYTES);

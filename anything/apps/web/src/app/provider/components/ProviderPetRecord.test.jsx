@@ -449,6 +449,19 @@ describe("ProviderPetRecord — a share that lets the business add", () => {
     expect(screen.getByTestId("shared-access")).toHaveTextContent("You can add to:");
   });
 
+  it("marks what came through a record link, with the name or as anonymous", () => {
+    setRecord({
+      data: {
+        ...adding([]),
+        vaccinations: [{ id: 5, name: "Parvo", via_record_link: true }],
+        lab_results: [{ id: 6, test_name: "Urine", test_date: "2026-11-01", via_record_link: true, external_author_name: "Dr. Gómez" }],
+      },
+    });
+    renderScreen();
+    expect(screen.getByText("From a shared link: Anonymous")).toBeInTheDocument();
+    expect(screen.getByText("From a shared link: Dr. Gómez")).toBeInTheDocument();
+  });
+
   it("view only offers nothing, even for a note marked editable", () => {
     setRecord({ data: adding([]) });
     renderScreen();

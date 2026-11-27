@@ -310,8 +310,12 @@ declare
   v_appointment integer;
   v_row         jsonb;
 begin
-  -- One change at a time per pet and business: a removal or an edit lands fully before or after the row.
+  -- One change at a time per pet and business: the lock the owner's share, edit and invitations take. Removing access
+  -- takes no such lock, so the open grant is held too: a removal lands fully before or after the row.
   perform pg_advisory_xact_lock(hashtext('care_access_grant:' || p_pet_id || ':' || p_provider_id));
+  perform 1 from care_access_grants g
+  where g.pet_id = p_pet_id and g.provider_id = p_provider_id and g.status = 'active'
+  for share;
   select * into v_access from app_provider_may_add(p_pet_id, p_provider_id, p_section);
   if v_user is null or v_access.grant_id is null then
     return query select 'not_allowed'::text, null::integer, null::jsonb;
@@ -386,6 +390,9 @@ declare
   v_row    jsonb;
 begin
   perform pg_advisory_xact_lock(hashtext('care_access_grant:' || p_pet_id || ':' || p_provider_id));
+  perform 1 from care_access_grants g
+  where g.pet_id = p_pet_id and g.provider_id = p_provider_id and g.status = 'active'
+  for share;
   select * into v_access from app_provider_may_add(p_pet_id, p_provider_id, 'vet_notes');
   if v_access.grant_id is null then
     return query select 'not_allowed'::text, null::integer, null::jsonb;
@@ -507,7 +514,8 @@ end
 $$;
 
 -- ── 4. what a link holder reads ────────────────────────────────────────────────────────────────────────────────
--- Same contract as 0157; adds `edit_sections`.
+-- Same contract as 0157; adds `edit_sections`, and says which vaccinations, documents and lab results came through a
+-- record link, and from whom, as vet notes already do.
 create or replace function app_record_link_view(p_token_hash text)
 returns jsonb
 language sql
@@ -590,7 +598,9 @@ as $$
         'expires_on', v.expires_on,
         'lot', v.lot,
         'clinic_name', v.clinic_name,
-        'notes', v.notes
+        'notes', v.notes,
+        'via_link', v.via_record_link,
+        'external_author_name', v.external_author_name
       ) order by v.date_given desc nulls last, v.created_at desc, v.id desc)
       from pet_vaccinations v
       where v.pet_id = l.pet_id and v.owner_user_id = l.owner_user_id and v.deleted_at is null
@@ -602,6 +612,8 @@ as $$
         'document_type', d.document_type,
         'document_date', d.document_date,
         'notes', d.notes,
+        'via_link', d.via_record_link,
+        'external_author_name', d.external_author_name,
         'file_available', d.file_url ~ ('^pets/' || l.pet_id::text || '/[A-Za-z0-9._-]+$') and strpos(d.file_url, '..') = 0
       ) order by d.document_date desc nulls last, d.created_at desc, d.id desc)
       from vet_documents d
@@ -624,7 +636,9 @@ as $$
         'test_date', r.test_date,
         'results', r.results,
         'ordered_by', r.ordered_by,
-        'notes', r.notes
+        'notes', r.notes,
+        'via_link', r.via_record_link,
+        'external_author_name', r.external_author_name
       ) order by r.test_date desc, r.created_at desc, r.id desc)
       from pet_lab_results r
       where r.pet_id = l.pet_id and r.owner_user_id = l.owner_user_id

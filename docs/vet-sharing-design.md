@@ -150,6 +150,10 @@ functions (`app_provider_add_record`, `app_provider_update_vet_note`, `app_recor
 and they check the live grant or link on every call under the same lock as the owner's edits. A note added under a grant
 by section counts for no other permission. A link adds at most 20 rows (notes counted separately) in 24 hours; file
 routes check permission before storing, check the file's first bytes, and remove a stored file whose row was refused.
+A vaccination, document or lab result added through a link is marked "From a shared link" on the link page and in the
+business panel, so it is never read as a clinic's or the owner's entry; a business never receives the link visitor's
+account or link id. Removing access waits for a row being written (the writing functions hold the grant), and the
+access is audited only for a row that was written.
 
 ## 2. What the vet sees
 

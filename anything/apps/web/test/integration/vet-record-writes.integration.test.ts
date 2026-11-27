@@ -29,6 +29,8 @@ const OTHER = { authUserId: 2, profileId: 2, username: "other", petId: 2, petNam
 const VET = { authUserId: 3, profileId: 3, username: "vet", fullName: "Dr. Paula" };
 const VET2 = { authUserId: 4, profileId: 4, username: "vet2", fullName: "Dr. Second" };
 const PET = OWNER.petId;
+// The address uploads come from, so the per-sender limit has someone to count.
+const SENDER = "203.0.113.5";
 const P1 = 1;
 const P2 = 2;
 const ALL = ["vet_notes", "vaccines", "files", "lab_results"];
@@ -60,7 +62,10 @@ const multipart = async (path: string, fields: Record<string, string>, file: Fil
   const bytes = await encoded.arrayBuffer();
   const res = await api.request(path, {
     method: "POST",
-    headers: { "content-type": encoded.headers.get("content-type")!, "content-length": String(bytes.byteLength) },
+    headers: {
+      "content-type": encoded.headers.get("content-type")!, "content-length": String(bytes.byteLength),
+      "x-real-ip": SENDER,
+    },
     body: bytes,
   });
   return { status: res.status, body: await res.json() };
@@ -303,6 +308,66 @@ describe("a share that allows adding", () => {
     expect((await raw`select note from vet_notes where id = ${own.id}`)[0].note).toBe("OWNER");
   });
 
+  it("an id written another way reaches no write at all, also with the older scopes", async () => {
+    await raw`insert into care_access_grants (pet_id, owner_user_id, provider_id, scopes, status, requested_by, granted_at)
+      values (${PET}, ${OWNER.profileId}, ${P1}, ${["medical_read", "medical_write", "vaccinations_write"]},
+              'active', 'owner', now())`;
+    await raw.begin(async (tx) => {
+      await tx`select set_config('app.current_user_id', ${String(OWNER.profileId)}, true)`;
+      await tx`update pets set owner_user_id = ${OTHER.profileId} where id = ${PET}`;
+    });
+    for (const petId of ["01", "%201", "1.0", "1"]) {
+      for (const [path, body] of [["notes", { note: "x" }], ["vaccinations", { name: "x" }]] as const) {
+        const res = await send(`/providers/${P1}/pets/${petId}/${path}`, "POST", body, VET);
+        expect(res.status, `${petId}/${path}`).toBe(403);
+      }
+    }
+    expect(await count("vet_notes")).toBe(0);
+    expect(await count("vaccines")).toBe(0);
+    // A refused write is not recorded as one.
+    expect(await raw`select * from care_access_audit where action = 'write'`).toHaveLength(0);
+  });
+
+  it("removing access waits for a row being written, and nothing is written after it", async () => {
+    const grant = await share(["vaccines"]);
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    let added!: () => void;
+    const writing = new Promise<void>((resolve) => (added = resolve));
+    const write = asApp(VET.profileId, async (tx) => {
+      const [res] = await tx`select outcome from app_provider_add_record(${PET}, ${P1}, 'vaccines', '{"name":"x"}'::jsonb)`;
+      added();
+      await held;
+      return res.outcome;
+    });
+    await writing;
+    let removed = false;
+    const removal = raw`update care_access_grants set status = 'revoked', revoked_at = now() where id = ${grant.id}`
+      .then(() => { removed = true; });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(removed).toBe(false);
+    release();
+    expect(await write).toBe("added");
+    await removal;
+    expect((await writes.vaccines()).status).toBe(403);
+  });
+
+  it("a business never learns which account added something through a link", async () => {
+    const { token } = await link({ editSections: ["vaccines", "lab_results"] });
+    await linkAdd(token, "vaccines", { name: "Rabies\u0000 \ud800" }, VET2);
+    await linkAdd(token, "lab_results", { test_name: "x", test_date: "2026-01-01" });
+    await share([]);
+    as(VET);
+    const body = await (await req(`${base}/record`)).json();
+    for (const row of [body.vaccinations[0], body.lab_results[0]]) {
+      expect(row.via_record_link).toBe(true);
+      expect(row).not.toHaveProperty("created_by_user_id");
+      expect(row).not.toHaveProperty("record_link_id");
+    }
+    const view = await send("/public/record-link/open", "POST", { token }, null);
+    expect(view.body.record.vaccines[0]).toMatchObject({ via_link: true, external_author_name: "Dr. Second" });
+  });
+
   it("a note added this way unlocks nothing", async () => {
     await share(["vet_notes"]);
     await writes.vet_notes();
@@ -400,6 +465,22 @@ describe("through a record link", () => {
     expect(row).toMatchObject({ external_author_name: "Dr. Paula", created_by_user_id: VET.profileId, owner_user_id: OWNER.profileId });
     await raw`delete from auth_users where id = ${VET.authUserId}`;
     expect((await raw`select external_author_name from pet_lab_results`)[0].external_author_name).toBe("Former member");
+  });
+
+  it("counts a sender's upload limit before reading any of the upload", async () => {
+    const { token } = await link({ editSections: ["files"] });
+    for (let i = 0; i < 10; i += 1) expect((await linkUpload("A".repeat(43))).status).toBe(403);
+    let reads = 0;
+    const body = new ReadableStream({ pull(c) { reads += 1; c.close(); } }, { highWaterMark: 0 });
+    as(null);
+    const res = await api.request("/public/record-link/documents", {
+      method: "POST", body, duplex: "half",
+      headers: { "content-type": "multipart/form-data; boundary=x", "content-length": "9000000", "x-real-ip": SENDER },
+    } as any);
+    expect(res.status).toBe(429);
+    expect(reads).toBe(0);
+    expect((await linkUpload(token)).status).toBe(429);
+    expect(store.saved).toEqual([]);
   });
 
   it("validates, limits a day's additions and stops with the link", async () => {

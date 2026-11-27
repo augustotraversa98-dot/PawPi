@@ -1,5 +1,6 @@
 import sql from "@/app/api/utils/sql";
-import { identifyVisitor, withoutNul } from "@/app/api/utils/recordLinkVisitor";
+import { identifyVisitor } from "@/app/api/utils/recordLinkVisitor";
+import { cleanText } from "@/app/api/utils/cleanText";
 import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
 import {
   RECORD_LINK_NOTE_BODY_BYTES,
@@ -39,7 +40,7 @@ async function addNote(request, { body }) {
     if (limited) return limited;
 
     if (!isLinkToken(body.token)) return linkNotValid();
-    const note = typeof body.note === "string" ? withoutNul(body.note).trim() : "";
+    const note = typeof body.note === "string" ? cleanText(body.note).trim() : "";
     if (!note || note.length > RECORD_LINK_NOTE_MAX) {
       return answer({ error: REFUSALS.bad_note[2], code: "bad_note" }, 400);
     }
@@ -94,7 +95,7 @@ async function editNote(request, { body }) {
     if (!Number.isInteger(noteId) || noteId <= 0 || noteId > 2147483647) {
       return refuse("not_found");
     }
-    const note = typeof body.note === "string" ? withoutNul(body.note).trim() : "";
+    const note = typeof body.note === "string" ? cleanText(body.note).trim() : "";
     if (!note || note.length > RECORD_LINK_NOTE_MAX) return refuse("bad_note");
 
     await identifyVisitor();

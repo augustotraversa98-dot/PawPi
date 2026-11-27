@@ -3,14 +3,12 @@
 
 import { auth } from "@/auth";
 import { resolveOrCreateUserId } from "./currentUser";
-
-// The database's text cannot hold the NUL character, so it is left out of what is stored.
-export const withoutNul = (text) => (typeof text === "string" ? text.replaceAll("\u0000", "") : text);
+import { cleanText } from "./cleanText";
 
 export async function identifyVisitor() {
   const session = await auth();
   if (session?.user?.id) {
-    const user = { ...session.user, name: withoutNul(session.user.name) };
+    const user = { ...session.user, name: cleanText(session.user.name) };
     await resolveOrCreateUserId({ ...session, user });
   }
 }

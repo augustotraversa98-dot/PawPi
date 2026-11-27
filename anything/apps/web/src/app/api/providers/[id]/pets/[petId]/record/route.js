@@ -9,6 +9,7 @@ import {
   RECORD_SECTIONS,
 } from "@/app/api/utils/careAccess";
 import { presentVetNote } from "@/app/api/utils/recordLink";
+import { forBusiness } from "@/app/api/utils/sharedWrites";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // GET /api/providers/[id]/pets/[petId]/record — provider staff read a pet's
@@ -89,10 +90,10 @@ async function readSharedRecord(petId, providerId, grantedSections, editSections
     editSections: sharedSections.filter((s) => editSections.includes(s)),
     medical_profile: medicalProfileRows[0] ?? null,
     notes: markEditable(notes, providerId, editSections.includes("vet_notes")),
-    vaccinations,
-    documents,
+    vaccinations: vaccinations.map(forBusiness),
+    documents: documents.map(forBusiness),
     photo_checks: photoChecks,
-    lab_results: labResults,
+    lab_results: labResults.map(forBusiness),
   };
 }
 
@@ -160,7 +161,7 @@ async function GET(request, { params }) {
     return Response.json({
       medical_profile: medicalProfileRows[0] ?? null,
       notes: markEditable(notes, providerId, !!readGrant?.scopes?.includes("medical_write")),
-      vaccinations,
+      vaccinations: vaccinations.map(forBusiness),
       sharedSections: null,
     });
   } catch (e) {

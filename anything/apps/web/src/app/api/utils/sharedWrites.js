@@ -8,63 +8,60 @@ import sql from "./sql";
 import { withSavepoint } from "./requestContext";
 import { assertCareAccess, CareAccessError, recordCareAccess } from "./careAccess";
 import { isMissingSchema } from "./recordLink";
+import { cleanText } from "./cleanText";
 
 export const isRecordId = (value) => /^[1-9]\d{0,8}$/.test(String(value ?? ""));
 
 const DENIED = "No active care-access grant for the required scope";
 
-// { outcome, grantId, record }, or null when the database cannot answer (before 0160).
+// { outcome, grantId, record }, or null only when the database has no such function (before 0160).
 async function askToAdd({ petId, providerId, section, data }) {
-  if (!isRecordId(petId) || !isRecordId(providerId)) return null;
   try {
     const rows = await withSavepoint(async () => {
       return await sql`
         SELECT outcome, grant_id, record
         FROM app_provider_add_record(
-          ${petId}::int, ${providerId}::int, ${section}, ${JSON.stringify(data)}::text::jsonb)
+          ${petId}::int, ${providerId}::int, ${section}, ${JSON.stringify(cleanFields(data))}::text::jsonb)
       `;
     });
     const row = rows?.[0];
-    return row?.outcome ? { outcome: row.outcome, grantId: row.grant_id, record: row.record } : null;
+    return { outcome: row?.outcome ?? "not_allowed", grantId: row?.grant_id, record: row?.record };
   } catch (error) {
     if (!isMissingSchema(error)) throw error;
     return null;
   }
 }
 
+const cleanFields = (data) =>
+  Object.fromEntries(Object.entries(data).map(([key, value]) => [key, cleanText(value)]));
+
 /**
  * Add one row to a pet's record for a business, recording the access.
  *
  * @param {{ petId, providerId, staffUserId: number, section: 'vet_notes'|'vaccines'|'lab_results'|'files',
  *           data: object, resource: string, olderScope?: string }} args `olderScope`: the write scope that already
- *   allowed this before sharing by section ('medical_write', 'vaccinations_write')
- * @returns {Promise<{ record: object } | { badData: true } | { olderPath: true }>} `olderPath`: the older scope allows
- *   it and the database has no 0160, so the caller inserts as it always did
+ *   allowed this before sharing by section ('medical_write', 'vaccinations_write'), used on a database without 0160
+ * @returns {Promise<{ record: object } | { badData: true } | { olderPath: true }>} `olderPath`: the database has no
+ *   0160 and the older scope allows it, so the caller inserts as it always did
  * @throws {CareAccessError} when nothing allows it
  */
 export async function addForProvider({
   petId, providerId, staffUserId, section, data, resource, olderScope = null,
 }) {
-  let denied = new CareAccessError(DENIED);
-  if (olderScope) {
-    try {
-      // Records the access itself.
-      await assertCareAccess(petId, providerId, olderScope, { staffUserId, action: "write", resource });
-      denied = null;
-    } catch (error) {
-      if (!(error instanceof CareAccessError)) throw error;
-      denied = error;
-    }
-  }
+  // An id written any other way ("01") never reaches either way of writing.
+  if (!isRecordId(petId) || !isRecordId(providerId)) throw new CareAccessError(DENIED);
+  // The database decides first; the access is recorded only for a row that was written, after the lock it takes.
   const added = await askToAdd({ petId, providerId, section, data });
-  if (!added) {
-    if (denied) throw denied;
-    return { olderPath: true };
+  if (added) {
+    if (added.outcome === "bad_data") return { badData: true };
+    if (added.outcome !== "added") throw new CareAccessError(DENIED);
+    await recordCareAccess(added.grantId, staffUserId, "write", resource);
+    return { record: added.record };
   }
-  if (added.outcome === "bad_data") return { badData: true };
-  if (added.outcome !== "added") throw denied ?? new CareAccessError(DENIED);
-  if (denied) await recordCareAccess(added.grantId, staffUserId, "write", resource);
-  return { record: added.record };
+  if (!olderScope) throw new CareAccessError(DENIED);
+  // Records the access itself, and throws when the scope does not allow this.
+  await assertCareAccess(petId, providerId, olderScope, { staffUserId, action: "write", resource });
+  return { olderPath: true };
 }
 
 /** May this business add to this part now? The pet and grant for a check made before a file is stored. */
@@ -101,4 +98,14 @@ export function presentSharedRow({ owner_locale, record_link_id: _link, ...row }
     return { ...row, created_by_name: row.added_by_provider_name, created_by_role: "editor" };
   }
   return row;
+}
+
+/**
+ * A row of the record as a business reads it: one added through a record link never carries which account the link's
+ * visitor used, nor which link it was.
+ */
+export function forBusiness(row) {
+  if (!row.via_record_link) return row;
+  const { record_link_id: _link, created_by_user_id: _author, ...rest } = row;
+  return rest;
 }

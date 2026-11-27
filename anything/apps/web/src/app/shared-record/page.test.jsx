@@ -172,6 +172,14 @@ describe("shared record page", () => {
     edited_at: null, editable: true, needs_sign_in: false, ...over,
   });
 
+  it("says which entries came through a link", async () => {
+    await open({
+      sections: ["vaccines"], vet_notes: null,
+      vaccines: [{ name: "Parvo", via_link: true, external_author_name: null }, { name: "Rabies", via_link: false }],
+    });
+    expect(screen.getAllByText(/From a shared link: Anonymous/)).toHaveLength(1);
+  });
+
   it("a link that only allows notes shows the ones added through it, and saves a correction", async () => {
     await open({ allow_notes: true, sections: ["files"], vet_notes: null, link_notes: [linkNote()] });
     const own = within(screen.getByRole("region", { name: t.notes.linkNotesTitle }));

@@ -26,6 +26,7 @@ export default {
       requestAgain: "Request access again",
       request: "Request access",
     },
+    fromLink: "From a shared link: {name}",
     toast: {
       revoked: "Access was revoked by the owner",
       requested: "Access requested",
@@ -194,6 +195,7 @@ export default {
       requestAgain: "Pedir acceso de nuevo",
       request: "Pedir acceso",
     },
+    fromLink: "Desde un enlace compartido: {name}",
     toast: {
       revoked: "Revocaron el acceso",
       requested: "Acceso solicitado",

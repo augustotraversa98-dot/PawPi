@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { recordCareAccess } from "@/app/api/utils/careAccess";
 import { isRecordId } from "@/app/api/utils/sharedWrites";
+import { cleanText } from "@/app/api/utils/cleanText";
 import { isMissingSchema } from "@/app/api/utils/recordLink";
 import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
 
@@ -24,7 +25,7 @@ async function PATCH(request, { params }) {
     }
 
     const body = (await request.json().catch(() => null)) ?? {};
-    const note = typeof body.note === "string" ? body.note.replaceAll("\u0000", "").trim() : "";
+    const note = typeof body.note === "string" ? cleanText(body.note).trim() : "";
     if (!note) {
       return Response.json({ error: "note is required" }, { status: 400 });
     }
