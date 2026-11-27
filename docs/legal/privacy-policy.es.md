@@ -223,12 +223,13 @@ Compartimos información solo según sea necesario para operar el Servicio:
 - **Quien encuentra a tu perro, tu familia y cuidadores**: lo que envía quien encuentra a un perro
   le llega a su dueño y a los familiares y cuidadores con acceso activo a ese perro, en la app y en
   una notificación que puede verse en la pantalla bloqueada.
-- **Lo que muestran las páginas públicas de tu perro (vos decidís)**: si elegís Teléfono o Correo
-  para que te contacten, ese número o dirección se muestra a quien abra la página de la chapa o un
-  enlace para veterinarias; con Retransmisión o Ninguno no se muestra. El contacto de emergencia del
-  perfil médico aparece en la página de la chapa solo si activás "Mostrar mi contacto de emergencia
-  en la chapa" (desactivado por defecto), y en un enlace completo para veterinarias solo si elegiste
-  Teléfono o Correo. Asegurate de que esa persona esté de acuerdo antes de compartir sus datos.
+- **Lo que muestran las páginas públicas de tu perro (vos decidís)**: si elegís mostrar tu teléfono,
+  tu correo o ambos para que te contacten, lo que elegiste se muestra a quien abra la página de la
+  chapa o un enlace para veterinarias; si no elegís ninguno (solo mensaje privado, o ningún
+  contacto), no se muestra ninguno. El contacto de emergencia del perfil médico aparece en la página
+  de la chapa solo si activás "Mostrar mi contacto de emergencia en la chapa" (desactivado por
+  defecto), y en un enlace completo para veterinarias solo si elegiste mostrar tu teléfono o tu
+  correo. Asegurate de que esa persona esté de acuerdo antes de compartir sus datos.
 - **Con procesadores y proveedores de infraestructura (subprocesadores)** — ver Sección 8.
 - **Por razones legales** — para cumplir la ley, hacer cumplir nuestros Términos o proteger los
   derechos, la seguridad de las personas usuarias y del público.

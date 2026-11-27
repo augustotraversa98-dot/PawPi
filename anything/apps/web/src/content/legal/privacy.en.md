@@ -201,11 +201,12 @@ We share information only as needed to run the Service:
 - **Finders, your dog's family and caregivers**: what a finder sends goes to the dog's owner and to
   the family members and caregivers who have active access to that dog, in the app and in a
   notification that may appear on the lock screen.
-- **What your dog's public pages show (you decide)**: if you choose Phone or Email as the way to be
-  reached, that number or address is shown to anyone who opens the dog's tag page or a vet link;
-  with Relay or None it is not shown. The emergency contact from the medical profile appears on the
-  tag page only if you turn on "Show my emergency contact on the pet tag" (off by default), and on a
-  full vet link only if you chose Phone or Email. Make sure that person agrees before you share
+- **What your dog's public pages show (you decide)**: if you choose to show your phone number, your
+  email address or both as ways to be reached, what you chose is shown to anyone who opens the dog's
+  tag page or a vet link; if you choose neither (private message only, or no contact), neither is
+  shown. The emergency contact from the medical profile appears on the tag page only if you turn on
+  "Show my emergency contact on the pet tag" (off by default), and on a full vet link only if you
+  chose to show your phone number or email address. Make sure that person agrees before you share
   their details.
 - **With processors and infrastructure providers (subprocessors)** — see Section 8.
 - **For legal reasons** — to comply with the law, enforce our Terms, or protect the rights, safety,

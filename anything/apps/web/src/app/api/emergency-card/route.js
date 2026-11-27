@@ -1,6 +1,11 @@
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
 import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
+import {
+  CHANNEL_FLAGS,
+  CHANNEL_VALUES,
+  emergencyContactChannels,
+} from "@/app/api/utils/emergencyContactChannels";
 
 // /api/emergency-card — the OWNER's Emergency Card (ticket 2.51). Owner-scoped (RLS R2c-style:
 // pet_emergency_cards is owner FOR ALL). The PUBLIC reads are elsewhere (/api/public/emergency/*
@@ -10,7 +15,14 @@ import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContex
 //   settings + the assembled medical preview (from the LIVE owner-scoped sources — no duplication)
 //   + active vet links + the current lost status.
 // PATCH      : update the owner-controlled settings (show_medical_on_tag,
-//   show_emergency_contact_on_tag, contact_mode/value, blood_type, extra_notes, active).
+//   show_emergency_contact_on_tag, the finder contact, blood_type, extra_notes, active).
+//
+// Finder contact, two request shapes (never both in one request):
+//   • contact_phone_enabled, contact_email_enabled, contact_message_enabled, contact_phone, contact_email (0152):
+//     the phone and email switches. The database rewrites contact_mode / contact_value to match.
+//   • contact_mode / contact_value: the single choice older app builds send. It replaces the whole choice (the
+//     database clears the 0152 fields), so these columns are named in an UPDATE only when the request has them.
+// On a database without 0152 the five new fields come back null and trying to change them answers 503.
 //
 // show_emergency_contact_on_tag (0146, default off) is read through to_jsonb, so the route also works on a
 // database without the column: the value is then null, which is how the app knows to hide the switch, and
@@ -19,6 +31,11 @@ import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContex
 // DB is porsager's tagged-template `sql` (SCHEMA_NOTES "neon→porsager").
 
 const CONTACT_MODES = ["relay", "phone", "email", "none"];
+
+// The owner's card: the whole row is read as `_row` so the 0152 fields can be described on any database.
+function presentCard({ _row, ...card }) {
+  return { ...card, ...emergencyContactChannels(_row) };
+}
 
 async function resolveOwner(session) {
   const rows = await sql`
@@ -68,9 +85,10 @@ async function GET(request) {
         ON CONFLICT (pet_id) DO UPDATE SET updated_at = now()
         RETURNING id, pet_id, tag_token, show_medical_on_tag, contact_mode, contact_value,
                   blood_type, extra_notes, active,
-                  to_jsonb(pet_emergency_cards) -> 'show_emergency_contact_on_tag' AS show_emergency_contact_on_tag
+                  to_jsonb(pet_emergency_cards) -> 'show_emergency_contact_on_tag' AS show_emergency_contact_on_tag,
+                  to_jsonb(pet_emergency_cards) AS _row
       `;
-      card = cardRows[0];
+      card = presentCard(cardRows[0]);
     } else {
       // A grantee only READS: never create the card (that mints the permanent tag token — an owner act). The tag token and
       // contact settings are the owner's to manage, so a grantee gets the card WITHOUT its token/contact fields.
@@ -143,9 +161,48 @@ async function PATCH(request) {
     if (showKin !== undefined && typeof showKin !== "boolean") {
       return Response.json({ error: "show_emergency_contact_on_tag must be a boolean" }, { status: 400 });
     }
+    if (CHANNEL_FLAGS.some((f) => body[f] !== undefined && typeof body[f] !== "boolean")) {
+      return Response.json({ error: `${CHANNEL_FLAGS.join(", ")} must be booleans` }, { status: 400 });
+    }
+    if (CHANNEL_VALUES.some((f) => body[f] !== undefined && typeof body[f] !== "string")) {
+      return Response.json({ error: `${CHANNEL_VALUES.join(", ")} must be strings` }, { status: 400 });
+    }
+    const setsChannels = [...CHANNEL_FLAGS, ...CHANNEL_VALUES].some((f) => body[f] !== undefined);
+    const setsMode = body.contact_mode !== undefined || body.contact_value !== undefined;
+    if (setsChannels && setsMode) {
+      return Response.json(
+        { error: "Send either contact_mode / contact_value or the channel fields, not both" },
+        { status: 400 },
+      );
+    }
     const ownerUserId = await resolveOwner(session);
     if (ownerUserId === null) {
       return Response.json({ error: "User profile not found" }, { status: 404 });
+    }
+
+    // Its own statement (0152 columns); same owner scope. COALESCE keeps the unspecified ones.
+    if (setsChannels) {
+      try {
+        await withSavepoint(
+          () => sql`
+            UPDATE pet_emergency_cards
+            SET
+              contact_phone_enabled = COALESCE(${body.contact_phone_enabled ?? null}, contact_phone_enabled),
+              contact_email_enabled = COALESCE(${body.contact_email_enabled ?? null}, contact_email_enabled),
+              contact_message_enabled = COALESCE(${body.contact_message_enabled ?? null}, contact_message_enabled),
+              contact_phone = COALESCE(${body.contact_phone ?? null}, contact_phone),
+              contact_email = COALESCE(${body.contact_email ?? null}, contact_email),
+              updated_at = now()
+            WHERE pet_id = ${petId} AND owner_user_id = ${ownerUserId}
+          `,
+        );
+      } catch (e) {
+        if (e?.code !== "42703") throw e; // 42703 undefined_column = 0152 not applied yet
+        return Response.json(
+          { error: "This setting is not available yet", code: "contact_channels_unavailable" },
+          { status: 503 },
+        );
+      }
     }
 
     // Its own statement (0146 column): a database without it must not break the other settings. Same owner scope.
@@ -166,6 +223,18 @@ async function PATCH(request) {
       }
     }
 
+    // Only when asked: naming these columns replaces the whole finder choice (see the top of the file).
+    if (setsMode) {
+      await sql`
+        UPDATE pet_emergency_cards
+        SET
+          contact_mode = COALESCE(${body.contact_mode ?? null}, contact_mode),
+          contact_value = COALESCE(${body.contact_value ?? null}, contact_value),
+          updated_at = now()
+        WHERE pet_id = ${petId} AND owner_user_id = ${ownerUserId}
+      `;
+    }
+
     // COALESCE keeps unspecified fields. The owner_user_id WHERE + RLS scope the row; a
     // non-owner updates ZERO rows → 404.
     const updated = await sql`
@@ -174,8 +243,6 @@ async function PATCH(request) {
         show_medical_on_tag = COALESCE(${
           body.show_medical_on_tag === undefined ? null : body.show_medical_on_tag
         }, show_medical_on_tag),
-        contact_mode = COALESCE(${body.contact_mode ?? null}, contact_mode),
-        contact_value = COALESCE(${body.contact_value ?? null}, contact_value),
         blood_type = COALESCE(${body.blood_type ?? null}, blood_type),
         extra_notes = COALESCE(${body.extra_notes ?? null}, extra_notes),
         active = COALESCE(${body.active === undefined ? null : body.active}, active),
@@ -183,12 +250,13 @@ async function PATCH(request) {
       WHERE pet_id = ${petId} AND owner_user_id = ${ownerUserId}
       RETURNING id, pet_id, tag_token, show_medical_on_tag, contact_mode, contact_value,
                 blood_type, extra_notes, active,
-                to_jsonb(pet_emergency_cards) -> 'show_emergency_contact_on_tag' AS show_emergency_contact_on_tag
+                to_jsonb(pet_emergency_cards) -> 'show_emergency_contact_on_tag' AS show_emergency_contact_on_tag,
+                to_jsonb(pet_emergency_cards) AS _row
     `;
     if (updated.length === 0) {
       return Response.json({ error: "Card not found" }, { status: 404 });
     }
-    return Response.json({ card: updated[0] });
+    return Response.json({ card: presentCard(updated[0]) });
   } catch (e) {
     console.error("[PATCH /api/emergency-card] Error:", e?.message);
     return Response.json({ error: "Failed to update emergency card" }, { status: 500 });

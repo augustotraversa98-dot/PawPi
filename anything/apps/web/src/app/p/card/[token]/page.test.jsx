@@ -41,6 +41,14 @@ describe("public vet card page", () => {
     expect(screen.getByTestId("owner-contact")).toBeInTheDocument();
   });
 
+  it("shows both the phone and the email when the family shows both", async () => {
+    const contact = { mode: "phone", value: "11 4000-7777", phone: "11 4000-7777", email: "ana@example.test" };
+    mockFetch({ pet: { name: "Rex" }, contact, medical: null });
+    render(<PublicVetCardPage />);
+    expect(await screen.findByRole("link", { name: contact.phone })).toHaveAttribute("href", "tel:1140007777");
+    expect(screen.getByRole("link", { name: contact.email })).toHaveAttribute("href", "mailto:ana@example.test");
+  });
+
   it.each(["relay", "none"])("shows no owner contact in %s mode", async (mode) => {
     mockFetch({ pet: { name: "Rex" }, contact: { mode, value: "ana@example.test" }, medical: null });
     const { container } = render(<PublicVetCardPage />);
