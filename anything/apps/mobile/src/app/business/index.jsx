@@ -27,6 +27,7 @@ import {
   Play,
   Globe,
   Footprints,
+  ShieldCheck,
 } from "lucide-react-native";
 import * as VideoThumbnails from "expo-video-thumbnails";
 import { COLORS, TYPE, SPACING, RADIUS, MATERIALS } from "@/constants/theme";
@@ -45,6 +46,7 @@ import {
   useProviderPosts,
   useCreateProviderPost,
 } from "@/hooks/useProviderPosts";
+import { useProviderShareOffers } from "@/hooks/useShareOffers";
 import { useActiveProvider } from "@/hooks/useActiveProvider";
 import BusinessStatRow from "@/components/Providers/StorefrontPanels/BusinessStatRow";
 import useActiveProviderStore from "@/store/activeProviderStore";
@@ -332,6 +334,12 @@ export default function BusinessHome() {
     useProviderAdoptionApplications(providerId, {
       enabled: hasAdoption,
     });
+  // Only vet businesses can be invited to see a record.
+  const hasVet = (activeProvider?.capabilities ?? []).includes("vet");
+  const { data: shareOffers, refetch: refetchShareOffers } = useProviderShareOffers(
+    hasVet ? providerId : null,
+  );
+  const shareOfferCount = hasVet ? (shareOffers?.offers?.length ?? 0) : 0;
   // The public storefront read supplies the stat strip's post/paw/bark counts (followers is read
   // live inside BusinessStatRow). Same query the Profile tab uses, so it's cached across tabs.
   const { data: profile } = useProviderProfile(activeProvider?.slug);
@@ -539,7 +547,14 @@ export default function BusinessHome() {
       </View>
 
       <RefreshableScrollView
-        refetch={[refetchPosts, refetchBookings, refetchUnread, refetchAdoptionApps]}
+        refetch={[
+          refetchPosts,
+          refetchBookings,
+          refetchUnread,
+          refetchAdoptionApps,
+          // Only asked for a vet business: a refetch would run even while the query is switched off.
+          ...(hasVet ? [refetchShareOffers] : []),
+        ]}
         contentContainerStyle={{ padding: SPACING.xl, paddingBottom: insets.bottom + 90 }}
       >
         {/* Business stat strip (Followers · Posts · Paws · Barks) — reused from the storefront
@@ -612,6 +627,32 @@ export default function BusinessHome() {
             />
           ) : null}
         </View>
+
+        {/* Owners' invitations to see a record, while any waits for an answer. */}
+        {shareOfferCount > 0 ? (
+          <PressableScale
+            onPress={() => router.push("/business/share-offers")}
+            accessibilityRole="button"
+            testID="business-share-offers"
+            style={{
+              backgroundColor: COLORS.card,
+              borderRadius: RADIUS.card,
+              borderWidth: 1.5,
+              borderColor: COLORS.coral,
+              padding: SPACING.lg,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: SPACING.md,
+              marginBottom: SPACING.xl,
+            }}
+          >
+            <ShieldCheck size={22} color={COLORS.coral} />
+            <Text style={[TYPE.headline, { color: COLORS.warmBrown, flex: 1 }]}>
+              {t("businessShare.card", { count: shareOfferCount })}
+            </Text>
+            <ChevronRight size={18} color={COLORS.mutedBrown} />
+          </PressableScale>
+        ) : null}
 
         {/* Accepting-walks-now live switch (walker businesses only) — a live presence flag,
             separate from the recurring availability windows. */}

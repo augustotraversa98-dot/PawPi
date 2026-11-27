@@ -67,6 +67,8 @@ export const NOTIFICATION_TYPE_TO_BUSINESS_CATEGORY = {
   // An owner gave or ended access to a dog's record: they follow the two booking switches.
   care_access_granted: "biz_booking",
   care_access_revoked: "biz_booking_change",
+  // An owner invites the business to see a dog's record.
+  care_share_offered: "biz_booking",
 };
 
 export function isBusinessNotificationCategory(category) {

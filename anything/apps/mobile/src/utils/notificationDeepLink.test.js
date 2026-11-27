@@ -66,6 +66,11 @@ describe("a request to see a record", () => {
       pathname: "/(tabs)/more/data-access",
     });
     expect(pushTapRoute({ type: "care_access_requested" })).toEqual({ pathname: "/(tabs)/more/data-access" });
+    for (const type of ["care_share_accepted", "care_share_declined"]) {
+      expect(pushTapRoute({ type })).toEqual({ pathname: "/(tabs)/more/data-access" });
+    }
+    // An invitation to a business opens the inbox, which switches to that business on tap.
+    expect(pushTapRoute({ type: "care_share_offered", subjectRef: "3" })).toEqual({ pathname: "/notifications" });
   });
 
   test("missing or unknown data stays harmless", () => {

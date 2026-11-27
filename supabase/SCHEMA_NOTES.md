@@ -366,6 +366,19 @@ ACTION 1).
 > report as not available). Verify: `supabase/verify_0153.sql` (20 rows, all PASS). Proven as `pawpi_app` in
 > `vet-record-links.integration.test.ts`.
 
+> **0154_vet_share_offers (2026-11-26) — inviting a vet that is on PawPi. HAND-APPLIED after merge.** New table
+> `care_share_offers` (one row per invitation an owner sends to one business for one pet: chosen sections, length,
+> status, a 7 day answer date, the grant it created), ENABLE+FORCE RLS with owner select / insert / update-to-withdrawn
+> only, no staff or delete policy, and one open row per business and pet. Five DEFINER functions:
+> `app_vet_can_receive_share`, `app_search_share_vets` (public business fields only), `app_provider_share_offers` (pet
+> name, owner display name, sections, length), `app_respond_share_offer` (accept creates the grant by section, under the
+> `care_access_grant:` lock) and `app_lapse_share_offers`; a trigger on `care_access_grants`
+> (`care_access_grants_close_share_offers`) withdraws an unanswered invitation when the owner later changes that
+> business's access. `notifications_type_check` gains `care_share_offered`, `care_share_accepted` and
+> `care_share_declined` (45 types), so the type count row of `verify_0148.sql` no longer reads PASS afterwards. The web
+> app works without it (invitations report as not available). Verify: `supabase/verify_0154.sql` (17 rows, all PASS).
+> Proven as `pawpi_app` in `vet-share-offers.integration.test.ts`.
+
 > **0155** shows a friend's Care Ring streak. ONE read-only DEFINER function, `app_friend_streaks(integer[])` →
 > `(pet_id, streak)`; no table, column or policy changes. The viewer is `current_app_user_id()`; a row comes back
 > only for a dog that one of the viewer's own dogs follows, is an accepted `pet_friendships` friend of, or shares an

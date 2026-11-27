@@ -53,6 +53,12 @@ jest.mock("@/components/Health/VetShare/RecordLinks", () => {
     default: ({ pet, onCreate }) => <Text testID="record-links">{`${pet.id}${onCreate ? ":create" : ""}`}</Text>,
   };
 });
+// The invitations block has its own tests (components/Health/VetShare/ShareOffers.test.jsx).
+jest.mock("@/hooks/useShareOffers", () => ({ useShareOffers: () => ({ refetch: jest.fn() }) }));
+jest.mock("@/components/Health/VetShare/ShareOffers", () => {
+  const { Text } = require("react-native");
+  return { __esModule: true, default: ({ pet }) => <Text testID="share-offers">{String(pet.id)}</Text> };
+});
 jest.mock("@/components/Health/VetShare/ShareWithVetSheet", () => {
   const { Text } = require("react-native");
   return {
@@ -372,5 +378,11 @@ test("the owner's record links for this dog are listed here, without creating; a
   expect(render(<DataAccessScreen />).getByTestId("record-links").props.children).toBe("7");
   mockCurrentPet = { data: { id: 7, name: "Rex", is_shared: true } };
   expect(render(<DataAccessScreen />).queryByTestId("record-links")).toBeNull();
+});
+
+test("the owner's waiting invitations for this dog are listed; a family member has none", () => {
+  expect(render(<DataAccessScreen />).getByTestId("share-offers").props.children).toBe("7");
+  mockCurrentPet = { data: { id: 7, name: "Rex", is_shared: true } };
+  expect(render(<DataAccessScreen />).queryByTestId("share-offers")).toBeNull();
 });
 

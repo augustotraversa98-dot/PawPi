@@ -55,6 +55,7 @@ export const SCREENS = [
   '/business/messages',
   '/business/profile',
   '/business/settings',
+  '/business/share-offers',
   '/chat',
   '/create-walk',
   '/emergency-card',

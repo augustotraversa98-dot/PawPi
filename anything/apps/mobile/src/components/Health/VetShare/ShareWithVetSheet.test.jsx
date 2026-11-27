@@ -46,6 +46,12 @@ jest.mock("./RecordLinks", () => {
   return { __esModule: true, default: ({ pet }) => <Text testID="record-links">{pet.name}</Text> };
 });
 jest.mock("./useRecordLinkSteps", () => ({ __esModule: true, default: () => ({ step: null, start: jest.fn() }) }));
+// Searching and inviting have their own tests (VetInvitation.test.jsx).
+jest.mock("./VetSearch", () => ({ __esModule: true, default: () => null }));
+jest.mock("./ShareOffers", () => ({ __esModule: true, default: () => null }));
+jest.mock("@/hooks/useShareOffers", () => ({
+  useSendShareOffer: () => ({ mutate: jest.fn(), isPending: false }),
+}));
 jest.mock("@/hooks/useProviders", () => ({ useMyBookings: () => mockBookings }));
 jest.mock("@/hooks/useCareAccessGrants", () => ({
   useCareAccessGrants: () => mockGrants,
@@ -426,7 +432,7 @@ describe("a vet without PawPi, by link", () => {
     mockBookings = query({ upcoming: [], past: [] });
     const empty = open();
     expect(empty.getAllByTestId("record-links")).toHaveLength(1);
-    expect(empty.getByText(/create a link for your vet below/)).toBeTruthy();
+    expect(empty.getByText(/Search for your vet below, or create a link for them/)).toBeTruthy();
   });
 
   test("is not offered to a family member or for one given business", () => {

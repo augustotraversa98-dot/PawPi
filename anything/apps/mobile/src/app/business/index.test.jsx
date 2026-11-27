@@ -84,6 +84,14 @@ jest.mock("@/utils/canonicalDateTime", () => ({
 
 // Provider posts list + create.
 const mockPostsState = { data: [], isLoading: false, isError: false, refetch: jest.fn() };
+const mockShareOffersState = { data: { available: true, offers: [] }, refetch: jest.fn() };
+const mockShareOffersFor = jest.fn();
+jest.mock("@/hooks/useShareOffers", () => ({
+  useProviderShareOffers: (providerId) => {
+    mockShareOffersFor(providerId);
+    return mockShareOffersState;
+  },
+}));
 const mockCreateMutation = { mutateAsync: jest.fn().mockResolvedValue({ id: 999 }) };
 const mockCreate = { boundId: null };
 jest.mock("@/hooks/useProviderPosts", () => ({
@@ -165,6 +173,9 @@ beforeEach(() => {
   mockAdoptionAppsState.data = [];
   mockAdoptionAppsState.refetch = jest.fn();
   mockPostsState.refetch = jest.fn();
+  mockShareOffersState.refetch = jest.fn();
+  mockShareOffersState.data = { available: true, offers: [] };
+  mockShareOffersFor.mockClear();
   mockRefreshable.props = null;
   mockProfileState.data = undefined;
 });
@@ -367,3 +378,28 @@ test("the applications glance row taps through to the adoption review inbox", ()
   fireEvent.press(getByTestId("glance-applications"));
   expect(mockPush).toHaveBeenCalledWith("/business-adoption");
 });
+
+test("a vet business with waiting invitations gets a card that opens them; it is refreshed with the screen", () => {
+  mockProvidersState.data = [{ id: 5, name: "Happy Paws", capabilities: ["vet"] }];
+  mockShareOffersState.data = { available: true, offers: [{ id: 1 }, { id: 2 }] };
+  const { getByTestId, getByText } = render(<BusinessHome />);
+  expect(getByText("2 invitations to see pets' records")).toBeTruthy();
+  fireEvent.press(getByTestId("business-share-offers"));
+  expect(mockPush).toHaveBeenCalledWith("/business/share-offers");
+  expect(mockRefreshable.props.refetch).toContain(mockShareOffersState.refetch);
+});
+
+test("no card without invitations, and a business that is not a vet is not asked", () => {
+  mockProvidersState.data = [{ id: 5, name: "Happy Paws", capabilities: ["vet"] }];
+  const first = render(<BusinessHome />);
+  expect(first.queryByTestId("business-share-offers")).toBeNull();
+  first.unmount();
+  mockShareOffersFor.mockClear();
+  mockProvidersState.data = [{ id: 6, name: "Walks", capabilities: ["walker"] }];
+  mockShareOffersState.data = { available: true, offers: [{ id: 1 }] };
+  const second = render(<BusinessHome />);
+  expect(second.queryByTestId("business-share-offers")).toBeNull();
+  expect(mockShareOffersFor.mock.calls.every(([id]) => id === null)).toBe(true);
+  expect(mockRefreshable.props.refetch).not.toContain(mockShareOffersState.refetch);
+});
+

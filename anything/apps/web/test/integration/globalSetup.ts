@@ -61,6 +61,9 @@ export default async function setup({ provide }: GlobalSetupContext) {
       '-c', 'min_wal_size=32MB',
       '-c', 'fsync=off',
       '-c', 'full_page_writes=off',
+      // The one test process keeps the pools of the files that already ran, so open connections grow over the run and
+      // reached the default limit of 100.
+      '-c', 'max_connections=300',
     ],
     // Keep test output readable — swallow the cluster's chatty stdout/stderr.
     onLog: () => {},

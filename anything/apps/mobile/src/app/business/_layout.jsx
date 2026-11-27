@@ -85,6 +85,8 @@ export default function BusinessLayout() {
           Keeping it inside the business group means its back arrow returns to the business
           Profile rather than dropping into the pet-owner feed. */}
       <Tabs.Screen name="settings" options={{ href: null }} />
+      {/* Owners' invitations to see a record: reached from Today and from its notification. */}
+      <Tabs.Screen name="share-offers" options={{ href: null }} />
     </Tabs>
   );
 }

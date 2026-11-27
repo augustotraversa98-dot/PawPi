@@ -34,6 +34,9 @@ export const OWNER_PUSH_TYPES = {
   pet_share_owner_deleted: { category: "owner_sharing", promotional: false },
   // A vet accepted the owner's invite link and asks to see the record: transactional, same category.
   care_access_requested: { category: "owner_sharing", promotional: false },
+  // A business accepted or declined the owner's invitation to see the record.
+  care_share_accepted: { category: "owner_sharing", promotional: false },
+  care_share_declined: { category: "owner_sharing", promotional: false },
 };
 
 export function ownerPushTypeInfo(type) {
@@ -118,6 +121,14 @@ const COPY = {
   care_access_requested: {
     en: () => ({ title: "A vet asks for access 🐾", body: "Nothing is shared unless you approve it. Tap to see the request." }),
     es: () => ({ title: "Una veterinaria pide acceso 🐾", body: "No se comparte nada si no lo aprobás. Tocá para ver el pedido." }),
+  },
+  care_share_accepted: {
+    en: () => ({ title: "Your invitation was accepted", body: "A vet can now see what you chose. Tap to see who has access." }),
+    es: () => ({ title: "Aceptaron tu invitación", body: "Una veterinaria ya puede ver lo que elegiste. Tocá para ver quién tiene acceso." }),
+  },
+  care_share_declined: {
+    en: () => ({ title: "Your invitation was declined", body: "Nothing was shared. Tap to see who has access." }),
+    es: () => ({ title: "Rechazaron tu invitación", body: "No se compartió nada. Tocá para ver quién tiene acceso." }),
   },
 };
 

@@ -38,6 +38,7 @@ import {
 import { useAllCareAccessGrants } from "@/hooks/useCareAccessGrants";
 import { useRecentVetNotes } from "@/hooks/useRecentVetNotes";
 import { useCurrentPet } from "@/hooks/usePetProfile";
+import useActiveProviderStore from "@/store/activeProviderStore";
 import { formatDisplayDate, formatDisplayTime } from "@/utils/canonicalDateTime";
 
 // A vet-authored note stays in the bell for this long, then ages out (there is no
@@ -95,6 +96,14 @@ const CARE_ACCESS_TYPES = new Set([
 // owner's language; there is no subject_ref. A tap opens Data access, where the owner answers.
 const ACCESS_REQUEST_TYPE = "care_access_requested";
 const DATA_ACCESS_ROUTE = "/(tabs)/more/data-access";
+
+// A business answered the owner's invitation to see a record: a ready sentence, and a tap opens Data access.
+const SHARE_ANSWER_TYPES = new Set(["care_share_accepted", "care_share_declined"]);
+
+// An owner invites one of my businesses to see a record. A ready sentence; subject_ref is the PROVIDER id. A tap opens
+// that business's invitations.
+const SHARE_OFFERED_TYPE = "care_share_offered";
+const SHARE_OFFERS_ROUTE = "/business/share-offers";
 
 // Map a pending care-access grant (a vet/business asking to see a pet's record)
 // into the screen's item shape. Tagged _source:"access" so a tap routes to the
@@ -321,6 +330,25 @@ function mapDbNotification(n, t) {
       relatedPostId: null,
     };
   }
+  if (SHARE_ANSWER_TYPES.has(n.type) || n.type === SHARE_OFFERED_TYPE) {
+    const offered = n.type === SHARE_OFFERED_TYPE;
+    return {
+      id: `db-${n.id}`,
+      _source: "db",
+      _dbId: n.id,
+      type: n.type,
+      title: t(`notifications.${n.type}Title`),
+      message: n.body || t(`notifications.${n.type}Fallback`),
+      opensDataAccess: !offered,
+      opensShareOffersFor: offered ? n.subject_ref : null,
+      timestamp: n.created_at,
+      read: !!n.read_at,
+      avatar: n.actor_avatar || null,
+      relatedBookingId: null,
+      relatedPetId: null,
+      relatedPostId: null,
+    };
+  }
   if (CARE_ACCESS_TYPES.has(n.type)) {
     return {
       id: `db-${n.id}`,
@@ -506,7 +534,10 @@ const NotificationIcon = ({ type }) => {
     case "access":
     case "care_access_granted":
     case ACCESS_REQUEST_TYPE:
+    case "care_share_accepted":
+    case SHARE_OFFERED_TYPE:
       return <ShieldCheck size={18} color={COLORS.sageDark} />;
+    case "care_share_declined":
     case "care_access_revoked":
       return <ShieldCheck size={18} color={COLORS.mutedBrown} />;
     case "vetNote":
@@ -571,6 +602,7 @@ export default function NotificationsScreen() {
     refetch: refetchDb,
   } = useNotifications();
   const markRead = useMarkNotificationsRead();
+  const setActiveProvider = useActiveProviderStore((s) => s.setActiveProviderId);
 
   // Pending care-access requests (a vet/business asking to see a pet's records)
   // are owner-scoped grants, not social notifications — they'd otherwise only be
@@ -644,6 +676,11 @@ export default function NotificationsScreen() {
       if (notif.isEmergency || notif.staysOnScreen) return;
       if (notif.opensDataAccess) {
         router.push(DATA_ACCESS_ROUTE);
+        return;
+      }
+      if (notif.opensShareOffersFor != null) {
+        setActiveProvider(notif.opensShareOffersFor);
+        router.push(SHARE_OFFERS_ROUTE);
         return;
       }
       if (notif.relatedBookingId) {
