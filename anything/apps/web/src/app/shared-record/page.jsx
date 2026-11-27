@@ -6,7 +6,8 @@ import { useDocumentHead } from "@/lib/legal/head";
 import { useVisitorLang } from "@/lib/publicPet/useVisitorLang";
 import { RECORD_LINK_COPY } from "@/lib/recordLink/copy";
 import { postRecordLink } from "@/lib/recordLink/request";
-import { RECORD_COPY, fill } from "@/app/provider/lib/recordCopy";
+import recordCopy from "@/app/provider/i18n/record";
+import { fill } from "@/app/provider/i18n/lib/format";
 import useUser from "@/utils/useUser";
 
 // /shared-record#<token> — a pet owner's record link (migration 0153, docs/vet-sharing-design.md "Record links").
@@ -86,7 +87,7 @@ export default function SharedRecordPage() {
   const { user } = useUser();
   const { lang, setLang } = useVisitorLang();
   const t = RECORD_LINK_COPY[lang];
-  const record = RECORD_COPY[lang];
+  const record = recordCopy[lang];
   useDocumentHead([{ title: t.documentTitle }, { name: "referrer", content: "no-referrer" }]);
 
   const [token, setToken] = useState(undefined); // undefined = not read yet, null = none

@@ -1,9 +1,8 @@
-// Copy for the provider's clinical record screen (ProviderPetRecord), both languages: the ONE source for every word
-// that screen shows. Spanish is es-AR (voseo). What the family typed (names, notes, file names) is shown as typed;
-// only fixed values the app stores (spay/neuter status, photo body area) are translated here.
-// Leaf module: no React, no router. recordCopy.test.js keeps the two languages in step.
+// The clinical record screen (components/ProviderPetRecord), also read by the shared record link page and the
+// invitation card. What the family typed (names, notes, file names) is shown as typed; only fixed values the app stores
+// (spay/neuter status, photo body area) are translated here.
 
-export const RECORD_COPY = {
+export default {
   en: {
     back: "Back to bookings",
     title: "Clinical record — {name}",
@@ -128,6 +127,17 @@ export const RECORD_COPY = {
     labResults: {
       empty: "No lab results yet.",
       orderedBy: "Ordered by {name}",
+    },
+    server: {
+      petNotFound: "Pet not found",
+      petIdRequired: "petId is required",
+      invalidScopes: "scopes must be a non-empty array of valid scope values",
+      invalidBooking: "Invalid booking for this provider and pet",
+      requestExists: "An active or pending access request already exists",
+      noteRequired: "note is required",
+      vaccineNameRequired: "name is required",
+      notStaff: "Not active staff of this provider",
+      noGrant: "No active care-access grant for the required scope",
     },
   },
   es: {
@@ -255,29 +265,16 @@ export const RECORD_COPY = {
       empty: "Todavía no hay estudios de laboratorio.",
       orderedBy: "Pedido por {name}",
     },
+    server: {
+      petNotFound: "No encontramos esta mascota.",
+      petIdRequired: "Falta indicar la mascota.",
+      invalidScopes: "El tipo de acceso pedido no es válido.",
+      invalidBooking: "La reserva no corresponde a esta mascota en tu negocio.",
+      requestExists: "Ya hay un acceso activo o una solicitud pendiente.",
+      noteRequired: "Escribí la nota",
+      vaccineNameRequired: "Escribí el nombre de la vacuna",
+      notStaff: "No formás parte del equipo activo de este negocio.",
+      noGrant: "Ya no tenés acceso para hacer esto.",
+    },
   },
 };
-
-export function fill(template, values) {
-  return template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? ""));
-}
-
-// A date column or timestamp as the screen shows it: YYYY-MM-DD in English, dd/MM/yyyy in Spanish.
-export function formatRecordDate(value, lang) {
-  if (!value) return "—";
-  const day = String(value).slice(0, 10);
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
-  return lang === "es" && match ? `${match[3]}/${match[2]}/${match[1]}` : day;
-}
-
-const PRIVATE_KEY = /^pets\/\d+\/[a-zA-Z0-9._-]+$/;
-
-// Where a stored file opens from: a private key goes through the authenticated media route as this provider; an
-// https address opens as it is; anything else is not linked.
-export function recordFileHref(value, providerId) {
-  if (typeof value !== "string") return null;
-  if (PRIVATE_KEY.test(value) && !value.includes("..")) {
-    return `/api/media?key=${encodeURIComponent(value)}&providerId=${encodeURIComponent(providerId)}`;
-  }
-  return /^https:\/\//i.test(value) ? value : null;
-}

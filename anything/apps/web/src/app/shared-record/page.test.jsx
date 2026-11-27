@@ -7,7 +7,7 @@ vi.mock("@/components/brand/BrandLockup", () => ({ default: () => null }));
 
 import SharedRecordPage, { RECORD_LINK_STORAGE_KEY } from "./page";
 import { RECORD_LINK_COPY } from "@/lib/recordLink/copy";
-import { RECORD_COPY } from "@/app/provider/lib/recordCopy";
+import recordCopy from "@/app/provider/i18n/record";
 import { documentLang, isPrivateLinkPath } from "@/lib/home/meta";
 
 const TOKEN = "r".repeat(43);
@@ -78,12 +78,12 @@ describe("shared record page", () => {
     await open();
     expect(screen.getByTestId("link-sections")).toHaveTextContent("Vet notes, Files");
     expect(screen.getByText("Shared by Olivia")).toBeInTheDocument();
-    const notes = within(screen.getByRole("region", { name: RECORD_COPY.en.sections.vet_notes }));
+    const notes = within(screen.getByRole("region", { name: recordCopy.en.sections.vet_notes }));
     expect(notes.getByText("2026-11-20 · Owner")).toBeInTheDocument();
     expect(notes.getByText("2026-11-21 · Anonymous · Added through a shared link")).toBeInTheDocument();
     expect(notes.getByText("2026-11-22 · Dr. Gómez · Added through a shared link")).toBeInTheDocument();
-    expect(screen.queryByRole("region", { name: RECORD_COPY.en.sections.vaccines })).toBeNull();
-    expect(screen.queryByRole("region", { name: RECORD_COPY.en.sections.profile })).toBeNull();
+    expect(screen.queryByRole("region", { name: recordCopy.en.sections.vaccines })).toBeNull();
+    expect(screen.queryByRole("region", { name: recordCopy.en.sections.profile })).toBeNull();
     expect(screen.queryByRole("textbox")).toBeNull();
   });
 

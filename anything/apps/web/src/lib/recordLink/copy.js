@@ -1,5 +1,5 @@
 // Copy for the shared record page (/shared-record), both languages. Spanish is es-AR (voseo). Section names and field
-// labels come from the provider record copy (app/provider/lib/recordCopy.js). Leaf module: no React, no router.
+// labels come from the provider record copy (app/provider/i18n/record.js). Leaf module: no React, no router.
 
 export const RECORD_LINK_COPY = {
   en: {

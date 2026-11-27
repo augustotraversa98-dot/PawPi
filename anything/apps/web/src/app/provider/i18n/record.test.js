@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { RECORD_COPY, formatRecordDate, recordFileHref } from "./recordCopy";
+import recordCopy from "./record";
+import { formatRecordDate, recordFileHref } from "../lib/record";
 import { RECORD_SECTIONS } from "../../api/utils/careAccess";
 
 function flatten(obj, prefix = "", out = {}) {
@@ -10,8 +11,8 @@ function flatten(obj, prefix = "", out = {}) {
   }
   return out;
 }
-const en = flatten(RECORD_COPY.en);
-const es = flatten(RECORD_COPY.es);
+const en = flatten(recordCopy.en);
+const es = flatten(recordCopy.es);
 const placeholders = (s) => (s.match(/\{\w+\}/g) || []).sort();
 
 describe("clinical record copy", () => {
@@ -29,7 +30,7 @@ describe("clinical record copy", () => {
 
   it("names every section the server can share", () => {
     for (const lang of ["en", "es"]) {
-      expect(Object.keys(RECORD_COPY[lang].sections)).toEqual(RECORD_SECTIONS);
+      expect(Object.keys(recordCopy[lang].sections)).toEqual(RECORD_SECTIONS);
     }
   });
 });

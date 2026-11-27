@@ -14,7 +14,7 @@ first language (`en*` is English, anything else is Spanish). No business or acco
 | `lib/labels.js` | Names of stored values: business types, offerings, sections, roles, booking statuses (`offerings.js`). |
 | `lib/serverError.js` | `serverErrorMessage(error, lang, fallback, areaCopy)` for anything the API sends back. |
 | `shared.js` | Uploaders, "Advanced", weekdays, opening hours, amount and duration errors. |
-| `pending/*.json` | Files not translated yet. The lists only shrink. |
+| `pending/*.json` | Files not translated yet, if any (every file is translated today). The lists only shrink. |
 
 ## Translating a file
 
@@ -44,4 +44,4 @@ first language (`en*` is English, anything else is Spanish). No business or acco
 - `hardcodedEnglish.test.js`: no text a person reads outside a dictionary, in any file not listed in `pending/`.
   For a string nobody reads, add `i18n-ok: <reason>` in a comment on the line or the one above.
 
-`lib/recordCopy.js` and `src/lib/vetInvite/copy.js` are older bilingual dictionaries that predate this folder.
+`src/lib/vetInvite/copy.js` is an older bilingual dictionary that predates this folder.
