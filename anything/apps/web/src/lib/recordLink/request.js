@@ -1,12 +1,12 @@
-// The three requests the shared record page makes. The token only ever travels in the body.
+// The requests the shared record page makes. The token only ever travels in the body.
 //
-// Reading needs no identity, so no cookie is sent with it. Adding a note sends this site's session cookie when there is
-// one, which is how a signed-in visitor's name reaches the note.
+// The session cookie is sent only when it matters: adding or editing a note (the author's name, and whose note it is),
+// and reading the record while signed in (which of the notes are the visitor's own to edit).
 
-export async function postRecordLink(path, body, { withSession = false } = {}) {
+export async function postRecordLink(path, body, { withSession = false, method = "POST" } = {}) {
   try {
     const response = await fetch(`/api/public/record-link/${path}`, {
-      method: "POST",
+      method,
       headers: { "Content-Type": "application/json" },
       credentials: withSession ? "same-origin" : "omit",
       cache: "no-store",
