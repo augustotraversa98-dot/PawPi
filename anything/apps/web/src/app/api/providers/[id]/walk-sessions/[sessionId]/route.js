@@ -171,8 +171,8 @@ async function PATCH(request, { params }) {
     // Write the WALK REPORT into the pet's HEALTH TIMELINE via the EXISTING health-log
     // path — a health_walk_logs row in OWNER context (owner_user_id = pets.owner_user_id),
     // exactly the table /api/health/walk-logs writes and /api/health/timeline surfaces as
-    // a 'walk' event. distance is stored in MILES on health_walk_logs (the app's unit), so
-    // metres → miles; duration in minutes. potty maps to the pottyEvents jsonb the existing
+    // a 'walk' event. distance is stored in KILOMETRES on health_walk_logs (the app's unit), so
+    // metres → km (two decimals); duration in minutes. potty maps to the pottyEvents jsonb the existing
     // path uses. This is the SAME shape PostWalkFeedback POSTs — no parallel write.
     let healthLog = null;
     try {
@@ -181,9 +181,9 @@ async function PATCH(request, { params }) {
         finishedSession.duration_s != null
           ? Math.round(finishedSession.duration_s / 60)
           : null;
-      const distanceMiles =
+      const distanceKm =
         finishedSession.distance_m != null
-          ? Math.round((finishedSession.distance_m / 1609.34) * 100) / 100
+          ? Math.round(finishedSession.distance_m / 10) / 100
           : null;
       const pottyEvents = {
         pee: finishedSession.potty_pee ? 1 : 0,
@@ -206,8 +206,8 @@ async function PATCH(request, { params }) {
           ${ownerUserId},
           ${finishedSession.started_at || sql`NOW()`},
           ${durationMinutes},
-          ${distanceMiles},
-          'miles',
+          ${distanceKm},
+          'km',
           ${sql.json(jsonbWriteValue(pottyEvents))},
           ${finishedSession.notes ?? null},
           'walker'

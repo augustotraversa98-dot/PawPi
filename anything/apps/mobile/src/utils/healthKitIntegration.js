@@ -92,7 +92,7 @@ export async function getWalkData(startTime, endTime) {
   return {
     available: false,
     distance: null,
-    distanceUnit: "miles",
+    distanceUnit: "km",
     steps: null,
     averageSpeed: null,
     pace: null,
@@ -155,16 +155,9 @@ export function getTrackingSourceIcon(source) {
 }
 
 // Format distance for display
-export function formatDistance(distance, unit = "miles") {
+export function formatDistance(distance) {
   if (!distance) return null;
-
-  if (unit === "miles") {
-    return `${distance.toFixed(2)} mi`;
-  } else if (unit === "kilometers") {
-    return `${distance.toFixed(2)} km`;
-  }
-
-  return `${distance.toFixed(2)} ${unit}`;
+  return `${distance.toFixed(2)} km`;
 }
 
 // Format steps for display
@@ -176,49 +169,32 @@ export function formatSteps(steps) {
 }
 
 // Format pace for display
-export function formatPace(pace, unit = "miles") {
+export function formatPace(pace) {
   if (!pace) return null;
-
-  if (unit === "miles") {
-    return `${pace} min/mi`;
-  } else if (unit === "kilometers") {
-    return `${pace} min/km`;
-  }
-
-  return pace;
-}
-
-// Convert miles to kilometers
-export function milesToKilometers(miles) {
-  return miles * 1.60934;
-}
-
-// Convert kilometers to miles
-export function kilometersToMiles(kilometers) {
-  return kilometers * 0.621371;
+  return `${pace} min/km`;
 }
 
 // Calculate pace from distance and duration
-export function calculatePace(distanceMiles, durationMinutes) {
-  if (!distanceMiles || !durationMinutes || distanceMiles === 0) {
+export function calculatePace(distanceKm, durationMinutes) {
+  if (!distanceKm || !durationMinutes || distanceKm === 0) {
     return null;
   }
 
-  // Pace = minutes per mile
-  const paceMinPerMile = durationMinutes / distanceMiles;
-  const minutes = Math.floor(paceMinPerMile);
-  const seconds = Math.round((paceMinPerMile - minutes) * 60);
+  // Pace = minutes per kilometre
+  const paceMinPerKm = durationMinutes / distanceKm;
+  const minutes = Math.floor(paceMinPerKm);
+  const seconds = Math.round((paceMinPerKm - minutes) * 60);
 
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
-// Calculate average speed (mph or km/h)
-export function calculateAverageSpeed(distanceMiles, durationMinutes) {
-  if (!distanceMiles || !durationMinutes || durationMinutes === 0) {
+// Calculate average speed (km/h)
+export function calculateAverageSpeed(distanceKm, durationMinutes) {
+  if (!distanceKm || !durationMinutes || durationMinutes === 0) {
     return null;
   }
 
   // Speed = distance / time (in hours)
-  const speedMph = distanceMiles / (durationMinutes / 60);
-  return parseFloat(speedMph.toFixed(2));
+  const speedKmh = distanceKm / (durationMinutes / 60);
+  return parseFloat(speedKmh.toFixed(2));
 }

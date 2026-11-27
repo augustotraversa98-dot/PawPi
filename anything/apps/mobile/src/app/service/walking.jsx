@@ -45,6 +45,7 @@ import ProviderListControls, {
 } from "@/components/Providers/ProviderListControls";
 import KeyboardSafeSheet from "@/components/KeyboardSafeSheet";
 import { friendlyErrorMessage } from "@/utils/appAlert";
+import { formatKmFromMetres } from "@/utils/distance";
 
 // Dog Walking discovery + live (ticket 2.7) — browse PUBLISHED walker providers (real
 // data, no mocks) and watch the active pet's LIVE walk / read past reports. Discovery is
@@ -437,11 +438,6 @@ export default function WalkingScreen() {
   );
 }
 
-function metresToMiles(m) {
-  if (m == null) return null;
-  return Math.round((Number(m) / 1609.34) * 100) / 100;
-}
-
 function ProviderCard({ provider, onPress, onRequest, t }) {
   return (
     <View style={{ marginBottom: SPACING.md + 2 }}>
@@ -709,7 +705,7 @@ function RequestWalkModal({ provider, petName, onClose, onSubmit, busy, t }) {
 
 function WalkReportCard({ session, onPress }) {
   const { t } = useTranslation();
-  const miles = metresToMiles(session.distance_m);
+  const distance = formatKmFromMetres(session.distance_m);
   const mins =
     session.duration_s != null ? Math.round(session.duration_s / 60) : null;
   const date = session.ended_at || session.created_at;
@@ -732,7 +728,7 @@ function WalkReportCard({ session, onPress }) {
         </View>
         <Text style={[TYPE.subhead, { color: COLORS.mutedBrown, fontWeight: "500", marginTop: SPACING.xs + 2 }]}>
           {mins != null ? t("walking.minutes", { count: mins }) : t("walking.walk")}
-          {miles != null ? ` · ${miles} mi` : ""}
+          {distance != null ? ` · ${distance}` : ""}
           {session.potty_pee ? " · 💦" : ""}
           {session.potty_poo ? " · 💩" : ""}
         </Text>

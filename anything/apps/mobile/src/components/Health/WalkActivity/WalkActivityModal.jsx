@@ -91,15 +91,15 @@ export default function WalkActivityModal({
       Alert.alert(t("common.error"), t("common.invalidMinutes"));
       return;
     }
-    const miles = parseDistance(distance);
-    if (miles.invalid) {
+    const km = parseDistance(distance);
+    if (km.invalid) {
       Alert.alert(t("common.error"), t("common.invalidDistance", { max: DISTANCE_MAX }));
       return;
     }
     try {
       await logWalkMutation.mutateAsync({
         duration: minutes.value ?? 0,
-        distance: miles.value ?? 0,
+        distance: km.value ?? 0,
         pace,
         energyAfter,
         pottyEvents: {

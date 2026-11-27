@@ -9,6 +9,7 @@ import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import MapLocationView from "@/components/Map/MapLocationView";
 import { useMyProviders, useWalkerWalkHistory } from "@/hooks/useProviders";
 import { isValidCoord } from "@/utils/walkBuddies";
+import { formatKmFromMetres } from "@/utils/distance";
 
 // WALKER walk history (ticket B5) — a walker's finished walks, newest-first: dog + date + duration
 // + distance, expandable to the real route drawn on the map (MapLocationView), the pickup marker
@@ -97,13 +98,8 @@ export default function WalkerHistoryScreen() {
   );
 }
 
-function metresToKm(m) {
-  if (m == null) return null;
-  return Math.round((Number(m) / 1000) * 100) / 100;
-}
-
 function HistoryCard({ session, expanded, onToggle, t }) {
-  const km = metresToKm(session.distance_m);
+  const distance = formatKmFromMetres(session.distance_m);
   const mins = session.duration_s != null ? Math.round(Number(session.duration_s) / 60) : null;
   const date = session.ended_at || session.created_at;
   const route = (Array.isArray(session.route) ? session.route : []).filter(
@@ -157,7 +153,7 @@ function HistoryCard({ session, expanded, onToggle, t }) {
           <Text style={{ fontSize: 13, color: COLORS.mutedBrown, marginTop: 2 }}>
             {date ? new Date(date).toLocaleDateString() : ""}
             {mins != null ? ` · ${mins} min` : ""}
-            {km != null ? ` · ${km} km` : ""}
+            {distance != null ? ` · ${distance}` : ""}
           </Text>
         </View>
         {expanded ? (

@@ -10,7 +10,7 @@ export const walkLogs = [
     petId: "sample-pet",
     timestamp: "2026-05-06T07:30:00Z",
     duration: 25, // minutes
-    distance: 1.2, // miles
+    distance: 1.2, // km
     pace: "normal",
     energyAfter: "high",
     pottyEvents: {
@@ -338,10 +338,8 @@ export const formatDuration = (minutes) => {
 };
 
 // Format distance
-export const formatDistance = (miles) => {
-  return miles < 1
-    ? `${(miles * 5280).toFixed(0)} ft`
-    : `${miles.toFixed(1)} mi`;
+export const formatDistance = (km) => {
+  return km < 1 ? `${(km * 1000).toFixed(0)} m` : `${km.toFixed(1)} km`;
 };
 
 // Check if mobility check has concerns

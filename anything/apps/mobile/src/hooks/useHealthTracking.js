@@ -125,7 +125,7 @@ export function useLogWalk() {
           petId: currentPet.id,
           durationMinutes: walkData.duration,
           distance: walkData.distance,
-          distanceUnit: "miles",
+          distanceUnit: "km",
           pace: walkData.pace,
           energyAfter: walkData.energyAfter,
           pottyEvents: walkData.pottyEvents,

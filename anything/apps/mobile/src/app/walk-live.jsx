@@ -15,6 +15,7 @@ import { isValidCoord } from "@/utils/walkBuddies";
 import { useWalkSessions } from "@/hooks/useProviders";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useTranslation } from "react-i18next";
+import { formatKmFromMetres } from "@/utils/distance";
 
 // Owner's LIVE WALK WATCH + REPORT (ticket 2.7). Polls /api/pets/[id]/walk-sessions (the
 // shared useWalkSessions hook, live mode = 5s) so the route grows in real time while the
@@ -117,11 +118,6 @@ export default function WalkLiveScreen() {
   );
 }
 
-function metresToMiles(m) {
-  if (m == null) return null;
-  return Math.round((Number(m) / 1609.34) * 100) / 100;
-}
-
 // Draw the REAL {lat,lng} track on a real Apple map (MapLocationView). Real data only: a
 // track with fewer than 2 valid points renders the waiting/no-route empty state, never a
 // fake path. The map is keyed on the point count so each 5s poll remounts it and re-fits the
@@ -185,7 +181,7 @@ function RoutePreview({ route, live }) {
 
 function StatsRow({ session }) {
   const { t } = useTranslation();
-  const miles = metresToMiles(session.distance_m);
+  const distance = formatKmFromMetres(session.distance_m);
   const mins =
     session.duration_s != null
       ? Math.round(session.duration_s / 60)
@@ -201,7 +197,7 @@ function StatsRow({ session }) {
 
   return (
     <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
-      <Stat label={t("screensUi.walkLive.distance")} value={miles != null ? `${miles} mi` : "—"} />
+      <Stat label={t("screensUi.walkLive.distance")} value={distance ?? "—"} />
       <Stat label={t("screensUi.walkLive.time")} value={mins != null ? `${mins} min` : "—"} />
       <Stat label={t("screensUi.walkLive.gpsPoints")} value={String(pts)} />
     </View>

@@ -71,7 +71,7 @@ export default function PostWalkFeedbackModal({
           startTime: walkLog.startTime,
           durationMinutes: walkLog.durationMinutes,
           distance: walkLog.distance || null,
-          distanceUnit: "miles",
+          distanceUnit: "km",
           pace: walkLog.pace,
           energyAfter: walkLog.energyAfter,
           pottyEvents: walkLog.pottyEvents,
