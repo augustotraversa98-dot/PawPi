@@ -161,7 +161,9 @@ describe("A. the owner's links", () => {
     expect(res.headers.get("cache-control")).toBe("no-store");
     const body = await res.json();
     expect(Object.keys(body).sort()).toEqual(["link", "url"]);
-    expect(Object.keys(body.link).sort()).toEqual(["allow_notes", "created_at", "expires_at", "id", "pet_id", "sections", "status"]);
+    expect(Object.keys(body.link).sort()).toEqual([
+      "allow_notes", "created_at", "edit_sections", "expires_at", "id", "pet_id", "sections", "status",
+    ]);
     expect(body.link).toMatchObject({ sections: ["vaccines", "files"], allow_notes: true, status: "active" });
     const days = (Date.parse(body.link.expires_at) - Date.parse(body.link.created_at)) / 86_400_000;
     expect(days).toBeCloseTo(30, 5);
@@ -199,7 +201,8 @@ describe("A. the owner's links", () => {
     expect(mine.available).toBe(true);
     expect(mine.links).toHaveLength(1);
     expect(Object.keys(mine.links[0]).sort()).toEqual([
-      "allow_notes", "created_at", "expires_at", "id", "pet_id", "pet_name", "revoked_at", "sections", "status",
+      "allow_notes", "created_at", "edit_sections", "expires_at", "id", "pet_id", "pet_name", "revoked_at", "sections",
+      "status",
     ]);
     expect(mine.links[0]).toMatchObject({ id, pet_name: "Rex", status: "active" });
     expect((await (await list(OTHER)).json()).links).toEqual([]);
@@ -817,13 +820,18 @@ describe("I. a database without 0153", () => {
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 describe("J. verify_0153.sql", () => {
-  // verify_0153 describes the database right after 0153: a later function that also reads the links (0157) is left out
-  // while it runs.
+  // verify_0153 describes the database right after 0153: what later migrations add to the links (0157, 0158) is left
+  // out while it runs.
   beforeAll(async () => {
-    await raw.unsafe("drop function if exists app_record_link_update_note(text, integer, text)");
+    await raw.unsafe(`
+      drop function if exists app_record_link_update_note(text, integer, text);
+      drop trigger if exists care_record_links_sync_notes on care_record_links;
+      alter table care_record_links drop column if exists edit_sections;
+    `);
   });
   afterAll(async () => {
     await raw.unsafe(migration("0157_record_link_note_edit.sql"));
+    await raw.unsafe(migration("0158_share_edit_permission.sql"));
   });
   const failing = async () =>
     ((await raw.unsafe(verify0153())) as any[]).filter((r) => r.status !== "PASS").map((r) => r.ord);

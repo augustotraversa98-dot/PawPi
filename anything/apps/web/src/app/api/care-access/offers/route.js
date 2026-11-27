@@ -12,6 +12,12 @@ import {
   presentOffer,
   toId,
 } from "@/app/api/utils/shareOffers";
+import {
+  editAccessSupported,
+  editAccessUnavailable,
+  parseEditSections,
+  sameSections,
+} from "@/app/api/utils/editAccess";
 
 // The OWNER's invitations to vets on PawPi (migration 0154, docs/vet-sharing-design.md "Invitations to a vet on
 // PawPi"). An invitation shares nothing: the invited business accepts or declines it
@@ -48,6 +54,7 @@ async function GET(request) {
             o.provider_id,
             pr.name AS provider_name,
             o.sections,
+            COALESCE(to_jsonb(o) -> 'edit_sections', '[]'::jsonb) AS edit_sections,
             o.duration,
             eff.status,
             o.created_at,
@@ -99,7 +106,9 @@ function invalidChoice({ sections, expiry }) {
 
 const openOffer = async ({ userId, petId, providerId }) => {
   const rows = await sql`
-    SELECT o.id, o.pet_id, o.provider_id, o.sections, o.duration, o.status, o.created_at, o.lapses_at, o.responded_at
+    SELECT o.id, o.pet_id, o.provider_id, o.sections,
+           COALESCE(to_jsonb(o) -> 'edit_sections', '[]'::jsonb) AS edit_sections,
+           o.duration, o.status, o.created_at, o.lapses_at, o.responded_at
     FROM care_share_offers o
     WHERE o.owner_user_id = ${userId}
       AND o.pet_id = ${petId}
@@ -112,11 +121,11 @@ const openOffer = async ({ userId, petId, providerId }) => {
 
 // The unanswered invitation already there answers a repeated send with the same choice; a different one is refused, so
 // the owner is never told something was sent that was not.
-function answerExisting(offer, { sections, expiry }) {
+function answerExisting(offer, { sections, editSections, expiry }) {
   const same =
     offer.duration === expiry &&
-    offer.sections.length === sections.length &&
-    sections.every((s) => offer.sections.includes(s));
+    sameSections(offer.sections, sections) &&
+    sameSections(offer.edit_sections, editSections);
   if (same) return Response.json({ offer: presentOffer(offer), deduped: true });
   return Response.json(
     {
@@ -128,7 +137,7 @@ function answerExisting(offer, { sections, expiry }) {
   );
 }
 
-// POST /api/care-access/offers { petId, providerId, sections, expiry } → 201 { offer }
+// POST /api/care-access/offers { petId, providerId, sections, expiry, editSections? } → 201 { offer }
 //   200 { offer, deduped: true } the same invitation is already waiting
 //   409 'offer_open' one with a different choice is waiting · 'offer_limit' · 'share_offers_unavailable'
 //   404 not the owner's pet, or a business that cannot be invited · 400 · 429
@@ -157,16 +166,21 @@ async function POST(request) {
     if (refused) {
       return Response.json({ error: refused }, { status: 400 });
     }
-    const choice = {
-      sections: RECORD_SECTIONS.filter((s) => body.sections.includes(s)),
-      expiry: body.expiry,
-    };
+    const sections = RECORD_SECTIONS.filter((s) => body.sections.includes(s));
+    const edit = parseEditSections(body.editSections, sections);
+    if (edit.error) {
+      return Response.json({ error: edit.error }, { status: 400 });
+    }
+    const choice = { sections, editSections: edit.value, expiry: body.expiry };
 
     const petRows = await sql`
       SELECT id FROM pets WHERE id = ${petId} AND owner_user_id = ${userId}
     `;
     if (petRows.length === 0) {
       return Response.json({ error: "Pet not found" }, { status: 404 });
+    }
+    if (choice.editSections.length > 0 && !(await editAccessSupported())) {
+      return editAccessUnavailable();
     }
 
     let result;
@@ -189,12 +203,19 @@ async function POST(request) {
         `;
         if (open[0].n >= SHARE_OFFER_OPEN_LIMIT) return { full: true };
 
-        const created = await sql`
-          INSERT INTO care_share_offers (pet_id, owner_user_id, provider_id, sections, duration)
-          VALUES (${petId}, ${userId}, ${providerId}, ${choice.sections}, ${choice.expiry})
-          RETURNING id, pet_id, provider_id, sections, duration, status, created_at, lapses_at, responded_at
-        `;
-        return { created: created[0] };
+        // The permission is set as the invitation is created: afterwards an owner can only withdraw it.
+        const created = choice.editSections.length
+          ? await sql`
+              INSERT INTO care_share_offers (pet_id, owner_user_id, provider_id, sections, edit_sections, duration)
+              VALUES (${petId}, ${userId}, ${providerId}, ${choice.sections}, ${choice.editSections}, ${choice.expiry})
+              RETURNING id, pet_id, provider_id, sections, duration, status, created_at, lapses_at, responded_at
+            `
+          : await sql`
+              INSERT INTO care_share_offers (pet_id, owner_user_id, provider_id, sections, duration)
+              VALUES (${petId}, ${userId}, ${providerId}, ${choice.sections}, ${choice.expiry})
+              RETURNING id, pet_id, provider_id, sections, duration, status, created_at, lapses_at, responded_at
+            `;
+        return { created: { ...created[0], edit_sections: choice.editSections } };
       });
     } catch (error) {
       if (!isMissingSchema(error)) throw error;

@@ -332,7 +332,7 @@ describe("C. what the invited business sees", () => {
       const body = await res.json();
       expect(body.available).toBe(true);
       expect(Object.keys(body.offers[0]).sort()).toEqual(
-        ["created_at", "expiry", "id", "lapses_at", "owner_name", "pet_name", "sections"],
+        ["created_at", "edit_sections", "expiry", "id", "lapses_at", "owner_name", "pet_name", "sections"],
       );
       expect(body.offers[0]).toMatchObject({ id, pet_name: "Rex", owner_name: "Olivia Owner", sections: ["vet_notes"], expiry: "7d" });
       expect(JSON.stringify(body)).not.toContain("SECRET");
@@ -673,6 +673,16 @@ describe("H. a database without 0154", () => {
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 describe("I. verify_0154.sql", () => {
+  // verify_0154 describes the database right after 0154: the column 0158 adds is left out while it runs.
+  beforeAll(async () => {
+    await raw.unsafe(`
+      drop function if exists app_provider_share_offer_edits(integer);
+      alter table care_share_offers drop column if exists edit_sections;
+    `);
+  });
+  afterAll(async () => {
+    await raw.unsafe(migration("0158_share_edit_permission.sql"));
+  });
   const failing = async () =>
     ((await raw.unsafe(verify0154())) as any[]).filter((r) => r.status !== "PASS").map((r) => r.ord);
 
