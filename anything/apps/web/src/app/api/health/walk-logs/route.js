@@ -7,6 +7,7 @@ import { recordBusinessEvent } from "@/lib/telemetry/business";
 import { withLoggedByNames } from "@/app/api/utils/loggedBy";
 import { invalidNumberResponse } from "@/app/api/utils/invalidNumber";
 import { DISTANCE_MAX, INT_MAX, readClientDecimal, readClientInteger } from "@/lib/decimal";
+import { distanceInKm } from "@/app/api/utils/walkDistance";
 
 // The most average_speed numeric(5,2) can hold.
 const SPEED_MAX = 999.99;
@@ -67,8 +68,9 @@ async function POST(request) {
 
     // Numeric and integer columns. Typed text from installed builds is read ("2,5"); anything unreadable is a 400
     // rather than a database error. A tracked distance may carry any precision; the column rounds it.
-    const miles = readClientDecimal(distance, { max: DISTANCE_MAX });
-    if (miles.invalid) return invalidNumberResponse(request, "distance_invalid", "distance");
+    const typed = readClientDecimal(distance, { max: DISTANCE_MAX });
+    if (typed.invalid) return invalidNumberResponse(request, "distance_invalid", "distance");
+    const km = await distanceInKm(request, callerId, typed.value, distanceUnit);
     const speed = readClientDecimal(averageSpeed, { max: SPEED_MAX });
     if (speed.invalid) return invalidNumberResponse(request, "speed_invalid", "averageSpeed", { max: SPEED_MAX });
     // Negative minutes were stored before this check and still are: only what the column cannot hold is refused.
@@ -102,8 +104,8 @@ async function POST(request) {
         ${ownerUserId},
         ${walkStartTime || sql`NOW()`},
         ${minutes.value || null},
-        ${miles.value || null},
-        ${distanceUnit || "miles"},
+        ${km || null},
+        'km',
         ${pace || null},
         ${energyAfter || null},
         ${pottyEvents ? sql.json(jsonbWriteValue(pottyEvents)) : null},
