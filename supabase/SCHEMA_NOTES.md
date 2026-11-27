@@ -400,6 +400,12 @@ ACTION 1).
 > `supabase/verify_0156.sql`. Hand-applied after merge; the web app works without it (an estimate is saved as a
 > plain age). Proven in `pet-age-estimate.integration.test.ts`.
 
+> **0162** adds `provider_services.source` (`text NOT NULL DEFAULT 'owner'`, CHECK `owner`|`auto_enriched`)
+> so rows written by the directory enrichment (`supabase/seed/directory/load_enrichment.mjs`) are
+> distinguishable from the business's own. Additive column riding the existing 0024 policies; no new table,
+> policy or function. Idempotent. Verify: `supabase/verify_0162.sql`. Behaviour proven in
+> `directory-enrichment.integration.test.ts`.
+
 Still deferred: **no seed data.**
 
 ---

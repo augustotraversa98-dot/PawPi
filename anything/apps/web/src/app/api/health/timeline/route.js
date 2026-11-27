@@ -235,7 +235,7 @@ async function GET(request) {
         summary:
           log.duration_minutes || log.distance
             ? `${log.duration_minutes || "?"} min${
-                log.distance ? `, ${log.distance} mi` : ""
+                log.distance ? `, ${Number(log.distance)} km` : ""
               }`
             : "Exercise logged",
         icon: "🚶",

@@ -15,6 +15,7 @@ import { COLORS } from "@/constants/colors";
 import MapLocationView from "@/components/Map/MapLocationView";
 import { useTripTrack, usePostTripLocation } from "@/hooks/useTransport";
 import { isValidCoord } from "@/utils/walkBuddies";
+import { formatKmFromMetres } from "@/utils/distance";
 
 // Transport LIVE-GPS screen (ticket 2.70). The owner watches the assigned driver move toward
 // dropoff on a real Apple map (2.68 MapLocationView): pickup + dropoff markers, the live driver
@@ -35,11 +36,6 @@ function haversineMeters(a, b) {
     Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(x));
-}
-
-function metresToMiles(m) {
-  if (m == null) return null;
-  return Math.round((Number(m) / 1609.34) * 100) / 100;
 }
 
 export default function TransportTrackScreen() {
@@ -169,7 +165,7 @@ export default function TransportTrackScreen() {
                 <Stat
                   label={t("transport.travelled")}
                   value={
-                    travelledM > 0 ? `${metresToMiles(travelledM)} mi` : "—"
+                    travelledM > 0 ? formatKmFromMetres(travelledM) : "—"
                   }
                 />
                 <Stat

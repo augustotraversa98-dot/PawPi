@@ -3099,7 +3099,7 @@
       "logManuallyDesc": "Enter walk details manually",
       "details": "Walk details",
       "durationLabel": "Duration (minutes)",
-      "distanceLabel": "Distance (miles)",
+      "distanceLabel": "Distance (km)",
       "pace": "Pace",
       "energyLabel": "Energy after walk",
       "pottyLabel": "Potty events",
