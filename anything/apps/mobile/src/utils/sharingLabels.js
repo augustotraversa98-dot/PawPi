@@ -52,10 +52,38 @@ export function linkNoteAuthor(t, note) {
   return memberDisplayName(t, note?.external_author_name) ?? t("recordLink.anonymous");
 }
 
+// True for a record a business added (the server names it in these two fields).
+const addedByBusiness = (row) =>
+  row?.added_by_provider_id != null || !!row?.added_by_provider_name;
+
 /** The author a vet note shows, or null for the owner's own. */
 export function vetNoteAuthor(t, note) {
   if (note?.via_record_link) return linkNoteAuthor(t, note);
-  return note?.vet_name || null;
+  if (note?.vet_name) return note.vet_name;
+  return addedByBusiness(note) ? note.added_by_provider_name || t("health.vetRecord.aClinic") : null;
+}
+
+/**
+ * Who added a vet record entry (note, vaccine, lab result or document) when it was someone outside the household:
+ * "Added by {clinic} · {date}" or "Added through a shared link by {name} · {date}", and when a vet changed it later,
+ * "edited {date}". Null for an entry of the owner or the family. `date(value)` formats a moment.
+ */
+export function vetAddedLine(t, row, date) {
+  const when = row?.created_at ? date(row.created_at) : "";
+  let line;
+  if (row?.via_record_link) {
+    const name =
+      memberDisplayName(t, row.external_author_name) ?? t("recordLink.anonymousAuthor");
+    line = t("recordLink.addedViaLink", { name, date: when });
+  } else if (addedByBusiness(row)) {
+    const clinic = row.added_by_provider_name || t("health.vetRecord.aClinic");
+    line = t("health.vetRecord.addedByClinic", { clinic, date: when });
+  } else return null;
+  // No date, no separator left hanging.
+  if (!when) line = line.replace(/\s*·\s*$/, "");
+  return row.vet_edited_at
+    ? `${line} · ${t("health.vetRecord.edited", { date: date(row.vet_edited_at) })}`
+    : line;
 }
 
 /** The author as a one-line summary shows it, where nothing else says that a note came through a record link. */

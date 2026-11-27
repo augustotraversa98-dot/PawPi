@@ -27,7 +27,7 @@ import ShareWithVetSheet from "@/components/Health/VetShare/ShareWithVetSheet";
 import GrantAccess from "@/components/Health/VetShare/GrantAccess";
 import AccessList from "@/components/Health/VetShare/AccessList";
 import ShareOffers from "@/components/Health/VetShare/ShareOffers";
-import { useRevokeRecordLink } from "@/hooks/useRecordLinks";
+import { useRecordLinks, useRevokeRecordLink } from "@/hooks/useRecordLinks";
 import { useShareOffers } from "@/hooks/useShareOffers";
 import { useSharingLive } from "@/hooks/useSharingLive";
 import { useWhoHasAccess } from "@/hooks/useWhoHasAccess";
@@ -52,7 +52,7 @@ export default function DataAccessScreen() {
   const { data: currentPet } = useCurrentPet();
   const petId = currentPet?.id;
 
-  const { data: grants, isLoading, isError, refetch } =
+  const { data: grants, isLoading, isError, refetch, editAccessAvailable } =
     useCareAccessGrants(petId);
   const updateGrant = useUpdateGrant(petId);
   // A vet answers on another phone: what this screen shows is read again while something is waiting.
@@ -71,6 +71,13 @@ export default function DataAccessScreen() {
     onError: () =>
       Alert.alert(t("recordLink.error.removeTitle"), t("recordLink.error.remove")),
   });
+  // Which kinds of access the server can change in place; the links answer for themselves.
+  const hasLinks = !!access.data?.entries.some((e) => e.kind === "record_link");
+  const links = useRecordLinks({ enabled: hasLinks });
+  const canEdit = {
+    vet: editAccessAvailable === true,
+    record_link: links.data?.editAccessAvailable === true,
+  };
   // Only the owner has invitations (ShareOffers below reads the same list).
   const isOwner = !!petId && !currentPet?.is_shared;
   const offers = useShareOffers({ enabled: isOwner });
@@ -81,7 +88,8 @@ export default function DataAccessScreen() {
       access.refetch(),
       ...(currentPet?.is_shared ? [] : [offers.refetch()]),
     ]);
-  // null = closed. { provider } shares with that one only (answering its request); {} lets the owner pick.
+  // null = closed. { provider } shares with that one only (answering its request); {} lets the owner pick. { pet } is
+  // given to change an access of another dog, and { editLink } to change a record link.
   const [shareSheet, setShareSheet] = useState(null);
 
   // State changes too late to stop a second confirmation in the same moment, and a confirmation opened before a change
@@ -167,6 +175,15 @@ export default function DataAccessScreen() {
         },
       ],
     );
+
+  const editEntry = (entry) => {
+    const pet = { id: entry.pet_id, name: entry.pet_name };
+    setShareSheet(
+      entry.kind === "vet"
+        ? { pet, provider: { providerId: entry.provider_id, name: entry.provider_name } }
+        : { pet, editLink: entry },
+    );
+  };
 
   // Family sharing and emergency card links are ended on their own screens, opened for that dog.
   const manage = (entry) =>
@@ -427,6 +444,8 @@ export default function DataAccessScreen() {
           <AccessList
             access={access}
             currentPetId={petId}
+            canEdit={canEdit}
+            onEdit={editEntry}
             onRevokeVet={confirmRevoke}
             onRemoveLink={confirmRemoveLink}
             onManage={manage}
@@ -450,8 +469,9 @@ export default function DataAccessScreen() {
 
       {shareSheet ? (
         <ShareWithVetSheet
-          pet={currentPet}
+          pet={shareSheet.pet ?? currentPet}
           provider={shareSheet.provider}
+          editLink={shareSheet.editLink}
           onClose={() => setShareSheet(null)}
           // The pending requests are on this screen, right behind the sheet.
           onOpenRequests={() => setShareSheet(null)}

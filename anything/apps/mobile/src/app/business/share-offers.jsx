@@ -12,7 +12,7 @@ import { useAnswerShareOffer, useProviderShareOffers } from "@/hooks/useShareOff
 import { friendlyErrorMessage } from "@/utils/appAlert";
 import { formatLocalDate } from "@/utils/localeDateTime";
 import { goBackOr } from "@/utils/navigationBack";
-import { SHARE_SECTIONS } from "@/utils/vetShare";
+import { SHARE_SECTIONS, addableSections } from "@/utils/vetShare";
 
 const muted = [TYPE.footnote, { color: COLORS.mutedBrown, lineHeight: 18 }];
 const text = [TYPE.callout, { color: COLORS.warmBrown, lineHeight: 20 }];
@@ -58,6 +58,8 @@ function OfferCard({ offer, onAnswer, disabled }) {
   const { t } = useTranslation();
   const sections = SHARE_SECTIONS.filter((k) => offer.sections?.includes(k));
   const length = t(`vetShare.expiry.${offer.expiry}`);
+  // A server that cannot let a vet add anything says nothing about it; neither does this screen.
+  const adds = Array.isArray(offer.edit_sections) ? addableSections(offer) : null;
   return (
     <View testID={`business-share-offer-${offer.id}`} style={card}>
       <Text style={[TYPE.headline, { color: COLORS.warmBrown }]}>{offer.pet_name}</Text>
@@ -70,6 +72,21 @@ function OfferCard({ offer, onAnswer, disabled }) {
       {sections.map((key) => (
         <Text key={key} style={text}>{`• ${t(`vetShare.section.${key}.title`)}`}</Text>
       ))}
+      {adds ? (
+        <View testID={`business-share-adds-${offer.id}`} style={{ marginTop: SPACING.sm }}>
+          {adds.length > 0 ? (
+            <>
+              <Text style={bold}>{t("businessShare.canAdd")}</Text>
+              {adds.map((key) => (
+                <Text key={key} style={text}>{`• ${t(`vetShare.canAdd.${key}`)}`}</Text>
+              ))}
+              <Text style={muted}>{t("businessShare.noDelete")}</Text>
+            </>
+          ) : (
+            <Text style={text}>{t("businessShare.viewOnly")}</Text>
+          )}
+        </View>
+      ) : null}
       <Text style={[text, { marginTop: SPACING.sm }]}>
         {offer.expiry === "until_revoked"
           ? t("businessShare.untilRevoked")

@@ -21,8 +21,9 @@ jest.mock("@/components/KeyboardSafeFormModal", () => {
   const { View, Text, TouchableOpacity } = require("react-native");
   return {
     __esModule: true,
-    default: ({ children, ctaLabel, ctaDisabled, onCtaPress }) => (
+    default: ({ subtitle, children, ctaLabel, ctaDisabled, onCtaPress }) => (
       <View>
+        <Text testID="sheet-subtitle">{subtitle}</Text>
         {children}
         <TouchableOpacity testID="cta" accessibilityState={{ disabled: !!ctaDisabled }} disabled={ctaDisabled} onPress={onCtaPress}>
           <Text>{ctaLabel}</Text>
@@ -38,6 +39,7 @@ jest.mock("@/hooks/useProviders", () => ({ useMyBookings: () => mockBookings }))
 jest.mock("@/hooks/useCareAccessGrants", () => ({
   useCareAccessGrants: () => mockGrants,
   useShareRecord: () => ({ mutate: jest.fn(), isPending: false }),
+  useEditGrant: () => ({ mutate: jest.fn(), isPending: false }),
   useUpdateGrant: () => ({ mutateAsync: jest.fn(), isPending: false }),
 }));
 
@@ -99,8 +101,16 @@ const press = (s, id) => fireEvent.press(s.getByTestId(id));
 const state = (s, id) => s.getByTestId(id).props.accessibilityState;
 const ctaDisabled = (s) => state(s, "cta").disabled;
 
-async function toChoices() {
+// Links are the sheet's second way: shown when asked for (or at once when there is no other).
+async function openLinks() {
   const s = sheet();
+  await waitFor(() => expect(s.getByTestId("vet-share-by-link")).toBeTruthy());
+  if (!s.queryByTestId("vet-share-link-panel")) press(s, "vet-share-by-link");
+  return s;
+}
+
+async function toChoices() {
+  const s = await openLinks();
   await waitFor(() => expect(s.getByTestId("record-link-start")).toBeTruthy());
   press(s, "record-link-start");
   return s;
@@ -236,7 +246,7 @@ test.each([
   ["a database without links", () => reply({ available: false, links: [] })],
 ])("%s: says sharing by link is not available, with no way to create one", async (_name, answer) => {
   onList = answer;
-  const s = sheet();
+  const s = await openLinks();
   await waitFor(() => expect(s.getByTestId("record-links-unavailable")).toBeTruthy());
   expect(s.getByText("Sharing by link isn't available yet.")).toBeTruthy();
   expect(s.queryByTestId("record-link-start")).toBeNull();
@@ -271,3 +281,181 @@ test("lists each active link with its parts, end date and permission, and remove
   expect(writes()).toEqual([["/api/care-access/links/1", "PATCH", { action: "revoke" }]]);
 });
 
+
+// A server that can store what may be added through a link: each part has its own "Can add", and a link can be changed.
+describe("with edit permission", () => {
+  const editable = (over) =>
+    link({ id: 41, sections: ["vaccines"], allow_notes: false, edit_sections: [], ...over });
+
+  beforeEach(() => {
+    links = [];
+    onList = () => reply({ available: true, editAccessAvailable: true, links });
+  });
+
+  async function chooseWithAdds() {
+    const s = await toChoices();
+    await waitFor(() => expect(s.getByTestId("record-link-add-vet_notes")).toBeTruthy());
+    return s;
+  }
+
+  test("nothing can be added until the owner turns it on; there is no separate notes switch", async () => {
+    const s = await chooseWithAdds();
+    expect(s.queryByTestId("record-link-allow-notes")).toBeNull();
+    for (const k of ["vet_notes", "vaccines", "files", "lab_results"]) {
+      expect(state(s, `record-link-add-${k}`).checked).toBe(false);
+    }
+    for (const k of ["profile", "emergency_contact", "insurance", "photos"]) {
+      expect(s.queryByTestId(`record-link-add-${k}`)).toBeNull();
+    }
+  });
+
+  test("adding implies seeing, except notes, which a link can take without showing any", async () => {
+    const s = await chooseWithAdds();
+    press(s, "record-link-add-files");
+    expect(state(s, "record-link-section-files").checked).toBe(true);
+    press(s, "record-link-section-files");
+    expect(state(s, "record-link-add-files").checked).toBe(false);
+    press(s, "record-link-add-vet_notes");
+    expect(state(s, "record-link-section-vet_notes").checked).toBe(false);
+    press(s, "record-link-section-vet_notes");
+    press(s, "record-link-section-vet_notes");
+    expect(state(s, "record-link-add-vet_notes").checked).toBe(true);
+  });
+
+  test("the review states what can be added, and exactly that is sent", async () => {
+    onPost = () =>
+      created({ sections: ["vaccines", "files"], allow_notes: true, edit_sections: ["vet_notes", "files"] });
+    const s = await chooseWithAdds();
+    ["record-link-section-vaccines", "record-link-add-files", "record-link-add-vet_notes", "record-link-expiry-7d", "cta"]
+      .forEach((id) => press(s, id));
+    const adds = within(s.getByTestId("record-link-review-add"));
+    expect(adds.getByText("Documents")).toBeTruthy();
+    expect(adds.getByText("Vet notes, and edit the ones added this way")).toBeTruthy();
+    expect(adds.queryByText("Vaccinations")).toBeNull();
+    expect(adds.getByText(/Nothing can be deleted through a link/)).toBeTruthy();
+    expect(s.getByText(/anyone with the link can add to: Vet notes, Documents, without signing in\./)).toBeTruthy();
+    press(s, "record-link-consent");
+    press(s, "cta");
+    await waitFor(() => expect(Share.share).toHaveBeenCalledTimes(1));
+    expect(writes()).toEqual([
+      ["/api/care-access/links", "POST", {
+        petId: 7, sections: ["vaccines", "files"], expiry: "7d", allowNotes: true, editSections: ["vet_notes", "files"],
+      }],
+    ]);
+  });
+
+  test("view only is said, and sent as nothing to add", async () => {
+    onPost = () => created({ edit_sections: [] });
+    const s = await chooseWithAdds();
+    ["record-link-section-vaccines", "record-link-expiry-7d", "cta"].forEach((id) => press(s, id));
+    expect(s.getByText("View only: nothing can be added through this link.")).toBeTruthy();
+    press(s, "record-link-consent");
+    press(s, "cta");
+    await waitFor(() => expect(Share.share).toHaveBeenCalledTimes(1));
+    expect(writes()[0][2]).toMatchObject({ allowNotes: false, editSections: [] });
+  });
+
+  test("a link that would let more be added than chosen is removed and never sent", async () => {
+    onPost = () => created({ edit_sections: ["vaccines"] });
+    const s = await chooseWithAdds();
+    ["record-link-section-vaccines", "record-link-expiry-7d", "cta", "record-link-consent", "cta"]
+      .forEach((id) => press(s, id));
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalled());
+    expect(Share.share).not.toHaveBeenCalled();
+    expect(writes()[1]).toEqual(["/api/care-access/links/41", "PATCH", { action: "revoke" }]);
+  });
+
+  async function openEdit(over) {
+    links = [editable(over)];
+    const s = await openLinks();
+    await waitFor(() => expect(s.getByTestId("record-link-edit-41")).toBeTruthy());
+    press(s, "record-link-edit-41");
+    return s;
+  }
+
+  test("editing starts as the link is now, keeping its end date, with nothing to save yet", async () => {
+    const s = await openEdit({ sections: ["vaccines", "files"], edit_sections: ["files"] });
+    expect(state(s, "record-link-section-vaccines").checked).toBe(true);
+    expect(state(s, "record-link-section-files").checked).toBe(true);
+    expect(state(s, "record-link-add-files").checked).toBe(true);
+    expect(state(s, "record-link-add-vaccines").checked).toBe(false);
+    expect(state(s, "record-link-expiry-keep").selected).toBe(true);
+    expect(s.getByText(/^Keep current end date \(/)).toBeTruthy();
+    expect(s.queryByTestId("record-link-expiry-until_revoked")).toBeNull();
+    expect(s.getByText("Nothing changed yet.")).toBeTruthy();
+    expect(ctaDisabled(s)).toBe(true);
+  });
+
+  test("saving changes that same link, asks consent again, and sends nothing to anyone", async () => {
+    const s = await openEdit();
+    onPatch = () =>
+      reply({ link: editable({ sections: ["vaccines", "lab_results"], edit_sections: ["lab_results"] }) });
+    press(s, "record-link-add-lab_results");
+    press(s, "cta");
+    expect(ctaDisabled(s)).toBe(true);
+    expect(s.getByText("Save changes")).toBeTruthy();
+    press(s, "record-link-consent");
+    press(s, "cta");
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalled());
+    expect(Alert.alert.mock.calls[0][0]).toBe("Link updated");
+    expect(writes()).toEqual([
+      ["/api/care-access/links/41", "PATCH", {
+        action: "update", sections: ["vaccines", "lab_results"], editSections: ["lab_results"], expiry: "keep",
+      }],
+    ]);
+    expect(Share.share).not.toHaveBeenCalled();
+    // Back on the sheet.
+    await waitFor(() => expect(s.getByTestId("vet-share-by-link")).toBeTruthy());
+  });
+
+  test("an answer that is not the choice is not reported as saved, and the link can be removed", async () => {
+    const s = await openEdit();
+    onPatch = () => reply({ link: editable({ sections: ["vaccines", "files"] }) });
+    ["record-link-add-lab_results", "cta", "record-link-consent", "cta"].forEach((id) => press(s, id));
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalled());
+    expect(Alert.alert.mock.calls[0][0]).toBe("Check this link");
+    expect(Alert.alert.mock.calls[0][2].map((b) => b.text)).toContain("Remove link");
+  });
+
+  test.each([
+    [409, "link_not_active", /ended or was removed, so nothing changed/],
+    [409, "edit_access_unavailable", /isn't available yet\. Nothing changed/],
+    [404, undefined, /no longer there/],
+    [429, undefined, /too many tries/],
+    [400, undefined, /wasn't accepted, so nothing changed/],
+    [500, undefined, /Check the link in your list/],
+  ])("a %i %s refusal to save says why", async (status, code, message) => {
+    const s = await openEdit();
+    onPatch = () => reply({ code }, status);
+    ["record-link-add-lab_results", "cta", "record-link-consent", "cta"].forEach((id) => press(s, id));
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalled());
+    expect(Alert.alert.mock.calls[0][0]).toBe("Couldn't save the changes");
+    expect(Alert.alert.mock.calls[0][1]).toMatch(message);
+  });
+
+  test("changing another dog's link from this dog's sheet names that dog", async () => {
+    const s = await openEdit({ pet_id: 8, pet_name: "Rex" });
+    expect(s.getByTestId("sheet-subtitle").props.children).toBe("Rex");
+    expect(s.getByText(/Change what this link shows about Rex/)).toBeTruthy();
+    press(s, "record-link-cancel");
+    expect(s.getByTestId("sheet-subtitle").props.children).toBe("Luna");
+  });
+
+  test("opened to edit one link (Data access): only that, and the sheet closes when left", async () => {
+    const onClose = jest.fn();
+    const s = wrap(
+      <ShareWithVetSheet
+        pet={{ id: 8, name: "Rex" }}
+        editLink={editable({ pet_id: 8, pet_name: "Rex" })}
+        onClose={onClose}
+        onOpenRequests={jest.fn()}
+      />,
+    );
+    expect(s.getByText(/Change what this link shows about Rex.*The link stays the same\./)).toBeTruthy();
+    expect(s.queryByTestId("vet-share-by-link")).toBeNull();
+    expect(state(s, "record-link-section-vaccines").checked).toBe(true);
+    press(s, "record-link-cancel");
+    expect(onClose).toHaveBeenCalled();
+    expect(writes()).toEqual([]);
+  });
+});

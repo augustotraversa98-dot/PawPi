@@ -136,3 +136,30 @@ test("speaks Spanish (voseo)", async () => {
   expect(s.getByText("Desde que aceptes, hasta que el dueño lo termine")).toBeTruthy();
   expect(s.getByText("Aceptar")).toBeTruthy();
 });
+
+describe("what the business will be able to add", () => {
+  test("is listed before accepting", async () => {
+    offers = [offer({ edit_sections: ["lab_results", "vet_notes"] })];
+    const s = open();
+    await waitFor(() => expect(s.getByTestId("business-share-adds-51")).toBeTruthy());
+    expect(s.getByText("You'll be able to add to:")).toBeTruthy();
+    expect(s.getByText("• Vet notes, and edit the ones added this way")).toBeTruthy();
+    expect(s.getByText("• Lab results")).toBeTruthy();
+    expect(s.getByText("You won't be able to delete anything.")).toBeTruthy();
+    expect(s.queryByText("• Documents")).toBeNull();
+    expect(writes()).toEqual([]);
+  });
+
+  test("is said to be nothing for a view-only invitation", async () => {
+    offers = [offer({ edit_sections: [] })];
+    const s = open();
+    await waitFor(() => expect(s.getByText("View only: you won't be able to add anything.")).toBeTruthy());
+  });
+
+  test("is not mentioned by a server that cannot let a vet add anything", async () => {
+    const s = open();
+    await waitFor(() => expect(s.getByTestId("business-share-offer-51")).toBeTruthy());
+    expect(s.queryByTestId("business-share-adds-51")).toBeNull();
+    expect(s.queryByText(/able to add/)).toBeNull();
+  });
+});

@@ -40,8 +40,9 @@ jest.mock("./VetShare/ShareWithVetSheet", () => {
   const { Text } = require("react-native");
   return { __esModule: true, default: ({ pet }) => <Text testID="vet-share-sheet">{pet.name}</Text> };
 });
+let mockVaccines;
 jest.mock("@/hooks/usePetVaccinations", () => ({
-  usePetVaccinations: () => ({ data: [], isLoading: false, error: null }),
+  usePetVaccinations: () => ({ data: mockVaccines, isLoading: false, error: null }),
 }));
 
 const owner = { id: 7, name: "Luna", is_shared: false, access_role: "owner" };
@@ -50,6 +51,7 @@ const family = { id: 7, name: "Luna", is_shared: true, access_role: "family" };
 beforeEach(() => {
   mockLangRef.current = "en";
   mockPet = owner;
+  mockVaccines = [];
   mockQueryData = {
     "vet-record-summary": {},
     "pet-medical-profile": {},
@@ -147,9 +149,71 @@ describe("a note card's author lines", () => {
     };
     const s = render(<HealthVetRecord />);
     openNotes(s);
-    expect(s.getByText(/added through a shared link · 27 November 2026/)).toBeTruthy();
+    expect(s.getByText("Added through a shared link by A rather long clinic name that needs room · 27 November 2026")).toBeTruthy();
     expect(s.getByText(/Added by .*27 November 2026/)).toBeTruthy();
     expect(s.getByText("26 November 2026")).toBeTruthy();
     expect(s.getByText("1 October 2026")).toBeTruthy();
+  });
+});
+
+// What a vet added says who added it, on every kind of row, and never reads as the owner's or the family's.
+describe("rows a vet added", () => {
+  const at = "2026-11-02T10:00:00Z";
+  const byClinic = {
+    created_at: at,
+    added_by_provider_id: 3,
+    added_by_provider_name: "North Clinic",
+    created_by_role: "editor",
+    created_by_name: "North Clinic",
+  };
+  const byLink = {
+    created_at: at,
+    via_record_link: true,
+    external_author_name: null,
+    created_by_role: "editor",
+    created_by_name: "Anonymous (shared link)",
+  };
+
+  beforeEach(() => {
+    mockVaccines = [{ id: 1, name: "Rabies", ...byClinic }];
+    mockQueryData["vet-record-lab-results"] = {
+      labResults: [{ id: 2, test_name: "Blood panel", test_date: "2026-11-01", ...byLink, external_author_name: "Dr. Ruiz" }],
+    };
+    mockQueryData["vet-record-documents"] = {
+      documents: [{ id: 3, name: "Scan.pdf", category: "lab", url: "https://x/y.pdf", ...byLink }],
+    };
+    mockQueryData["vet-record-notes"] = {
+      notes: [{ id: 5, note: "Booster done", note_date: "2026-11-02", ...byClinic, vet_edited_at: "2026-11-05T10:00:00Z" }],
+    };
+    mockQueryData["vet-record-summary"] = { labResultsCount: 1, documentsCount: 1, vetNotesCount: 1 };
+  });
+
+  test.each([
+    ["en", [
+      "Added by North Clinic · 2 November 2026",
+      "Added through a shared link by Dr. Ruiz · 2 November 2026",
+      "Added through a shared link by Anonymous · 2 November 2026",
+      "Added by North Clinic · 2 November 2026 · edited 5 November 2026",
+    ]],
+    ["es", [
+      /^Agregado por North Clinic · /,
+      /^Agregado desde un enlace compartido por Dr\. Ruiz · /,
+      /^Agregado desde un enlace compartido por Anónimo · /,
+      /^Agregado por North Clinic · .* · editada /,
+    ]],
+  ])("(%s) vaccines, lab results, documents and notes", (lang, [vaccine, lab, document, note]) => {
+    mockLangRef.current = lang;
+    const s = render(<HealthVetRecord />);
+    expand(s);
+    const open = (tab) => fireEvent.press(s.getByTestId(`history-tab-${tab}`));
+    open("vaccines");
+    expect(s.getByText(vaccine)).toBeTruthy();
+    open("labs");
+    expect(s.getByText(lab)).toBeTruthy();
+    open("documents");
+    expect(s.getByText(document)).toBeTruthy();
+    open("notes");
+    expect(s.getByText(note)).toBeTruthy();
+    expect(s.getByTestId("vet-note-author").props.children).toBe("North Clinic");
   });
 });

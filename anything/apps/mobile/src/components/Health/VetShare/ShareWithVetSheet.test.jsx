@@ -1,6 +1,7 @@
-// Sharing the vet record: nothing is selected for the owner; a vet, at least one section and a length are required;
-// a review says who can see what; consent is explicit; the app never claims more than the server confirmed. Runs the
-// real hooks' contract through a mocked useShareRecord (its checks are covered in hooks/useShareRecord.test.jsx).
+// Sharing the vet record: the owner picks a vet, then the parts and the length; nothing is selected for them; a vet, at
+// least one section and a length are required; a review says who can see what; consent is explicit; the app never
+// claims more than the server confirmed. Runs the real hooks' contract through a mocked useShareRecord (its checks are
+// covered in hooks/useShareRecord.test.jsx). Changing an existing share and "Can add" are in ShareEdit.test.jsx.
 
 import React from "react";
 import { render, fireEvent, act, within } from "@testing-library/react-native";
@@ -65,6 +66,7 @@ jest.mock("@/hooks/useCareAccessGrants", () => ({
     mockShareOptions = options;
     return { mutate: mockShare, isPending: false };
   },
+  useEditGrant: () => ({ mutate: jest.fn(), isPending: false }),
   useUpdateGrant: () => ({ mutateAsync: mockRevoke, isPending: false }),
 }));
 
@@ -121,28 +123,50 @@ const answer = (result, sent) =>
 const sent = { providerName: "Happy Paws", sections: ["vaccines", "files"], expiry: "7d" };
 const lastAlert = () => Alert.alert.mock.calls[Alert.alert.mock.calls.length - 1];
 
-test("nothing is selected: no vet, none of the 8 sections, none of the 4 lengths", () => {
+test("nothing is selected: no vet, then none of the 8 sections, none of the 4 lengths", () => {
   const s = open();
   expect(state(s, "vet-share-vet-1").selected).toBe(false);
+  expect(s.queryByTestId("vet-share-section-vaccines")).toBeNull();
+  press(s, "vet-share-vet-1");
   SHARE_SECTIONS.forEach((k) => expect(state(s, `vet-share-section-${k}`).checked).toBe(false));
   SHARE_EXPIRIES.forEach((k) => expect(state(s, `vet-share-expiry-${k}`).selected).toBe(false));
   expect(ctaDisabled(s)).toBe(true);
+  press(s, "vet-share-details");
   expect(s.getByText(/Never shared from here: the allergy, condition, surgery, medication/)).toBeTruthy();
 });
 
-test("each section says what it opens", () => {
+test("once a vet is picked the sheet is about that vet only: the other lists make way for the choices", () => {
+  mockGrants = query([grant({ id: 6, provider_id: 2, provider_name: "North Clinic" })]);
   const s = open();
+  press(s, "vet-share-vet-1");
+  expect(within(s.getByTestId("vet-share-selected")).getByText("Happy Paws")).toBeTruthy();
+  for (const id of ["vet-share-vet-1", "vet-share-vet-2", "grant-access-6", "vet-share-by-link", "record-links"]) {
+    expect(s.queryByTestId(id)).toBeNull();
+  }
+  press(s, "vet-share-change");
+  expect(s.getByTestId("vet-share-vet-1")).toBeTruthy();
+  expect(s.queryByTestId("vet-share-section-vaccines")).toBeNull();
+});
+
+test("what each section includes is shown on demand", () => {
+  const s = open();
+  press(s, "vet-share-vet-1");
+  expect(s.queryByText(/Insurance company and policy number/)).toBeNull();
+  press(s, "vet-share-details");
   expect(s.getByText(/Microchip, spay\/neuter.*Not the emergency contact or insurance/)).toBeTruthy();
   expect(s.getByText(/Insurance company and policy number/)).toBeTruthy();
   expect(s.getByText(/All history entries for Luna: yours and the ones vets added/)).toBeTruthy();
 });
 
-test.each([
-  ["the vet", { vet: null }],
-  ["a section", { sections: [] }],
-])("review stays closed without %s", (_name, over) => {
+test("without a vet there is nothing to review", () => {
   const s = open();
-  chooseAll(s, over);
+  expect(s.queryByText("Review")).toBeNull();
+  expect(s.queryByTestId("vet-share-expiry-7d")).toBeNull();
+});
+
+test("review stays closed without a section", () => {
+  const s = open();
+  chooseAll(s, { sections: [] });
   expect(ctaDisabled(s)).toBe(true);
   press(s, "cta");
   expect(s.queryByTestId("vet-share-review")).toBeNull();
@@ -214,6 +238,7 @@ test("going back keeps the choices and asks consent again", () => {
 test("choices are not carried over to another vet", () => {
   const s = open();
   chooseAll(s);
+  press(s, "vet-share-change");
   press(s, "vet-share-vet-2");
   expect(state(s, "vet-share-section-vaccines").checked).toBe(false);
   expect(state(s, "vet-share-expiry-7d").selected).toBe(false);
@@ -270,16 +295,19 @@ test("an older grant is listed as the whole bundle it opens, until revoked", () 
 test("an expired grant is shown as ended, with nothing to revoke", () => {
   mockGrants = query([grant({ status: "expired", expires_at: "2000-01-01T12:00:00Z" })]);
   const s = open();
-  expect(s.getByText("Ended")).toBeTruthy();
+  expect(s.queryByText(/^Ended on/)).toBeNull();
+  expect(s.getByText("Ended (1)")).toBeTruthy();
+  press(s, "vet-share-ended-toggle");
   expect(s.getByText(/^Ended on .*2000$/)).toBeTruthy();
   expect(s.getByText("Could see (read only):")).toBeTruthy();
-  expect(s.getByText("No one has access yet.")).toBeTruthy();
+  expect(s.queryByText("Currently sharing with")).toBeNull();
   expect(s.queryByTestId("vet-share-revoke-4")).toBeNull();
 });
 
 test("a past-date grant still reported active is ended too, and can be removed", () => {
   mockGrants = query([grant({ expires_at: "2000-01-01T12:00:00Z" })]);
   const s = open();
+  press(s, "vet-share-ended-toggle");
   expect(s.getByText(/^Ended on/)).toBeTruthy();
   expect(s.getByTestId("vet-share-revoke-4")).toBeTruthy();
 });
@@ -301,7 +329,7 @@ test("against a server without sections nothing can be shared, and access can st
   expect(s.getByTestId("vet-share-unsupported")).toBeTruthy();
   expect(s.queryByTestId("vet-share-vet-1")).toBeNull();
   expect(s.queryByTestId("vet-share-section-vaccines")).toBeNull();
-  expect(ctaDisabled(s)).toBe(true);
+  expect(s.getByText("Close")).toBeTruthy();
   expect(s.getByTestId("vet-share-revoke-4")).toBeTruthy();
 });
 
@@ -411,15 +439,16 @@ test("nothing can be picked while current access is unknown", () => {
   expect(s.queryByTestId("vet-share-vet-1")).toBeNull();
   expect(s.queryByTestId("vet-share-section-vaccines")).toBeNull();
   expect(s.getByText("Try again")).toBeTruthy();
-  expect(ctaDisabled(s)).toBe(true);
+  expect(s.queryByText("Review")).toBeNull();
 });
 
 test("no vet booking → empty state, and the emergency card link is offered", () => {
   mockBookings = query({ upcoming: [], past: [] });
   const onClose = jest.fn();
   const s = open({ onClose });
-  expect(s.getByText(/You don't have a vet booking for Luna yet/)).toBeTruthy();
+  expect(s.getByText(/No vets are listed for Luna yet/)).toBeTruthy();
   expect(s.queryByTestId("vet-share-section-vaccines")).toBeNull();
+  press(s, "vet-share-by-link");
   fireEvent.press(s.getByText("Open the emergency card"));
   expect(onClose).toHaveBeenCalled();
   expect(mockPush).toHaveBeenCalledWith("/emergency-card?petId=7");
@@ -439,9 +468,11 @@ test("a family member is told only the owner can share", () => {
 test("Spanish copy (voseo)", () => {
   mockLangRef.current = "es";
   const s = open();
+  expect(s.getByText("O compartí con un enlace")).toBeTruthy();
+  press(s, "vet-share-vet-1");
   expect(s.getByText("Qué compartir")).toBeTruthy();
   expect(s.getByText(/No hay nada marcado de antemano\. Elegí al menos una parte\./)).toBeTruthy();
-  chooseAll(s, { expiry: "until_revoked" });
+  chooseAll(s, { vet: null, expiry: "until_revoked" });
   fireEvent.press(s.getByText("Revisar"));
   expect(s.getByText("Quién puede ver qué")).toBeTruthy();
   expect(s.getByText("Dar acceso")).toBeTruthy();
@@ -449,14 +480,26 @@ test("Spanish copy (voseo)", () => {
 });
 
 describe("a vet without PawPi, by link", () => {
-  test("is offered to the owner, with or without booked vets, once", () => {
+  test("is the second way: closed until asked for, with or without booked vets, once", () => {
     const booked = open();
+    expect(booked.getByText("Or share by link instead")).toBeTruthy();
+    expect(booked.queryByTestId("record-links")).toBeNull();
+    press(booked, "vet-share-by-link");
     expect(booked.getByTestId("record-links")).toBeTruthy();
     expect(booked.getByTestId("vet-invite")).toBeTruthy();
+    press(booked, "vet-share-by-link");
+    expect(booked.queryByTestId("record-links")).toBeNull();
     mockBookings = query({ upcoming: [], past: [] });
     const empty = open();
+    expect(empty.getByText(/Search for your vet above, or share by link instead/)).toBeTruthy();
+    press(empty, "vet-share-by-link");
     expect(empty.getAllByTestId("record-links")).toHaveLength(1);
-    expect(empty.getByText(/Search for your vet below, or create a link for them/)).toBeTruthy();
+  });
+
+  test("with no vet to pick and no search, it is already open", () => {
+    mockCanSearch = false;
+    mockBookings = query({ upcoming: [], past: [] });
+    expect(open().getByTestId("record-links")).toBeTruthy();
   });
 
   test("is not offered to a family member or for one given business", () => {
@@ -470,6 +513,7 @@ describe("a vet without PawPi, by link", () => {
   test("earlier invites are listed only by a server that shares by section", () => {
     mockGrants = query([grant({ sections: undefined })]);
     const s = open();
+    press(s, "vet-share-by-link");
     expect(s.queryByTestId("vet-invite")).toBeNull();
     expect(s.getByTestId("record-links")).toBeTruthy();
   });
@@ -498,17 +542,16 @@ describe("a vet without PawPi, by link", () => {
 
 describe("the vet picker only offers what this server can do", () => {
   const cases = [
-    [true, true, /Search for any other vet on PawPi, or create a link/, /Search for your vet below, or create a link/],
-    [true, false, /Search for any other vet on PawPi\.$/, /Search for your vet below\.$/],
-    [false, true, /For any other vet, create a link/, /Create a link for your vet below\.$/],
-    [false, false, /sharing by link aren't available yet\./, /aren't available yet\. Once you book a vet for Luna/],
-    [undefined, true, /appear here\.$/, /vet booking for Luna yet\.$/],
+    [true, true, /Search for your vet above, or share by link instead/],
+    [true, false, /Search for your vet above\.$/],
+    [false, true, /Share by link instead, below\.$/],
+    [false, false, /aren't available yet\. Once you book a vet for Luna/],
+    [undefined, true, /listed for Luna yet\.$/],
   ];
 
-  test.each(cases)("search %s, link %s", (search, link, hint, empty) => {
+  test.each(cases)("search %s, link %s", (search, link, empty) => {
     mockCanSearch = search;
     mockCanLink = link;
-    expect(open().getByText(hint)).toBeTruthy();
     mockBookings = query({ upcoming: [], past: [] });
     expect(open().getByText(empty)).toBeTruthy();
   });
