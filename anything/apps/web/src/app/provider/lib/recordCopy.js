@@ -89,6 +89,9 @@ export const RECORD_COPY = {
       add: "Add note",
       empty: "No vet notes yet.",
       booking: "Booking #{id}",
+      viaLink: "Added through a shared link",
+      anonymous: "Anonymous",
+      formerMember: "Former member",
     },
     vaccinations: {
       writeHint:
@@ -212,6 +215,9 @@ export const RECORD_COPY = {
       add: "Agregar nota",
       empty: "Todavía no hay notas veterinarias.",
       booking: "Reserva n.º {id}",
+      viaLink: "Agregada desde un enlace compartido",
+      anonymous: "Cambios de alguien externo",
+      formerMember: "Ex integrante",
     },
     vaccinations: {
       writeHint:

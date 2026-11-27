@@ -1,39 +1,17 @@
 import React from "react";
-import { View, Text, Alert, ActivityIndicator } from "react-native";
+import { View, Text, Alert } from "react-native";
 import { useTranslation } from "react-i18next";
-import { COLORS, MATERIALS, RADIUS, SPACING, TYPE } from "@/constants/theme";
-import {
-  useCreateVetInvite,
-  useVetInvites,
-  useWithdrawVetInvite,
-} from "@/hooks/useVetInvites";
+import { COLORS, SPACING, TYPE } from "@/constants/theme";
+import { useVetInvites, useWithdrawVetInvite } from "@/hooks/useVetInvites";
 import { formatLocalDate } from "@/utils/localeDateTime";
 import { visibleInvites } from "@/utils/vetShare";
-import { Bullets } from "./GrantAccess";
 import SecondaryButton from "./SecondaryButton";
+import { bold, card, muted, text } from "./parts";
 
 const heading = [
   TYPE.headline,
   { color: COLORS.warmBrown, marginTop: SPACING.lg, marginBottom: SPACING.sm },
 ];
-const text = [TYPE.callout, { color: COLORS.warmBrown, lineHeight: 20 }];
-const bold = [TYPE.callout, { color: COLORS.warmBrown, fontWeight: "800" }];
-const muted = [TYPE.footnote, { color: COLORS.mutedBrown, lineHeight: 18 }];
-const card = {
-  backgroundColor: MATERIALS.surface,
-  borderRadius: RADIUS.control,
-  borderWidth: 1,
-  borderColor: MATERIALS.hairline,
-  padding: SPACING.lg,
-  marginBottom: SPACING.sm,
-};
-
-function createErrorKey(error) {
-  if (error?.code === "invite_limit") return "limit";
-  if (error?.status === 429) return "tooMany";
-  if (error?.status === 404) return "notAllowed";
-  return "create";
-}
 
 function withdrawErrorKey(error) {
   if (error?.code === "invite_used") return "used";
@@ -76,37 +54,19 @@ function InviteRow({ invite, onWithdraw, disabled }) {
 }
 
 /**
- * The dog's owner invites a vet who has no booking: creates a single-use link, hands it to the phone's share sheet, and
- * lists the invites so an open one can be withdrawn. Only mount it for the owner.
- *
- * Props: pet ({ id, name }).
+ * The owner's earlier invite links (they ask a vet business to request access; this app version creates record links
+ * instead), with their state; an open one can be withdrawn. Nothing is shown when there are none. Only mount it for an
+ * owner.
  */
-export default function InviteVet({ pet }) {
+export default function InviteVet() {
   const { t } = useTranslation();
-  const petName = pet?.name || t("dataAccess.yourPet");
   const invites = useVetInvites();
 
-  const showError = (key, values) =>
-    Alert.alert(t(`vetInvite.error.${key}Title`), t(`vetInvite.error.${key}`, values));
-
   const withdraw = useWithdrawVetInvite({
-    onError: (error) => showError(withdrawErrorKey(error)),
-  });
-
-  const create = useCreateVetInvite({
-    onSuccess: ({ outcome, inviteId }) => {
-      if (outcome === "shared") return;
-      const buttons = [{ text: t("vetInvite.keep"), style: "cancel" }];
-      if (inviteId != null) {
-        buttons.push({
-          text: t("vetInvite.withdraw"),
-          style: "destructive",
-          onPress: () => withdraw.mutate(inviteId),
-        });
-      }
-      Alert.alert(t("vetInvite.notSharedTitle"), t("vetInvite.notSharedBody"), buttons);
+    onError: (error) => {
+      const key = withdrawErrorKey(error);
+      Alert.alert(t(`vetInvite.error.${key}Title`), t(`vetInvite.error.${key}`));
     },
-    onError: (error) => showError(createErrorKey(error), { limit: error?.limit ?? 5 }),
   });
 
   const confirmWithdraw = (invite) =>
@@ -123,62 +83,28 @@ export default function InviteVet({ pet }) {
       ],
     );
 
-  const createInvite = () => {
-    if (create.isPending) return;
-    create.mutate({ petId: pet.id, message: t("vetInvite.message", { pet: petName }) });
-  };
+  if (!invites.isError && !invites.data?.length) return null;
 
-  const renderList = () => {
-    if (invites.isError) {
-      return (
+  return (
+    <View testID="vet-invite">
+      <Text accessibilityRole="header" style={heading}>
+        {t("vetInvite.listTitle")}
+      </Text>
+      {invites.isError ? (
         <View style={card}>
           <Text style={text}>{t("vetInvite.loadError")}</Text>
           <SecondaryButton label={t("vetShare.retry")} onPress={() => invites.refetch()} />
         </View>
-      );
-    }
-    if (!invites.data) return <ActivityIndicator color={COLORS.coral} />;
-    if (invites.data.length === 0) return null;
-    return (
-      <>
-        <Text style={[bold, { marginTop: SPACING.sm, marginBottom: SPACING.sm }]}>
-          {t("vetInvite.listTitle")}
-        </Text>
-        {visibleInvites(invites.data).map((invite) => (
+      ) : (
+        visibleInvites(invites.data).map((invite) => (
           <InviteRow
             key={invite.id}
             invite={invite}
             onWithdraw={confirmWithdraw}
             disabled={withdraw.isPending}
           />
-        ))}
-      </>
-    );
-  };
-
-  return (
-    <View testID="vet-invite">
-      <Text accessibilityRole="header" style={heading}>
-        {t("vetInvite.title")}
-      </Text>
-      <View style={card}>
-        <Text style={[text, { marginBottom: 6 }]}>{t("vetInvite.intro", { pet: petName })}</Text>
-        <Bullets
-          lines={[
-            t("vetInvite.ruleOnce"),
-            t("vetInvite.ruleVet"),
-            t("vetInvite.ruleNames", { pet: petName }),
-            t("vetInvite.ruleApprove"),
-          ]}
-        />
-        <SecondaryButton
-          testID="vet-invite-create"
-          label={t(create.isPending ? "vetInvite.creating" : "vetInvite.cta")}
-          onPress={createInvite}
-          disabled={create.isPending}
-        />
-      </View>
-      {renderList()}
+        ))
+      )}
     </View>
   );
 }

@@ -1,9 +1,8 @@
-// Inviting a vet by link, with the real hooks over a mocked fetch: the rules are said before anything is created, the
-// link goes only to the phone's share sheet (never to the query cache, the screen or the console), invites are listed
-// with their state, an open one can be withdrawn, and the server's refusals are explained.
+// The owner's earlier invite links, with the real hooks over a mocked fetch: they are listed with their state, an open
+// one can be withdrawn, the server's refusals are explained, and nothing new can be created from here.
 
 import React from "react";
-import { Alert, Share } from "react-native";
+import { Alert } from "react-native";
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import InviteVet from "./InviteVet";
@@ -14,9 +13,7 @@ jest.mock("react-i18next", () => ({
 }));
 jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
 
-const LINK = "https://example.test/vet-invite#abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLM0123";
 const reply = (body, status = 200) => ({ ok: status < 400, status, json: async () => body });
-const created = reply({ invite: { id: 31, pet_id: 7, status: "open" }, link: LINK }, 201);
 const invite = (over) => ({
   id: 31,
   pet_id: 7,
@@ -29,21 +26,17 @@ const invite = (over) => ({
 });
 
 let invites;
-let onPost;
 let onPatch;
 let client;
 
 beforeEach(() => {
   mockLangRef.current = "en";
   invites = [];
-  onPost = () => created;
   onPatch = () => reply({ invite: { id: 31, status: "revoked" } });
   global.fetch = jest.fn(async (url, init) => {
-    if (init?.method === "POST") return onPost();
     if (init?.method === "PATCH") return onPatch();
     return reply({ invites });
   });
-  jest.spyOn(Share, "share").mockResolvedValue({ action: Share.sharedAction });
   jest.spyOn(Alert, "alert").mockImplementation(() => {});
 });
 
@@ -56,7 +49,7 @@ const open = () => {
   client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
   return render(
     <QueryClientProvider client={client}>
-      <InviteVet pet={{ id: 7, name: "Luna" }} />
+      <InviteVet />
     </QueryClientProvider>,
   );
 };
@@ -66,88 +59,20 @@ const writes = () =>
     .filter(([, init]) => init?.method)
     .map(([url, init]) => [url, init.method, JSON.parse(init.body)]);
 
-test("says the rules before anything is created", async () => {
+test("shows nothing, and creates nothing, when there are no earlier invites", async () => {
   const s = open();
-  expect(s.getByText("The link works once, for 7 days.")).toBeTruthy();
-  expect(s.getByText("Whoever opens it must have a vet business on PawPi.")).toBeTruthy();
-  expect(s.getByText("Nothing in the record is shared until you approve their request.")).toBeTruthy();
   await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+  await waitFor(() => expect(client.isFetching()).toBe(0));
+  expect(s.queryByTestId("vet-invite")).toBeNull();
   expect(writes()).toEqual([]);
-  expect(Share.share).not.toHaveBeenCalled();
-});
-
-test("says the same rules in Spanish", () => {
-  mockLangRef.current = "es";
-  const s = open();
-  expect(s.getByText("El enlace funciona una sola vez, durante 7 días.")).toBeTruthy();
-  expect(s.getByText("Quien lo abra tiene que tener un negocio veterinario en PawPi.")).toBeTruthy();
-  expect(s.getByText("No se comparte nada de la ficha hasta que apruebes su solicitud.")).toBeTruthy();
-});
-
-test("creates for this dog, hands the link to the share sheet, and keeps it nowhere", async () => {
-  const spies = ["log", "info", "warn", "error", "debug"].map((m) =>
-    jest.spyOn(console, m).mockImplementation(() => {}),
-  );
-  const s = open();
-  invites = [invite()];
-  fireEvent.press(s.getByTestId("vet-invite-create"));
-
-  await waitFor(() => expect(Share.share).toHaveBeenCalledTimes(1));
-  expect(writes()).toEqual([["/api/care-access/invites", "POST", { petId: 7 }]]);
-  const { message } = Share.share.mock.calls[0][0];
-  expect(message).toContain("Luna");
-  expect(message).toContain("works once, for 7 days, and nothing is shared until I approve it");
-  expect(message.endsWith(`\n${LINK}`)).toBe(true);
-
-  await waitFor(() => expect(s.getByTestId("vet-invite-row-31")).toBeTruthy());
-  const secret = LINK.split("#")[1];
-  const cached = JSON.stringify([
-    client.getQueryCache().getAll().map((q) => [q.queryKey, q.state.data]),
-    client.getMutationCache().getAll().map((m) => m.state),
-  ]);
-  expect(cached).not.toContain(secret);
-  expect(JSON.stringify(s.toJSON())).not.toContain(secret);
-  expect(JSON.stringify(spies.flatMap((spy) => spy.mock.calls))).not.toContain(secret);
   expect(Alert.alert).not.toHaveBeenCalled();
 });
 
-test.each([
-  ["closed without sending", () => Share.share.mockResolvedValue({ action: Share.dismissedAction })],
-  ["that failed to open", () => Share.share.mockRejectedValue(new Error("no share sheet"))],
-])("a share sheet %s offers to withdraw the invite, since the link cannot be shown again", async (_n, arrange) => {
-  arrange();
+test("heads the list in Spanish", async () => {
+  mockLangRef.current = "es";
+  invites = [invite()];
   const s = open();
-  fireEvent.press(s.getByTestId("vet-invite-create"));
-
-  await waitFor(() => expect(Alert.alert).toHaveBeenCalled());
-  const [title, body, buttons] = Alert.alert.mock.calls[0];
-  expect(title).toBe("The link wasn't sent");
-  expect(`${title}${body}`).not.toContain("vet-invite#");
-  buttons.find((b) => b.text === "Withdraw invite").onPress();
-  await waitFor(() =>
-    expect(writes()).toContainEqual(["/api/care-access/invites/31", "PATCH", { action: "revoke" }]),
-  );
-});
-
-test.each([
-  [
-    "the open-invite limit",
-    reply({ code: "invite_limit", limit: 5 }, 409),
-    "Too many open invites",
-    "You can have up to 5 open invites across all your dogs. Withdraw one to create another.",
-  ],
-  ["the rate limit", reply({ code: "rate_limited" }, 429), "Try again later", /too many tries/],
-  ["a dog that is not theirs", reply({ error: "Pet not found" }, 404), "No invite was created", /owner/],
-  ["a server error", reply({}, 500), "Couldn't create the invite", /Nothing was shared/],
-])("explains %s", async (_name, answer, title, body) => {
-  onPost = () => answer;
-  const s = open();
-  fireEvent.press(s.getByTestId("vet-invite-create"));
-
-  await waitFor(() => expect(Alert.alert).toHaveBeenCalled());
-  expect(Alert.alert.mock.calls[0][0]).toBe(title);
-  expect(Alert.alert.mock.calls[0][1]).toMatch(body);
-  expect(Share.share).not.toHaveBeenCalled();
+  await waitFor(() => expect(s.getByText("Tus invitaciones anteriores")).toBeTruthy());
 });
 
 test("lists every state, and only an open invite can be withdrawn", async () => {
@@ -207,7 +132,7 @@ test("opening it again reads the invites again, even while the cached list still
     client = shared;
     return render(
       <QueryClientProvider client={shared}>
-        <InviteVet pet={{ id: 7, name: "Luna" }} />
+        <InviteVet />
       </QueryClientProvider>,
     );
   };

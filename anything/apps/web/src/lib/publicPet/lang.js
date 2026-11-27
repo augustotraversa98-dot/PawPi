@@ -1,5 +1,5 @@
 // Which language PawPi's pages for tag scanners, vets and businesses open in: the private-link pet pages
-// (/p/tag, /p/card), the vet invite page and the provider panel. One rule:
+// (/p/tag, /p/card), the vet invite page, the shared record page and the provider panel. One rule:
 //   1. `?lang=es|en` in the address,
 //   2. the choice this viewer made before with the ES / EN switch (remembered in this browser, see langStore.js),
 //   3. the browser's FIRST preferred language: any `en*` → English; anything else, or none → Spanish (es-AR),
@@ -25,7 +25,7 @@ export function pickVisitorLang({ search, remembered, languages } = {}) {
 
 // The paths whose pages follow this rule. Case-insensitive because the router also matches /P/Tag/....
 export function isVisitorLangPath(pathname) {
-  return /^\/+(p|vet-invite|provider)(\/|$)/i.test(String(pathname || ""));
+  return /^\/+(p|vet-invite|shared-record|provider)(\/|$)/i.test(String(pathname || ""));
 }
 
 export const htmlLang = (lang) => (lang === "en" ? "en" : "es-AR");

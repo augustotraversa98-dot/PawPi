@@ -3,7 +3,8 @@
 Status: 2026-11-26. Sections and expiry are built on the server and the web provider panel (migration 0147, applied by
 hand before the server is deployed; then `supabase/verify_0147.sql`), and so are sharing while a provider's request is
 pending, telling the provider when access is given or revoked, and inviting a vet by link (migration 0148, then
-`supabase/verify_0148.sql`; server and web). Part 4 is not built.
+`supabase/verify_0148.sql`; server and web). Record links, which open with no account (migration 0153, applied by hand
+after the merge; then `supabase/verify_0153.sql`), are section 5. Part 4 is not built.
 
 ## 1. Grants (`care_access_grants`)
 
@@ -99,6 +100,9 @@ In the app (`mobile/src/components/Health/VetShare/InviteVet.jsx`, released vers
 offers **Invite a vet by link** to the pet's owner, states the rules before creating, hands the link straight to the
 phone's share sheet without keeping it, and lists every invite of the owner with its state and **Withdraw** on open ones.
 A `care_access_requested` notification, in the list or as a tapped push, opens Data Access.
+
+In app versions that create record links (section 5), the share sheet no longer creates invites: it lists the ones made
+earlier, with **Withdraw** on open ones.
 
 ## 2. What the vet sees
 
@@ -198,3 +202,47 @@ Each needs its own change with owner review.
    that access in Data Access and the share sheet's list, but changes it only through a new request.
 3. **More sections** (allergies, conditions, medications, surgeries): each needs a read policy, a branch in the record
    route and a record screen section.
+
+## 5. Record links (no account)
+
+Migration 0153. A link is a different thing from an invite (section 1) and lives in its own table, so an invite made
+before, or by an app that predates links, never shows anything to anyone.
+
+**The owner** (not family members) creates one for one pet: `POST /api/care-access/links`
+`{petId, sections, expiry, allowNotes}`. Every field is required: one or more of the eight section keys, `7d`, `30d` or
+`1y` (there is no "until revoked"), and a boolean. 201 `{link, url}`; the address `<site>/shared-record#<token>` is
+returned only then. At most 10 links in use per owner (409 `link_limit`); creating is rate limited.
+`GET /api/care-access/links?petId=` answers `{available, links}` without any token;
+`PATCH /api/care-access/links/[linkId]` `{action: "revoke"}` removes one and is never limited. On a database without
+0153, `available` is false and creating answers 409 `share_links_unavailable`.
+
+**Whoever has the link** opens `/shared-record`, with no account. The page takes the token from after the `#`, keeps it
+in the tab's session storage, removes it from the address bar and sends it only in a request body. The page and the
+answers are `no-store`, `noindex` and `no-referrer`. Three public routes, each reading a small, size-capped body (413 beyond it), rate limited per sender address and
+checking the link on every call (not revoked, not expired, the pet still belongs to the link's owner):
+
+| Route | Answer |
+|---|---|
+| `POST /api/public/record-link/open` `{token}` | `{record}`: pet name, owner display name, end date, the sections and only their data |
+| `POST /api/public/record-link/file` `{token, kind, id}` | `{url}`: a signed address of about 60 s for a file of a granted document or photo check. 409 `file_not_available` for a file that is not a private file of that pet (older public web addresses are never handed out) |
+| `POST /api/public/record-link/notes` `{token, note}` | 201 `{note}`: adds one vet note, only when the link allows it; at most 2000 characters and 10 notes per link in 24 h (429 `note_limit`) |
+
+An unusable link answers 403 `link_not_valid`, whatever the reason. The database is reached only through
+`app_record_link_view`, `app_record_link_file` and `app_record_link_add_note`.
+
+**What a section opens** is the table in section 2. The medical profile, emergency contact and insurance columns are
+returned separately. No user ids, storage keys or file addresses are in the record.
+
+**Notes added through a link** are only additions: nothing can be changed or deleted through a link. The author is the
+signed-in visitor's display name, read by the database from the request's identity, never from the request body;
+otherwise the note has no name and reads "Anonymous" / "Cambios de alguien externo". `vet_notes.via_record_link` marks
+them. `vet_name` holds that label in the owner's language followed by "(shared link)" / "(enlace compartido)", and the
+notes routes answer it as `created_by_name` too (with `created_by_role` `editor`), so app versions released before
+links show where such a note came from and never read it as the owner's; the vet summary data carries the same text.
+The current app, the provider record page and the link page show `external_author_name` with their own mark. The three
+link columns are written only by the database, never by the application role. Link notes do not count towards
+`app_pet_has_vet_relationship`. If the signed-in author deletes their account, the name becomes "Former member".
+
+Tests: `web/test/integration/vet-record-links.integration.test.ts`, `web/src/app/shared-record/page.test.jsx`,
+`mobile/src/components/Health/VetShare/RecordLinks.test.jsx`.
+

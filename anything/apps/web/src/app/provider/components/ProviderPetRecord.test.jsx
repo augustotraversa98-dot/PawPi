@@ -346,3 +346,36 @@ describe("ProviderPetRecord — shared by section", () => {
     languages.mockRestore();
   });
 });
+
+describe("ProviderPetRecord — notes added through a record link", () => {
+  const linkNote = (over) => ({
+    id: 20,
+    note_date: "2026-06-02",
+    note: "From outside",
+    vet_name: "Cambios de alguien externo",
+    via_record_link: true,
+    external_author_name: null,
+    ...over,
+  });
+
+  it("marks them, names the signed-in author and calls anyone else Anonymous", () => {
+    setRecord({
+      data: {
+        ...GRANTED,
+        notes: [
+          linkNote(),
+          linkNote({ id: 21, external_author_name: "Paula G.", vet_name: "Paula G." }),
+          linkNote({ id: 22, external_author_name: "Former member", vet_name: "Ex integrante" }),
+          GRANTED.notes[0],
+        ],
+      },
+    });
+    renderScreen();
+    expect(screen.getAllByText("Added through a shared link")).toHaveLength(3);
+    expect(screen.getByText("· Anonymous")).toBeInTheDocument();
+    expect(screen.getByText("· Paula G.")).toBeInTheDocument();
+    expect(screen.getByText("· Former member")).toBeInTheDocument();
+    expect(screen.queryByText("· Cambios de alguien externo")).toBeNull();
+    expect(screen.getByText("· Dr Prior")).toBeInTheDocument();
+  });
+});

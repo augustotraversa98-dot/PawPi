@@ -124,6 +124,27 @@ export function grantMatchesChoice(grant, { sections, expiry }, now = Date.now()
   return Math.abs(length - days * DAY_MS) <= EXPIRY_TOLERANCE_MS;
 }
 
+// A record link (no account needed) always ends: there is no "until I revoke it".
+export const LINK_EXPIRIES = ["7d", "30d", "1y"];
+
+// True only when the link the server answered with is exactly what the owner chose: the same sections, the same
+// permission to add notes and the chosen length. A link that is anything else is never sent.
+export function recordLinkMatchesChoice(link, { sections, expiry, allowNotes }) {
+  if (link?.id == null || !sameSet(link.sections, sections)) return false;
+  if (link.allow_notes !== allowNotes) return false;
+  const days = EXPIRY_DAYS[expiry];
+  if (!days || !link.expires_at || !link.created_at) return false;
+  const length = new Date(link.expires_at).getTime() - new Date(link.created_at).getTime();
+  return Math.abs(length - days * DAY_MS) <= EXPIRY_TOLERANCE_MS;
+}
+
+// Links that open the record right now.
+export function activeRecordLinks(links, now = Date.now()) {
+  return (links ?? []).filter(
+    (l) => l?.status === "active" && new Date(l.expires_at).getTime() > now,
+  );
+}
+
 // What the older read grant opens (supabase/migrations/0023, the record and media routes). Keep true to the server.
 const OLDER_READ_LINES = ["medical", "notes", "vaccines", "files"];
 

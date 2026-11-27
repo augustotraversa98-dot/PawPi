@@ -2,9 +2,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Check, Circle, CircleDot, EyeOff, Info, Square, SquareCheck } from "lucide-react-native";
+import { Check, EyeOff, Square, SquareCheck } from "lucide-react-native";
 import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
-import { COLORS, MATERIALS, RADIUS, SPACING, TYPE } from "@/constants/theme";
+import { COLORS, SPACING } from "@/constants/theme";
 import { useMyBookings } from "@/hooks/useProviders";
 import {
   useCareAccessGrants,
@@ -25,7 +25,10 @@ import {
 } from "@/utils/vetShare";
 import GrantAccess, { Bullets } from "./GrantAccess";
 import InviteVet from "./InviteVet";
+import RecordLinks from "./RecordLinks";
 import SecondaryButton from "./SecondaryButton";
+import { Choice, Heading, Note, bold, card, muted, picked, row, text } from "./parts";
+import useRecordLinkSteps from "./useRecordLinkSteps";
 
 // A refused request opened nothing; anything else leaves the owner to check the list.
 const ERROR_KEYS = {
@@ -35,70 +38,14 @@ const ERROR_KEYS = {
   429: "vetShare.error.tooMany",
 };
 
-const text = [TYPE.callout, { color: COLORS.warmBrown, lineHeight: 20 }];
-const bold = [TYPE.callout, { color: COLORS.warmBrown, fontWeight: "800" }];
-const muted = [TYPE.footnote, { color: COLORS.mutedBrown, lineHeight: 18 }];
-const card = {
-  backgroundColor: MATERIALS.surface,
-  borderRadius: RADIUS.control,
-  borderWidth: 1,
-  borderColor: MATERIALS.hairline,
-  padding: SPACING.lg,
-  marginBottom: SPACING.sm,
-};
-const row = { flexDirection: "row", gap: 12 };
-const picked = { borderColor: COLORS.coral, borderWidth: 2 };
-
-function Heading({ children }) {
-  return (
-    <Text
-      accessibilityRole="header"
-      style={[TYPE.headline, { color: COLORS.warmBrown, marginTop: SPACING.lg, marginBottom: SPACING.sm }]}
-    >
-      {children}
-    </Text>
-  );
-}
-
-// A radio or checkbox row with a title and an optional explanation.
-function Choice({ testID, role, selected, onPress, title, description }) {
-  const On = role === "checkbox" ? SquareCheck : CircleDot;
-  const Off = role === "checkbox" ? Square : Circle;
-  const Icon = selected ? On : Off;
-  return (
-    <TouchableOpacity
-      testID={testID}
-      accessibilityRole={role}
-      accessibilityState={role === "checkbox" ? { checked: selected } : { selected }}
-      onPress={onPress}
-      style={[card, row, { alignItems: "center" }, selected && picked]}
-    >
-      <Icon size={22} color={selected ? COLORS.coral : COLORS.mutedBrown} />
-      <View style={{ flex: 1 }}>
-        <Text style={[TYPE.callout, { fontWeight: "700", color: COLORS.warmBrown }]}>{title}</Text>
-        {description ? <Text style={muted}>{description}</Text> : null}
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-function Note({ icon: Icon = Info, children, testID, style }) {
-  return (
-    <View testID={testID} style={[card, { flexDirection: "row", gap: 8 }, style]}>
-      <Icon size={16} color={COLORS.mutedBrown} style={{ marginTop: 2 }} />
-      <View style={{ flex: 1, gap: 4 }}>{children}</View>
-    </View>
-  );
-}
-
 /**
  * Sharing the vet record: the owner picks a vet, the parts and how long, reviews who can see what, and consents.
  * Also lists who has access, with revoke. Mount it only while open (each opening starts with nothing selected).
  *
  * Props: pet ({ id, name, is_shared }), onClose, onOpenRequests (show the pending access requests), and optionally
  * provider ({ providerId, name, checkName }) to share with that one only (a booking, or a request being answered;
- * checkName asks the owner to make sure that business is their vet). Without a provider the owner can also invite a
- * vet by link.
+ * checkName asks the owner to make sure that business is their vet). Without a provider the owner can also create a
+ * link for a vet without PawPi (useRecordLinkSteps).
  */
 export default function ShareWithVetSheet({ pet, provider, onClose, onOpenRequests }) {
   const { t } = useTranslation();
@@ -119,6 +66,7 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
   const [sections, setSections] = useState([]);
   const [expiry, setExpiry] = useState(null);
   const [consent, setConsent] = useState(false);
+  const links = useRecordLinkSteps({ pet });
 
   const reset = () => {
     setStep("choose");
@@ -139,7 +87,7 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
 
   useEffect(() => {
     scrollRef.current?.scrollTo?.({ y: 0, animated: false });
-  }, [step]);
+  }, [step, links.step]);
 
   const revokeNow = (grantId) =>
     updateGrant
@@ -370,9 +318,14 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
     </>
   );
 
-  // With no booked vet to pick, the invite is the way forward, so it sits right there.
+  // With no booked vet to pick, a link is the way forward, so it sits right there.
   const noVets = ready && !fixed && vets.length === 0;
-  const invite = !fixed && supported ? <InviteVet pet={pet} /> : null;
+  const byLink = fixed ? null : (
+    <>
+      <RecordLinks pet={pet} onCreate={links.start} />
+      {supported ? <InviteVet /> : null}
+    </>
+  );
 
   const renderChoices = () => (
     <>
@@ -394,7 +347,7 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
         </>
       ) : null}
 
-      {noVets ? invite : null}
+      {noVets ? byLink : null}
 
       {canChoose ? (
         <>
@@ -444,7 +397,7 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
         </>
       ) : null}
 
-      {noVets ? null : invite}
+      {noVets ? null : byLink}
 
       <Heading>{t("vetShare.linkTitle")}</Heading>
       <View style={card}>
@@ -542,6 +495,9 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
 
   let content = <Text style={text}>{t("vetShare.ownerOnly", { pet: petName })}</Text>;
   if (isOwner) content = reviewing ? renderReview() : renderChoices();
+  if (isOwner && links.step) {
+    ({ content, ctaLabel, ctaDisabled, onCtaPress } = links);
+  }
 
   return (
     <KeyboardSafeFormModal

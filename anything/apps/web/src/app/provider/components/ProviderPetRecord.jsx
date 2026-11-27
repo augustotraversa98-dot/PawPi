@@ -611,6 +611,12 @@ function LabResultsCard({ t, lang, results }) {
   );
 }
 
+// Who added a note through a record link: their name, or that it was someone with no account.
+function linkNoteAuthor(note, t) {
+  if (note.external_author_name === "Former member") return t.notes.formerMember;
+  return note.external_author_name || t.notes.anonymous;
+}
+
 function VetNotesCard({ t, lang, notes, addNote, onWriteError, readOnly }) {
   const {
     register,
@@ -709,7 +715,16 @@ function VetNotesCard({ t, lang, notes, addNote, onWriteError, readOnly }) {
                 <span className="font-semibold text-[#3B241B]">
                   {formatRecordDate(n.note_date, lang)}
                 </span>
-                {n.vet_name && <span>· {n.vet_name}</span>}
+                {n.via_record_link ? (
+                  <>
+                    <span>· {linkNoteAuthor(n, t)}</span>
+                    <span className="rounded-full bg-[#FFF1E2] px-2 py-0.5 font-semibold text-[#B75D32]">
+                      {t.notes.viaLink}
+                    </span>
+                  </>
+                ) : (
+                  n.vet_name && <span>· {n.vet_name}</span>
+                )}
                 {n.appointment_id != null && (
                   <span className="rounded-full bg-[#FFF1E2] px-2 py-0.5 font-semibold text-[#B75D32]">
                     {fill(t.notes.booking, { id: n.appointment_id })}

@@ -353,6 +353,19 @@ ACTION 1).
 > `contact_value`. The finder-message function, its limits and the retention job are unchanged. Verify:
 > `supabase/verify_0152.sql`. Hand-applied after merge; the web app works without it (switches reported unavailable).
 
+> **0153_vet_record_links (2026-11-26) — sharing parts of the vet record by link, with no account. HAND-APPLIED after
+> merge.** New table `care_record_links` (one row per owner-created link for one pet: hashed token, chosen sections,
+> `allow_notes`, an end date of at most a year, `revoked_at`), ENABLE+FORCE RLS with owner select / insert / revoke-only
+> update and no delete. `vet_notes` gains `via_record_link`, `record_link_id`, `external_author_name`, which the
+> application role cannot set or change (trigger `vet_notes_record_link_guard`); another trigger replaces the name when
+> its author's account goes. `vet_name` of a link note ends in "(shared link)" / "(enlace compartido)", so every app
+> version shows where it came from. Link holders reach data only through the DEFINER functions
+> `app_record_link_view` / `app_record_link_file` / `app_record_link_add_note` (at most 10 notes per link per 24 h).
+> `app_pet_has_vet_relationship` ignores notes added through a link; `app_purge_finder_details` also ages out the
+> `record_link_*` sender counters. `care_access_invites` (0148) is untouched. The web app works without it (links
+> report as not available). Verify: `supabase/verify_0153.sql` (20 rows, all PASS). Proven as `pawpi_app` in
+> `vet-record-links.integration.test.ts`.
+
 > **0155** shows a friend's Care Ring streak. ONE read-only DEFINER function, `app_friend_streaks(integer[])` →
 > `(pet_id, streak)`; no table, column or policy changes. The viewer is `current_app_user_id()`; a row comes back
 > only for a dog that one of the viewer's own dogs follows, is an accepted `pet_friendships` friend of, or shares an
