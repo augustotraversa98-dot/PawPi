@@ -5,9 +5,9 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 import { withRateLimit } from "@/app/api/utils/rateLimit";
 import { isBlockedBetween } from "@/app/api/utils/moderation";
 
-// Resolve the caller's user_profiles.id and verify they own followerPetId.
-// Returns { error, status } on failure, or { userId } on success.
-async function resolveOwnedFollower(authUserId, followerPetId) {
+// Resolve the caller's user_profiles.id and verify they may follow AS followerPetId: its owner, or a family member of
+// it (0161). Returns { error, status, code } on failure, or { userId, dogOwnerId } on success (dogOwnerId: family only).
+async function resolveFollower(authUserId, followerPetId) {
   if (!followerPetId) {
     return { error: "followerPetId is required", status: 400 };
   }
@@ -24,19 +24,35 @@ async function resolveOwnedFollower(authUserId, followerPetId) {
 
   const userId = userProfile[0].id;
 
-  // The follower pet must belong to the caller.
   const ownedPet = await sql`
     SELECT id FROM pets
     WHERE id = ${followerPetId} AND owner_user_id = ${userId}
     LIMIT 1
   `;
 
-  if (ownedPet.length === 0) {
-    return { error: "Not allowed to act for this pet", status: 403 };
+  if (ownedPet.length > 0) return { userId };
+
+  // The policy check covers a database without 0161: there the insert would fail and the delete would quietly remove
+  // nothing, so family is refused up front.
+  const familyPet = await sql`
+    SELECT p.owner_user_id FROM pets p
+    WHERE p.id = ${followerPetId}
+      AND app_user_has_pet_family(p.id)
+      AND EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'pet_follows' AND policyname = 'pet_follows_family_delete'
+      )
+    LIMIT 1
+  `;
+
+  if (familyPet.length === 0) {
+    return { error: "Not allowed to act for this pet", status: 403, code: "follow_not_allowed" };
   }
 
-  return { userId };
+  return { userId, dogOwnerId: familyPet[0].owner_user_id };
 }
+
+const refusal = ({ error, status, code }) => Response.json(code ? { error, code } : { error }, { status });
 
 async function followersCountOf(followedPetId) {
   const rows = await sql`
@@ -59,10 +75,8 @@ async function POST(request, { params }) {
     const body = await request.json().catch(() => ({}));
     const { followerPetId } = body;
 
-    const owner = await resolveOwnedFollower(session.user.id, followerPetId);
-    if (owner.error) {
-      return Response.json({ error: owner.error }, { status: owner.status });
-    }
+    const follower = await resolveFollower(session.user.id, followerPetId);
+    if (follower.error) return refusal(follower);
 
     // Cannot follow yourself.
     if (String(followerPetId) === String(followedPetId)) {
@@ -82,8 +96,13 @@ async function POST(request, { params }) {
     }
 
     // A blocked pair (either direction) cannot follow each other — enforced on the API, not just in
-    // the UI (flow audit F2-05). Generic copy: never reveals who blocked whom.
-    if (await isBlockedBetween(owner.userId, followedPet[0].owner_user_id)) {
+    // the UI (flow audit F2-05). Generic copy: never reveals who blocked whom. For family, a block of
+    // the dog's owner counts too: the follow is in that dog's name.
+    const targetOwnerId = followedPet[0].owner_user_id;
+    if (
+      (await isBlockedBetween(follower.userId, targetOwnerId)) ||
+      (follower.dogOwnerId && (await isBlockedBetween(follower.dogOwnerId, targetOwnerId)))
+    ) {
       return Response.json({ error: "You can't interact with this user" }, { status: 403 });
     }
 
@@ -100,7 +119,7 @@ async function POST(request, { params }) {
       // Notify the followed pet's owner (ticket 2.26). Fire-and-don't-block.
       await safeNotify({
         recipient: followedPet[0].owner_user_id,
-        actor: owner.userId,
+        actor: follower.userId,
         type: "follow",
         subjectRef: String(followedPetId),
         body: "started following your pet",
@@ -128,10 +147,8 @@ async function DELETE(request, { params }) {
     const body = await request.json().catch(() => ({}));
     const { followerPetId } = body;
 
-    const owner = await resolveOwnedFollower(session.user.id, followerPetId);
-    if (owner.error) {
-      return Response.json({ error: owner.error }, { status: owner.status });
-    }
+    const follower = await resolveFollower(session.user.id, followerPetId);
+    if (follower.error) return refusal(follower);
 
     await sql`
       DELETE FROM pet_follows

@@ -106,14 +106,32 @@ describe('POST /api/pets/[id]/follow', () => {
     expect(notifyCall).toBeFalsy();
   });
 
-  it('403 when followerPetId is not owned by the caller', async () => {
+  it('403 with a code when the caller neither owns followerPetId nor is family of it', async () => {
     auth.mockResolvedValue(SESSION);
-    // profile found, but owned-pet lookup returns empty -> not the caller's pet.
-    sql.mockResolvedValueOnce([PROFILE_ROW]).mockResolvedValueOnce([]);
+    // profile found; owned-pet and family lookups are both empty.
+    sql.mockResolvedValueOnce([PROFILE_ROW]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
     const res = await POST(followReq(), { params: { id: '2' } });
 
     expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe('follow_not_allowed');
+  });
+
+  it('family: checks blocks for the member AND for the dog owner', async () => {
+    auth.mockResolvedValue(SESSION);
+    isBlockedBetween.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([]) // not the owner
+      .mockResolvedValueOnce([{ owner_user_id: 5 }]) // family of a dog owned by 5
+      .mockResolvedValueOnce([FOLLOWED_PET]);
+
+    const res = await POST(followReq(), { params: { id: '2' } });
+
+    expect(res.status).toBe(403);
+    expect(isBlockedBetween.mock.calls).toEqual([[7, 9], [5, 9]]);
+    const texts = sql.mock.calls.map((c) => (c?.[0] ?? []).join(' '));
+    expect(texts.some((t) => t.includes('INSERT INTO pet_follows'))).toBe(false);
   });
 
   it('404 when the followed pet does not exist', async () => {
@@ -166,9 +184,9 @@ describe('DELETE /api/pets/[id]/follow', () => {
     expect(await res.json()).toEqual({ following: false, followersCount: 0 });
   });
 
-  it('403 when followerPetId is not owned by the caller', async () => {
+  it('403 when the caller neither owns followerPetId nor is family of it', async () => {
     auth.mockResolvedValue(SESSION);
-    sql.mockResolvedValueOnce([PROFILE_ROW]).mockResolvedValueOnce([]);
+    sql.mockResolvedValueOnce([PROFILE_ROW]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
     const res = await DELETE(unfollowReq(), { params: { id: '2' } });
 

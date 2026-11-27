@@ -1099,7 +1099,10 @@
     "noMatches": "No matches",
     "notFollowing": "Not following anyone yet",
     "noFollowers": "No followers yet",
-    "searchPlaceholder": "Search by name or @handle"
+    "searchPlaceholder": "Search by name or @handle",
+    "errorTitle": "Couldn't update follow",
+    "errorNotAllowed": "Only {{name}}'s owner or family can follow pets for them.",
+    "errorGeneric": "Please try again in a moment."
   },
   "remindersScreen": {
     "title": "Reminders & Routines",

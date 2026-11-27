@@ -10,6 +10,7 @@ import { OwnerMenu } from "@/components/More/OwnerMenu";
 import { SharedPetBadge } from "@/components/Pets/SharedPetBadge";
 import { canDoOnPetOrUnknown } from "@/utils/petPermissions";
 import { canManageMoment, canDeleteMoment } from "@/utils/postPermissions";
+import { alertFollowFailure } from "@/utils/followError";
 import { useMyProfileId } from "@/hooks/useUserProfile";
 import { useMomentAuthors } from "@/hooks/useMomentAuthors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
@@ -206,8 +207,11 @@ export default function PetProfileScreen({ embedded = false }) {
 
   const handleToggleFollow = useCallback(() => {
     if (!canFollow) return;
-    toggleFollow.mutate({ isFollowing, viewerPetId });
-  }, [canFollow, isFollowing, viewerPetId, toggleFollow]);
+    toggleFollow.mutate(
+      { isFollowing, viewerPetId },
+      { onError: (error) => alertFollowFailure(t, error, currentPet?.name) },
+    );
+  }, [canFollow, isFollowing, viewerPetId, toggleFollow, t, currentPet?.name]);
 
   // Delete one of your own posts from the profile grid (confirm first). On success
   // refetch the grid so the tile disappears; useDeletePost also invalidates the

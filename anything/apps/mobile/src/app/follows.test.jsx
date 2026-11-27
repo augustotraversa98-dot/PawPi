@@ -22,7 +22,7 @@ jest.mock("react-native-safe-area-context", () => ({
 jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
 jest.mock("@/components/Pets/PetAvatar", () => ({ PetAvatar: () => null }));
 jest.mock("@/hooks/usePetProfile", () => ({
-  useCurrentPet: () => ({ data: { id: 4 } }),
+  useCurrentPet: () => ({ data: { id: 4, name: "Rocky" } }),
 }));
 jest.mock("@/hooks/usePetSocialProfile", () => ({
   useFollowList: (...args) => {
@@ -78,6 +78,30 @@ test("tapping Follow calls the follow endpoint and flips to Following", async ()
   );
   // Both rows now read "Following" (9 flipped, 10 already).
   expect(getAllByText("Following").length).toBe(2);
+});
+
+describe("a refused follow", () => {
+  const press = async (body) => {
+    const alert = jest.spyOn(require("react-native").Alert, "alert").mockImplementation(() => {});
+    global.fetch = jest.fn(() => Promise.resolve({ ok: false, status: 403, json: async () => body }));
+    const screen = render(<FollowsScreen />);
+    fireEvent.press(screen.getByTestId("follow-toggle-9"));
+    await waitFor(() => expect(alert).toHaveBeenCalled());
+    const shown = alert.mock.calls[0];
+    alert.mockRestore();
+    return { screen, shown };
+  };
+
+  test("says that only the owner or family can follow, and switches the button back", async () => {
+    const { screen, shown } = await press({ code: "follow_not_allowed" });
+    expect(shown).toEqual(["Couldn't update follow", "Only Rocky's owner or family can follow pets for them."]);
+    expect(screen.getByText("Follow")).toBeTruthy();
+  });
+
+  test("says to try again for any other failure", async () => {
+    const { shown } = await press({ error: "Failed to follow pet" });
+    expect(shown).toEqual(["Couldn't update follow", "Please try again in a moment."]);
+  });
 });
 
 test("tapping a row opens that pet's profile", () => {

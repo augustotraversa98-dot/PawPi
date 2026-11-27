@@ -168,4 +168,16 @@ describe("useToggleFollow", () => {
     expect(cached.isFollowing).toBe(false);
     expect(cached.stats.followers).toBe(3);
   });
+
+  test("a refusal keeps the server's code so the screen can explain it", async () => {
+    global.fetch = jest.fn(async () => ({ ok: false, json: async () => ({ code: "follow_not_allowed" }) }));
+    const { result } = renderHook(() => useToggleFollow("7"), { wrapper: makeWrapper(makeClient()) });
+
+    act(() => {
+      result.current.mutate({ isFollowing: false, viewerPetId: 4 });
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error.code).toBe("follow_not_allowed");
+  });
 });

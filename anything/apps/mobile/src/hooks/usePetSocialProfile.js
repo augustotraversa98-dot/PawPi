@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { friendStreaksKey } from "@/hooks/useFriendStreaks";
+import { followFailure } from "@/utils/followError";
 
 // (AUDIT A-31) The profile payload's `isFollowing` depends on the VIEWER pet, so
 // the cache must be keyed on both. Keying on petId alone served a stale
@@ -72,7 +73,7 @@ export function useToggleFollow(petId) {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to toggle follow");
+        throw await followFailure(response);
       }
 
       return response.json();

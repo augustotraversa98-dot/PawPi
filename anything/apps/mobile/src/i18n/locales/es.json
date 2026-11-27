@@ -1099,7 +1099,10 @@
     "noMatches": "Sin resultados",
     "notFollowing": "Todavía no seguís a nadie",
     "noFollowers": "Todavía no hay seguidores",
-    "searchPlaceholder": "Buscá por nombre o @usuario"
+    "searchPlaceholder": "Buscá por nombre o @usuario",
+    "errorTitle": "No pudimos actualizar el seguimiento",
+    "errorNotAllowed": "Solo el dueño o la familia de {{name}} puede seguir mascotas en su nombre.",
+    "errorGeneric": "Probá de nuevo en un momento."
   },
   "remindersScreen": {
     "title": "Recordatorios y rutinas",
