@@ -1,6 +1,6 @@
-**Last updated:** November 26, 2026
+**Last updated:** November 27, 2026
 
-This Privacy Policy explains how Augusto Traversa ("PawPi," "we," "us") collects, uses, and
+This Privacy Policy explains how Tanquetats 2022 ("PawPi," "we," "us") collects, uses, and
 shares information when you use the PawPi mobile app and related services (the "Service"). PawPi is
 an all-in-one app for dog owners: a social feed, dog profiles, health tracking, reminders, vet
 records, training, community, adoption, and a marketplace of pet services and products.
@@ -11,8 +11,9 @@ If you do not agree with this Policy, please do not use the Service.
 
 The data controller is:
 
-- **Augusto Traversa**
-- Matacos y Alborada S/N
+- **Tanquetats 2022**
+- NIF/CIF: B10579803
+- Calle Torrente 18 26, 46014 Valencia, Spain
 - Contact: **support@pawpi.info**
 
 ## 2. Information we collect
@@ -409,6 +410,19 @@ You can also:
 - revoke a caregiver's or provider's access at any time;
 - delete your account in the app (Settings → Delete account).
 
+### Rights under EU and Spanish data protection law
+
+The data controller is established in Spain, so the EU General Data Protection Regulation (GDPR) and
+Spain's Organic Law 3/2018 on the Protection of Personal Data and the Guarantee of Digital Rights
+(LOPDGDD) apply to this processing, wherever you live. You have the rights of access, rectification,
+erasure, restriction of processing, data portability, and objection. To exercise them, write to
+**support@pawpi.info**. You also have the right to lodge a complaint with the Spanish Data Protection
+Agency (Agencia Española de Protección de Datos, AEPD): [www.aepd.es](https://www.aepd.es). These
+rights add to, and do not limit, any rights you have under the law of the place where you live.
+
+Some of the providers listed in Section 8 may process your information outside the European Economic
+Area; where the GDPR requires it, we use appropriate safeguards for those transfers (see Section 13).
+
 ## 11. Deleting your account
 
 You can permanently delete your account from **Settings → Delete account**. This irreversibly removes
@@ -449,5 +463,5 @@ changes, provide additional notice within the app. We record the policy version 
 
 ## 16. Contact us
 
-Questions about this Policy or your data: **support@pawpi.info**, Augusto Traversa,
-Matacos y Alborada S/N.
+Questions about this Policy or your data: **support@pawpi.info**, Tanquetats 2022,
+Calle Torrente 18 26, 46014 Valencia, Spain.

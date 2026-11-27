@@ -1,7 +1,7 @@
-**Última actualización:** 25 de noviembre de 2026
+**Última actualización:** 27 de noviembre de 2026
 
 Estos Términos del Servicio ("Términos") rigen tu uso de la aplicación móvil PawPi y los servicios
-relacionados (el "Servicio"), provistos por Augusto Traversa ("PawPi", "nosotros"). Al crear una
+relacionados (el "Servicio"), provistos por Tanquetats 2022 ("PawPi", "nosotros"). Al crear una
 cuenta o usar el Servicio, aceptás estos Términos y nuestra Política de Privacidad.
 
 ## 1. Elegibilidad y cuentas
@@ -163,10 +163,20 @@ que los cambios entren en vigencia significa que aceptás los Términos actualiz
 
 ## 15. Ley aplicable y disputas
 
-Estos Términos se rigen por las leyes de la República Argentina, sin considerar sus normas de conflicto
-de leyes. Las disputas se resolverán en los tribunales de la Ciudad de Buenos Aires, Argentina, salvo
-que una ley local imperativa disponga lo contrario.
+Salvo que la normativa imperativa de protección de las personas consumidoras disponga lo contrario,
+estos Términos se rigen por la ley española y las disputas se resolverán en los juzgados y tribunales
+de Valencia, España.
 
 ## 16. Contacto
 
-Consultas sobre estos Términos: **support@pawpi.info**, Augusto Traversa, Matacos y Alborada S/N.
+Consultas sobre estos Términos: **support@pawpi.info**, Tanquetats 2022, Calle Torrente 18 26, 46014 Valencia, Spain.
+
+## 17. Aviso legal
+
+Información facilitada conforme a la Ley 34/2002, de servicios de la sociedad de la información y de
+comercio electrónico (LSSI-CE). La app PawPi y el sitio web pawpi.info son provistos por:
+
+- **Razón social:** Tanquetats 2022
+- **NIF/CIF:** B10579803
+- **Domicilio:** Calle Torrente 18 26, 46014 Valencia, Spain
+- **Correo electrónico:** **support@pawpi.info**

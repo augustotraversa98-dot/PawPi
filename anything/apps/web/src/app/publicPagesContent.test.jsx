@@ -94,7 +94,7 @@ describe.each(LANGS)("public pages (%s)", (lang, search) => {
       "href",
       "mailto:support@pawpi.info",
     );
-    expect(footer.getByText(/© 2026 PawPi · Augusto Traversa/)).toBeInTheDocument();
+    expect(footer.getByText(/© 2026 PawPi · Tanquetats 2022/)).toBeInTheDocument();
     // Apple's own English credit lines, in both languages.
     expect(
       footer.getByText(

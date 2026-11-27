@@ -44,3 +44,10 @@ review (build 33) unless it says so. When one is picked up, move it to `docs/roa
 - **Needs:** the route (no migration, read from the RLS policies; the former member cannot read the other owner's `pets` row, so the
   query must not join it), an integration test against real Postgres (the design's SQL was **not** run), the app call with the
   fallback, EN + ES copy, and a device check on a throwaway account. Out of scope until someone says go.
+
+## 4. TEMPORARY legal identity (Tanquetats 2022) — revert after the ElevenLabs grant answer
+
+- **What it is:** the legal pages (privacy, terms, support, EN + ES), the `docs/legal` copies and the site footer name
+  Tanquetats 2022 as controller/provider, and the Terms use Spanish law and the courts of Valencia. This is temporary.
+- **To change it back:** follow [`docs/legal/TEMP-company-identity-revert.md`](legal/TEMP-company-identity-revert.md)
+  (old and new strings, added sections, previous dates and consent versions).
