@@ -1,14 +1,17 @@
 import React, { useState } from "react";
-import { View, Text, ActivityIndicator, Alert, Platform } from "react-native";
+import { View, Text, ActivityIndicator, Alert, Platform, Linking } from "react-native";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { useTranslation } from "react-i18next";
 import { COLORS, TYPE, SPACING, RADIUS } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
 import { signInWithApple, signInWithGoogle } from "@/utils/auth/socialAuth";
 import { trackFunnel } from "@/telemetry/track";
+import { recordSocialConsent } from "@/utils/auth/recordSocialConsent";
+import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from "@/constants/legal";
 
-// The social sign-in buttons shown on the Welcome screen. Each button appears only when its
-// provider is actually available (see useSocialProviders) — there is no "coming soon".
+// The social sign-in buttons shown on the Welcome screen and under the sign-in window. Each button appears only when
+// its provider is actually available (see useSocialProviders) — there is no "coming soon". Continuing with one of them
+// can create an account, so the Terms line below them is part of the component and the acceptance is recorded.
 //
 //  • Apple uses the official native AppleAuthentication button (App Store guideline 4.8 / Sign in
 //    with Apple design requirement) — never a custom-styled substitute.
@@ -29,6 +32,7 @@ export function SocialSignInButtons({ showGoogle, showApple, onAuthenticated }) 
     try {
       const result = await fn();
       if (result?.jwt) {
+        recordSocialConsent(result.jwt); // not awaited: it must never hold up the sign-in
         onAuthenticated(result);
       }
     } catch (err) {
@@ -94,7 +98,38 @@ export function SocialSignInButtons({ showGoogle, showApple, onAuthenticated }) 
           )}
         </PressableScale>
       ) : null}
+
+      <TermsLine />
     </View>
+  );
+}
+
+function TermsLine() {
+  const { t, i18n } = useTranslation();
+  // The hosted legal pages open in Spanish unless asked for English.
+  const open = (url) => {
+    const target = String(i18n?.language ?? "").startsWith("en") ? `${url}?lang=en` : url;
+    Linking.openURL(target).catch(() => {});
+  };
+  const link = (url, label) => (
+    <Text
+      accessibilityRole={url ? "link" : undefined}
+      onPress={url ? () => open(url) : undefined}
+      style={{ fontWeight: "800", color: COLORS.coral }}
+    >
+      {label}
+    </Text>
+  );
+
+  return (
+    <Text
+      testID="social-terms"
+      style={[TYPE.footnote, { color: COLORS.mutedBrown, textAlign: "center", lineHeight: 19 }]}
+    >
+      {t("welcome.social.agreePrefix")} {link(TERMS_OF_SERVICE_URL, t("welcome.social.terms"))} {t("welcome.social.and")}{" "}
+      {link(PRIVACY_POLICY_URL, t("welcome.social.privacy"))}
+      {t("welcome.social.agreeSuffix")}
+    </Text>
   );
 }
 

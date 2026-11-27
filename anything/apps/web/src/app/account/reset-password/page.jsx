@@ -4,6 +4,8 @@ import {
   passwordStrength,
   PASSWORD_MIN_LENGTH,
 } from "@/app/api/utils/passwordStrength";
+import { ACCOUNT_COPY, keepLang, serverMessage } from "@/lib/account/copy";
+import { useVisitorLang } from "@/lib/publicPet/useVisitorLang";
 
 // Set a new password — step 2 of the self-service reset, and the target of the emailed link
 // (/account/reset-password?token=…).
@@ -28,6 +30,10 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const { lang } = useVisitorLang();
+  const copy = ACCOUNT_COPY[lang];
+  const search = typeof window !== "undefined" ? window.location.search : "";
+  const signInHref = keepLang("/account/signin", search);
 
   const strength = passwordStrength(password);
   const passwordValid = strength.valid;
@@ -37,11 +43,11 @@ export default function ResetPasswordPage() {
     setError(null);
 
     if (!passwordValid) {
-      setError("Please choose a stronger password.");
+      setError(copy.reset.chooseStronger);
       return;
     }
     if (password !== confirmPassword) {
-      setError("Passwords don't match");
+      setError(copy.reset.mismatch);
       return;
     }
 
@@ -55,15 +61,13 @@ export default function ResetPasswordPage() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setError(data.error || "Something went wrong. Please try again.");
+        setError(serverMessage(lang, data));
         return;
       }
 
       setSuccess(true);
     } catch {
-      setError(
-        "Couldn't reach the server. Check your connection and try again.",
-      );
+      setError(copy.unreachable);
     } finally {
       setLoading(false);
     }
@@ -77,16 +81,16 @@ export default function ResetPasswordPage() {
         <div className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-lg">
           <div className="mb-6 text-5xl">🔗</div>
           <h1 className="mb-4 text-2xl font-bold text-[#3B241B]">
-            This link is incomplete
+            {copy.reset.incompleteTitle}
           </h1>
           <p className="mb-8 text-[#7A6254]">
-            Open the link from your reset email, or request a new one.
+            {copy.reset.incompleteBody}
           </p>
           <a
-            href="/account/forgot-password"
+            href={keepLang("/account/forgot-password", search)}
             className="inline-block w-full rounded-xl bg-[#FF6F61] px-4 py-3.5 text-base font-bold text-white shadow-md transition-all hover:bg-[#E85D51]"
           >
-            Request a new link
+            {copy.reset.requestNew}
           </a>
         </div>
       </div>
@@ -99,16 +103,16 @@ export default function ResetPasswordPage() {
         <div className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-lg">
           <div className="mb-6 text-5xl">🎉</div>
           <h1 className="mb-4 text-2xl font-bold text-[#3B241B]">
-            Password updated
+            {copy.reset.doneTitle}
           </h1>
           <p className="mb-8 text-[#7A6254]">
-            You can log in with your new password now.
+            {copy.reset.doneBody}
           </p>
           <a
-            href="/account/signin"
+            href={signInHref}
             className="inline-block w-full rounded-xl bg-[#FF6F61] px-4 py-3.5 text-base font-bold text-white shadow-md transition-all hover:bg-[#E85D51]"
           >
-            Go to login
+            {copy.reset.goToLogin}
           </a>
         </div>
       </div>
@@ -124,10 +128,10 @@ export default function ResetPasswordPage() {
         {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="mb-2 text-3xl font-bold text-[#3B241B]">
-            Set a new password
+            {copy.reset.title}
           </h1>
           <p className="text-sm text-[#7A6254]">
-            Choose a password you haven't used before
+            {copy.reset.subtitle}
           </p>
         </div>
 
@@ -135,7 +139,7 @@ export default function ResetPasswordPage() {
           {/* New password */}
           <div>
             <label className="mb-2 block text-sm font-semibold text-[#3B241B]">
-              New password
+              {copy.reset.newPassword}
             </label>
             <input
               required
@@ -143,7 +147,7 @@ export default function ResetPasswordPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="At least 8 characters"
+              placeholder={copy.password.atLeastPlaceholder}
               className="w-full rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-4 py-3 text-base text-[#3B241B] outline-none transition-colors focus:border-[#FF6F61]"
             />
 
@@ -168,7 +172,7 @@ export default function ResetPasswordPage() {
                   className="mt-1 text-xs font-semibold"
                   style={{ color: METER_COLORS[strength.score] }}
                 >
-                  {strength.label}
+                  {copy.password.strength[strength.score]}
                 </p>
                 <ul className="mt-1 space-y-0.5 text-xs text-[#7A6254]">
                   <li
@@ -178,15 +182,14 @@ export default function ResetPasswordPage() {
                         : ""
                     }
                   >
-                    {password.length >= PASSWORD_MIN_LENGTH ? "✓" : "•"} At
-                    least {PASSWORD_MIN_LENGTH} characters
+                    {password.length >= PASSWORD_MIN_LENGTH ? "✓" : "•"}{" "}
+                    {copy.password.atLeast}
                   </li>
                   <li className={strength.classCount >= 3 ? "text-[#2E8F62]" : ""}>
-                    {strength.classCount >= 3 ? "✓" : "•"} Mix 3 of: lowercase,
-                    uppercase, number, symbol
+                    {strength.classCount >= 3 ? "✓" : "•"} {copy.password.mix}
                   </li>
                   <li className={passwordValid ? "text-[#2E8F62]" : ""}>
-                    {passwordValid ? "✓" : "•"} Not a common password
+                    {passwordValid ? "✓" : "•"} {copy.password.notCommon}
                   </li>
                 </ul>
               </div>
@@ -196,7 +199,7 @@ export default function ResetPasswordPage() {
           {/* Confirm password */}
           <div>
             <label className="mb-2 block text-sm font-semibold text-[#3B241B]">
-              Confirm new password
+              {copy.reset.confirm}
             </label>
             <input
               required
@@ -204,7 +207,7 @@ export default function ResetPasswordPage() {
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Re-enter password"
+              placeholder={copy.password.reenter}
               className="w-full rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-4 py-3 text-base text-[#3B241B] outline-none transition-colors focus:border-[#FF6F61]"
             />
           </div>
@@ -220,16 +223,16 @@ export default function ResetPasswordPage() {
             disabled={loading}
             className="w-full rounded-xl bg-[#FF6F61] px-4 py-3.5 text-base font-bold text-white shadow-md transition-all hover:bg-[#E85D51] disabled:opacity-50"
           >
-            {loading ? "Saving..." : "Save new password"}
+            {loading ? copy.reset.saving : copy.reset.save}
           </button>
 
           <p className="text-center text-sm text-[#7A6254]">
-            Remembered it after all?{" "}
+            {copy.reset.remembered}{" "}
             <a
-              href="/account/signin"
+              href={signInHref}
               className="font-semibold text-[#FF6F61] hover:underline"
             >
-              Log in
+              {copy.logIn}
             </a>
           </p>
         </div>

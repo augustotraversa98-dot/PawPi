@@ -8,6 +8,8 @@
 // Env (set by Tats when the Apple Service ID / Google OAuth client are created — see
 // .env.example + test-backlog ACTION 2):
 //   Google → AUTH_GOOGLE_ID + AUTH_GOOGLE_SECRET
+//   Apple on the website → AUTH_APPLE_WEB_ID (a Services ID) + the key material below
+//   Microsoft → AUTH_MICROSOFT_ID + AUTH_MICROSOFT_SECRET (optional AUTH_MICROSOFT_ISSUER)
 //   Apple  → AUTH_APPLE_ID, plus EITHER:
 //              - AUTH_APPLE_TEAM_ID + AUTH_APPLE_KEY_ID + AUTH_APPLE_PRIVATE_KEY (preferred —
 //                the raw key material from the Apple Developer portal; the client-secret JWT
@@ -20,6 +22,7 @@
 // Callback URLs (register these with the provider):
 //   <origin>/api/auth/callback/google
 //   <origin>/api/auth/callback/apple
+//   <origin>/api/auth/callback/microsoft-entra-id
 //
 // New OAuth users: the @auth/core database adapter auto-creates auth_users + auth_accounts
 // on first sign-in; the user_profiles row is then created lazily on the first authenticated
@@ -28,6 +31,7 @@
 
 import Google from "@auth/core/providers/google";
 import Apple from "@auth/core/providers/apple";
+import MicrosoftEntraID from "@auth/core/providers/microsoft-entra-id";
 import Credentials from "@auth/core/providers/credentials";
 import { buildAppleClientSecret } from "./appleClientSecret.js";
 import { verifyAppleIdentityToken } from "./appleIdentityToken.js";
@@ -65,6 +69,8 @@ export function googleProvider(env = process.env) {
         clientId: env.AUTH_GOOGLE_ID,
         clientSecret: env.AUTH_GOOGLE_SECRET,
         allowDangerousEmailAccountLinking: true,
+        // Always show Google's account list: otherwise it silently reuses the account already signed in to the browser.
+        authorization: { params: { prompt: "select_account" } },
       }),
     ];
   }
@@ -88,6 +94,32 @@ export function appleWebProvider(env = process.env) {
     }
   }
   return [];
+}
+
+// The WEBSITE's "Continue with Apple", for the real handler. Apple's browser flow needs its own Services ID
+// (AUTH_APPLE_WEB_ID): in production AUTH_APPLE_ID is the app's bundle id, which Apple does not accept on the web. The
+// secret is signed with the same key as the app's. A hand-made AUTH_APPLE_SECRET belongs to another client id, so it is
+// not reused. An owner who used Apple in the app reaches the same account (Apple gives both the same subject id).
+export function appleBusinessWebProvider(env = process.env) {
+  if (!env.AUTH_APPLE_WEB_ID) return [];
+  return appleWebProvider({ ...env, AUTH_APPLE_ID: env.AUTH_APPLE_WEB_ID, AUTH_APPLE_SECRET: undefined });
+}
+
+// "Continue with Microsoft" on the website: work, school and personal Microsoft accounts by default.
+// Deliberately NO allowDangerousEmailAccountLinking: the administrator of any Microsoft work directory can put any
+// email address on their own users, so an address from Microsoft must never open an existing PawPi account.
+export function microsoftProvider(env = process.env) {
+  if (!env.AUTH_MICROSOFT_ID || !env.AUTH_MICROSOFT_SECRET) return [];
+  return [
+    MicrosoftEntraID({
+      clientId: env.AUTH_MICROSOFT_ID,
+      clientSecret: env.AUTH_MICROSOFT_SECRET,
+      issuer: env.AUTH_MICROSOFT_ISSUER || "https://login.microsoftonline.com/common/v2.0",
+      authorization: { params: { scope: "openid profile email", prompt: "select_account" } },
+      // The library's default profile also downloads the account photo from Microsoft Graph; PawPi does not use it.
+      profile: (claims) => ({ id: claims.sub, name: claims.name, email: claims.email ?? null, image: null }),
+    }),
+  ];
 }
 
 // Returns the list of enabled social providers given an env bag (defaults to process.env).

@@ -8,18 +8,11 @@ import {
 } from "@/app/api/utils/passwordStrength";
 import SocialSignInButtons from "@/components/auth/SocialSignInButtons";
 import { TERMS_OF_SERVICE_URL, PRIVACY_POLICY_URL } from "@/constants/legal";
+import { ACCOUNT_COPY, legalUrlFor, serverMessage } from "@/lib/account/copy";
+import { useVisitorLang } from "@/lib/publicPet/useVisitorLang";
+import { BusinessEyebrow, PetOwnerNote } from "@/components/auth/BusinessNotes";
 
 const METER_COLORS = ["#E2E0DE", "#E25C4B", "#E89B3C", "#3FB07A", "#2E8F62"];
-
-// Auth.js error codes → friendly copy (with redirect:false, signIn RETURNS these in
-// result.error instead of throwing).
-const ERROR_MESSAGES = {
-  CredentialsSignin: "This email is already registered. Try logging in instead.",
-  EmailCreateAccount: "This email is already registered.",
-  OAuthCreateAccount: "Could not create account. Please try again.",
-  WeakPassword:
-    "That password is too weak. Use at least 8 characters and mix letters, numbers, and symbols.",
-};
 
 // Record Terms/Privacy consent server-side AFTER the account exists. Best-effort: retry once,
 // then log and proceed — we must NEVER block a user out of an already-created account because a
@@ -71,6 +64,13 @@ export default function SignUpPage() {
   });
 
   const { signUpWithCredentials } = useAuth();
+  const { lang } = useVisitorLang();
+  const copy = ACCOUNT_COPY[lang];
+  // Auth.js error codes → friendly copy (with redirect:false, signIn RETURNS these in
+  // result.error instead of throwing).
+  const errorFor = (code) => copy.signup.errors[code];
+  // On the website this is the business sign-up; the app opens the same page for pet owners.
+  const forBusiness = !isMobileAuthWebview(typeof window !== "undefined" ? window.location.search : "");
 
   // Live strength feedback mirrors the same rule the server enforces (2.32).
   const strength = passwordStrength(formData.password);
@@ -90,32 +90,32 @@ export default function SignUpPage() {
 
     // Validation
     if (!formData.name.trim()) {
-      setError("Please enter your full name");
+      setError(copy.signup.missingName);
       setLoading(false);
       return;
     }
 
     if (!formData.email || !formData.password) {
-      setError("Please fill in all required fields");
+      setError(copy.signup.missingFields);
       setLoading(false);
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+      setError(copy.signup.mismatch);
       setLoading(false);
       return;
     }
 
     if (!agreedToTerms) {
-      setError("Please accept the Terms of Service and Privacy Policy to continue");
+      setError(copy.signup.mustAccept);
       setLoading(false);
       return;
     }
 
     const { valid, errors } = validatePassword(formData.password);
     if (!valid) {
-      setError(errors[0] || "Please choose a stronger password");
+      setError(errors[0] ? serverMessage(lang, { error: errors[0] }) : copy.password.chooseStronger);
       setLoading(false);
       return;
     }
@@ -135,10 +135,7 @@ export default function SignUpPage() {
       });
 
       if (!result || result.error) {
-        setError(
-          ERROR_MESSAGES[result?.error] ||
-            "Something went wrong. Please try again.",
-        );
+        setError(errorFor(result?.error) || copy.genericError);
         setLoading(false);
         return;
       }
@@ -154,11 +151,7 @@ export default function SignUpPage() {
       // Perform the redirect manually to the resolved callback url.
       window.location.href = result.url || "/provider";
     } catch (err) {
-      setError(
-        ERROR_MESSAGES[err?.code] ||
-          ERROR_MESSAGES[err?.message] ||
-          "Something went wrong. Please try again.",
-      );
+      setError(errorFor(err?.code) || errorFor(err?.message) || copy.genericError);
       setLoading(false);
     }
   };
@@ -172,11 +165,12 @@ export default function SignUpPage() {
       >
         {/* Header */}
         <div className="mb-8 text-center">
+          {forBusiness && <BusinessEyebrow copy={copy} />}
           <h1 className="mb-2 text-3xl font-bold text-[#3B241B]">
-            Create Account
+            {copy.signup.title}
           </h1>
           <p className="text-sm text-[#7A6254]">
-            Join the PawPi community
+            {forBusiness ? copy.business.signupSubtitle : copy.signup.subtitle}
           </p>
         </div>
 
@@ -185,7 +179,7 @@ export default function SignUpPage() {
           {/* Full Name */}
           <div>
             <label className="mb-2 block text-sm font-semibold text-[#3B241B]">
-              Full name
+              {copy.signup.fullName}
             </label>
             <input
               required
@@ -195,7 +189,7 @@ export default function SignUpPage() {
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, name: e.target.value }))
               }
-              placeholder="Your name"
+              placeholder={copy.signup.namePlaceholder}
               className="w-full rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-4 py-3 text-base text-[#3B241B] outline-none transition-colors focus:border-[#FF6F61]"
             />
           </div>
@@ -203,7 +197,7 @@ export default function SignUpPage() {
           {/* Email */}
           <div>
             <label className="mb-2 block text-sm font-semibold text-[#3B241B]">
-              Email
+              {copy.email}
             </label>
             <input
               required
@@ -213,7 +207,7 @@ export default function SignUpPage() {
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, email: e.target.value }))
               }
-              placeholder="your@email.com"
+              placeholder={copy.emailPlaceholder}
               className="w-full rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-4 py-3 text-base text-[#3B241B] outline-none transition-colors focus:border-[#FF6F61]"
             />
           </div>
@@ -221,7 +215,7 @@ export default function SignUpPage() {
           {/* Password */}
           <div>
             <label className="mb-2 block text-sm font-semibold text-[#3B241B]">
-              Password
+              {copy.password.label}
             </label>
             <input
               required
@@ -231,7 +225,7 @@ export default function SignUpPage() {
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, password: e.target.value }))
               }
-              placeholder="At least 8 characters"
+              placeholder={copy.password.atLeastPlaceholder}
               className="w-full rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-4 py-3 text-base text-[#3B241B] outline-none transition-colors focus:border-[#FF6F61]"
             />
 
@@ -256,19 +250,18 @@ export default function SignUpPage() {
                   className="mt-1 text-xs font-semibold"
                   style={{ color: METER_COLORS[strength.score] }}
                 >
-                  {strength.label}
+                  {copy.password.strength[strength.score]}
                 </p>
                 <ul className="mt-1 space-y-0.5 text-xs text-[#7A6254]">
                   <li className={formData.password.length >= PASSWORD_MIN_LENGTH ? "text-[#2E8F62]" : ""}>
                     {formData.password.length >= PASSWORD_MIN_LENGTH ? "✓" : "•"}{" "}
-                    At least {PASSWORD_MIN_LENGTH} characters
+                    {copy.password.atLeast}
                   </li>
                   <li className={strength.classCount >= 3 ? "text-[#2E8F62]" : ""}>
-                    {strength.classCount >= 3 ? "✓" : "•"} Mix 3 of: lowercase,
-                    uppercase, number, symbol
+                    {strength.classCount >= 3 ? "✓" : "•"} {copy.password.mix}
                   </li>
                   <li className={passwordValid ? "text-[#2E8F62]" : ""}>
-                    {passwordValid ? "✓" : "•"} Not a common password
+                    {passwordValid ? "✓" : "•"} {copy.password.notCommon}
                   </li>
                 </ul>
               </div>
@@ -278,7 +271,7 @@ export default function SignUpPage() {
           {/* Confirm Password */}
           <div>
             <label className="mb-2 block text-sm font-semibold text-[#3B241B]">
-              Confirm password
+              {copy.signup.confirm}
             </label>
             <input
               required
@@ -291,7 +284,7 @@ export default function SignUpPage() {
                   confirmPassword: e.target.value,
                 }))
               }
-              placeholder="Re-enter password"
+              placeholder={copy.password.reenter}
               className="w-full rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-4 py-3 text-base text-[#3B241B] outline-none transition-colors focus:border-[#FF6F61]"
             />
           </div>
@@ -308,16 +301,17 @@ export default function SignUpPage() {
             <input
               type="checkbox"
               name="agreeToTerms"
-              aria-label="I agree to the Terms of Service and Privacy Policy"
+              aria-label={copy.signup.agreeLabel}
               checked={agreedToTerms}
               onChange={(e) => setAgreedToTerms(e.target.checked)}
               className="mt-0.5 h-5 w-5 shrink-0 accent-[#FF6F61]"
             />
             <span>
-              I agree to the{" "}
-              <LegalLink href={TERMS_OF_SERVICE_URL}>Terms of Service</LegalLink> and{" "}
-              <LegalLink href={PRIVACY_POLICY_URL}>Privacy Policy</LegalLink>, including PawPi's
-              zero-tolerance policy for objectionable content and abusive behavior.
+              {copy.signup.agreePrefix}{" "}
+              <LegalLink href={legalUrlFor(TERMS_OF_SERVICE_URL, lang)}>{copy.signup.terms}</LegalLink>{" "}
+              {copy.signup.and}{" "}
+              <LegalLink href={legalUrlFor(PRIVACY_POLICY_URL, lang)}>{copy.signup.privacy}</LegalLink>
+              {copy.signup.agreeSuffix}
             </span>
           </label>
 
@@ -327,7 +321,7 @@ export default function SignUpPage() {
             disabled={!canSubmit}
             className="w-full rounded-xl bg-[#FF6F61] px-4 py-3.5 text-base font-bold text-white shadow-md transition-all hover:bg-[#E85D51] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading ? "Creating account..." : "Create account"}
+            {loading ? copy.signup.submitting : copy.createAccount}
           </button>
 
           {/* Divider + buttons render only when a provider is available (and never in the mobile webview) */}
@@ -335,16 +329,17 @@ export default function SignUpPage() {
 
           {/* Login Link */}
           <p className="text-center text-sm text-[#7A6254]">
-            Already have an account?{" "}
+            {copy.signup.haveAccount}{" "}
             <a
               href={`/account/signin${
                 typeof window !== "undefined" ? window.location.search : ""
               }`}
               className="font-semibold text-[#FF6F61] hover:underline"
             >
-              Log in
+              {copy.logIn}
             </a>
           </p>
+          {forBusiness && <PetOwnerNote copy={copy} lang={lang} />}
         </div>
       </form>
     </div>

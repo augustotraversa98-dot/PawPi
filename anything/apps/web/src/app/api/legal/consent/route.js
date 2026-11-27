@@ -14,11 +14,13 @@ import { TERMS_VERSION, PRIVACY_VERSION } from "@/constants/legal";
 // Versions: SERVER-AUTHORITATIVE. We stamp the TERMS_VERSION / PRIVACY_VERSION constants; any
 // versions (or auth ids) supplied in the body are ignored.
 //
-// Body (all optional): { source?: 'web_signup'|'mobile_signup', user_agent?: string }.
+// Body (all optional): { source?: 'web_signup'|'mobile_signup'|'mobile_social'|'web_social', user_agent?: string }.
+// *_social: the app or the website showed its "by continuing you agree" line and the person continued with Apple,
+// Google or Microsoft.
 //
 // DB is porsager's tagged-template `sql` (see SCHEMA_NOTES neon→porsager note).
 
-const SOURCES = new Set(["web_signup", "mobile_signup"]);
+const SOURCES = new Set(["web_signup", "mobile_signup", "mobile_social", "web_social"]);
 
 async function POST(request) {
   try {

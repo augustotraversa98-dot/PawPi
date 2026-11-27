@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react-native";
 import { create } from "zustand";
 import { useCallback, useMemo } from "react";
 import { AuthWebView } from "./AuthWebView";
+import { AuthSocialPanel } from "./AuthSocialPanel";
 import { useAuthStore, useAuthModal } from "./store";
 import { trackFunnel } from "@/telemetry/track";
 import { useFormTelemetry } from "@/telemetry/useFormTelemetry";
@@ -35,6 +36,14 @@ export const AuthModal = () => {
     }
   }, [isOpen, isCredentialsMode]);
 
+  // Which account page the window is showing: Apple and Google belong under sign-in and sign-up, not password reset.
+  const [pageURL, setPageURL] = useState(null);
+  useEffect(() => {
+    if (!isOpen) setPageURL(null);
+  }, [isOpen]);
+  const showSocial =
+    Platform.OS !== "web" && /\/account\/(signin|signup)(?![\w-])/.test(pageURL ?? `/account/${mode}`);
+
   // Close modal when authentication succeeds
   useEffect(() => {
     if (auth && isOpen) {
@@ -62,7 +71,8 @@ export const AuthModal = () => {
           padding: 0,
         }}
       >
-        <AuthWebView mode={mode} proxyURL={proxyURL} baseURL={baseURL} />
+        <AuthWebView mode={mode} proxyURL={proxyURL} baseURL={baseURL} onPageChange={setPageURL} />
+        {showSocial ? <AuthSocialPanel /> : null}
         {/* Back out of the auth WebView to Welcome (the modal's onRequestClose is Android-only). */}
         <Pressable
           onPress={close}

@@ -2865,7 +2865,12 @@
       "continueGoogle": "Continuar con Google",
       "errorTitle": "No se pudo iniciar sesión",
       "errorBody": "No pudimos iniciar tu sesión. Probá de nuevo.",
-      "googleDeniedBody": "No pudimos iniciar tu sesión con Google. Probá de nuevo o usá tu email."
+      "googleDeniedBody": "No pudimos iniciar tu sesión con Google. Probá de nuevo o usá tu email.",
+      "agreePrefix": "Si continuás de esta forma, aceptás los",
+      "terms": "Términos del servicio",
+      "and": "y la",
+      "privacy": "Política de privacidad",
+      "agreeSuffix": ", incluida la política de tolerancia cero de PawPi frente al contenido objetable y el comportamiento abusivo."
     }
   },
   "trackers": {

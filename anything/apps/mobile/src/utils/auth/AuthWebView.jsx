@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
 import { WebView } from "react-native-webview";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "./store";
 
 const callbackUrl = "/api/auth/token";
@@ -10,10 +11,13 @@ const callbackQueryString = `callbackUrl=${callbackUrl}`;
 /**
  * This renders a WebView for authentication and handles both web and native platforms.
  */
-export const AuthWebView = ({ mode, proxyURL, baseURL }) => {
-  const [currentURI, setURI] = useState(
-    `${baseURL}/account/${mode}?${callbackQueryString}`,
-  );
+export const AuthWebView = ({ mode, proxyURL, baseURL, onPageChange }) => {
+  // The web pages open in the app's language (without it they follow the phone setting).
+  const { i18n } = useTranslation();
+  const language = String(i18n?.language ?? "").slice(0, 2);
+  const langQuery = language ? `&lang=${language}` : "";
+  const pageURL = `${baseURL}/account/${mode}?${callbackQueryString}${langQuery}`;
+  const [currentURI, setURI] = useState(pageURL);
   const { auth, setAuth, isReady } = useAuthStore();
   const isAuthenticated = isReady ? !!auth : null;
   const iframeRef = useRef(null);
@@ -30,8 +34,12 @@ export const AuthWebView = ({ mode, proxyURL, baseURL }) => {
     if (isAuthenticated) {
       return;
     }
-    setURI(`${baseURL}/account/${mode}?${callbackQueryString}`);
-  }, [mode, baseURL, isAuthenticated]);
+    setURI(pageURL);
+  }, [pageURL, isAuthenticated]);
+  // Tells the sign-in window which account page is showing (the links inside it move between them).
+  useEffect(() => {
+    onPageChange?.(currentURI);
+  }, [currentURI, onPageChange]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !window.addEventListener) {
@@ -68,7 +76,7 @@ export const AuthWebView = ({ mode, proxyURL, baseURL }) => {
       <iframe
         ref={iframeRef}
         title="Authentication"
-        src={`${proxyURL}/account/${mode}?callbackUrl=/api/auth/expo-web-success`}
+        src={`${proxyURL}/account/${mode}?callbackUrl=/api/auth/expo-web-success${langQuery}`}
         style={{ width: "100%", height: "100%", border: "none" }}
         onError={handleIframeError}
       />

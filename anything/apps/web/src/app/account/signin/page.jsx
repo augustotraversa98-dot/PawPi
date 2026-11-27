@@ -1,6 +1,10 @@
 import { useState } from "react";
 import useAuth from "@/utils/useAuth";
 import SocialSignInButtons from "@/components/auth/SocialSignInButtons";
+import { ACCOUNT_COPY, keepLang } from "@/lib/account/copy";
+import { isMobileAuthWebview } from "@/utils/resolveCallbackUrl";
+import { BusinessEyebrow, PetOwnerNote } from "@/components/auth/BusinessNotes";
+import { useVisitorLang } from "@/lib/publicPet/useVisitorLang";
 
 export default function SignInPage() {
   const [error, setError] = useState(null);
@@ -11,6 +15,15 @@ export default function SignInPage() {
   });
 
   const { signInWithCredentials } = useAuth();
+  const { lang } = useVisitorLang();
+  const copy = ACCOUNT_COPY[lang];
+  const search = typeof window !== "undefined" ? window.location.search : "";
+  // On the website this is the business sign-in; the app opens the same page for pet owners.
+  const forBusiness = !isMobileAuthWebview(search);
+  // A sign-in that failed away from this page (a provider, or a wrong password) comes back as ?error=.
+  const returnedError = new URLSearchParams(search).get("error");
+  const shownError =
+    error || (returnedError ? copy.signin.errors[returnedError] || copy.genericError : null);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -18,7 +31,7 @@ export default function SignInPage() {
     setError(null);
 
     if (!formData.email || !formData.password) {
-      setError("Please fill in all fields");
+      setError(copy.signin.missingFields);
       setLoading(false);
       return;
     }
@@ -34,15 +47,7 @@ export default function SignInPage() {
         redirect: true,
       });
     } catch (err) {
-      const errorMessages = {
-        CredentialsSignin: "Incorrect email or password. Please try again.",
-        OAuthSignin: "Could not sign in. Please try again.",
-        OAuthCallback: "Sign-in failed. Please try again.",
-      };
-
-      setError(
-        errorMessages[err.message] || "Something went wrong. Please try again.",
-      );
+      setError(copy.signin.errors[err.message] || copy.genericError);
       setLoading(false);
     }
   };
@@ -56,10 +61,13 @@ export default function SignInPage() {
       >
         {/* Header */}
         <div className="mb-8 text-center">
+          {forBusiness && <BusinessEyebrow copy={copy} />}
           <h1 className="mb-2 text-3xl font-bold text-[#3B241B]">
-            Welcome Back
+            {copy.signin.title}
           </h1>
-          <p className="text-sm text-[#7A6254]">Sign in to continue</p>
+          <p className="text-sm text-[#7A6254]">
+            {forBusiness ? copy.business.signinSubtitle : copy.signin.subtitle}
+          </p>
         </div>
 
         {/* Form Fields */}
@@ -67,7 +75,7 @@ export default function SignInPage() {
           {/* Email */}
           <div>
             <label className="mb-2 block text-sm font-semibold text-[#3B241B]">
-              Email
+              {copy.email}
             </label>
             <input
               required
@@ -77,7 +85,7 @@ export default function SignInPage() {
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, email: e.target.value }))
               }
-              placeholder="your@email.com"
+              placeholder={copy.emailPlaceholder}
               className="w-full rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-4 py-3 text-base text-[#3B241B] outline-none transition-colors focus:border-[#FF6F61]"
             />
           </div>
@@ -85,7 +93,7 @@ export default function SignInPage() {
           {/* Password */}
           <div>
             <label className="mb-2 block text-sm font-semibold text-[#3B241B]">
-              Password
+              {copy.password.label}
             </label>
             <input
               required
@@ -95,7 +103,7 @@ export default function SignInPage() {
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, password: e.target.value }))
               }
-              placeholder="Enter your password"
+              placeholder={copy.signin.passwordPlaceholder}
               className="w-full rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-4 py-3 text-base text-[#3B241B] outline-none transition-colors focus:border-[#FF6F61]"
             />
           </div>
@@ -103,17 +111,17 @@ export default function SignInPage() {
           {/* Forgot Password Link */}
           <div className="text-right">
             <a
-              href="/account/forgot-password"
+              href={keepLang("/account/forgot-password", search)}
               className="text-sm font-semibold text-[#FF6F61] hover:underline"
             >
-              Forgot password?
+              {copy.signin.forgot}
             </a>
           </div>
 
           {/* Error Message */}
-          {error && (
+          {shownError && (
             <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
-              {error}
+              {shownError}
             </div>
           )}
 
@@ -123,7 +131,7 @@ export default function SignInPage() {
             disabled={loading}
             className="w-full rounded-xl bg-[#FF6F61] px-4 py-3.5 text-base font-bold text-white shadow-md transition-all hover:bg-[#E85D51] disabled:opacity-50"
           >
-            {loading ? "Signing in..." : "Log in"}
+            {loading ? copy.signin.submitting : copy.logIn}
           </button>
 
           {/* Divider + buttons render only when a provider is available (and never in the mobile webview) */}
@@ -131,16 +139,15 @@ export default function SignInPage() {
 
           {/* Sign Up Link */}
           <p className="text-center text-sm text-[#7A6254]">
-            Don't have an account?{" "}
+            {copy.signin.noAccount}{" "}
             <a
-              href={`/account/signup${
-                typeof window !== "undefined" ? window.location.search : ""
-              }`}
+              href={`/account/signup${search}`}
               className="font-semibold text-[#FF6F61] hover:underline"
             >
-              Create account
+              {copy.createAccount}
             </a>
           </p>
+          {forBusiness && <PetOwnerNote copy={copy} lang={lang} />}
         </div>
       </form>
     </div>

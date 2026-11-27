@@ -28,6 +28,7 @@ import { LoadFonts } from 'virtual:load-fonts.jsx';
 import fetch from '@/__create/fetch';
 // @ts-expect-error -- generated auth module, no type declarations available
 import { SessionProvider } from '@auth/create/react';
+import RecordSocialConsent from '@/components/auth/RecordSocialConsent';
 import { toPng } from 'html-to-image';
 import { useNavigate } from 'react-router';
 import { serializeError } from 'serialize-error';
@@ -472,6 +473,7 @@ export const ErrorBoundary = InternalErrorBoundary;
 export default function App() {
   return (
     <SessionProvider>
+      <RecordSocialConsent />
       <Outlet />
     </SessionProvider>
   );

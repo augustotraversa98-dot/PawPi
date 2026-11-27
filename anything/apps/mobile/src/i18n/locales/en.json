@@ -2865,7 +2865,12 @@
       "continueGoogle": "Continue with Google",
       "errorTitle": "Sign-in failed",
       "errorBody": "We couldn't sign you in. Please try again.",
-      "googleDeniedBody": "We couldn't sign you in with Google. Please try again, or use email instead."
+      "googleDeniedBody": "We couldn't sign you in with Google. Please try again, or use email instead.",
+      "agreePrefix": "By continuing this way, you agree to the",
+      "terms": "Terms of Service",
+      "and": "and",
+      "privacy": "Privacy Policy",
+      "agreeSuffix": ", including PawPi's zero-tolerance policy for objectionable content and abusive behavior."
     }
   },
   "trackers": {
