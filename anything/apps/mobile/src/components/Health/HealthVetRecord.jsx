@@ -65,8 +65,8 @@ import { Card, PressableScale } from "@/components/ui";
 import { breedLabel } from "@/data/dogBreeds";
 import { spayNeuterLabel } from "@/utils/healthText";
 import {
-  linkNoteAuthor,
   memberDisplayName,
+  vetAddedLine,
   vetNoteAuthor,
   vetNoteSummaryAuthor,
 } from "@/utils/sharingLabels";
@@ -156,33 +156,22 @@ export default function HealthVetRecord() {
   const [vetRecordModalType, setVetRecordModalType] = useState(null);
   const [medicationModalTab, setMedicationModalTab] = useState(null);
 
-  // Localized "Added by {name} · {role} · {date}" line for a record row (VR-B, 0120).
+  // Localized "Added by {name} · {role} · {date}" line for a record row (VR-B, 0120). A row a vet added, through
+  // their business or a record link, says that instead: it is never "added by" the owner or a family member.
   const renderAttribution = (row) => {
     if (!row) return null;
-    // A note added through a record link is never "added by" the owner or a family member.
-    if (row.via_record_link) {
-      const date = row.created_at ? addedOn(row.created_at) : "";
-      return (
-        <Text
-          style={{
-            fontSize: 11,
-            color: COLORS.mutedBrown,
-            marginTop: 8,
-            fontWeight: "500",
-          }}
-        >
-          {t("recordLink.addedViaLink", { name: linkNoteAuthor(t, row), date })}
-        </Text>
-      );
+    let line = vetAddedLine(t, row, addedOn);
+    if (!line) {
+      const isEditor = row.created_by_role === "editor";
+      const name =
+        memberDisplayName(t, row.created_by_name) ||
+        t(isEditor ? "health.vetRecord.roleEditor" : "health.vetRecord.you");
+      const role = t(isEditor ? "health.vetRecord.roleEditor" : "health.vetRecord.roleOwner");
+      const date = row.created_at ? addedOn(row.created_at) : null;
+      line = date
+        ? t("health.vetRecord.addedBy", { name, role, date })
+        : t("health.vetRecord.addedByNoDate", { name, role });
     }
-    const isEditor = row.created_by_role === "editor";
-    const name =
-      memberDisplayName(t, row.created_by_name) ||
-      t(isEditor ? "health.vetRecord.roleEditor" : "health.vetRecord.you");
-    const roleLabel = t(
-      isEditor ? "health.vetRecord.roleEditor" : "health.vetRecord.roleOwner",
-    );
-    const when = row.created_at ? addedOn(row.created_at) : null;
     return (
       <Text
         style={{
@@ -192,9 +181,7 @@ export default function HealthVetRecord() {
           fontWeight: "500",
         }}
       >
-        {when
-          ? t("health.vetRecord.addedBy", { name, role: roleLabel, date: when })
-          : t("health.vetRecord.addedByNoDate", { name, role: roleLabel })}
+        {line}
       </Text>
     );
   };

@@ -1,6 +1,6 @@
 import { Share } from "react-native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { recordLinkMatchesChoice } from "@/utils/vetShare";
+import { recordLinkMatchesChoice, updateMatchesChoice } from "@/utils/vetShare";
 import { showChange } from "@/utils/sharingRefresh";
 import { refreshWhoHasAccess, showAccessEnded, showAccessGiven } from "@/hooks/useWhoHasAccess";
 
@@ -8,7 +8,7 @@ import { refreshWhoHasAccess, showAccessEnded, showAccessGiven } from "@/hooks/u
 // parts of the record without signing in.
 //   GET   /api/care-access/links           — my links, never with an address
 //   POST  /api/care-access/links           — create one from a complete choice; its address comes back in this answer only
-//   PATCH /api/care-access/links/[linkId]  — remove
+//   PATCH /api/care-access/links/[linkId]  — change (same link, same address) or remove
 const LINKS_KEY = ["care-record-links"];
 export const LINKS_UNAVAILABLE = "share_links_unavailable";
 
@@ -23,8 +23,9 @@ async function failure(response) {
   return error;
 }
 
-// → { available, links }. Every dog's links: the limit is per owner, so the owner must be able to see them all.
-// `available` is false when the server or its database cannot make links yet.
+// → { available, editAccessAvailable, links }. Every dog's links: the limit is per owner, so the owner must be able to
+// see them all. `available` is false when the server or its database cannot make links yet; `editAccessAvailable`
+// false hides every edit control.
 export function useRecordLinks({ enabled = true } = {}) {
   return useQuery({
     queryKey: LINKS_KEY,
@@ -39,7 +40,11 @@ export function useRecordLinks({ enabled = true } = {}) {
         throw error;
       }
       const data = await response.json();
-      return { available: data.available !== false, links: data.links ?? [] };
+      return {
+        available: data.available !== false,
+        editAccessAvailable: data.editAccessAvailable === true,
+        links: data.links ?? [],
+      };
     },
   });
 }
@@ -64,7 +69,9 @@ async function revoke(linkId) {
 // inside this function. It is never returned, so it cannot end up in the query cache, state or navigation, and it must
 // never be logged.
 //
-// mutate({ petId, petName, sections, expiry, allowNotes, message, requestKey }) → { outcome, linkId }
+// `editSections` (what can be added) is sent only to a server that can store it, and then agrees with `allowNotes`.
+//
+// mutate({ petId, petName, sections, expiry, allowNotes, editSections?, message, requestKey }) → { outcome, linkId }
 //   "shared"        the link is exactly the choice and left through the share sheet
 //   "notShared"     the link exists, but its address did not leave the phone and cannot be shown again
 //   "mismatch"      the link did not match the choice; it was removed without being sent
@@ -76,14 +83,23 @@ export function useCreateRecordLink({ onSuccess, onError, onSettled } = {}) {
 
   return useMutation({
     retry: false,
-    mutationFn: async ({ petId, petName, sections, expiry, allowNotes, message, requestKey }) => {
+    mutationFn: async ({
+      petId,
+      petName,
+      sections,
+      expiry,
+      allowNotes,
+      editSections,
+      message,
+      requestKey,
+    }) => {
       const response = await fetch(`/api/care-access/links`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(requestKey ? { "Idempotency-Key": requestKey } : {}),
         },
-        body: JSON.stringify({ petId, sections, expiry, allowNotes }),
+        body: JSON.stringify({ petId, sections, expiry, allowNotes, editSections }),
       });
       if (!response.ok) {
         const error = await failure(response);
@@ -93,7 +109,7 @@ export function useCreateRecordLink({ onSuccess, onError, onSettled } = {}) {
       const data = await response.json().catch(() => null);
       const link = data?.link ?? null;
       const linkId = link?.id ?? null;
-      if (!recordLinkMatchesChoice(link, { sections, expiry, allowNotes })) {
+      if (!recordLinkMatchesChoice(link, { sections, expiry, allowNotes, editSections })) {
         if (linkId == null) return { outcome: "notShared", linkId };
         const removed = await revoke(linkId).then(
           () => true,
@@ -113,6 +129,48 @@ export function useCreateRecordLink({ onSuccess, onError, onSettled } = {}) {
         () => false,
       );
       return { outcome: sent ? "shared" : "notShared", linkId };
+    },
+    onSuccess,
+    onError,
+    onSettled: () => {
+      onSettled?.();
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: LINKS_KEY }),
+        refreshWhoHasAccess(queryClient),
+      ]);
+    },
+  });
+}
+
+// Changes an existing link: the same link at the same address. Nothing is sent again.
+//
+// mutate({ link, sections, editSections, expiry }) → { outcome, linkId }
+//   "saved"       the same link, exactly as chosen ('keep' leaves its end date)
+//   "mismatch"    the answer is not that: the owner is asked to check it
+// A refused request throws, with `status` and `code`, and nothing changed.
+export function useEditRecordLink({ onSuccess, onError, onSettled } = {}) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    retry: false,
+    mutationFn: async ({ link, sections, editSections, expiry }) => {
+      const response = await fetch(`/api/care-access/links/${link.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "update", sections, editSections, expiry }),
+      });
+      if (!response.ok) throw await failure(response);
+      const updated = (await response.json().catch(() => null))?.link ?? null;
+      // What the server now says is shown, also when it is not what was chosen.
+      if (updated?.id === link.id) {
+        await showChange(queryClient, LINKS_KEY, (data) => ({
+          ...data,
+          links: data.links.map((l) => (l.id === link.id ? { ...l, ...updated } : l)),
+        }));
+        await showAccessGiven(queryClient, { ...link, ...updated, kind: "record_link" });
+      }
+      const matches = updateMatchesChoice(link, updated, { sections, editSections, expiry });
+      return { outcome: matches ? "saved" : "mismatch", linkId: link.id };
     },
     onSuccess,
     onError,

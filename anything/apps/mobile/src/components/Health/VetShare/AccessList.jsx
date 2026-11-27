@@ -5,10 +5,11 @@ import { Link2, ShieldAlert, ShieldCheck, Stethoscope, Users } from "lucide-reac
 import { COLORS, MATERIALS, RADIUS, SPACING } from "@/constants/theme";
 import { formatLocalDate } from "@/utils/localeDateTime";
 import { roleLabel } from "@/utils/sharingLabels";
-import { SHARE_SECTIONS } from "@/utils/vetShare";
+import { isGrantEditable } from "@/utils/vetShare";
 import { accessEntryKey, accessEntryTitle, orderForDog } from "@/utils/whoHasAccess";
-import GrantAccess, { Bullets } from "./GrantAccess";
+import GrantAccess from "./GrantAccess";
 import SecondaryButton from "./SecondaryButton";
+import { LinkAccess } from "./ShareAccess";
 import { bold, card, muted, text } from "./parts";
 
 const ICONS = {
@@ -39,14 +40,9 @@ function EntryAccess({ entry, petName }) {
     return <GrantAccess grant={{ ...entry, status: "active" }} petName={petName} />;
   }
   if (entry.kind === "record_link") {
-    const sections = SHARE_SECTIONS.filter((k) => entry.sections?.includes(k));
     return (
       <View style={{ marginTop: 6, gap: 2 }}>
-        <Text style={strong}>{t("recordLink.rowCanSee")}</Text>
-        <Bullets lines={sections.map((k) => t(`vetShare.section.${k}.title`))} />
-        <Text style={muted}>
-          {t(entry.allow_notes ? "recordLink.rowNotes" : "recordLink.rowViewOnly")}
-        </Text>
+        <LinkAccess link={entry} />
         <Until entry={entry} />
       </View>
     );
@@ -72,7 +68,7 @@ function EntryAccess({ entry, petName }) {
   );
 }
 
-function EntryCard({ entry, onRevokeVet, onRemoveLink, onManage, revoking, removing }) {
+function EntryCard({ entry, canEdit, onEdit, onRevokeVet, onRemoveLink, onManage, revoking, removing }) {
   const { t } = useTranslation();
   const petName = entry.pet_name || t("dataAccess.yourPet");
   const Icon = ICONS[entry.kind] ?? ShieldCheck;
@@ -109,6 +105,15 @@ function EntryCard({ entry, onRevokeVet, onRemoveLink, onManage, revoking, remov
 
       <EntryAccess entry={entry} petName={petName} />
 
+      {canEdit?.[entry.kind] &&
+      (entry.kind !== "vet" || isGrantEditable({ ...entry, status: "active" })) ? (
+        <SecondaryButton
+          testID={`access-edit-${entry.kind}-${entry.id}`}
+          label={t("vetShare.editCta")}
+          onPress={() => onEdit(entry)}
+          disabled={entry.kind === "vet" ? revoking : removing}
+        />
+      ) : null}
       {entry.kind === "vet" ? (
         <SecondaryButton
           testID={`data-access-revoke-${entry.id}`}
@@ -141,11 +146,14 @@ function EntryCard({ entry, onRevokeVet, onRemoveLink, onManage, revoking, remov
  * counts, each with what it can see, until when and the way to end or manage it.
  *
  * Props: access (useWhoHasAccess()); currentPetId; onRevokeVet(entry), onRemoveLink(entry), onManage(entry);
- * revoking / removing: such a change is on its way.
+ * revoking / removing: such a change is on its way. canEdit ({ vet, record_link }: which kinds the server can change
+ * in place) with onEdit(entry).
  */
 export default function AccessList({
   access,
   currentPetId,
+  canEdit,
+  onEdit,
   onRevokeVet,
   onRemoveLink,
   onManage,
@@ -177,6 +185,8 @@ export default function AccessList({
           <EntryCard
             key={accessEntryKey(entry)}
             entry={entry}
+            canEdit={canEdit}
+            onEdit={onEdit}
             onRevokeVet={onRevokeVet}
             onRemoveLink={onRemoveLink}
             onManage={onManage}

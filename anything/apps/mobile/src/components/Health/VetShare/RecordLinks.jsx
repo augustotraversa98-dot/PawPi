@@ -4,28 +4,31 @@ import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/theme";
 import { useRecordLinks, useRevokeRecordLink } from "@/hooks/useRecordLinks";
 import { formatLocalDate } from "@/utils/localeDateTime";
-import { activeRecordLinks, SHARE_SECTIONS } from "@/utils/vetShare";
-import { Bullets } from "./GrantAccess";
+import { activeRecordLinks } from "@/utils/vetShare";
 import SecondaryButton from "./SecondaryButton";
+import { LinkAccess } from "./ShareAccess";
 import { Heading, bold, card, muted, text } from "./parts";
 
-function LinkRow({ link, onRemove, disabled }) {
+function LinkRow({ link, onEdit, onRemove, disabled }) {
   const { t } = useTranslation();
   const pet = link.pet_name || t("dataAccess.yourPet");
-  const sections = SHARE_SECTIONS.filter((k) => link.sections?.includes(k));
   return (
     <View testID={`record-link-row-${link.id}`} style={card}>
       <Text style={bold}>
         {t("recordLink.rowTitle", { pet, date: formatLocalDate(link.created_at) })}
       </Text>
-      <Text style={muted}>{t("recordLink.rowCanSee")}</Text>
-      <Bullets lines={sections.map((k) => t(`vetShare.section.${k}.title`))} style={muted} />
-      <Text style={muted}>
-        {t(link.allow_notes ? "recordLink.rowNotes" : "recordLink.rowViewOnly")}
-      </Text>
+      <LinkAccess link={link} />
       <Text style={[muted, { fontWeight: "700" }]}>
         {t("vetShare.grant.until", { date: formatLocalDate(link.expires_at) })}
       </Text>
+      {onEdit ? (
+        <SecondaryButton
+          testID={`record-link-edit-${link.id}`}
+          label={t("vetShare.editCta")}
+          onPress={() => onEdit(link)}
+          disabled={disabled}
+        />
+      ) : null}
       <SecondaryButton
         testID={`record-link-remove-${link.id}`}
         label={t("recordLink.remove")}
@@ -38,11 +41,11 @@ function LinkRow({ link, onRemove, disabled }) {
 
 /**
  * Record links in the share sheet: offers creating one for this pet, and lists every dog's links (the limit is per
- * owner) with what each one shows, until when, and Remove. Only mount it for an owner.
+ * owner) with what each one shows and allows, until when, Edit access and Remove. Only mount it for an owner.
  *
- * Props: pet ({ id, name }); onCreate.
+ * Props: pet ({ id, name }); onCreate; onEdit(link), only when a link can be changed.
  */
-export default function RecordLinks({ pet, onCreate }) {
+export default function RecordLinks({ pet, onCreate, onEdit }) {
   const { t } = useTranslation();
   const petName = pet?.name || t("dataAccess.yourPet");
   const query = useRecordLinks();
@@ -66,7 +69,13 @@ export default function RecordLinks({ pet, onCreate }) {
     );
 
   const rows = activeRecordLinks(query.data?.links).map((link) => (
-    <LinkRow key={link.id} link={link} onRemove={confirmRemove} disabled={remove.isPending} />
+    <LinkRow
+      key={link.id}
+      link={link}
+      onEdit={onEdit}
+      onRemove={confirmRemove}
+      disabled={remove.isPending}
+    />
   ));
 
   const renderBody = () => {

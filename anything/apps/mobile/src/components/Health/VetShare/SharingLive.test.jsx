@@ -292,8 +292,10 @@ describe("an answer given on another phone", () => {
 describe("creating a link", () => {
   const start = async () => {
     const s = wrap(<ShareWithVetSheet pet={mockPet.data} onClose={jest.fn()} onOpenRequests={jest.fn()} />);
-    await waitFor(() => expect(s.getByTestId("record-link-start")).toBeTruthy());
+    await waitFor(() => expect(s.getByTestId("vet-share-by-link")).toBeTruthy());
     await settle();
+    fireEvent.press(s.getByTestId("vet-share-by-link"));
+    await waitFor(() => expect(s.getByTestId("record-link-start")).toBeTruthy());
     for (const id of ["record-link-start", "record-link-section-vaccines", "record-link-expiry-7d"]) {
       fireEvent.press(s.getByTestId(id));
     }

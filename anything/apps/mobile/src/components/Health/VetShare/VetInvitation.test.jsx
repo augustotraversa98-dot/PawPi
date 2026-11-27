@@ -43,6 +43,7 @@ jest.mock("@/hooks/useProviders", () => ({ useMyBookings: () => mockBookings }))
 jest.mock("@/hooks/useCareAccessGrants", () => ({
   useCareAccessGrants: () => mockGrants,
   useShareRecord: () => ({ mutate: mockShare, isPending: false }),
+  useEditGrant: () => ({ mutate: jest.fn(), isPending: false }),
   useUpdateGrant: () => ({ mutateAsync: jest.fn(), isPending: false }),
 }));
 

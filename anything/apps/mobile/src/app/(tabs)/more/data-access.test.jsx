@@ -47,7 +47,9 @@ jest.mock("@/hooks/useCareAccessGrants", () => ({
 }));
 
 const mockRemoveLink = jest.fn();
+let mockLinkInfo;
 jest.mock("@/hooks/useRecordLinks", () => ({
+  useRecordLinks: () => ({ data: mockLinkInfo }),
   useRevokeRecordLink: () => ({ mutate: mockRemoveLink, isPending: false }),
 }));
 // The list itself is the server's (hooks/useWhoHasAccess has its own tests, WhoHasAccess.test.jsx).
@@ -63,13 +65,17 @@ jest.mock("@/components/Health/VetShare/ShareWithVetSheet", () => {
   const { Text } = require("react-native");
   return {
     __esModule: true,
-    default: ({ provider }) => (
-      <Text testID="vet-share-sheet">
-        {provider
-          ? `${provider.providerId}:${provider.name}${provider.checkName ? ":check-name" : ""}`
-          : "any"}
-      </Text>
-    ),
+    default: ({ pet, provider, editLink }) => {
+      let about = "any";
+      if (provider) about = `${provider.providerId}:${provider.name}${provider.checkName ? ":check-name" : ""}`;
+      if (editLink) about = `link ${editLink.id}`;
+      return (
+        <>
+          <Text testID="vet-share-sheet">{about}</Text>
+          <Text testID="vet-share-sheet-pet">{pet.id}</Text>
+        </>
+      );
+    },
   };
 });
 
@@ -97,6 +103,7 @@ beforeEach(() => {
   mockPush.mockReset();
   mockRemoveLink.mockReset();
   mockAccess = accessList();
+  mockLinkInfo = undefined;
   mockMutate.mockReset();
   mockCurrentPet = { data: { id: 7, name: "Rex" } };
   mockGrants = { data: [], isLoading: false, isError: false, refetch: jest.fn() };
@@ -447,6 +454,47 @@ describe("Who has access", () => {
     fireEvent.press(getByTestId("access-manage-family-9"));
 
     expect(mockPush.mock.calls).toEqual([["/emergency-card?petId=8"], ["/pet-sharing?petId=8"]]);
+  });
+
+  test("without the server's support nothing can be edited", () => {
+    mockAccess = everything();
+    mockLinkInfo = { editAccessAvailable: false };
+    const { queryByTestId } = render(<DataAccessScreen />);
+
+    expect(queryByTestId("access-edit-vet-30")).toBeNull();
+    expect(queryByTestId("access-edit-record_link-41")).toBeNull();
+  });
+
+  test("a grant by section and a record link can be edited, each for its own dog", () => {
+    mockAccess = everything();
+    mockGrants = { ...list(), editAccessAvailable: true };
+    mockLinkInfo = { editAccessAvailable: true };
+    const { getByTestId, queryByTestId } = render(<DataAccessScreen />);
+
+    fireEvent.press(getByTestId("access-edit-vet-30"));
+    expect(getByTestId("vet-share-sheet").props.children).toBe("5:City Vet");
+    expect(getByTestId("vet-share-sheet-pet").props.children).toBe(8);
+
+    fireEvent.press(getByTestId("access-edit-record_link-41"));
+    expect(getByTestId("vet-share-sheet").props.children).toBe("link 41");
+    expect(getByTestId("vet-share-sheet-pet").props.children).toBe(7);
+
+    // Family and emergency card links are not edited here.
+    expect(queryByTestId("access-edit-family-9")).toBeNull();
+    expect(queryByTestId("access-edit-emergency_link-7")).toBeNull();
+  });
+
+  test("an older grant has no edit; what a vet can add is shown", () => {
+    mockAccess = accessList(
+      vet({ id: 23, scopes: ["medical_read"], sections: null }),
+      vet({ id: 24, edit_sections: ["vaccines"] }),
+    );
+    mockGrants = { ...list(), editAccessAvailable: true };
+    const { getByTestId, queryByTestId, getByText } = render(<DataAccessScreen />);
+
+    expect(queryByTestId("access-edit-vet-23")).toBeNull();
+    expect(getByTestId("access-edit-vet-24")).toBeTruthy();
+    expect(getByText("Can add:")).toBeTruthy();
   });
 
   test("a failed read offers to try again and never says nobody has access", () => {

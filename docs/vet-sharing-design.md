@@ -166,13 +166,27 @@ The `pets` row (name, photo, breed...) is already readable by any signed-in user
 ### The mobile sheet
 
 Vet Record > **Share** (and Data Access > **Share with your vet**) opens
-`anything/apps/mobile/src/components/Health/VetShare/ShareWithVetSheet.jsx`. From there it offers providers the owner
-has a vet or telehealth booking with, for that pet; any other vet is found by search and invited (section 6) or, without
-PawPi, sent a link (section 5). The same sheet opens for one given provider from a booking that is not completed (any
-kind of provider) and from Data Access > **Choose what to share** on a pending request.
+`anything/apps/mobile/src/components/Health/VetShare/ShareWithVetSheet.jsx`, in three steps:
 
-- It sends only the by-section body. Nothing is selected beforehand, a review step states who can see what, until when
-  and what ending access does not take back, and consent is explicit.
+1. **Which vet.** Search comes first (section 6). Below it, each vet once: those with access now (**Currently sharing
+   with**, however they got it, booked or not), those asking, then those with a vet or telehealth booking for that pet.
+   Sharing by link (section 5), the emergency card and ended access sit below, **Or share by link instead** closed
+   until asked for.
+2. **What and for how long**, for that vet: one tick per section, descriptions on demand, **Can add** per editable
+   section, and the length.
+3. **Review** and consent.
+
+The same sheet opens for one given provider, at step 2, from a booking that is not completed (any kind of provider),
+and from Data Access > **Choose what to share** on a pending request or **Edit access** on a grant or a link.
+
+- A vet with an active grant by section is edited in place (`PATCH` `action: "update"`, the same grant), starting from
+  what it has, with **keep the current end date** selected. An older grant is replaced by a new share, as before.
+- **Can add** is off until the owner turns it on, turns viewing on with it (a record link may take vet notes without
+  showing them), and the review and the consent name what can be added.
+- Every control for editing and adding is hidden unless the server answers `editAccessAvailable: true`; the app then
+  sends no `editSections` and behaves as before.
+- It sends only the by-section body. Nothing is selected beforehand for a new share, a review step states who can see
+  what, until when and what ending access does not take back, and consent is explicit.
 - Access is reported as given only when the returned grant matches the choice; otherwise the app says so and revokes a
   newly created grant that differs.
 - Data Access also keeps **Approve all asked**, which approves a provider request as asked, after listing everything in

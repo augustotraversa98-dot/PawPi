@@ -21,15 +21,14 @@ const input = [
 ];
 
 /**
- * The search step of the share sheet: the owner types a vet's or clinic's name or username and picks one of the
- * matching businesses on PawPi. Shown only when the server can send invitations. The picked business stays listed
- * while the search changes.
+ * Finding the vet, the share sheet's first way: the owner types a vet's or clinic's name or username and picks one of
+ * the matching businesses on PawPi. Every match is listed, also one the owner already shares with, booked or was asked
+ * by. Shown only when the server can send invitations. The picked business stays listed while the search changes.
  *
- * Props: picked ({ id, name, ... } or null: the last one picked here), selectedId (the business the sheet is about, which
- * may be one from the list above), onPick(vet), excludeIds (businesses already offered in that list), describe(vet) (a
- * status line for a result), canLink (a link can be created instead, so an empty result may suggest it).
+ * Props: picked ({ id, name, ... } or null: the last one picked here), selectedId, onPick(vet), describe(vet) (a status
+ * line for a result), canLink (a link can be created instead, so an empty result may suggest it).
  */
-export default function VetSearch({ picked, selectedId, onPick, excludeIds = [], describe, canLink }) {
+export default function VetSearch({ picked, selectedId, onPick, describe, canLink }) {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const { data, isError, refetch, term, waiting, isFetching } = useVetSearch(search);
@@ -37,8 +36,7 @@ export default function VetSearch({ picked, selectedId, onPick, excludeIds = [],
   // Until the server says it can, the step is not offered.
   if (data ? !data.available : !isError && !term) return null;
 
-  const hidden = new Set(excludeIds.map(String));
-  const found = (data?.vets ?? []).filter((v) => !hidden.has(String(v.id)));
+  const found = data?.vets ?? [];
   const shown =
     picked && !found.some((v) => String(v.id) === String(picked.id)) ? [picked, ...found] : found;
   const place = (vet) =>

@@ -35,7 +35,7 @@ export function sharingIsWaiting(queryClient, now = Date.now()) {
       .map(([, data]) => data)
       .filter(Boolean);
   return (
-    read(["care-access-grants"]).some((grants) => grants.some((g) => g.status === "pending")) ||
+    read(["care-access-grants"]).some((data) => data.grants.some((g) => g.status === "pending")) ||
     read(["care-share-offers"]).some((data) => waitingOffers(data.offers, now).length > 0) ||
     read(["care-access-invites"]).some((invites) => invites.some((i) => i.status === "open"))
   );

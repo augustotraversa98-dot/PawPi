@@ -3,19 +3,27 @@ import { View, Text, Alert } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useShareOffers, useWithdrawShareOffer } from "@/hooks/useShareOffers";
 import { formatLocalDate } from "@/utils/localeDateTime";
-import { SHARE_SECTIONS, waitingOffers } from "@/utils/vetShare";
+import { SHARE_SECTIONS, addableSections, waitingOffers } from "@/utils/vetShare";
 import { Bullets } from "./GrantAccess";
 import SecondaryButton from "./SecondaryButton";
+import { addLines } from "./ShareAccess";
 import { Heading, bold, card, muted, text } from "./parts";
 
 function OfferRow({ offer, petName, onWithdraw, disabled }) {
   const { t } = useTranslation();
   const sections = SHARE_SECTIONS.filter((k) => offer.sections?.includes(k));
+  const adds = addableSections(offer);
   return (
     <View testID={`share-offer-row-${offer.id}`} style={card}>
       <Text style={bold}>{offer.provider_name || t("dataAccess.thisProvider")}</Text>
       <Text style={muted}>{t("shareOffer.rowWaiting", { pet: offer.pet_name || petName })}</Text>
       <Bullets lines={sections.map((k) => t(`vetShare.section.${k}.title`))} style={muted} />
+      {adds.length > 0 ? (
+        <View testID={`share-offer-adds-${offer.id}`}>
+          <Text style={muted}>{t("shareOffer.rowCanAdd")}</Text>
+          <Bullets lines={addLines(t, adds)} style={muted} />
+        </View>
+      ) : null}
       <Text style={muted}>
         {t("shareOffer.rowLength", { length: t(`vetShare.expiry.${offer.expiry}`) })}
       </Text>

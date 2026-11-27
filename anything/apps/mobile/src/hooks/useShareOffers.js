@@ -94,14 +94,17 @@ const refreshOwner = (queryClient) =>
     queryClient.invalidateQueries({ queryKey: ["care-access-grants"] }),
   ]);
 
-const sameChoice = (offer, { sections, expiry }) =>
+const sameParts = (a, b) =>
+  Array.isArray(a) && a.length === b.length && b.every((s) => a.includes(s));
+
+// `editSections` undefined: sent to a server that cannot let a vet add anything, so there is nothing to check.
+const sameChoice = (offer, { sections, expiry, editSections }) =>
   offer?.status === "open" &&
   offer.expiry === expiry &&
-  Array.isArray(offer.sections) &&
-  offer.sections.length === sections.length &&
-  sections.every((s) => offer.sections.includes(s));
+  sameParts(offer.sections, sections) &&
+  (editSections === undefined || sameParts(offer.edit_sections ?? [], editSections));
 
-// mutate({ petId, providerId, sections, expiry, providerName, replaceOfferId? }) → { outcome, offer }
+// mutate({ petId, providerId, sections, expiry, editSections?, providerName, replaceOfferId? }) → { outcome, offer }
 //   "sent"          the invitation is waiting for the business, exactly as chosen
 //   "alreadySent"   the same invitation was already waiting
 //   "unconfirmed"   the answer did not show the chosen invitation
@@ -112,7 +115,15 @@ export function useSendShareOffer({ onSuccess, onError, onSettled } = {}) {
 
   return useMutation({
     retry: false,
-    mutationFn: async ({ petId, providerId, providerName, sections, expiry, replaceOfferId }) => {
+    mutationFn: async ({
+      petId,
+      providerId,
+      providerName,
+      sections,
+      expiry,
+      editSections,
+      replaceOfferId,
+    }) => {
       if (replaceOfferId != null) {
         await withdraw(replaceOfferId);
         await showWithdrawn(queryClient, replaceOfferId);
@@ -120,12 +131,12 @@ export function useSendShareOffer({ onSuccess, onError, onSettled } = {}) {
       const response = await fetch(`/api/care-access/offers`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ petId, providerId, sections, expiry }),
+        body: JSON.stringify({ petId, providerId, sections, expiry, editSections }),
       });
       if (!response.ok) throw await failure(response);
       const data = await response.json().catch(() => null);
       const offer = data?.offer ?? null;
-      if (!sameChoice(offer, { sections, expiry })) return { outcome: "unconfirmed", offer };
+      if (!sameChoice(offer, { sections, expiry, editSections })) return { outcome: "unconfirmed", offer };
       await showChange(queryClient, OWNER_OFFERS_KEY, (list) => ({
         ...list,
         offers: [{ provider_name: providerName, ...offer }, ...list.offers.filter((o) => o.id !== offer.id)],
