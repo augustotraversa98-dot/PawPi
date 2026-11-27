@@ -354,10 +354,13 @@ export default function EmergencyCardScreen() {
   // The tag QR, who-can-reach-me settings and vet links are the OWNER's. A family member or caregiver sees the card itself (read-only):
   // the server sends them no tag token, no contacts and no links, and refuses the writes.
   const { can } = usePetPermissions();
-  const canEditCard = can("editEmergencyCard");
   const petId = params.petId || (currentPet?.id != null ? String(currentPet.id) : "");
 
   const { data, isLoading, isError, refetch } = useEmergencyCard(petId || null);
+  // Opened for another dog than the one on screen (Data access): the server's answer says whose it is, since only the
+  // owner is sent the tag token.
+  const otherDog = currentPet?.id != null && String(currentPet.id) !== String(petId);
+  const canEditCard = otherDog ? !!data?.card?.tag_token : can("editEmergencyCard");
   const saveFailed = () => Alert.alert(t("emergencyCard.saveError"));
   const update = useUpdateEmergencyCard(petId, { onError: saveFailed });
   const createLink = useCreateEmergencyLink(petId, { onError: saveFailed });

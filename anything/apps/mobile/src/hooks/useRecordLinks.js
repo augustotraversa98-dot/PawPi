@@ -2,6 +2,7 @@ import { Share } from "react-native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { recordLinkMatchesChoice } from "@/utils/vetShare";
 import { showChange } from "@/utils/sharingRefresh";
+import { refreshWhoHasAccess, showAccessEnded, showAccessGiven } from "@/hooks/useWhoHasAccess";
 
 // The owner's record link routes (docs/vet-sharing-design.md "Record links"): whoever has such a link sees the chosen
 // parts of the record without signing in.
@@ -105,6 +106,7 @@ export function useCreateRecordLink({ onSuccess, onError, onSettled } = {}) {
         ...list,
         links: [{ pet_name: petName, ...link }, ...list.links.filter((l) => l.id !== linkId)],
       }));
+      await showAccessGiven(queryClient, { pet_name: petName, ...link, kind: "record_link" });
       if (typeof data.url !== "string" || !data.url) return { outcome: "notShared", linkId };
       const sent = await Share.share({ message: `${message}\n${data.url}` }).then(
         (result) => result?.action !== Share.dismissedAction,
@@ -116,7 +118,10 @@ export function useCreateRecordLink({ onSuccess, onError, onSettled } = {}) {
     onError,
     onSettled: () => {
       onSettled?.();
-      return queryClient.invalidateQueries({ queryKey: LINKS_KEY });
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: LINKS_KEY }),
+        refreshWhoHasAccess(queryClient),
+      ]);
     },
   });
 }
@@ -128,9 +133,14 @@ export function useRevokeRecordLink({ onError } = {}) {
     mutationFn: async (linkId) => {
       const data = await revoke(linkId);
       await showRemoved(queryClient, linkId);
+      await showAccessEnded(queryClient, "record_link", linkId);
       return data;
     },
     onError,
-    onSettled: () => queryClient.invalidateQueries({ queryKey: LINKS_KEY }),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: LINKS_KEY }),
+        refreshWhoHasAccess(queryClient),
+      ]),
   });
 }

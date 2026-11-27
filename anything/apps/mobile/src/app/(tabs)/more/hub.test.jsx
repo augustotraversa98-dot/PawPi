@@ -1,17 +1,17 @@
 // Render pins for the SLIMMED My Hub screen (two-pane redesign): bookings, orders,
 // auto-reorder and pet-friendly places moved to the Services tab's "My Activity" pane, so My
 // Hub now keeps only the account-scoped sections:
-//   - Who has access (care-access grants → /(tabs)/more/data-access)
+//   - Who has access (the same list Data Access shows → /(tabs)/more/data-access)
 //   - Saved dogs     (adoption favorites → /service/adoption)
-// This asserts the kept sections render + link, empty states show, only active/non-expired
-// grants surface, and the moved sections are GONE. Data hooks, router and chrome are mocked.
+// This asserts the kept sections render + link, empty states show, the count is the number of
+// entries in that list, and the moved sections are GONE. Data hooks, router and chrome are mocked.
 
 import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
 
 const mockPush = jest.fn();
 
-let mockGrants;
+let mockAccess;
 let mockFavorites;
 let mockFollowed = [];
 
@@ -32,15 +32,11 @@ jest.mock("@/hooks/useProviders", () => ({
   useAdoptionFavorites: () => mockFavorites,
   useFollowedProviders: () => ({ data: mockFollowed, isLoading: false }),
 }));
-jest.mock("@/hooks/useCareAccessGrants", () => ({
-  useAllCareAccessGrants: () => mockGrants,
-}));
+jest.mock("@/hooks/useWhoHasAccess", () => ({ useWhoHasAccess: () => mockAccess }));
+jest.mock("@/hooks/usePetProfile", () => ({ useCurrentPet: () => ({ data: { id: 1 } }) }));
 jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
 
 import MyHubScreen from "./hub";
-
-const FUTURE = "2999-01-01";
-const PAST = "2000-01-01";
 
 function stub(data) {
   return { data, isLoading: false, isError: false, refetch: jest.fn() };
@@ -48,16 +44,17 @@ function stub(data) {
 
 beforeEach(() => {
   mockPush.mockReset();
-  mockGrants = stub([]);
+  mockAccess = stub({ entries: [], partial: false });
   mockFavorites = stub([]);
   mockFollowed = [];
 });
 
 describe("MyHubScreen (slimmed)", () => {
   it("renders the kept sections' owner-scoped rows", () => {
-    mockGrants = stub([
-      { id: 3, provider_name: "Dr. Smith", pet_name: "Rex", status: "active", expires_at: null },
-    ]);
+    mockAccess = stub({
+      entries: [{ kind: "vet", id: 3, pet_id: 1, provider_name: "Dr. Smith", pet_name: "Rex", expires_at: null }],
+      partial: false,
+    });
     mockFavorites = stub([
       { id: 7, listing_name: "Buddy", listing_breed: "Lab", provider_name: "Shelter", listing_status: "available" },
     ]);
@@ -104,16 +101,35 @@ describe("MyHubScreen (slimmed)", () => {
     expect(getByText("No saved adoption listings.")).toBeTruthy();
   });
 
-  it("surfaces only active, non-expired grants", () => {
-    mockGrants = stub([
-      { id: 1, provider_name: "Current", pet_name: "Rex", status: "active", expires_at: FUTURE },
-      { id: 2, provider_name: "Expired", pet_name: "Rex", status: "active", expires_at: PAST },
-      { id: 3, provider_name: "Revoked", pet_name: "Rex", status: "revoked", expires_at: null },
-    ]);
+  it("counts every entry of every kind, shows four and says how many more", () => {
+    const entry = (over) => ({ pet_id: 1, pet_name: "Rex", expires_at: null, ...over });
+    mockAccess = stub({
+      entries: [
+        entry({ kind: "vet", id: 1, provider_name: "North Clinic" }),
+        entry({ kind: "record_link", id: 2 }),
+        entry({ kind: "emergency_link", id: 3, pet_id: 2, pet_name: "Luna" }),
+        entry({ kind: "family", id: 4, grantee_username: "maria" }),
+        entry({ kind: "vet", id: 5, provider_name: "South Clinic", pet_id: 2, pet_name: "Luna" }),
+      ],
+      partial: false,
+    });
 
     const { getByText, queryByText } = render(<MyHubScreen />);
-    expect(getByText("Current")).toBeTruthy();
-    expect(queryByText("Expired")).toBeNull();
-    expect(queryByText("Revoked")).toBeNull();
+    expect(getByText("5")).toBeTruthy();
+    expect(getByText("North Clinic")).toBeTruthy();
+    expect(getByText("Link anyone can open")).toBeTruthy();
+    expect(getByText("@maria")).toBeTruthy();
+    expect(getByText("Emergency card link")).toBeTruthy();
+    // The other dog's entries come after the dog on screen.
+    expect(queryByText("South Clinic")).toBeNull();
+    expect(getByText("1 more")).toBeTruthy();
+  });
+
+  it("while the list cannot be read, shows no count and never says nobody has access", () => {
+    mockAccess = { data: undefined, isLoading: false, isError: true, refetch: jest.fn() };
+
+    const { getByText, queryByText } = render(<MyHubScreen />);
+    expect(getByText("Couldn't load who has access.")).toBeTruthy();
+    expect(queryByText("No one has access to your pets.")).toBeNull();
   });
 });

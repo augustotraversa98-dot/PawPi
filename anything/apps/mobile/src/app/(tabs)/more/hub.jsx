@@ -8,7 +8,10 @@ import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { useAdoptionFavorites, useFollowedProviders } from "@/hooks/useProviders";
-import { useAllCareAccessGrants } from "@/hooks/useCareAccessGrants";
+import { useWhoHasAccess } from "@/hooks/useWhoHasAccess";
+import { useSharingLive } from "@/hooks/useSharingLive";
+import { useCurrentPet } from "@/hooks/usePetProfile";
+import { accessEntryKey, accessEntryTitle, orderForDog } from "@/utils/whoHasAccess";
 import { goBackOr } from "@/utils/navigationBack";
 import { breedLabel } from "@/data/dogBreeds";
 import { providerTypeLabel } from "@/utils/providerTypeLabel";
@@ -16,18 +19,12 @@ import { providerTypeLabel } from "@/utils/providerTypeLabel";
 // MY HUB (Phase 2 ticket 2.14) — the owner's account-style hub. Bookings, orders, auto-reorder
 // and pet-friendly places moved to the Services tab's "My Activity" pane (two-pane redesign),
 // so this now SURFACES + LINKS INTO only the account-scoped surfaces that don't belong there:
-//   - Who has access(GET /api/care-access/grants — care_access_grants, 2.x)
+//   - Who has access(hooks/useWhoHasAccess — the same list Data Access shows, all dogs)
 //   - Saved dogs    (GET /api/adoption/favorites — favorited adoption listings, 2.12)
 // Every read is OWNER-scoped server-side; no fake metrics. Empty → empty states. Tapping a
 // section opens the real feature screen.
 
-function isGrantActive(g) {
-  if (g.status !== "active") return false;
-  if (!g.expires_at) return true;
-  return new Date(g.expires_at).getTime() > Date.now();
-}
-
-function SectionCard({ title, Icon, count, onPress, children }) {
+function SectionCard({ title, Icon, count, countTestID, onPress, children }) {
   return (
     <View
       style={{
@@ -72,7 +69,7 @@ function SectionCard({ title, Icon, count, onPress, children }) {
               marginRight: onPress ? 4 : 0,
             }}
           >
-            <Text style={{ fontSize: 12, fontWeight: "800", color: COLORS.terracotta }}>
+            <Text testID={countTestID} style={{ fontSize: 12, fontWeight: "800", color: COLORS.terracotta }}>
               {count}
             </Text>
           </View>
@@ -140,18 +137,22 @@ export default function MyHubScreen() {
   const router = useRouter();
 
   const { t } = useTranslation();
-  const grants = useAllCareAccessGrants();
+  const access = useWhoHasAccess();
+  const { data: currentPet } = useCurrentPet();
+  // Access also changes on other phones and screens: read it again when this one is returned to.
+  useSharingLive();
   const favorites = useAdoptionFavorites();
   const followed = useFollowedProviders();
 
-  const activeGrants = (grants.data ?? []).filter(isGrantActive);
+  // Not known until read: no count and no "no one has access" before then.
+  const entries = access.data ? orderForDog(access.data.entries, currentPet?.id) : null;
   const favList = favorites.data ?? [];
   const followedList = followed.data ?? [];
 
-  const loading = grants.isLoading && favorites.isLoading;
+  const loading = access.isLoading && favorites.isLoading;
 
   const refetch = () => {
-    grants.refetch();
+    access.refetch();
     favorites.refetch();
   };
 
@@ -190,20 +191,32 @@ export default function MyHubScreen() {
           <SectionCard
             title={t("screensUi.hub.whoHasAccess")}
             Icon={ShieldCheck}
-            count={activeGrants.length}
+            count={entries?.length}
+            countTestID="hub-access-count"
             onPress={() => router.push("/(tabs)/more/data-access")}
           >
-            {activeGrants.length === 0 ? (
+            {!entries ? (
+              access.isError ? (
+                <Empty text={t("whoHasAccess.loadError")} />
+              ) : (
+                <ActivityIndicator color={COLORS.coral} />
+              )
+            ) : entries.length === 0 ? (
               <Empty text={t("leftoverUi.hub.noAccess")} />
             ) : (
-              activeGrants.slice(0, 4).map((g) => (
-                <Row
-                  key={g.id}
-                  primary={g.provider_name || t("dataAccess.provider")}
-                  secondary={t("leftoverUi.hub.accessTo", { name: g.pet_name || t("routineCard.yourPet") })}
-                  badge={t("screensUi.hub.activeBadge")}
-                />
-              ))
+              <>
+                {entries.slice(0, 4).map((e) => (
+                  <Row
+                    key={accessEntryKey(e)}
+                    primary={accessEntryTitle(e, t)}
+                    secondary={t("leftoverUi.hub.accessTo", { name: e.pet_name || t("routineCard.yourPet") })}
+                    badge={t("screensUi.hub.activeBadge")}
+                  />
+                ))}
+                {entries.length > 4 ? (
+                  <Empty text={t("whoHasAccess.more", { count: entries.length - 4 })} />
+                ) : null}
+              </>
             )}
           </SectionCard>
 

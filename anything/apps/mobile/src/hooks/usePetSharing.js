@@ -3,6 +3,7 @@ import { Alert } from "react-native";
 import { getI18n } from "react-i18next";
 import { alertError, alertText } from "@/utils/appAlert";
 import useInviteCooldownStore from "@/store/inviteCooldownStore";
+import { refreshWhoHasAccess, showAccessEnded } from "@/hooks/useWhoHasAccess";
 
 // Family/caregiver sharing (ticket 2.47): person↔person pet access grants.
 
@@ -82,7 +83,11 @@ export function useRevokeGrant(petId) {
       if (!res.ok) throw new Error("Failed to revoke");
       return res.json();
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["pet-grants", petId] }),
+    onSuccess: async (_data, grantId) => {
+      await showAccessEnded(qc, "family", grantId);
+      refreshWhoHasAccess(qc);
+      return qc.invalidateQueries({ queryKey: ["pet-grants", petId] });
+    },
     onError: (e) => alertError(e, "appAlerts.couldNotRevoke"),
   });
 }

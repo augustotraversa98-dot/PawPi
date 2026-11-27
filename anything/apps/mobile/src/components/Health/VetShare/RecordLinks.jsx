@@ -37,10 +37,10 @@ function LinkRow({ link, onRemove, disabled }) {
 }
 
 /**
- * The owner's record links: what each one shows and until when, with Remove. Only mount it for an owner.
+ * Record links in the share sheet: offers creating one for this pet, and lists every dog's links (the limit is per
+ * owner) with what each one shows, until when, and Remove. Only mount it for an owner.
  *
- * Props: pet ({ id, name }); onCreate: offers creating a link for this pet and lists every dog's links (the limit is
- * per owner). Without it only this pet's links are listed, and nothing at all when there are none.
+ * Props: pet ({ id, name }); onCreate.
  */
 export default function RecordLinks({ pet, onCreate }) {
   const { t } = useTranslation();
@@ -65,30 +65,19 @@ export default function RecordLinks({ pet, onCreate }) {
       ],
     );
 
-  const all = activeRecordLinks(query.data?.links);
-  const links = onCreate ? all : all.filter((l) => String(l.pet_id) === String(pet?.id));
-  const rows = links.map((link) => (
+  const rows = activeRecordLinks(query.data?.links).map((link) => (
     <LinkRow key={link.id} link={link} onRemove={confirmRemove} disabled={remove.isPending} />
   ));
-  const failed = (
-    <View style={card}>
-      <Text style={text}>{t("recordLink.loadError")}</Text>
-      <SecondaryButton label={t("vetShare.retry")} onPress={() => query.refetch()} />
-    </View>
-  );
-
-  if (!onCreate) {
-    if (!query.isError && links.length === 0) return null;
-    return (
-      <View testID="record-links">
-        <Heading>{t("recordLink.listTitle")}</Heading>
-        {query.isError ? failed : rows}
-      </View>
-    );
-  }
 
   const renderBody = () => {
-    if (query.isError) return failed;
+    if (query.isError) {
+      return (
+        <View style={card}>
+          <Text style={text}>{t("recordLink.loadError")}</Text>
+          <SecondaryButton label={t("vetShare.retry")} onPress={() => query.refetch()} />
+        </View>
+      );
+    }
     if (!query.data) return <ActivityIndicator color={COLORS.coral} />;
     if (!query.data.available) {
       return (

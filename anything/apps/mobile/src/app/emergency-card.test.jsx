@@ -99,6 +99,21 @@ test("creating a vet link uses the selected scope + expiry", () => {
   expect(mockCreate).toHaveBeenCalledWith({ scope: "basic", ttlHours: 24 });
 });
 
+test("opened for the owner's other dog while a shared dog is on screen, its links can still be managed", () => {
+  mockViewerPet = { id: 9, is_shared: true, access_role: "caregiver" };
+  mockData.links = [{ id: 7, token: "L7", scope: "full", expires_at: null }];
+  const { getByTestId } = render(<EmergencyCardScreen />);
+  expect(getByTestId("revoke-link-7")).toBeTruthy();
+});
+
+test("opened for a dog that is not theirs (no tag token), nothing can be managed", () => {
+  mockViewerPet = { id: 9 };
+  mockData = { ...mockData, card: { ...mockData.card, tag_token: undefined }, links: [] };
+  const { getByTestId, queryByTestId } = render(<EmergencyCardScreen />);
+  expect(getByTestId("emergency-owner-only")).toBeTruthy();
+  expect(queryByTestId("create-link")).toBeNull();
+});
+
 test("revoking an active link calls the revoke mutation (confirmed)", () => {
   mockData.links = [{ id: 7, token: "L7", scope: "full", expires_at: null }];
   const alertSpy = jest.spyOn(Alert, "alert").mockImplementation((title, msg, buttons) => {

@@ -45,6 +45,7 @@ export const API_ROUTE_TEMPLATES = [
   '/api/care-access/offers',
   '/api/care-access/offers/:id',
   '/api/care-access/vets',
+  '/api/care-access/who-has-access',
   '/api/client-diagnostics',
   '/api/discover',
   '/api/dm-threads',

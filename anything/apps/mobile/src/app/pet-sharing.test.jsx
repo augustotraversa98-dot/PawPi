@@ -36,6 +36,7 @@ jest.mock("react-i18next", () => ({ useTranslation: () => ({ t: (k) => k }) }));
 jest.mock("@/components/Pets/CaregiverLogWalkModal", () => () => null);
 jest.mock("@/hooks/usePetProfile", () => ({
   useCurrentPet: () => mockCurrentPet,
+  usePetProfile: () => ({ data: globalThis.__sharingPets }),
 }));
 jest.mock("@/hooks/useSearch", () => ({
   useDebouncedValue: (v) => v,
@@ -45,7 +46,10 @@ jest.mock("@/hooks/useSearch", () => ({
 jest.mock("@/components/Pets/InviteCodePanel", () => () => null);
 jest.mock("@/components/Pets/RedeemInviteCard", () => () => null);
 jest.mock("@/hooks/usePetSharing", () => ({
-  usePetGrants: () => mockGrants,
+  usePetGrants: (petId) => {
+    globalThis.__sharingGrantsPet = petId;
+    return mockGrants;
+  },
   useSharedWithMe: () => mockShared,
   useInviteCaregiver: () => mockInvite,
   useRespondGrant: () => mockRespond,
@@ -73,6 +77,27 @@ beforeEach(() => {
   mockLeave = { mutate: jest.fn(), isPending: false };
   mockResend = { mutate: jest.fn(), isPending: false };
   mockSearch = { data: { owners: [{ id: 8, username: "kim" }] }, isFetching: false };
+});
+
+describe("opened for one dog from Data access (?petId=)", () => {
+  afterEach(() => {
+    delete globalThis.__sharingParams;
+    delete globalThis.__sharingPets;
+  });
+
+  test("manages that dog, whichever is on screen", () => {
+    globalThis.__sharingParams = { petId: "2" };
+    globalThis.__sharingPets = [{ id: 1, name: "Rex" }, { id: 2, name: "Luna" }];
+    render(<PetSharingScreen />);
+    expect(globalThis.__sharingGrantsPet).toBe(2);
+  });
+
+  test("a dog shared with this person is not one they can manage: the dog on screen stays", () => {
+    globalThis.__sharingParams = { petId: "2" };
+    globalThis.__sharingPets = [{ id: 1, name: "Rex" }, { id: 2, name: "Luna", is_shared: true }];
+    render(<PetSharingScreen />);
+    expect(globalThis.__sharingGrantsPet).toBe(1);
+  });
 });
 
 test("inviting a searched user with the caregiver role fires the invite mutation", () => {

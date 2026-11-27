@@ -10,7 +10,7 @@
 import React from "react";
 import { render } from "@testing-library/react-native";
 
-let mockGrants;
+let mockAccess;
 let mockFavorites;
 
 jest.mock("expo-router", () => ({
@@ -31,9 +31,8 @@ jest.mock("@/hooks/useProviders", () => ({
   useFollowedProviders: () => ({ data: [], isLoading: false }),
 }));
 jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
-jest.mock("@/hooks/useCareAccessGrants", () => ({
-  useAllCareAccessGrants: () => mockGrants,
-}));
+jest.mock("@/hooks/useWhoHasAccess", () => ({ useWhoHasAccess: () => mockAccess }));
+jest.mock("@/hooks/usePetProfile", () => ({ useCurrentPet: () => ({ data: { id: 1 } }) }));
 
 import MyHubScreen from "./hub";
 
@@ -42,7 +41,7 @@ function stub(data) {
 }
 
 beforeEach(() => {
-  mockGrants = stub([]);
+  mockAccess = stub({ entries: [], partial: false });
   mockFavorites = stub([]);
 });
 

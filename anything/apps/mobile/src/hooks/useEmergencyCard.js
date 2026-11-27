@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { refreshWhoHasAccess, showAccessEnded } from "@/hooks/useWhoHasAccess";
 
 // Emergency Card (ticket 2.51) — the OWNER hooks. The card assembles from the LIVE medical
 // sources server-side; the public surfaces (tag/link) are read elsewhere via DEFINER fns. All
@@ -85,9 +86,11 @@ export function useUpdateEmergencyCard(petId, { onError } = {}) {
         qc.setQueryData(queryKey, (old) => (old ? { ...old, card: result.card } : old));
       }
     },
-    onSettled: (_result, error) => {
+    onSettled: (_result, error, patch) => {
       // After a failure, ask the server what is really saved.
       if (error && isLastInFlight()) qc.invalidateQueries({ queryKey });
+      // A card switched off or on closes or reopens its links.
+      if (patch?.active !== undefined) refreshWhoHasAccess(qc);
     },
   });
 }
@@ -106,6 +109,7 @@ export function useCreateEmergencyLink(petId, { onError } = {}) {
       return res.json();
     },
     onSuccess: async (result) => {
+      refreshWhoHasAccess(qc);
       const link = result?.link;
       if (!link) return qc.invalidateQueries({ queryKey });
       // A load already in flight predates this link and would drop it again.
@@ -130,6 +134,10 @@ export function useRevokeEmergencyLink(petId, { onError } = {}) {
       });
       if (!res.ok) throw new Error("Failed to revoke link");
       return res.json();
+    },
+    onSuccess: async (_result, linkId) => {
+      await showAccessEnded(qc, "emergency_link", linkId);
+      refreshWhoHasAccess(qc);
     },
     onMutate: async (linkId) => {
       await qc.cancelQueries({ queryKey });

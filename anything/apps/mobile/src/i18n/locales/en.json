@@ -4261,7 +4261,7 @@
     "yourPet": "your pet",
     "noPetTitle": "No pet selected",
     "noPetBody": "Add or choose a pet to manage who can see its records.",
-    "reassurance": "This lists the access you've given businesses to {{name}}'s records, the links you created and the requests waiting for you. You can remove access here. Family sharing and emergency card links are managed separately.",
+    "reassurance": "Who has access lists every person and link that can open your dogs' data right now. The requests and invitations here are the ones about {{name}}.",
     "loadError": "Couldn't load access requests. Pull to refresh.",
     "pendingSection": "Pending requests",
     "noPending": "No pending requests.",
@@ -4278,6 +4278,18 @@
       "healthLogsRead": "View health logs",
       "messaging": "Messaging"
     }
+  },
+  "whoHasAccess": {
+    "recordLink": "Link anyone can open",
+    "emergencyLink": "Emergency card link",
+    "opens": "opens {{pet}}'s data",
+    "family": "Can see and change {{pet}}'s profile, routines, health logs and vet records. Can't manage sharing or delete {{pet}}.",
+    "caregiver": "Can see {{pet}}'s profile, routines, health logs and emergency medical details, and log walks, meals and care. No vet records, vaccines or appointments.",
+    "manageEmergency": "Manage on the emergency card",
+    "manageFamily": "Manage in Family & caregivers",
+    "loadError": "Couldn't load who has access.",
+    "partial": "Family sharing and emergency card links are managed separately.",
+    "more": "{{count}} more"
   },
   "walkItem": {
     "walk": "Walk",

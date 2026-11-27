@@ -22,7 +22,7 @@ import {
   PawPrint,
 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { useCurrentPet } from "@/hooks/usePetProfile";
+import { useCurrentPet, usePetProfile } from "@/hooks/usePetProfile";
 import { usePetPermissions } from "@/hooks/usePetPermissions";
 import { SharedPetBadge } from "@/components/Pets/SharedPetBadge";
 import { grantStatusLabel, granteeLabel } from "@/utils/sharingLabels";
@@ -97,18 +97,24 @@ export default function PetSharingScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const ROLE_LABEL = useRoleLabel();
-  const { data: currentPet, isLoading: petLoading } = useCurrentPet();
+  const params = useLocalSearchParams();
+  const { data: activePet, isLoading: petLoading } = useCurrentPet();
+  // Opened from Data access for one of the owner's own dogs (?petId=): that dog is managed, whichever is on screen.
+  const { data: pets } = usePetProfile();
+  const askedPet = params?.petId
+    ? (pets?.find((p) => String(p.id) === String(params.petId) && !p.is_shared) ?? null)
+    : null;
+  const currentPet = askedPet ?? activePet;
   const petId = currentPet?.id;
   // Managing who has access is the OWNER's. When the active dog is one SHARED with this person (family / caregiver) the Manage tab explains
   // who decides instead of offering invite / revoke (the server would refuse them).
-  const { can, ownerName } = usePetPermissions();
+  const { can, ownerName } = usePetPermissions(askedPet ?? undefined);
   const canManage = can("manageSharing");
 
   // FF2: the shared pet a family caregiver is logging a walk for ({ id, name } | null).
   const [logWalkPet, setLogWalkPet] = useState(null);
 
   // Opened from an invite link (?code=) or from onboarding (?tab=shared): start on "Shared with me".
-  const params = useLocalSearchParams();
   const linkCode = typeof params?.code === "string" ? params.code : "";
   const [tab, setTab] = useState(linkCode || params?.tab === "shared" ? "shared" : "manage"); // 'manage' | 'shared'
   const [role, setRole] = useState("family");

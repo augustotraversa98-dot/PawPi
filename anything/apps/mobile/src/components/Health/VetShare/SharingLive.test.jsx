@@ -79,6 +79,10 @@ beforeEach(() => {
     }
     reads.push(url);
     if (server.hold) return new Promise(() => {});
+    if (url.startsWith("/api/care-access/who-has-access")) {
+      const entries = server.grants.filter((g) => g.status === "active").map((g) => ({ ...g, kind: "vet" }));
+      return Promise.resolve(reply({ entries }));
+    }
     if (url.startsWith("/api/care-access/grants")) return Promise.resolve(reply({ grants: server.grants }));
     if (url.startsWith("/api/care-access/offers")) return Promise.resolve(reply({ available: true, offers: server.offers }));
     if (url.startsWith("/api/care-access/invites")) return Promise.resolve(reply({ invites: server.invites }));
@@ -260,6 +264,7 @@ describe("an answer given on another phone", () => {
     act(() => listeners.focus());
     expect(invalidate.mock.calls.map(([f]) => f.queryKey[0])).toEqual([
       "care-access-grants", "care-share-offers", "care-access-invites", "care-record-links", "provider-share-offers",
+      "care-who-has-access",
     ]);
   });
 

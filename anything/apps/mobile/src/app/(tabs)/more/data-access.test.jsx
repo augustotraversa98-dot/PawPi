@@ -3,7 +3,9 @@
 //     all, and a record request can be answered by choosing sections instead (the share sheet, for that vet);
 //   - a request from a business with no booking for the dog (every invite by link) is never approved as asked: only
 //     "Choose what to share" or "Deny", after a note to check the name;
-//   - active grants show exactly which sections and until when, with Revoke (through a confirm Alert);
+//   - "Who has access" lists what useWhoHasAccess answers (every dog, every way of sharing; the dog on screen first):
+//     a vet grant shows exactly which sections and until when, with Revoke (through a confirm Alert); a record link is
+//     removed here; family and emergency card links open their own screen for that dog;
 //   - an expired grant is shown as ended, never under "Who has access";
 //   - both sections show their empty state with no grants;
 //   - no active pet → a friendly message, no crash.
@@ -19,8 +21,9 @@ let mockBookings;
 const mockMutate = jest.fn();
 
 jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
+const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ back: jest.fn(), push: jest.fn() }),
+  useRouter: () => ({ back: jest.fn(), push: mockPush }),
 }));
 jest.mock("lucide-react-native", () =>
   new Proxy({}, { get: () => () => null }),
@@ -43,16 +46,13 @@ jest.mock("@/hooks/useCareAccessGrants", () => ({
   useUpdateGrant: () => ({ mutate: mockMutate, isPending: false }),
 }));
 
-// The links block has its own tests (components/Health/VetShare/RecordLinks.test.jsx); here only where it appears.
-const mockRefetchLinks = jest.fn();
-jest.mock("@/hooks/useRecordLinks", () => ({ useRecordLinks: () => ({ refetch: mockRefetchLinks }) }));
-jest.mock("@/components/Health/VetShare/RecordLinks", () => {
-  const { Text } = require("react-native");
-  return {
-    __esModule: true,
-    default: ({ pet, onCreate }) => <Text testID="record-links">{`${pet.id}${onCreate ? ":create" : ""}`}</Text>,
-  };
-});
+const mockRemoveLink = jest.fn();
+jest.mock("@/hooks/useRecordLinks", () => ({
+  useRevokeRecordLink: () => ({ mutate: mockRemoveLink, isPending: false }),
+}));
+// The list itself is the server's (hooks/useWhoHasAccess has its own tests, WhoHasAccess.test.jsx).
+let mockAccess;
+jest.mock("@/hooks/useWhoHasAccess", () => ({ useWhoHasAccess: () => mockAccess }));
 // The invitations block has its own tests (components/Health/VetShare/ShareOffers.test.jsx).
 jest.mock("@/hooks/useShareOffers", () => ({ useShareOffers: () => ({ refetch: jest.fn() }) }));
 jest.mock("@/components/Health/VetShare/ShareOffers", () => {
@@ -75,7 +75,28 @@ jest.mock("@/components/Health/VetShare/ShareWithVetSheet", () => {
 
 import DataAccessScreen from "./data-access";
 
+const accessList = (...entries) => ({
+  data: { entries, partial: false },
+  isError: false,
+  refetch: jest.fn(),
+});
+const vet = (over) => ({
+  kind: "vet",
+  id: 22,
+  pet_id: 7,
+  pet_name: "Rex",
+  provider_id: 5,
+  provider_name: "City Vet",
+  scopes: ["record_sections"],
+  sections: ["vaccines"],
+  expires_at: null,
+  ...over,
+});
+
 beforeEach(() => {
+  mockPush.mockReset();
+  mockRemoveLink.mockReset();
+  mockAccess = accessList();
   mockMutate.mockReset();
   mockCurrentPet = { data: { id: 7, name: "Rex" } };
   mockGrants = { data: [], isLoading: false, isError: false, refetch: jest.fn() };
@@ -210,16 +231,13 @@ test("Deny confirms then calls useUpdateGrant with action 'deny'", () => {
 });
 
 test("a grant by section shows exactly its sections and end date", () => {
-  mockGrants = list({
-    id: 22,
-    status: "active",
-    provider_name: "City Vet",
-    pet_name: "Rex",
-    scopes: ["record_sections"],
-    sections: ["vaccines", "lab_results"],
-    granted_at: "2026-06-01T12:00:00Z",
-    expires_at: "2999-03-05T12:00:00Z",
-  });
+  mockAccess = accessList(
+    vet({
+      sections: ["vaccines", "lab_results"],
+      granted_at: "2026-06-01T12:00:00Z",
+      expires_at: "2999-03-05T12:00:00Z",
+    }),
+  );
   const { getByText, queryByText } = render(<DataAccessScreen />);
 
   expect(getByText("City Vet")).toBeTruthy();
@@ -235,14 +253,7 @@ test("a grant by section shows exactly its sections and end date", () => {
 });
 
 test("an older grant is listed as the whole bundle, until revoked", () => {
-  mockGrants = list({
-    id: 23,
-    status: "active",
-    provider_name: "City Vet",
-    scopes: ["medical_read"],
-    sections: null,
-    expires_at: null,
-  });
+  mockAccess = accessList(vet({ id: 23, scopes: ["medical_read"], sections: null }));
   const { getByText } = render(<DataAccessScreen />);
 
   expect(getByText("Older access, all together:")).toBeTruthy();
@@ -251,20 +262,7 @@ test("an older grant is listed as the whole bundle, until revoked", () => {
 });
 
 test("Revoke confirms then calls useUpdateGrant with action 'revoke'", () => {
-  mockGrants = {
-    data: [
-      {
-        id: 22,
-        status: "active",
-        provider_name: "City Vet",
-        scopes: [],
-        expires_at: null,
-      },
-    ],
-    isLoading: false,
-    isError: false,
-    refetch: jest.fn(),
-  };
+  mockAccess = accessList(vet({ scopes: [] }));
   const { getByText } = render(<DataAccessScreen />);
 
   fireEvent.press(getByText("Revoke access"));
@@ -374,10 +372,96 @@ test("opening the screen reads the requests and bookings again", () => {
   expect(mockBookings.refetch).toHaveBeenCalled();
 });
 
-test("the owner's record links for this dog are listed here, without creating; a family member has none", () => {
-  expect(render(<DataAccessScreen />).getByTestId("record-links").props.children).toBe("7");
-  mockCurrentPet = { data: { id: 7, name: "Rex", is_shared: true } };
-  expect(render(<DataAccessScreen />).queryByTestId("record-links")).toBeNull();
+describe("Who has access", () => {
+  const everything = () =>
+    accessList(
+      vet({ id: 30, pet_id: 8, pet_name: "Luna" }),
+      {
+        kind: "record_link", id: 41, pet_id: 7, pet_name: "Rex", sections: ["files"], allow_notes: true,
+        expires_at: "2999-03-05T12:00:00Z",
+      },
+      { kind: "emergency_link", id: 7, pet_id: 8, pet_name: "Luna", scope: "basic", expires_at: null },
+      {
+        kind: "family", id: 9, pet_id: 8, pet_name: "Luna", role: "caregiver", grantee_username: "maria",
+        expires_at: null,
+      },
+    );
+
+  test("lists every dog's access, the dog on screen first, each labelled with its dog", () => {
+    mockAccess = everything();
+    const { getAllByTestId, getByTestId } = render(<DataAccessScreen />);
+
+    expect(getAllByTestId(/^access-entry-(vet|record_link|emergency_link|family)-\d+$/).map((n) => n.props.testID))
+      .toEqual([
+        "access-entry-record_link-41",
+        "access-entry-vet-30",
+        "access-entry-emergency_link-7",
+        "access-entry-family-9",
+      ]);
+    expect(getByTestId("access-entry-pet-record_link-41").props.children).toBe("opens Rex's data");
+    expect(getByTestId("access-entry-pet-vet-30").props.children).toBe("has access to Luna");
+    expect(getByTestId("access-entry-pet-family-9").props.children).toBe("has access to Luna");
+  });
+
+  test("each entry says what it opens and until when", () => {
+    mockAccess = everything();
+    const { getByText, getAllByText } = render(<DataAccessScreen />);
+
+    expect(getByText("Can add vet notes")).toBeTruthy();
+    expect(getByText("Documents")).toBeTruthy();
+    expect(getByText(/^Only name, photo, species, breed and microchip/)).toBeTruthy();
+    expect(getByText("@maria")).toBeTruthy();
+    expect(getByText(/log walks, meals and care. No vet records/)).toBeTruthy();
+    expect(getByText(/^Until .*2999$/)).toBeTruthy();
+    expect(getAllByText("Until you revoke it")).toHaveLength(3);
+  });
+
+  test("a record link is removed here, after asking", () => {
+    mockAccess = everything();
+    const { getByTestId } = render(<DataAccessScreen />);
+
+    fireEvent.press(getByTestId("record-link-remove-41"));
+
+    expect(Alert.alert.mock.calls[0][0]).toBe("Remove this link?");
+    expect(mockRemoveLink).toHaveBeenCalledWith(41);
+  });
+
+  test("revoking another dog's vet says which dog the grant is for", () => {
+    mockAccess = everything();
+    const { getByTestId } = render(<DataAccessScreen />);
+
+    fireEvent.press(getByTestId("data-access-revoke-30"));
+
+    expect(Alert.alert.mock.calls[0][1]).toContain("Luna");
+    expect(mockMutate).toHaveBeenCalledWith(
+      { grantId: 30, action: "revoke", petId: 8 },
+      expect.any(Object),
+    );
+  });
+
+  test("emergency card links and family are managed on their own screen, for that dog", () => {
+    mockAccess = everything();
+    const { getByTestId } = render(<DataAccessScreen />);
+
+    fireEvent.press(getByTestId("access-manage-emergency_link-7"));
+    fireEvent.press(getByTestId("access-manage-family-9"));
+
+    expect(mockPush.mock.calls).toEqual([["/emergency-card?petId=8"], ["/pet-sharing?petId=8"]]);
+  });
+
+  test("a failed read offers to try again and never says nobody has access", () => {
+    mockAccess = { data: undefined, isError: true, refetch: jest.fn() };
+    const { getByTestId, queryByText } = render(<DataAccessScreen />);
+
+    expect(queryByText("No one has access yet.")).toBeNull();
+    fireEvent.press(getByTestId("who-has-access-retry"));
+    expect(mockAccess.refetch).toHaveBeenCalled();
+  });
+
+  test("against a server without the single list, says what is managed elsewhere", () => {
+    mockAccess = { ...accessList(), data: { entries: [], partial: true } };
+    expect(render(<DataAccessScreen />).getByTestId("who-has-access-partial")).toBeTruthy();
+  });
 });
 
 test("the owner's waiting invitations for this dog are listed; a family member has none", () => {

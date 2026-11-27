@@ -330,3 +330,25 @@ A vet usually answers on another phone. In the app (`mobile/src/hooks/useSharing
 - A second tap sends nothing: each action holds a guard while it is on its way, and the server answers a repeated share,
   invitation, answer or link request without creating a second one (sections 1, 5 and 6).
 
+
+## 8. Who has access
+
+One list, one source: `GET /api/care-access/who-has-access` answers `{entries}`, everything that can open the data of
+any of the owner's pets right now. My Hub counts these entries and Data access lists them (`useWhoHasAccess`,
+`mobile/src/components/Health/VetShare/AccessList.jsx`), the dog on screen first.
+
+| `kind` | Counted while | Ended or managed |
+|---|---|---|
+| `vet` (a grant to a business) | active and not past its end | **Revoke access**, on the entry |
+| `record_link` | not removed, not past its end, the pet still the owner's | **Remove link**, on the entry |
+| `emergency_link` (a link from the emergency card) | not revoked, not past its end, the card active | on the emergency card |
+| `family` (family or caregiver) | the invitation accepted and not past its end | on Family & caregivers |
+
+Pending requests, unanswered invitations and unused invite codes open nothing and are not listed. The emergency tag (the
+QR on a collar) is not a share and is not listed. No token or link address is returned. A source whose table is missing
+answers as empty; any other failure fails the whole request, so part of the list never passes for all of it. A new way
+of sharing a pet's data has to be added to this route. Against a server without it, the app lists vet access and record
+links from their own routes and says that the rest is managed elsewhere.
+
+Tests: `web/test/integration/who-has-access.integration.test.ts`,
+`mobile/src/components/Health/VetShare/WhoHasAccess.test.jsx`.
