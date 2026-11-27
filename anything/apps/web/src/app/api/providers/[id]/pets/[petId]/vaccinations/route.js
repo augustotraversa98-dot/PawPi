@@ -1,18 +1,18 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
-import { assertCareAccess, CareAccessError } from "@/app/api/utils/careAccess";
+import { CareAccessError } from "@/app/api/utils/careAccess";
+import { addForProvider } from "@/app/api/utils/sharedWrites";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // POST /api/providers/[id]/pets/[petId]/vaccinations — provider staff write a
 // vaccination back to the pet's record. Ticket 8 (docs/provider-design.md §4
 // item 8).
 //
-// Authorization is SOLELY assertCareAccess (scope 'vaccinations_write'): active
-// membership + active grant, and it writes the audit row. No requireProviderRole;
-// no self-written audit row. owner_user_id is derived from pets.owner_user_id and
-// administered_by_provider_id is stamped with this provider, so the owner sees the
-// provider-administered vaccination immediately.
+// Authorization is the care grant alone (utils/sharedWrites.js): a grant by
+// section that lets this business add vaccines, or the older 'vaccinations_write'
+// scope. Either way the access is audited and no requireProviderRole is used. The
+// row lands on the pet owner's record, stamped with this business.
 //
 // DB is porsager's tagged-template `sql` (SCHEMA_NOTES "neon→porsager"): every
 // query is a tagged template; params bind via `${}`.
@@ -39,11 +39,21 @@ async function POST(request, { params }) {
     }
 
     // The ONLY gate. Throws CareAccessError(403) on denial; writes the audit row.
-    await assertCareAccess(petId, providerId, "vaccinations_write", {
+    const written = await addForProvider({
+      petId,
+      providerId,
       staffUserId,
-      action: "write",
+      section: "vaccines",
+      data: { name, date_given, expires_on, lot, notes: body.notes },
       resource: "pet_vaccinations",
+      olderScope: "vaccinations_write",
     });
+    if (written.badData) {
+      return Response.json({ error: "The vaccination is not valid" }, { status: 400 });
+    }
+    if (written.record) {
+      return Response.json({ vaccination: written.record }, { status: 201 });
+    }
 
     // Derive owner from the pet — the vaccination belongs to the pet owner's
     // record.

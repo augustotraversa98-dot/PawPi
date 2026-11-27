@@ -81,7 +81,7 @@ describe("GET /api/providers/[id]/pets/[petId]/record", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       medical_profile: PROFILE,
-      notes: NOTES,
+      notes: [{ ...NOTES[0], editable: false }],
       vaccinations: VAX,
       sharedSections: null,
     });
@@ -142,6 +142,7 @@ describe("GET /api/providers/[id]/pets/[petId]/record", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       sharedSections: ["vaccines"],
+      editSections: [],
       medical_profile: null,
       notes: [],
       vaccinations: VAX,

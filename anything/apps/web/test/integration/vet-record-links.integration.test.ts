@@ -771,6 +771,18 @@ describe("I. a database without 0153", () => {
       alter table vet_notes drop constraint if exists vet_notes_record_link_check;
       alter table vet_notes drop column if exists via_record_link, drop column if exists record_link_id,
         drop column if exists external_author_name;
+      drop trigger if exists pet_vaccinations_link_author_gone on pet_vaccinations;
+      drop trigger if exists pet_vaccinations_link_guard on pet_vaccinations;
+      drop trigger if exists pet_lab_results_link_author_gone on pet_lab_results;
+      drop trigger if exists pet_lab_results_link_guard on pet_lab_results;
+      drop trigger if exists vet_documents_link_author_gone on vet_documents;
+      drop trigger if exists vet_documents_link_guard on vet_documents;
+      alter table pet_vaccinations drop column if exists via_record_link, drop column if exists record_link_id,
+        drop column if exists external_author_name;
+      alter table pet_lab_results drop column if exists via_record_link, drop column if exists record_link_id,
+        drop column if exists external_author_name;
+      alter table vet_documents drop column if exists via_record_link, drop column if exists record_link_id,
+        drop column if exists external_author_name;
       drop table if exists care_record_links;
       create or replace function app_pet_has_vet_relationship(p_pet_id integer) returns boolean
         language sql stable security definer set search_path = public, pg_temp
@@ -779,7 +791,10 @@ describe("I. a database without 0153", () => {
   };
   beforeAll(strip);
   afterAll(async () => {
-    await raw.unsafe(migration("0153_vet_record_links.sql"));
+    for (const name of ["0153_vet_record_links.sql", "0157_record_link_note_edit.sql", "0158_share_edit_permission.sql",
+      "0159_edit_share.sql", "0160_vet_record_writes.sql"]) {
+      await raw.unsafe(migration(name));
+    }
   });
 
   it("reports links as not available, and creates nothing of another kind", async () => {
@@ -825,6 +840,8 @@ describe("J. verify_0153.sql", () => {
   beforeAll(async () => {
     await raw.unsafe(`
       drop function if exists app_record_link_update_note(text, integer, text);
+      drop function if exists app_record_link_check_edit(text, text);
+      drop function if exists app_record_link_add_record(text, text, jsonb);
       drop function if exists app_update_record_link(integer, text[], text[], text);
       drop trigger if exists care_record_links_sync_notes on care_record_links;
       alter table care_record_links drop column if exists edit_sections;
@@ -838,6 +855,7 @@ describe("J. verify_0153.sql", () => {
     await raw.unsafe(migration("0157_record_link_note_edit.sql"));
     await raw.unsafe(migration("0158_share_edit_permission.sql"));
     await raw.unsafe(migration("0159_edit_share.sql"));
+    await raw.unsafe(migration("0160_vet_record_writes.sql"));
   });
   const failing = async () =>
     ((await raw.unsafe(verify0153())) as any[]).filter((r) => r.status !== "PASS").map((r) => r.ord);

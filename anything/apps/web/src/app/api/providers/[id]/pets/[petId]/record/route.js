@@ -21,7 +21,9 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 //     and vaccinations, with `sharedSections: null`.
 //   • A grant by section (findSectionGrant, docs/vet-sharing-design.md): only the
 //     sections the owner chose, listed in `sharedSections`; everything else is
-//     empty. Read only.
+//     empty. `editSections` lists those the owner lets this business add to
+//     (empty = view only), and a note it added is marked `editable` while it may
+//     still add notes.
 //
 // A revoked, expired or missing grant is a 403 on the very next request, with no
 // extra wiring.
@@ -34,7 +36,7 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 // The medical profile, emergency contact and insurance share one table, so they are
 // read through app_shared_medical_profile, which returns only the granted columns
 // (never a direct select on that table).
-async function readSharedRecord(petId, providerId, grantedSections) {
+async function readSharedRecord(petId, providerId, grantedSections, editSections) {
   const sharedSections = RECORD_SECTIONS.filter((s) =>
     grantedSections.includes(s),
   );
@@ -84,13 +86,22 @@ async function readSharedRecord(petId, providerId, grantedSections) {
 
   return {
     sharedSections,
+    editSections: sharedSections.filter((s) => editSections.includes(s)),
     medical_profile: medicalProfileRows[0] ?? null,
-    notes: notes.map(presentVetNote),
+    notes: markEditable(notes, providerId, editSections.includes("vet_notes")),
     vaccinations,
     documents,
     photo_checks: photoChecks,
     lab_results: labResults,
   };
+}
+
+// A business corrects only the notes it added, while it may still add notes.
+function markEditable(notes, providerId, mayAddNotes) {
+  return notes.map((note) => ({
+    ...presentVetNote(note),
+    editable: mayAddNotes && String(note.added_by_provider_id) === String(providerId),
+  }));
 }
 
 async function GET(request, { params }) {
@@ -110,8 +121,9 @@ async function GET(request, { params }) {
 
     // Gate 1: active staff + active grant covering medical_read. Throws
     // CareAccessError(403) on any denial and writes the audit row on success.
+    let readGrant;
     try {
-      await assertCareAccess(petId, providerId, "medical_read", {
+      readGrant = await assertCareAccess(petId, providerId, "medical_read", {
         staffUserId,
         action: "read",
         resource: "medical_record",
@@ -123,7 +135,7 @@ async function GET(request, { params }) {
       if (!grant) throw e;
       await recordCareAccess(grant.id, staffUserId, "read", "medical_record");
       return Response.json(
-        await readSharedRecord(petId, providerId, grant.sections),
+        await readSharedRecord(petId, providerId, grant.sections, grant.edit_sections ?? []),
       );
     }
 
@@ -147,7 +159,7 @@ async function GET(request, { params }) {
 
     return Response.json({
       medical_profile: medicalProfileRows[0] ?? null,
-      notes: notes.map(presentVetNote),
+      notes: markEditable(notes, providerId, !!readGrant?.scopes?.includes("medical_write")),
       vaccinations,
       sharedSections: null,
     });

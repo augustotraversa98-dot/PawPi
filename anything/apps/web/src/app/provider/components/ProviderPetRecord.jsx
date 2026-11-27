@@ -23,7 +23,11 @@ import {
   useRequestAccess,
   useAddVetNote,
   useAddVaccination,
+  useEditVetNote,
+  useAddLabResult,
+  useAddDocument,
 } from "../hooks/useProviders";
+import { DocumentForm, EditableNoteBody, LabResultForm } from "./RecordWriteForms";
 import { COLORS } from "../lib/colors";
 import recordCopy from "../i18n/record";
 import { useProviderCopy } from "../i18n/lib/useProviderCopy";
@@ -38,8 +42,9 @@ import { formatRecordDate, recordFileHref } from "../lib/record";
 // consent-based + audited server-side; that's surfaced on every state.
 //
 // When the record answers with `sharedSections` (the owner shared by section),
-// only those sections are shown, the rest are named as not shared, and there are
-// no write forms: that access is read only.
+// only those sections are shown and the rest are named as not shared. There is a
+// write form only for the parts in `editSections`, the ones the owner lets this
+// business add to; none of them is the default. Nothing is ever deleted here.
 
 // The clinical screen always requests read + both write scopes so a single owner
 // approval unlocks viewing, notes, and vaccinations.
@@ -67,6 +72,9 @@ export default function ProviderPetRecord({
   const requestAccess = useRequestAccess(providerId);
   const addNote = useAddVetNote(providerId, petId);
   const addVaccination = useAddVaccination(providerId, petId);
+  const editNote = useEditVetNote(providerId, petId);
+  const addLabResult = useAddLabResult(providerId, petId);
+  const addDocument = useAddDocument(providerId, petId);
   const { t, lang } = useProviderCopy(recordCopy);
 
   // A request has been sent and is awaiting the owner's approval.
@@ -193,6 +201,8 @@ export default function ProviderPetRecord({
           providerId={providerId}
           data={record.data}
           sharedSections={sharedSections}
+          writes={{ addNote, addVaccination, editNote, addLabResult, addDocument }}
+          onWriteError={handleWriteError}
         />
       ) : (
         <div className="space-y-6">
@@ -206,6 +216,7 @@ export default function ProviderPetRecord({
             lang={lang}
             notes={record.data.notes ?? []}
             addNote={addNote}
+            editNote={editNote}
             onWriteError={handleWriteError}
           />
           <VaccinationsCard
@@ -369,17 +380,24 @@ function EmptyLine({ text }) {
   return <p className="px-1 py-2 text-sm text-[#7A6254]">{text}</p>;
 }
 
-// What a grant by section shows: the shared sections only, read only, and the
-// names of the ones that were not shared. Nothing here writes.
-function SharedRecord({ t, lang, providerId, data, sharedSections }) {
+// What a grant by section shows: the shared sections only and the names of the
+// ones that were not shared. A section is read only unless the owner lets this
+// business add to it.
+function SharedRecord({ t, lang, providerId, data, sharedSections, writes, onWriteError }) {
   const has = (section) => sharedSections.includes(section);
+  const mayAdd = (section) => has(section) && !!data.editSections?.includes(section);
   const names = (list) => list.map((s) => t.sections[s]).join(" · ");
   const notShared = SECTIONS.filter((s) => !has(s));
+  const addable = SECTIONS.filter(mayAdd);
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-[#FFD9B3] bg-[#FFFBF6] p-5 text-sm text-[#7A6254]">
         <p className="font-bold text-[#3B241B]">{t.shared.title}</p>
-        <p className="mt-1">{t.shared.readOnly}</p>
+        <p className="mt-1" data-testid="shared-access">
+          {addable.length > 0
+            ? fill(t.shared.canAdd, { parts: names(addable) })
+            : t.shared.readOnly}
+        </p>
         <p className="mt-3">
           <span className="font-semibold text-[#3B241B]">
             {t.shared.shared}:{" "}
@@ -427,14 +445,24 @@ function SharedRecord({ t, lang, providerId, data, sharedSections }) {
         />
       )}
       {has("vet_notes") && (
-        <VetNotesCard t={t} lang={lang} notes={data.notes ?? []} readOnly />
+        <VetNotesCard
+          t={t}
+          lang={lang}
+          notes={data.notes ?? []}
+          readOnly={!mayAdd("vet_notes")}
+          addNote={writes.addNote}
+          editNote={mayAdd("vet_notes") ? writes.editNote : undefined}
+          onWriteError={onWriteError}
+        />
       )}
       {has("vaccines") && (
         <VaccinationsCard
           t={t}
           lang={lang}
           vaccinations={data.vaccinations ?? []}
-          readOnly
+          readOnly={!mayAdd("vaccines")}
+          addVaccination={writes.addVaccination}
+          onWriteError={onWriteError}
         />
       )}
       {has("files") && (
@@ -443,6 +471,11 @@ function SharedRecord({ t, lang, providerId, data, sharedSections }) {
           lang={lang}
           providerId={providerId}
           documents={data.documents ?? []}
+          form={
+            mayAdd("files") && (
+              <DocumentForm t={t} addDocument={writes.addDocument} onWriteError={onWriteError} />
+            )
+          }
         />
       )}
       {has("photos") && (
@@ -454,15 +487,25 @@ function SharedRecord({ t, lang, providerId, data, sharedSections }) {
         />
       )}
       {has("lab_results") && (
-        <LabResultsCard t={t} lang={lang} results={data.lab_results ?? []} />
+        <LabResultsCard
+          t={t}
+          lang={lang}
+          results={data.lab_results ?? []}
+          form={
+            mayAdd("lab_results") && (
+              <LabResultForm t={t} addLabResult={writes.addLabResult} onWriteError={onWriteError} />
+            )
+          }
+        />
       )}
     </div>
   );
 }
 
-function FilesCard({ t, lang, providerId, documents }) {
+function FilesCard({ t, lang, providerId, documents, form }) {
   return (
     <SectionCard Icon={Paperclip} title={t.sections.files}>
+      {form}
       {documents.length === 0 ? (
         <EmptyLine text={t.files.empty} />
       ) : (
@@ -566,9 +609,10 @@ function PhotosCard({ t, lang, providerId, photos }) {
   );
 }
 
-function LabResultsCard({ t, lang, results }) {
+function LabResultsCard({ t, lang, results, form }) {
   return (
     <SectionCard Icon={FlaskConical} title={t.sections.lab_results}>
+      {form}
       {results.length === 0 ? (
         <EmptyLine text={t.labResults.empty} />
       ) : (
@@ -614,7 +658,7 @@ function linkNoteAuthor(note, t) {
   return note.external_author_name || t.notes.anonymous;
 }
 
-function VetNotesCard({ t, lang, notes, addNote, onWriteError, readOnly }) {
+function VetNotesCard({ t, lang, notes, addNote, editNote, onWriteError, readOnly }) {
   const {
     register,
     handleSubmit,
@@ -731,9 +775,7 @@ function VetNotesCard({ t, lang, notes, addNote, onWriteError, readOnly }) {
                   </span>
                 )}
               </div>
-              <p className="whitespace-pre-wrap text-sm text-[#3B241B]">
-                {n.note}
-              </p>
+              <EditableNoteBody t={t} note={n} editNote={editNote} onWriteError={onWriteError} />
             </li>
           ))}
         </ul>

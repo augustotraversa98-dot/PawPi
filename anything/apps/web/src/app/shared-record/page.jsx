@@ -159,6 +159,12 @@ export default function SharedRecordPage() {
             {(shared.sections ?? []).map((key) => record.sections[key] ?? key).join(", ")}.{" "}
             {t.header.onlyThis}
           </p>
+          {shared.edit_sections?.length ? (
+            <p style={{ margin: "8px 0 0", fontSize: 14, lineHeight: 1.5 }} data-testid="link-can-add">
+              <strong>{t.header.canAdd}: </strong>
+              {shared.edit_sections.map((key) => record.sections[key] ?? key).join(", ")}.
+            </p>
+          ) : null}
         </section>
         <RecordSections
           key={token}

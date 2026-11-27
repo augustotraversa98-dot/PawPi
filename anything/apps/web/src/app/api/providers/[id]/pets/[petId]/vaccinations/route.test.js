@@ -12,7 +12,7 @@ import sql from "@/app/api/utils/sql";
 import { assertCareAccess } from "@/app/api/utils/careAccess";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
-vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
+vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn(), getActiveTx: () => null }));
 vi.mock("@/app/api/utils/careAccess", () => {
   class CareAccessError extends Error {
     constructor(message) {
@@ -68,6 +68,7 @@ describe("POST /api/providers/[id]/pets/[petId]/vaccinations", () => {
     const INSERTED = { id: 9, name: "Rabies", administered_by_provider_id: 100 };
     sql
       .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
+      .mockResolvedValueOnce([]) // a database without 0160: the older insert below
       .mockResolvedValueOnce([PET_OWNER_ROW]) // pet owner
       .mockResolvedValueOnce([INSERTED]); // insert
     assertCareAccess.mockResolvedValue({ id: 555 });
@@ -105,6 +106,8 @@ describe("POST /api/providers/[id]/pets/[petId]/vaccinations", () => {
 
     const res = await POST(postReq({ name: "Rabies" }), PARAMS);
     expect(res.status).toBe(403);
-    expect(sql).toHaveBeenCalledTimes(1); // only the profile lookup
+    // The profile lookup, then the question whether a share lets this business add: nothing is inserted.
+    expect(sql).toHaveBeenCalledTimes(2);
+    expect(allQueryText()).not.toContain("INSERT INTO");
   });
 });

@@ -1,6 +1,5 @@
 import sql from "@/app/api/utils/sql";
-import { auth } from "@/auth";
-import { resolveOrCreateUserId } from "@/app/api/utils/currentUser";
+import { identifyVisitor, withoutNul } from "@/app/api/utils/recordLinkVisitor";
 import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
 import {
   RECORD_LINK_NOTE_BODY_BYTES,
@@ -28,19 +27,6 @@ const refuse = (outcome) => {
   const [status, code, error] = refusal;
   return answer({ error, code }, status);
 };
-
-// A signed-in visitor gets their identity on this request even before their first use of the app, so a note carries
-// their name and stays theirs to edit. A signed-out one has none.
-async function identifyVisitor() {
-  const session = await auth();
-  if (session?.user?.id) {
-    const user = { ...session.user, name: withoutNul(session.user.name) };
-    await resolveOrCreateUserId({ ...session, user });
-  }
-}
-
-// The database's text cannot hold the NUL character, so it is left out of what is stored.
-const withoutNul = (text) => (typeof text === "string" ? text.replaceAll("\u0000", "") : text);
 
 // POST /api/public/record-link/notes { token, note } → 201 { note: { note_date, created_at, author_name } }: adds one
 // vet note through a link that allows it (migration 0153). No account needed. Only the note is read from the body: the

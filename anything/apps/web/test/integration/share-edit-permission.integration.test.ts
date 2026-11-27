@@ -75,6 +75,7 @@ beforeAll(async () => {
   // Other files re-apply older migrations on the shared database, which restores older functions.
   await raw.unsafe(migration("0157_record_link_note_edit.sql"));
   await raw.unsafe(migration("0158_share_edit_permission.sql"));
+  await raw.unsafe(migration("0160_vet_record_writes.sql"));
   const url = new URL(inject("TEST_DATABASE_URL"));
   url.username = "pawpi_app";
   url.password = "pawpi_app";
@@ -246,6 +247,7 @@ describe("the database on its own", () => {
 
 describe("a database without 0158", () => {
   const strip = () => raw.unsafe(`
+    drop function if exists app_record_link_add_record(text, text, jsonb);
     drop function if exists app_provider_share_offer_edits(integer);
     drop trigger if exists care_record_links_sync_notes on care_record_links;
     alter table care_access_grants drop column if exists edit_sections;
@@ -259,6 +261,7 @@ describe("a database without 0158", () => {
   });
   afterAll(async () => {
     await raw.unsafe(migration("0158_share_edit_permission.sql"));
+    await raw.unsafe(migration("0160_vet_record_writes.sql"));
     await forgetSupport();
   });
 

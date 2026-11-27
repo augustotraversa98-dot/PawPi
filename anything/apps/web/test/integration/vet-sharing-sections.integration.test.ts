@@ -534,6 +534,14 @@ describe('verify_0147.sql', () => {
       .filter((r) => r.status !== 'PASS')
       .map((r) => `${r.ord} ${r.check_name} -> ${r.detail}`);
 
+  // verify_0147 lists the functions that may read the grants: the one 0160 adds is left out while it runs.
+  beforeAll(async () => {
+    await raw.unsafe('drop function if exists app_provider_may_add(integer, integer, text)');
+  });
+  afterAll(async () => {
+    await raw.unsafe(readMigration('0160_vet_record_writes.sql'));
+  });
+
   it('every row reads PASS, also after applying 0147 a second time', async () => {
     await raw.unsafe(migration0147);
     expect((await raw.unsafe(verify0147)).length).toBe(VERIFY_ROWS);

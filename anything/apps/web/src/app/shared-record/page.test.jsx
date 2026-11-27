@@ -229,6 +229,76 @@ describe("shared record page", () => {
     expect(screen.getByLabelText(t.notes.editLabel)).toHaveValue("Keep this");
   });
 
+  const addable = (edit_sections) =>
+    open({
+      sections: ["vaccines", "lab_results", "files"],
+      vet_notes: null,
+      vaccines: [],
+      lab_results: [],
+      files: [],
+      edit_sections,
+    });
+
+  it.each([
+    [[], []],
+    [["vaccines"], [t.add.open.vaccines]],
+    [["lab_results", "files"], [t.add.open.lab_results, t.add.open.files]],
+  ])("offers adding only for %j", async (edit, buttons) => {
+    await addable(edit);
+    expect(screen.queryAllByRole("button", { name: /^Add (a|an) / }).map((b) => b.textContent).sort()).toEqual(
+      [...buttons].sort(),
+    );
+    expect(!!screen.queryByTestId("link-can-add")).toBe(edit.length > 0);
+  });
+
+  it("adds a vaccination with only what was written, then reads the record again", async () => {
+    await addable(["vaccines"]);
+    fireEvent.click(screen.getByRole("button", { name: t.add.open.vaccines }));
+    const form = screen.getByRole("form", { name: t.add.open.vaccines });
+    fireEvent.submit(form);
+    expect(screen.getByText(t.add.required)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Vaccine *"), { target: { value: " Rabies " } });
+    fireEvent.change(screen.getByLabelText("Date given"), { target: { value: "2026-11-01" } });
+    fetchMock.mockReturnValueOnce(answer(201, { record: { id: 3 } }));
+    fetchMock.mockReturnValueOnce(answer(200, { record: record() }));
+    fireEvent.submit(form);
+    await screen.findByText(t.add.added);
+    expect(calls()[1]).toEqual([
+      "/api/public/record-link/records",
+      { token: TOKEN, section: "vaccines", data: { name: "Rabies", date_given: "2026-11-01" } },
+      "same-origin",
+    ]);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+  });
+
+  it("uploads a document inside a form, never putting the token in the address", async () => {
+    await addable(["files"]);
+    fireEvent.click(screen.getByRole("button", { name: t.add.open.files }));
+    const file = new File(["%PDF-1.4"], "blood.pdf", { type: "application/pdf" });
+    fireEvent.change(screen.getByLabelText("File *"), { target: { files: [file] } });
+    fireEvent.change(screen.getByLabelText("Document name *"), { target: { value: "Blood" } });
+    fetchMock.mockReturnValueOnce(answer(415, { code: "file_type" }));
+    fireEvent.submit(screen.getByRole("form", { name: t.add.open.files }));
+    await screen.findByText(t.add.fileType);
+    const [url, init] = fetchMock.mock.calls[1];
+    expect(url).toBe("/api/public/record-link/documents");
+    expect(init.body.get("token")).toBe(TOKEN);
+    expect(init.body.get("category")).toBe("lab");
+    expect(init.body.get("file").name).toBe("blood.pdf");
+    expect(screen.getByLabelText("Document name *")).toHaveValue("Blood");
+  });
+
+  it("explains a refused addition and keeps what was written", async () => {
+    await addable(["lab_results"]);
+    fireEvent.click(screen.getByRole("button", { name: t.add.open.lab_results }));
+    fireEvent.change(screen.getByLabelText("Test *"), { target: { value: "Urine" } });
+    fireEvent.change(screen.getByLabelText("Test date *"), { target: { value: "2026-11-01" } });
+    fetchMock.mockReturnValueOnce(answer(429, { code: "record_limit" }));
+    fireEvent.submit(screen.getByRole("form", { name: t.add.open.lab_results }));
+    await screen.findByText(t.add.limit);
+    expect(screen.getByLabelText("Test *")).toHaveValue("Urine");
+  });
+
   it("signed in: reads the record with the session, and still opens it if the session stopped working", async () => {
     userState.user = { id: 3 };
     fetchMock.mockReturnValueOnce(answer(401, {}));

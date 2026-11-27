@@ -73,6 +73,7 @@ const latest = async () => {
   await raw.unsafe(migration("0157_record_link_note_edit.sql"));
   await raw.unsafe(migration("0158_share_edit_permission.sql"));
   await raw.unsafe(migration("0159_edit_share.sql"));
+  await raw.unsafe(migration("0160_vet_record_writes.sql"));
 };
 
 beforeAll(async () => {
@@ -275,6 +276,7 @@ describe("the database", () => {
     const before = await share({ editSections: [] });
     try {
       await raw.unsafe(`
+        drop function if exists app_record_link_add_record(text, text, jsonb);
         drop function if exists app_update_record_link(integer, text[], text[], text);
         drop function if exists app_provider_share_offer_edits(integer);
         drop trigger if exists care_record_links_sync_notes on care_record_links;

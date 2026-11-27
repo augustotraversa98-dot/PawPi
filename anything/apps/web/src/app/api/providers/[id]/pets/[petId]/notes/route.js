@@ -1,16 +1,17 @@
 import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
-import { assertCareAccess, CareAccessError } from "@/app/api/utils/careAccess";
+import { CareAccessError } from "@/app/api/utils/careAccess";
+import { addForProvider } from "@/app/api/utils/sharedWrites";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // POST /api/providers/[id]/pets/[petId]/notes — provider staff write a vet note
 // back to the pet's record. Ticket 8 (docs/provider-design.md §4 item 8).
 //
-// Authorization is SOLELY assertCareAccess (scope 'medical_write'): active
-// membership + active grant, and it writes the audit row. No requireProviderRole;
-// no self-written audit row. owner_user_id is derived from pets.owner_user_id so
-// the note lands on the owner's record and is immediately visible to them.
+// Authorization is the care grant alone (utils/sharedWrites.js): a grant by
+// section that lets this business add notes, or the older 'medical_write' scope.
+// Either way the access is audited and no requireProviderRole is used. The note
+// lands on the pet owner's record and is immediately visible to them.
 //
 // DB is porsager's tagged-template `sql` (SCHEMA_NOTES "neon→porsager"): every
 // query is a tagged template; params bind via `${}`.
@@ -37,11 +38,21 @@ async function POST(request, { params }) {
     }
 
     // The ONLY gate. Throws CareAccessError(403) on denial; writes the audit row.
-    await assertCareAccess(petId, providerId, "medical_write", {
+    const written = await addForProvider({
+      petId,
+      providerId,
       staffUserId,
-      action: "write",
+      section: "vet_notes",
+      data: { note, note_date, vet_name, appointment_id },
       resource: "vet_notes",
+      olderScope: "medical_write",
     });
+    if (written.badData) {
+      return Response.json({ error: "The note is not valid" }, { status: 400 });
+    }
+    if (written.record) {
+      return Response.json({ note: written.record }, { status: 201 });
+    }
 
     // Derive the note's owner from the pet — the note belongs to the pet owner's
     // record, not to the acting staff member.

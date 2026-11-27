@@ -189,6 +189,7 @@ async function getJson(url, init) {
     // treats 403 (no/expired/revoked grant or missing scope) as a first-class UI
     // state and must not auto-retry it.
     err.status = res.status;
+    err.code = data?.code;
     throw err;
   }
   return data;
@@ -1296,6 +1297,52 @@ export function useAddVaccination(providerId, petId) {
         queryKey: petRecordKey(providerId, petId),
       });
     },
+  });
+}
+
+// Adding to a record the owner lets this business add to (migration 0160). Each write refreshes the record.
+function useRecordWrite(providerId, petId, mutationFn) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: petRecordKey(providerId, petId) });
+    },
+  });
+}
+
+// Correct a note this business added. body { noteId, note }.
+export function useEditVetNote(providerId, petId) {
+  return useRecordWrite(providerId, petId, async ({ noteId, note }) => {
+    const data = await getJson(`${petNotesUrl(providerId, petId)}/${noteId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ note }),
+    });
+    return data.note;
+  });
+}
+
+// body { test_name*, test_date*, results?, ordered_by?, notes? }
+export function useAddLabResult(providerId, petId) {
+  return useRecordWrite(providerId, petId, async (body) => {
+    const data = await getJson(`/api/providers/${providerId}/pets/${petId}/lab-results`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return data.labResult;
+  });
+}
+
+// A FormData with file, name, category?, document_date?, notes? (the browser sets the multipart type).
+export function useAddDocument(providerId, petId) {
+  return useRecordWrite(providerId, petId, async (form) => {
+    const data = await getJson(`/api/providers/${providerId}/pets/${petId}/documents`, {
+      method: "POST",
+      body: form,
+    });
+    return data.document;
   });
 }
 

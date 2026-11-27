@@ -107,6 +107,8 @@ export const RATE_LIMITS = {
   record_link_file: { limit: 60, windowSeconds: 600 },
   record_link_note: { limit: 5, windowSeconds: 600 },
   record_link_note_edit: { limit: 20, windowSeconds: 600 },
+  record_link_add: { limit: 20, windowSeconds: 600 },
+  record_link_upload: { limit: 10, windowSeconds: 3600 },
   // Invitations to a vet on PawPi (0154) notify a business team: created at this rate and at most 20 unanswered per
   // owner. Withdrawing one is never limited.
   share_offer_create: { limit: 20, windowSeconds: 3600 },

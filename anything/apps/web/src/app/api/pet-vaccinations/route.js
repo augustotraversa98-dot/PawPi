@@ -3,6 +3,7 @@ import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { presentSharedRow } from "@/app/api/utils/sharedWrites";
 
 // GET /api/pet-vaccinations?petId=... — OWNER-side read of a pet's vaccinations.
 // Ticket 8 (docs/provider-design.md §4 item 8). This is the owner half that makes
@@ -31,9 +32,12 @@ async function GET(request) {
     }
 
     const vaccinations = await sql`
-      SELECT v.*, COALESCE(NULLIF(BTRIM(up.full_name), ''), CASE WHEN v.created_by_role = 'editor' AND v.created_by_user_id IS NULL THEN 'Former member' END) AS created_by_name
+      SELECT v.*, COALESCE(NULLIF(BTRIM(up.full_name), ''), CASE WHEN v.created_by_role = 'editor' AND v.created_by_user_id IS NULL THEN 'Former member' END) AS created_by_name,
+        ap.name AS added_by_provider_name, o.preferred_locale AS owner_locale
       FROM pet_vaccinations v
       LEFT JOIN user_profiles up ON up.id = v.created_by_user_id
+      LEFT JOIN user_profiles o ON o.id = v.owner_user_id
+      LEFT JOIN providers ap ON ap.id = (to_jsonb(v) ->> 'added_by_provider_id')::int
       WHERE v.pet_id = ${petId}
         AND v.owner_user_id = (
           SELECT p.owner_user_id FROM pets p
@@ -43,7 +47,7 @@ async function GET(request) {
       ORDER BY v.date_given DESC NULLS LAST, v.created_at DESC
     `;
 
-    return Response.json({ vaccinations });
+    return Response.json({ vaccinations: vaccinations.map(presentSharedRow) });
   } catch (error) {
     console.error("[GET /api/pet-vaccinations] Error:", error?.message);
     return Response.json(

@@ -3,13 +3,15 @@ import { PET_PAGE_BUTTON } from "@/components/publicPet/PetPageParts";
 import { BRAND } from "@/lib/brand/tokens";
 import { RECORD_LINK_COPY } from "@/lib/recordLink/copy";
 import { postRecordLink } from "@/lib/recordLink/request";
-import { keepReturnToken, newReturnId, signInHref } from "./signInReturn";
+import { SignInLink } from "./SignInLink";
+import AddEntryForm from "./AddEntryForm";
 import recordCopy from "@/app/provider/i18n/record";
 import { fill } from "@/app/provider/i18n/lib/format";
 import { formatRecordDate } from "@/app/provider/lib/record";
 
 // The parts of a record a link shares, and what a link may allow: adding a vet note and correcting the notes added
-// through it. Only the sections in `record.sections` are drawn, plus the link's own notes.
+// through it, and adding to the parts in `record.edit_sections`. Only the sections in `record.sections` are drawn, plus
+// the link's own notes.
 
 // The record screen's section keys, in the order they are shown.
 const ORDER = [
@@ -44,6 +46,8 @@ const FIELD_COPY = {
 };
 
 const NOTE_MAX = 2000;
+// Notes have their own form below.
+const ADDABLE = ["vaccines", "files", "lab_results"];
 
 const card = {
   background: BRAND.card,
@@ -124,17 +128,6 @@ const textArea = {
   fontFamily: "inherit",
 };
 const plainButton = { ...button, background: "transparent", color: BRAND.brown, textDecoration: "underline" };
-
-// Leaves for the sign-in page and comes back to this same link.
-function SignInLink({ token, children }) {
-  const [id] = useState(newReturnId);
-  const keep = () => keepReturnToken(id, token);
-  return (
-    <a href={signInHref(id)} onClick={keep} onAuxClick={keep} style={link}>
-      {children}
-    </a>
-  );
-}
 
 // One note added through this link, with its correction form when the visitor may change it. `own` is the entry of
 // `record.link_notes`; without it the note is only shown.
@@ -501,6 +494,9 @@ export default function RecordSections({ lang, record, token, signedIn, onReload
       {shared.map((key) => (
         <Section key={key} title={copy.sections[key]}>
           {body(key)}
+          {ADDABLE.includes(key) && record.edit_sections?.includes(key) ? (
+            <AddEntryForm section={key} signedIn={signedIn} {...files} />
+          ) : null}
         </Section>
       ))}
       {ownNotesOnly ? (

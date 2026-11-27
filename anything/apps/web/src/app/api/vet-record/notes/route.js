@@ -4,6 +4,7 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 import { presentVetNote } from "@/app/api/utils/recordLink";
+import { presentSharedRow } from "@/app/api/utils/sharedWrites";
 
 // VR-B: owner-OR-family(Editor) gated reads/writes with authorship attribution (0120).
 // vet_notes gained a family policy in 0120 so an Editor can append a clinical note too.
@@ -29,15 +30,20 @@ async function GET(request) {
     }
 
     const notes = await sql`
-      SELECT n.*, COALESCE(NULLIF(BTRIM(up.full_name), ''), CASE WHEN n.created_by_role = 'editor' AND n.created_by_user_id IS NULL THEN 'Former member' END) AS created_by_name
+      SELECT n.*, COALESCE(NULLIF(BTRIM(up.full_name), ''), CASE WHEN n.created_by_role = 'editor' AND n.created_by_user_id IS NULL THEN 'Former member' END) AS created_by_name,
+        ap.name AS added_by_provider_name
       FROM vet_notes n
       LEFT JOIN user_profiles up ON up.id = n.created_by_user_id
+      LEFT JOIN providers ap ON ap.id = (to_jsonb(n) ->> 'added_by_provider_id')::int
       WHERE n.pet_id = ${petId} AND n.owner_user_id = ${gate.ownerUserId}
       ORDER BY n.note_date DESC
     `;
 
-    // A note added through a record link is never shown as the owner's (utils/recordLink).
-    return Response.json({ notes: notes.map(presentVetNote) });
+    // A note added through a record link is never shown as the owner's (utils/recordLink); one a business added is
+    // named after the business.
+    return Response.json({
+      notes: notes.map((n) => (n.via_record_link ? presentVetNote(n) : presentSharedRow(n))),
+    });
   } catch (error) {
     console.error("[Vet Record Notes] Error:", error);
     return Response.json({ error: "Failed to fetch notes" }, { status: 500 });
