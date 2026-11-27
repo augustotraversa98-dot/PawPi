@@ -94,7 +94,9 @@ const wrap = (node) => {
   return render(<QueryClientProvider client={client}>{node}</QueryClientProvider>);
 };
 const pet = { id: 7, name: "Luna", is_shared: false };
-const sheet = () => wrap(<ShareWithVetSheet pet={pet} onClose={jest.fn()} onOpenRequests={jest.fn()} />);
+const sheetNode = () => <ShareWithVetSheet pet={pet} onClose={jest.fn()} onOpenRequests={jest.fn()} />;
+const sheet = () => wrap(sheetNode());
+const redraw = (s) => s.rerender(<QueryClientProvider client={client}>{sheetNode()}</QueryClientProvider>);
 const press = (s, id) => fireEvent.press(s.getByTestId(id));
 const writes = () =>
   global.fetch.mock.calls
@@ -230,6 +232,41 @@ test("a different one waiting is replaced only when the owner says so", async ()
   expect(Alert.alert.mock.calls[1][0]).toBe("Invitation sent");
 });
 
+test("replacing an invitation that was accepted meanwhile says so and sends nothing", async () => {
+  onPost = () => reply({ code: "offer_open", offer: offer({ id: 40, expiry: "7d" }) }, 409);
+  onPatch = () => reply({ code: "offer_accepted" }, 409);
+  await send();
+  await waitFor(() => expect(Alert.alert).toHaveBeenCalled());
+  Alert.alert.mock.calls[0][2].find((b) => b.text === "Replace it").onPress();
+  await waitFor(() => expect(Alert.alert).toHaveBeenCalledTimes(2));
+  expect(Alert.alert.mock.calls[1].slice(0, 2)).toEqual([
+    "Already accepted",
+    "They already accepted it. Revoke their access instead.",
+  ]);
+  expect(writes().map(([, method]) => method)).toEqual(["POST", "PATCH"]);
+});
+
+test.each([
+  ["a request arrives", "pending"],
+  ["an access appears", "active"],
+])("consent is cleared when %s while reviewing, so the button never changes action ticked", async (_name, status) => {
+  const s = await toReview();
+  press(s, "vet-share-consent");
+  expect(s.getByTestId("cta").props.accessibilityState.disabled).toBe(false);
+  mockGrants = mockQuery([{ id: 4, provider_id: 3, status, scopes: ["record_sections"], sections: ["vaccines"], expires_at: null }]);
+  redraw(s);
+  expect(s.queryByText("Send invitation")).toBeNull();
+  expect(s.getByTestId("vet-share-consent").props.accessibilityState.checked).toBe(false);
+  expect(s.getByTestId("cta").props.accessibilityState.disabled).toBe(true);
+  press(s, "cta");
+  expect(mockShare).not.toHaveBeenCalled();
+  expect(writes()).toEqual([]);
+  // Ticking it again is consent to what the button does now.
+  press(s, "vet-share-consent");
+  press(s, "cta");
+  expect(mockShare).toHaveBeenCalledTimes(1);
+});
+
 test.each([
   ["a database without invitations", reply({ code: "share_offers_unavailable" }, 409), "Not available yet"],
   ["the limit", reply({ code: "offer_limit", limit: 20 }, 409), "Too many invitations"],
@@ -251,6 +288,7 @@ test.each([
   mockGrants = mockQuery([{ id: 4, provider_id: 3, status, scopes: ["record_sections"], sections: ["vaccines"], expires_at: null }]);
   const s = await toReview();
   expect(s.queryByTestId("vet-share-review-invitation")).toBeNull();
+  expect(s.getByTestId("vet-share-check-found")).toBeTruthy();
   press(s, "vet-share-consent");
   press(s, "cta");
   expect(mockShare).toHaveBeenCalledTimes(1);

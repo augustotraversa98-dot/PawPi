@@ -146,6 +146,7 @@ export async function notifyShareOffered({ providerId, petId, actor }) {
           (SELECT name FROM pets WHERE id = ${petId}) AS pet_name
         FROM app_provider_active_staff_ids(${[providerId]}::int[]) AS s(id)
         WHERE s.id <> ${actor}
+          AND NOT app_user_is_blocked(s.id, ${actor})
         ORDER BY s.id
       `;
     });

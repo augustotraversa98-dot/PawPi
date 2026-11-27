@@ -262,7 +262,8 @@ prescriptions or vaccinations to your dog's record and, if it asked for this, re
 such as walks or grooming.
 
 **Inviting a vet who is on PawPi.** In app versions that offer it, as the dog's owner you can look up
-a vet business published on PawPi, by its name or by the username of the account that owns it, and
+a vet business published on PawPi, by its name or handle, or by typing in full the username of the
+account that owns it, and
 send it an invitation inside PawPi, with no link. The search shows only the business's name, handle,
 logo and location. You choose the parts and the length as under "Sharing by parts" and confirm. The
 invitation shares nothing from the Vet Record: until it is answered, active members of that

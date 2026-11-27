@@ -155,6 +155,8 @@ checks as (
                               and args = 'p_query text'
                               and result = 'TABLE(id integer, name text, handle text, logo_url text, location_name text, address text)'
                               and prosrc like '%and app_vet_can_receive_share(pr.id)%'
+                              and prosrc like '%lower(o.username) = q.raw%'
+                              and prosrc !~* 'username\)\s+like'
                               and prosrc like '%where current_app_user_id() is not null%'
                               and prosrc like '%limit 20%')
               then 'PASS' else 'FAIL' end
@@ -182,7 +184,7 @@ checks as (
                               and args = 'p_offer_id integer, p_provider_id integer, p_accept boolean'
                               and prosrc like '%not app_is_active_staff_of(p_provider_id)%'
                               and prosrc like '%pg_advisory_xact_lock(hashtext(''care_access_grant:'' || v_pet_id || '':'' || p_provider_id))%'
-                              and prosrc like '%for update;%'
+                              and prosrc like '%from care_access_grants g%g.status in (''pending'', ''active'')%for update;%select o.* into v_offer%for update;%'
                               and prosrc like '%v_offer.lapses_at <= now() or v_pet_owner is distinct from v_offer.owner_user_id%'
                               and prosrc like '%if v_offer.status <> ''open''%'
                               and prosrc like '%or app_user_is_blocked(current_app_user_id(), v_offer.owner_user_id)%'

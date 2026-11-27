@@ -4020,7 +4020,7 @@
   },
   "shareOffer": {
     "searchTitle": "Buscá una veterinaria en PawPi",
-    "searchHint": "Buscá por el nombre o el usuario de la veterinaria o clínica. Vos elegís qué compartir, y tiene que aceptar antes de poder ver algo.",
+    "searchHint": "Buscá por el nombre de la veterinaria o clínica, o por su usuario completo. Vos elegís qué compartir, y tiene que aceptar antes de poder ver algo.",
     "searchPlaceholder": "Nombre o usuario de la veterinaria",
     "searchEmpty": "No hay ninguna veterinaria en PawPi que coincida. Revisá cómo está escrito, o creá un enlace.",
     "searchError": "No se pudo buscar en este momento.",
@@ -4065,6 +4065,7 @@
       "send": "Revisá tus invitaciones sin responder antes de probar de nuevo.",
       "withdrawTitle": "No se pudo retirar la invitación",
       "withdraw": "Revisá tus invitaciones y probá de nuevo.",
+      "alreadyAcceptedTitle": "Ya la aceptaron",
       "alreadyAccepted": "Ya la aceptaron. Revocá su acceso."
     }
   },

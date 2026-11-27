@@ -6,9 +6,10 @@ import { enforceRateLimit } from "@/app/api/utils/rateLimit";
 import { isMissingSchema } from "@/app/api/utils/shareOffers";
 
 // GET /api/care-access/vets?q= → { available, vets: [{ id, name, handle, logo_url, location_name, address }] }: the vet
-// businesses an owner can invite to see a record (migration 0154). Matches the business name, its handle or the owning
-// account's username; answers public business fields only. Only published, non-demo businesses with the vet capability
-// that have an account able to receive the invitation (app_vet_can_receive_share). Under two characters: no results.
+// businesses an owner can invite to see a record (migration 0154). Matches part of the business name or handle, or the
+// owning account's username typed in full; answers public business fields only. Only published, non-demo businesses with
+// the vet capability that have an account able to receive the invitation (app_vet_can_receive_share). Under two
+// characters: no results.
 // `available` is false on a database without 0154. Rate limited like the other searches.
 async function GET(request) {
   try {

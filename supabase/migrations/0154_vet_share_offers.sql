@@ -90,7 +90,7 @@ as $$
   )
 $$;
 
--- Search by business name, handle (slug) or the owning account's username (from its start, three characters or more).
+-- Search by part of the business name or handle (slug), or by the owning account's username typed in full.
 -- Public business fields only: nothing about the account.
 create or replace function app_search_share_vets(p_query text)
 returns table (id integer, name text, handle text, logo_url text, location_name text, address text)
@@ -110,9 +110,9 @@ as $$
    and (
      lower(pr.name) like '%' || q.needle || '%'
      or lower(pr.slug) like '%' || q.needle || '%'
-     or (length(q.raw) >= 3 and exists (
+     or exists (
            select 1 from user_profiles o
-           where o.id = pr.owner_user_profile_id and lower(o.username) like q.needle || '%'))
+           where o.id = pr.owner_user_profile_id and lower(o.username) = q.raw)
    )
   left join lateral (
     select pl.name, pl.address from provider_locations pl where pl.provider_id = pr.id order by pl.id limit 1
@@ -223,6 +223,10 @@ begin
 
   -- One change at a time per pet and business: the lock the owner's own share takes, then the invitation.
   perform pg_advisory_xact_lock(hashtext('care_access_grant:' || v_pet_id || ':' || p_provider_id));
+  -- The open access first, then the invitation: the same order in which a change to the access reaches them.
+  perform 1 from care_access_grants g
+  where g.pet_id = v_pet_id and g.provider_id = p_provider_id and g.status in ('pending', 'active')
+  for update;
   select o.* into v_offer
   from care_share_offers o
   where o.id = p_offer_id and o.provider_id = p_provider_id

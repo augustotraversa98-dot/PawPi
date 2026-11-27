@@ -279,8 +279,8 @@ veterinarias, recetas o vacunas a la historia de tu perro y, si lo pidió, que r
 cuidado, como paseos o peluquería.
 
 **Invitar a una veterinaria que está en PawPi.** En las versiones de la app que lo ofrecen, si sos la
-persona dueña del perro podés buscar una veterinaria publicada en PawPi, por su nombre o por el
-usuario de la cuenta propietaria, y mandarle una invitación dentro de PawPi, sin enlace. La búsqueda
+persona dueña del perro podés buscar una veterinaria publicada en PawPi, por el nombre o el usuario
+del negocio, o escribiendo completo el usuario de la cuenta propietaria, y mandarle una invitación dentro de PawPi, sin enlace. La búsqueda
 muestra solo el nombre, el usuario del negocio, el logo y la ubicación. Elegís las partes y la
 duración como en "Compartir por partes" y confirmás. La invitación no comparte nada de la historia
 clínica: hasta que se responda, las personas activas del equipo de ese negocio pueden ver el nombre

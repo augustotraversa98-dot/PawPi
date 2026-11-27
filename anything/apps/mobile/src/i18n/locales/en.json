@@ -4020,7 +4020,7 @@
   },
   "shareOffer": {
     "searchTitle": "Find a vet on PawPi",
-    "searchHint": "Search by the vet's or clinic's name or username. You choose what to share, and they have to accept before they can see anything.",
+    "searchHint": "Search by the vet's or clinic's name, or their full username. You choose what to share, and they have to accept before they can see anything.",
     "searchPlaceholder": "Vet name or username",
     "searchEmpty": "No vet on PawPi matches. Check the spelling, or create a link instead.",
     "searchError": "Couldn't search right now.",
@@ -4065,6 +4065,7 @@
       "send": "Check your waiting invitations before trying again.",
       "withdrawTitle": "Couldn't withdraw the invitation",
       "withdraw": "Check your invitations and try again.",
+      "alreadyAcceptedTitle": "Already accepted",
       "alreadyAccepted": "They already accepted it. Revoke their access instead."
     }
   },

@@ -169,7 +169,7 @@ beforeEach(async () => {
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 describe("A. the search", () => {
   it("finds a vet business by name, handle or its owner's username, with public fields only", async () => {
-    for (const q of ["north cli", "NORTH-CLINIC", "drpau"]) expect(await found(q)).toEqual([P1]);
+    for (const q of ["north cli", "NORTH-CLINIC", "drpaula"]) expect(await found(q)).toEqual([P1]);
     expect(await found("clinic")).toEqual([P1, P2]);
     const body = await (await search("north cli")).json();
     expect(body).toEqual({
@@ -178,10 +178,9 @@ describe("A. the search", () => {
     });
   });
 
-  it("matches a username only from its start and from three characters, and never a staff member's", async () => {
-    expect(await found("paula")).toEqual([]);
-    expect(await found("dr")).toEqual([]);
-    expect(await found("nurse")).toEqual([]);
+  it("matches the owner's username only when typed in full, in any case, and never a staff member's", async () => {
+    expect(await found("DrPaula")).toEqual([P1]);
+    for (const q of ["drpaul", "rpaula", "paula", "dr", "nurse"]) expect(await found(q)).toEqual([]);
   });
 
   it("answers nothing under two characters, and takes wildcards and a NUL as text", async () => {
@@ -229,6 +228,12 @@ describe("B. sending an invitation", () => {
     expect(told[0].body).toBe(
       "Olivia Owner quiere compartir la ficha veterinaria de Rex con tu equipo. No se ve nada hasta que aceptes: respondé en Historias clínicas, en el área de proveedores.",
     );
+  });
+
+  it("does not tell a team member who has a block with the owner", async () => {
+    await block(NURSE.profileId, OWNER.profileId);
+    await offer();
+    expect((await notices("care_share_offered")).map((n) => n.recipient_user_id)).toEqual([VET.profileId]);
   });
 
   it.each([
@@ -516,6 +521,40 @@ describe("E. the owner's later decision wins", () => {
     await stillRefused(id);
   });
 
+  it("a repeated share that changes no access also withdraws a waiting invitation", async () => {
+    expect((await share({})).status).toBe(201);
+    const id = await offer();
+    const repeat = await share({});
+    expect(repeat.status).toBe(200);
+    expect((await repeat.json()).deduped).toBe(true);
+    await stillRefused(id);
+  });
+
+  it("access ended while an answer is on its way: the owner's change goes through and nothing is accepted", async () => {
+    const granted = await (await share({ sections: ["vaccines"], expiry: "7d" })).json();
+    const grantId = granted.grant.id as number;
+    const id = await offer({ sections: ["files"], expiry: "1y" });
+    let answer: Promise<Response> | undefined;
+    await asApp(OWNER.profileId, async (tx) => {
+      await tx`select id from care_access_grants where id = ${grantId} for update`;
+      answer = Promise.resolve(respond(id, "accept"));
+      // The answer is waiting for the row the owner holds.
+      await vi.waitFor(
+        async () => {
+          const [{ n }] = await raw`select count(*)::int as n from pg_stat_activity where wait_event_type = 'Lock'`;
+          expect(n).toBeGreaterThan(0);
+        },
+        { timeout: 10_000, interval: 25 },
+      );
+      await tx`update care_access_grants set status = 'revoked', revoked_at = now(), updated_at = now() where id = ${grantId}`;
+    });
+    const res = await answer!;
+    expect(res.status).toBe(409);
+    expect((await res.json()).code).toBe("offer_not_open");
+    expect((await grants()).map((g) => g.status)).toEqual(["revoked"]);
+    expect((await offers())[0].status).toBe("withdrawn");
+  });
+
   it("leaves an invitation to another business alone, and so does a request from the invited business", async () => {
     const id = await offer({ providerId: P2 });
     expect((await share({ sections: ["vaccines"], expiry: "7d" })).status).toBe(201);
@@ -623,6 +662,8 @@ describe("H. a database without 0154", () => {
   });
 
   it("leaves direct sharing and revoking working", async () => {
+    expect((await share({ providerId: P2 })).status).toBe(201);
+    expect((await (await share({ providerId: P2 })).json()).deduped).toBe(true);
     const granted = await share({ sections: ["vaccines"], expiry: "7d" });
     expect(granted.status).toBe(201);
     expect((await record()).status).toBe(200);

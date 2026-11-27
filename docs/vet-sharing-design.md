@@ -254,8 +254,8 @@ grant by section (section 1).
 **Who can be found and invited** (`app_vet_can_receive_share`): a published, non-demo business with the `vet`
 capability that is not an unclaimed directory listing and has an active team member with an account, where neither the
 owner nor the business's owner has blocked the other. `GET /api/care-access/vets?q=` (2 to 60 characters, at most 20
-results, rate limited with the other searches) matches the business name or handle, or the owning account's username
-from its start (3 characters or more), and answers public business fields only: name, handle, logo and first location.
+results, rate limited with the other searches) matches part of the business name or handle, or the owning account's
+username typed in full (ignoring case), and answers public business fields only: name, handle, logo and first location.
 
 **The owner** (not family members):
 
@@ -280,11 +280,13 @@ Rules, held in the database (`app_respond_share_offer`, forced RLS on `care_shar
   request of that business, or replaces access in place, under the same lock as the owner's own share. Two answers at
   once make one grant.
 - The owner's later decision wins: when access for that pet and business starts, is approved, is denied or is revoked,
-  an unanswered invitation is withdrawn (trigger on `care_access_grants`).
+  an unanswered invitation is withdrawn (trigger on `care_access_grants`). A repeated share that finds the access
+  already in place changes no row there, so `POST /api/care-access/grants` withdraws it itself.
 - Only the database marks an invitation accepted or declined: the owner's own update rights end at withdrawing it.
 
-**Notifications** (in-app and push, recipient's language): `care_share_offered` to the business's team (push follows
-the New bookings switch; `subject_ref` is the **provider id**), `care_share_accepted` and `care_share_declined` to the
+**Notifications** (in-app and push, recipient's language): `care_share_offered` to the business's team, leaving out a
+member with a block between them and the owner (push follows the New bookings switch; `subject_ref` is the **provider
+id**), `care_share_accepted` and `care_share_declined` to the
 owner (category `owner_sharing`; `subject_ref` is the provider id). Released app builds show the sentence.
 
 **Where the business answers:** the web provider area, Clinical, and in the app's business mode (a card on the business

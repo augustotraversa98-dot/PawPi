@@ -44,6 +44,8 @@ const ERROR_KEYS = {
 function offerErrorKey(error) {
   if (error?.code === OFFERS_UNAVAILABLE) return "unavailable";
   if (error?.code === "offer_limit") return "limit";
+  // Replacing an invitation that was accepted meanwhile.
+  if (error?.code === "offer_accepted") return "alreadyAccepted";
   if (error?.status === 429) return "tooMany";
   if (error?.status === 404) return "gone";
   if (error?.status === 400) return "rejected";
@@ -242,6 +244,14 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
   // A business found by search that has no access and has not asked for it is invited, and has to accept. One the owner
   // already deals with (booked, asking, or with access) gets the access directly.
   const invites = !!selected?.searched && !access.active && !access.pending;
+  // Consent is given for one action: it is cleared when what the button would do changes, for example because a
+  // request or an access for this business appears or ends while the screen is open.
+  const action = selected ? [selected.providerId, invites, access.pending, access.active].join(":") : "";
+  const [consentedAction, setConsentedAction] = useState(action);
+  if (consentedAction !== action) {
+    setConsentedAction(action);
+    setConsent(false);
+  }
   const canReview = isOwner && canChoose && !!selected && sections.length > 0 && !!expiry;
   const reviewing = step === "review" && canReview;
   const busy = share.isPending || offer.isPending;
@@ -390,7 +400,7 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
 
   const accessNotes = () => (
     <>
-      {invites ? (
+      {selected?.searched ? (
         <Note testID="vet-share-check-found">
           <Text style={text}>{t("shareOffer.checkName", { provider: vetName(selected.name) })}</Text>
         </Note>
