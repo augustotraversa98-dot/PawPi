@@ -72,7 +72,7 @@ bio_written as (
 incoming as (
   select distinct on (t.id, k.key)
          t.id as provider_id, e.item->>'name' as name, e.item->>'description' as description,
-         (e.item->>'price_cents')::integer as price_cents, k.key, e.ord
+         (e.item->>'price_cents')::bigint as price_cents, k.key, e.ord
     from target t
    cross join lateral jsonb_array_elements(coalesce(t.services, '[]'::jsonb)) with ordinality as e(item, ord)
    cross join lateral (select ${keySql("e.item->>'name'")} as key) k
@@ -109,7 +109,7 @@ select (select count(*) from input)::int as input_providers,
 
 // ── validation (pure) ────────────────────────────────────────────────────────
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
-const MAX_PRICE_ARS = 20_000_000; // price_cents is int4
+const MAX_PRICE_ARS = 999_999_999_999; // the app's price limit (price_cents is bigint, 0163)
 const MAX_SERVICES = 40;
 
 const collapse = (v) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim() : "");
