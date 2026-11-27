@@ -17,7 +17,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { usePetVaccinations } from "@/hooks/usePetVaccinations";
-import { getDisplayAge } from "@/utils/petAge";
+import { formatPetAge, getDisplayAgeParts } from "@/utils/petAge";
 import { resolvePrivateMediaUrl } from "@/utils/privateMedia";
 import { formatDisplayDate, formatDisplayTime } from "@/utils/canonicalDateTime";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
@@ -1930,7 +1930,10 @@ export default function HealthVetRecord() {
                       },
                       {
                         label: t("health.vetRecord.fieldAge"),
-                        value: getDisplayAge(medicalProfileData?.pet),
+                        value: formatPetAge(
+                          getDisplayAgeParts(medicalProfileData?.pet),
+                          t,
+                        ),
                       },
                       {
                         label: t("health.vetRecord.fieldSex"),

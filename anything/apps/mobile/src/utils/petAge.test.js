@@ -3,7 +3,17 @@
 // a known birthday always wins and is calculated live; age_years/age_months
 // is only shown, marked approximate, when there's no birthday.
 
-import { getDisplayAge, getDisplayAgeParts } from "./petAge";
+import fs from "fs";
+import path from "path";
+import { formatPetAge, getDisplayAge, getDisplayAgeParts } from "./petAge";
+import { parseDateValue } from "./canonicalDateTime";
+import { makeReactI18nextMock } from "@/i18n/testMock";
+
+// One set of vectors for the app, the web server and the database. The app never receives the "serverOnly"
+// rows (the server removes an estimate that no longer counts).
+const vectors = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, "../../../web/test/fixtures/petAgeVectors.json"), "utf8"),
+);
 
 const NOW = new Date(2026, 6, 15); // 15 July 2026 (local)
 
@@ -157,5 +167,50 @@ describe("getDisplayAgeParts — structured output for localized callers", () =>
     expect(getDisplayAgeParts({})).toBeNull();
     expect(getDisplayAgeParts({ age_years: 0, age_months: 0 })).toBeNull();
     expect(getDisplayAgeParts(null)).toBeNull();
+  });
+});
+
+describe("getDisplayAgeParts — shared vectors", () => {
+  const cases = vectors.cases.filter((c) => !c.serverOnly).map((c) => [c.name, c]);
+
+  it.each(cases)("%s", (_name, c) => {
+    expect(getDisplayAgeParts(c.pet, parseDateValue(c.today))).toEqual(c.expected);
+  });
+
+  it("covers every case but the server-only ones", () => {
+    expect(cases.length).toBeGreaterThan(25);
+  });
+});
+
+describe("someone else's estimated pet", () => {
+  it("is approximate, also when under a month", () => {
+    expect(getDisplayAgeParts({ age_years: 3, age_months: 0, age_is_estimate: true })).toEqual({
+      years: 3,
+      months: 0,
+      approximate: true,
+    });
+    expect(getDisplayAge({ age_years: 0, age_months: 0, age_is_estimate: true })).toBe("~Under 1 month");
+  });
+});
+
+describe("formatPetAge", () => {
+  const estimate = { age_estimate_months: 24, age_estimated_on: "2026-11-15" };
+  const on = (day, lang) =>
+    formatPetAge(
+      getDisplayAgeParts(estimate, parseDateValue(day)),
+      makeReactI18nextMock(lang).useTranslation().t,
+    );
+
+  it("an estimate given in November 2026 reads one year older in November 2027, marked approximate", () => {
+    expect(on("2026-11-15", "en")).toBe("~2 years");
+    expect(on("2027-11-15", "en")).toBe("~3 years");
+    expect(on("2027-11-15", "es")).toBe("~3 años");
+  });
+
+  it("an exact age has no mark, and nothing known is null", () => {
+    const { t } = makeReactI18nextMock("es").useTranslation();
+    expect(formatPetAge({ years: 1, months: 1, approximate: false }, t)).toBe("1 año, 1 mes");
+    expect(formatPetAge({ years: 0, months: 0, approximate: false }, t)).toBe("Menos de 1 mes");
+    expect(formatPetAge(null, t)).toBeNull();
   });
 });

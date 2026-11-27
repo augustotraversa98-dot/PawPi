@@ -29,6 +29,7 @@ import {
   rememberPetIdempotencyKey,
   sameNormalisedName,
 } from "@/app/api/utils/petCreateGuard";
+import { estimateFor, hasEstimateColumns, presentPet, toAgeNumber, todayForAge } from "@/app/api/utils/petAge";
 
 // RLS R1 pilot route: handlers are wrapped at the bottom with withRequestContext
 // so their DB work runs in a transaction carrying the caller's identity. The
@@ -110,10 +111,12 @@ async function GET(request) {
     ]);
     const latestWeightByPetId = new Map(latestWeights.map((w) => [w.pet_id, w]));
 
+    // age_years / age_months carry the age as of today (utils/petAge.js).
+    const today = todayForAge();
     const petsWithCurrentWeight = pets.map((pet) => {
       const latest = latestWeightByPetId.get(pet.id);
       return {
-        ...pet,
+        ...presentPet(pet, today),
         weight: latest ? latest.weight : pet.weight,
         weight_unit: normalizeWeightUnit(latest ? latest.weight_unit : pet.weight_unit),
       };
@@ -131,7 +134,7 @@ async function GET(request) {
     // `access_version` (opt-in response only): a fingerprint of the active grants listed above. When it changes between two reads the client's
     // access changed (revoked / left / expired / newly accepted) and its pet-scoped caches must be dropped at once.
     return Response.json({
-      pets: [...petsWithCurrentWeight.map(asOwnedPet), ...shared],
+      pets: [...petsWithCurrentWeight.map(asOwnedPet), ...shared.map((pet) => presentPet(pet, today))],
       access_version: accessVersion(shared.map((p) => ({ id: p.grant_id, role: p.access_role, expires_at: p.grant_expires_at }))),
     });
   } catch (error) {
@@ -244,7 +247,10 @@ async function POST(request) {
     }
     if (replay) {
       // Same shape as the 201 ({ pet }), the existing row untouched. The header lets a client tell a replay from a create.
-      return Response.json({ pet: replay }, { status: 200, headers: { "Idempotent-Replay": "true" } });
+      return Response.json(
+        { pet: presentPet(replay) },
+        { status: 200, headers: { "Idempotent-Replay": "true" } },
+      );
     }
 
     // Handle: normalized (lowercase, no leading "@"), validated with the SAME rules as the app,
@@ -282,6 +288,10 @@ async function POST(request) {
     const adoptionDateFormatted =
       adoption_date && adoption_date !== "" ? adoption_date : null;
 
+    // 0 is a real value (a puppy of a few months).
+    const ageYears = toAgeNumber(age_years);
+    const ageMonths = toAgeNumber(age_months);
+
     // Create pet. The INSERT runs in a savepoint so a same-handle race (unique violation) is
     // handled as a friendly 409 instead of aborting the request transaction into a blanket 500.
     let pet;
@@ -294,7 +304,7 @@ async function POST(request) {
       )
       VALUES (
         ${userId}, ${name}, ${finalHandle}, ${avatar_url || null}, ${species},
-        ${breed || null}, ${age_years || null}, ${age_months || null},
+        ${breed || null}, ${ageYears}, ${ageMonths},
         ${gender || null}, ${weight || null}, ${weight_unit},
         ${birthdayDate}, ${adoptionDateFormatted}, ${notes || null}
       )
@@ -307,10 +317,23 @@ async function POST(request) {
       throw insertError;
     }
 
-    if (idem.key) await rememberPetIdempotencyKey(userId, idem.key, pet[0].id);
+    // An age given without a birthday is an estimate as of today: remember the date so it grows (0156). A database
+    // without those columns keeps the plain age.
+    let created = pet[0];
+    if (!birthdayDate && (ageYears !== null || ageMonths !== null) && hasEstimateColumns(created)) {
+      const estimate = estimateFor({ age_years: ageYears, age_months: ageMonths });
+      [created] = await sql`
+        UPDATE pets
+        SET age_estimate_months = ${estimate.age_estimate_months}, age_estimated_on = ${estimate.age_estimated_on}
+        WHERE id = ${created.id}
+        RETURNING *
+      `;
+    }
+
+    if (idem.key) await rememberPetIdempotencyKey(userId, idem.key, created.id);
 
     recordBusinessEvent("pet_created");
-    return Response.json({ pet: pet[0] }, { status: 201 });
+    return Response.json({ pet: presentPet(created) }, { status: 201 });
   } catch (error) {
     console.error("[POST /api/pets] Error:", error.message);
     return Response.json({ error: "Failed to create pet" }, { status: 500 });

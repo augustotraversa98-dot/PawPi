@@ -6,6 +6,7 @@ import {
   CHANNEL_VALUES,
   emergencyContactChannels,
 } from "@/app/api/utils/emergencyContactChannels";
+import { estimateColumnsOf, presentPublicPet } from "@/app/api/utils/petAge";
 
 // /api/emergency-card — the OWNER's Emergency Card (ticket 2.51). Owner-scoped (RLS R2c-style:
 // pet_emergency_cards is owner FOR ALL). The PUBLIC reads are elsewhere (/api/public/emergency/*
@@ -64,14 +65,20 @@ async function GET(request) {
     // (family or caregiver may READ the emergency picture — owner decision 2, 2026-11-23). owner_user_id is selected only to
     // tell the two apart and is stripped from the response so the owner's payload is unchanged.
     const pet = await sql`
-      SELECT id, name, species, breed, age_years, age_months, gender, avatar_url, owner_user_id AS _pet_owner
+      SELECT id, name, species, breed, age_years, age_months, gender, avatar_url, owner_user_id AS _pet_owner,
+             to_jsonb(pets) AS _row
       FROM pets WHERE id = ${petId} AND (owner_user_id = ${ownerUserId} OR app_user_has_pet_access(id))
     `;
     if (pet.length === 0) {
       return Response.json({ error: "Pet not found" }, { status: 404 });
     }
-    const petOwnerId = pet[0]._pet_owner;
-    delete pet[0]._pet_owner;
+    // `_row` only supplies the birthday and the estimate columns for the computed age; neither is part of the response.
+    const { _pet_owner: petOwnerId, _row, ...columns } = pet[0];
+    const { birthday: _birthday, ...cardPet } = presentPublicPet({
+      ...columns,
+      birthday: _row?.birthday ?? null,
+      ...estimateColumnsOf(_row),
+    });
     const isOwner = petOwnerId === ownerUserId;
 
     let card;
@@ -130,7 +137,7 @@ async function GET(request) {
 
     return Response.json({
       card,
-      pet: pet[0],
+      pet: cardPet,
       medical: mp[0] ?? null,
       allergies,
       conditions,

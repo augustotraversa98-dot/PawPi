@@ -156,7 +156,7 @@ describe("EditMedicalProfileModal — birthday vs. estimated age", () => {
     return JSON.parse(global.fetch.mock.calls[0][1].body);
   }
 
-  it("defaults to 'I'm not sure' (estimate fields) when the pet has no birthday yet", () => {
+  it("opens on the estimate when the pet has no birthday yet", () => {
     const api = renderWithClient(
       <EditMedicalProfileModal
         visible
@@ -165,12 +165,11 @@ describe("EditMedicalProfileModal — birthday vs. estimated age", () => {
         onClose={jest.fn()}
       />,
     );
-    expect(isSelected(api, "birthday-unsure")).toBe(true);
-    expect(isSelected(api, "birthday-known")).toBe(false);
+    expect(api.getByTestId("birthday-unsure").props.accessibilityState.checked).toBe(true);
     expect(api.getByTestId("estimated-age-years")).toBeTruthy();
   });
 
-  it("defaults to 'I know the birthday' when the pet already has one stored", () => {
+  it("opens on the birth date when the pet already has one stored", () => {
     const api = renderWithClient(
       <EditMedicalProfileModal
         visible
@@ -179,11 +178,41 @@ describe("EditMedicalProfileModal — birthday vs. estimated age", () => {
         onClose={jest.fn()}
       />,
     );
-    expect(isSelected(api, "birthday-known")).toBe(true);
-    expect(isSelected(api, "birthday-unsure")).toBe(false);
+    expect(api.getByTestId("birthday-unsure").props.accessibilityState.checked).toBe(false);
   });
 
-  it("sends the typed estimate and clears birthday when saving in 'I'm not sure' mode", async () => {
+  it("leaves an untouched estimate out of the save, so it keeps the date it was given", async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    jest.spyOn(require("react-native").Alert, "alert").mockImplementation(() => {});
+
+    const api = renderWithClient(
+      <EditMedicalProfileModal
+        visible
+        petId={1}
+        initialData={{
+          pet: {
+            age_years: 3,
+            age_months: 0,
+            age_estimate_months: 24,
+            age_estimated_on: "2025-11-15",
+            adoption_date: "2024-05-01T00:00:00.000Z",
+          },
+        }}
+        onClose={jest.fn()}
+      />,
+    );
+    expect(api.getByTestId("estimated-age-years").props.value).toBe("3");
+    fireEvent.press(api.getByText("editMedicalProfile.saveCta"));
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    const body = requestBody();
+    expect(body.birthday).toBeNull();
+    expect(body).not.toHaveProperty("ageYears");
+    expect(body).not.toHaveProperty("ageMonths");
+    expect(body.adoptionDate).toBe("2024-05-01");
+  });
+
+  it("sends the typed estimate and clears birthday when saving the estimate", async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
     jest.spyOn(require("react-native").Alert, "alert").mockImplementation(() => {});
 
@@ -225,7 +254,7 @@ describe("EditMedicalProfileModal — birthday vs. estimated age", () => {
     // Switch into "known birthday" mode (default here is "unsure" — no
     // birthday stored yet) without typing a birthday; the point is that a
     // previously-stored estimate must survive being left un-submitted.
-    fireEvent.press(api.getByTestId("birthday-known"));
+    fireEvent.press(api.getByTestId("birthday-unsure")); // unticks "I don't know"
     fireEvent.press(api.getByText("editMedicalProfile.saveCta"));
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());

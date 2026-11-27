@@ -2198,7 +2198,6 @@
     "streakStarted": "🔥 Day 1 — {{name}}'s care ring has begun",
     "welcomePaw": "🐾 PawPi Welcome sent {{name}} a first paw",
     "ringPrompt": "Take {{name}}'s first photo to close today's ring 🐾",
-    "ageApprox": "An approximate age is fine — you can update it later.",
     "stepOf": "Step {{current}} of {{total}}",
     "back": "Back",
     "next": "Next",
@@ -2233,21 +2232,17 @@
     "breedNotSure": "I'm not sure",
     "breedPlaceholder": "e.g. Golden Retriever",
     "ageTitle": "How old is {{name}}?",
-    "ageSubtitle": "Age helps us suggest the right activities and health checks",
-    "ageYearsLabel": "Years",
-    "ageMonthsLabel": "Months",
+    "ageSubtitle": "Pick the birth date. If you don't know it, give an estimated age.",
+    "birthDateLabel": "Birth date",
     "genderTitle": "What's {{name}}'s gender?",
     "genderSubtitle": "Select one option below",
     "genderFemale": "Female",
     "genderMale": "Male",
     "weightTitle": "How much does {{name}} weigh?",
     "weightSubtitle": "This helps track their health over time",
-    "birthdayTitle": "When are {{name}}'s special days?",
-    "birthdaySubtitle": "We'll help you celebrate — add either or both, or skip for now.",
-    "birthdayLabel": "🎂 Birthday (optional)",
-    "birthdayPlaceholder": "Add a birthday",
-    "gotchaLabel": "💝 Gotcha day (optional)",
-    "gotchaPlaceholder": "Add an adoption / gotcha day",
+    "adoptionTitle": "When did {{name}} join your family?",
+    "adoptionSubtitle": "Optional. Add the adoption date, or skip for now.",
+    "adoptionLabel": "Adoption date (optional)",
     "notesTitle": "Anything important we should remember about {{name}}?",
     "notesSubtitle": "This can include allergies, food preferences, medical conditions, behavior notes, or anything useful",
     "notesPlaceholder": "e.g. Allergic to chicken, loves long walks, nervous around loud noises...",
@@ -2259,14 +2254,12 @@
     "reviewAge": "Age",
     "reviewGender": "Gender",
     "reviewWeight": "Weight",
-    "reviewSpecialDays": "Special days",
+    "reviewAdoption": "Adoption date",
     "reviewNotes": "Notes",
     "reviewEdit": "Edit",
     "reviewNotSet": "Not set",
     "reviewNotSpecified": "Not specified",
     "reviewNone": "None",
-    "reviewYearsUnit": "years",
-    "reviewMonthsUnit": "months",
     "successReady": "{{name}} is ready!",
     "successSubtitle": "Now you can start tracking care, sharing moments, and meeting pet friends.",
     "successSetRoutine": "Set care routine",
@@ -2309,7 +2302,7 @@
     "validation": {
       "name": "Add your dog's name to continue",
       "breed": "Add a breed to continue",
-      "age": "Add an age (years or months) to continue",
+      "age": "Pick a birth date or enter an estimated age to continue",
       "gender": "Pick male or female to continue",
       "weight": "Add a weight to continue"
     }
@@ -3639,7 +3632,7 @@
     "fieldBreed": "Breed",
     "fieldGender": "Gender",
     "fieldWeight": "Weight",
-    "fieldBirthday": "Birthday",
+    "fieldBirthday": "Birth date",
     "fieldAdoption": "Adoption Date",
     "fieldNotes": "Notes",
     "namePlaceholder": "e.g. Buddy",
@@ -3839,7 +3832,7 @@
     "sectionNotes": "Notes",
     "fieldBreed": "Breed",
     "breedPlaceholder": "e.g., Golden Retriever",
-    "fieldBirthday": "Birthday",
+    "fieldBirthday": "Birth date",
     "fieldAdoptionDate": "Adoption Date (optional)",
     "fieldGender": "Sex / Gender",
     "fieldWeight": "Current Weight",
@@ -4800,11 +4793,17 @@
     "keyboardSafeFormModal": {
       "close": "Close"
     },
+    "adoptionDateField": {
+      "placeholder": "Add the adoption date",
+      "remove": "Remove date"
+    },
     "birthdayOrAgeField": {
-      "iKnowTheBirthday": "I know the birthday",
-      "iMNotSure": "I'm not sure",
+      "pickBirthDate": "Pick the birth date",
+      "unknownDate": "I don't know the exact date",
       "estimatedYears": "Estimated years",
-      "estimatedMonths": "Estimated months"
+      "estimatedMonths": "Estimated months",
+      "estimateHint": "An estimate is fine. We'll mark it as approximate.",
+      "estimateGrows": "We'll show it as approximate and keep counting from the day you save it."
     },
     "shared": {
       "dayStreak": "{{count}} day streak"
