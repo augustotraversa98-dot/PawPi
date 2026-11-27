@@ -10,6 +10,8 @@ import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { useAdoptionFavorites, useFollowedProviders } from "@/hooks/useProviders";
 import { useAllCareAccessGrants } from "@/hooks/useCareAccessGrants";
 import { goBackOr } from "@/utils/navigationBack";
+import { breedLabel } from "@/data/dogBreeds";
+import { providerTypeLabel } from "@/utils/providerTypeLabel";
 
 // MY HUB (Phase 2 ticket 2.14) — the owner's account-style hub. Bookings, orders, auto-reorder
 // and pet-friendly places moved to the Services tab's "My Activity" pane (two-pane redesign),
@@ -219,10 +221,16 @@ export default function MyHubScreen() {
                 <Row
                   key={f.id}
                   primary={f.listing_name || t("leftoverUi.hub.dog")}
-                  secondary={`${f.listing_breed || ""}${
+                  secondary={`${breedLabel(t, f.listing_breed) || ""}${
                     f.provider_name ? ` · ${f.provider_name}` : ""
                   }`}
-                  badge={f.listing_status}
+                  badge={
+                    f.listing_status
+                      ? t(`business.adoption.listingStatus.${f.listing_status}`, {
+                          defaultValue: f.listing_status,
+                        })
+                      : null
+                  }
                 />
               ))
             )}
@@ -239,7 +247,7 @@ export default function MyHubScreen() {
               <Empty text={t("storefront.follow.listEmpty")} />
             ) : (
               followedList.slice(0, 4).map((p) => (
-                <Row key={p.id} primary={p.name} secondary={p.provider_type || ""} />
+                <Row key={p.id} primary={p.name} secondary={providerTypeLabel(t, p.provider_type)} />
               ))
             )}
           </SectionCard>

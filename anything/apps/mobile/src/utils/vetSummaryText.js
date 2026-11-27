@@ -4,6 +4,7 @@
 import { normalizeWeightUnit } from "@/utils/weightUnitAlias";
 import { getDisclaimer, quickCheckAreaLabel } from "./healthInsights";
 import { tr } from "@/utils/healthText";
+import { breedLabel } from "@/data/dogBreeds";
 
 // Localized phrase helper; the English text is the fallback (identical to the pre-i18n copy).
 const vt = (key, en, params) => tr(`healthDataUi.vetText.${key}`, en, params);
@@ -18,7 +19,7 @@ export function summaryToText(summary, flags = [], questions = []) {
   const name = summary.pet?.name || vt("defaultName", "Pet");
   const L = [];
   L.push(vt("title", "PawPi Vet Summary — {{name}}", { name }));
-  if (summary.pet?.breed) L.push(summary.pet.breed);
+  if (summary.pet?.breed) L.push(breedLabel((key) => tr(key), summary.pet.breed));
   L.push(vt("period", "Period: {{range}}", { range: fmtRange(summary.range) }));
   L.push("");
 

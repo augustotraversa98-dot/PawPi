@@ -13,6 +13,7 @@ const mockPush = jest.fn();
 
 let mockGrants;
 let mockFavorites;
+let mockFollowed = [];
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ back: jest.fn(), push: mockPush }),
@@ -29,7 +30,7 @@ jest.mock("@/components/RefreshableScrollView", () => {
 });
 jest.mock("@/hooks/useProviders", () => ({
   useAdoptionFavorites: () => mockFavorites,
-  useFollowedProviders: () => ({ data: [], isLoading: false }),
+  useFollowedProviders: () => ({ data: mockFollowed, isLoading: false }),
 }));
 jest.mock("@/hooks/useCareAccessGrants", () => ({
   useAllCareAccessGrants: () => mockGrants,
@@ -49,6 +50,7 @@ beforeEach(() => {
   mockPush.mockReset();
   mockGrants = stub([]);
   mockFavorites = stub([]);
+  mockFollowed = [];
 });
 
 describe("MyHubScreen (slimmed)", () => {
@@ -65,6 +67,19 @@ describe("MyHubScreen (slimmed)", () => {
     expect(getByText("Dr. Smith")).toBeTruthy();
     expect(getByText("Saved dogs")).toBeTruthy();
     expect(getByText("Buddy")).toBeTruthy();
+  });
+
+  it("names stored business types and listing statuses instead of showing their ids", () => {
+    mockFollowed = [{ id: 4, name: "Patitas", provider_type: "walker" }];
+    mockFavorites = stub([
+      { id: 7, listing_name: "Buddy", listing_breed: "Beagle", provider_name: "Shelter", listing_status: "adopted" },
+    ]);
+
+    const { getByText, queryByText } = render(<MyHubScreen />);
+    expect(getByText("Walking")).toBeTruthy();
+    expect(getByText("Adopted")).toBeTruthy();
+    expect(queryByText("walker")).toBeNull();
+    expect(queryByText("adopted")).toBeNull();
   });
 
   it("no longer renders the sections moved to the Services tab", () => {

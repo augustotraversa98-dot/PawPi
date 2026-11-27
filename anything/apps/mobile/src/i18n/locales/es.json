@@ -1521,7 +1521,8 @@
       "trainer": "Entrenamiento",
       "transport": "Transporte",
       "insurance": "Seguro",
-      "adoption": "Adopción"
+      "adoption": "Adopción",
+      "pet_friendly": "Lugar pet friendly"
     }
   },
   "activity": {

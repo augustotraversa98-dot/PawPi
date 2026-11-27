@@ -8,6 +8,7 @@ import { Card, PressableScale } from "@/components/ui";
 import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING } from "@/constants/theme";
 import { useFollowedProviders } from "@/hooks/useProviders";
+import { providerTypeLabel } from "@/utils/providerTypeLabel";
 
 // "Businesses you follow" (ticket 2.92) — the list of providers the signed-in pet owner follows.
 // Real data via GET /api/providers/following; empty → empty state; each row opens that business.
@@ -97,10 +98,10 @@ export default function FollowingBusinessesScreen() {
                   </Text>
                   {item.provider_type ? (
                     <Text
-                      style={[TYPE.footnote, { color: COLORS.mutedBrown, textTransform: "capitalize" }]}
+                      style={[TYPE.footnote, { color: COLORS.mutedBrown }]}
                       numberOfLines={1}
                     >
-                      {item.provider_type}
+                      {providerTypeLabel(t, item.provider_type)}
                     </Text>
                   ) : null}
                 </View>

@@ -34,6 +34,7 @@ import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useSavedPlaces } from "@/hooks/usePlaces";
 import { formatDisplayDate } from "@/utils/canonicalDateTime";
 import BookingStatusChip from "@/components/Providers/BookingStatusChip";
+import { providerTypeLabel } from "@/utils/providerTypeLabel";
 
 // My Activity — the consolidated owner surface for bookings, reservations, appointments,
 // messages and shopping. It ONLY surfaces + LINKS INTO existing management screens; it
@@ -334,7 +335,7 @@ export function UpcomingBookingRow({ booking }) {
       testID={`activity-booking-${booking.id}`}
       Icon={Calendar}
       title={`${booking.provider_name || t("dataAccess.provider")} · ${booking.pet_name || t("leftoverUi.pet")}`}
-      subtitle={`${booking.service_name || booking.capability || t("leftoverUi.booking.booking")} · ${formatDisplayDate(
+      subtitle={`${booking.service_name || providerTypeLabel(t, booking.capability) || t("leftoverUi.booking.booking")} · ${formatDisplayDate(
         booking.appointment_date,
       )}`}
       trailing={

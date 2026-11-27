@@ -114,14 +114,28 @@ const MESSAGES = {
 
 /**
  * Which language to put in `error`. The mobile client sends no locale header, so
- * this reads Accept-Language (React Native does forward the device's) and falls
- * back to English. The caller can also pass an explicit locale — the 429 path uses
- * the caller's stored `preferred_locale` when it has one, which is authoritative.
+ * this reads Accept-Language (React Native does forward the device's): English
+ * only when it prefers English over Spanish, otherwise Spanish. The caller can
+ * also pass an explicit locale — the 429 path uses the caller's stored
+ * `preferred_locale` when it has one, which is authoritative.
  */
 export function pickLocale(request, preferred) {
   if (preferred === 'es' || preferred === 'en') return preferred;
-  const header = request?.headers?.get?.('accept-language') || '';
-  return /(^|,|\s)es\b/i.test(header) ? 'es' : 'en';
+  return preferredByHeader(request?.headers?.get?.('accept-language') || '');
+}
+
+// Of English and Spanish (any region), the one the header weighs higher; the earlier one on a tie.
+function preferredByHeader(header) {
+  let best = { language: 'es', weight: 0 };
+  for (const entry of header.split(',')) {
+    const [tag, ...params] = entry.split(';').map((part) => part.trim().toLowerCase());
+    const language = tag.split('-')[0];
+    if (language !== 'en' && language !== 'es') continue;
+    const q = params.find((param) => param.startsWith('q='));
+    const weight = q ? Number(q.slice(2)) : 1;
+    if (weight > best.weight) best = { language, weight };
+  }
+  return best.language;
 }
 
 /**
@@ -156,7 +170,7 @@ export function rateLimitSubject({ userId, request }) {
 
 /** The 429 body + headers. Exported so tests can assert the shape in one place. */
 export function rateLimitResponse({ retryAfterSeconds, locale }) {
-  const lang = locale === 'es' ? 'es' : 'en';
+  const lang = locale === 'en' ? 'en' : 'es';
   return Response.json(
     {
       error: MESSAGES[lang],
