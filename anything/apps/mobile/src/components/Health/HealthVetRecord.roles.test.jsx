@@ -1,6 +1,7 @@
 // Family sharing (PR5a): Vet Record by role. Owner and family can add records and notes; only the OWNER can delete entries (the server filters
 // deletes on the owner). "Added by" shows a former member as "Former member" / "Ex integrante", never a blank or "Editor · Editor". EN + ES.
 import React from "react";
+import { StyleSheet } from "react-native";
 import { render, fireEvent } from "@testing-library/react-native";
 import HealthVetRecord from "./HealthVetRecord";
 
@@ -115,4 +116,40 @@ test("Share opens the share-with-your-vet sheet for the active pet, in place", (
   expect(s.queryByTestId("vet-share-sheet")).toBeNull();
   fireEvent.press(s.getByText("Share"));
   expect(s.getByTestId("vet-share-sheet")).toBeTruthy();
+});
+
+describe("a note card's author lines", () => {
+  const linkNote = {
+    id: 6,
+    note: "Added without signing in",
+    note_date: "2026-11-26",
+    via_record_link: true,
+    external_author_name: "A rather long clinic name that needs room",
+    // 00:30 on the 27th on this device (the suite runs in Europe/Rome), still the 26th inside the timestamp.
+    created_at: "2026-11-26T23:30:00.000Z",
+  };
+
+  test("a long author name takes the free space and keeps a gap from the date", () => {
+    mockQueryData["vet-record-notes"] = { notes: [linkNote] };
+    const s = render(<HealthVetRecord />);
+    openNotes(s);
+    const author = s.getByTestId("vet-note-author");
+    expect(StyleSheet.flatten(author.props.style).flex).toBe(1);
+    let row = author.parent;
+    while (row && StyleSheet.flatten(row.props.style)?.flexDirection !== "row") row = row.parent;
+    expect(StyleSheet.flatten(row.props.style).gap).toBeGreaterThan(0);
+  });
+
+  test("'added' is the date on this device; the note's own date stays as written", () => {
+    expect(new Date(linkNote.created_at).getDate()).toBe(27);
+    mockQueryData["vet-record-notes"] = {
+      notes: [linkNote, { id: 7, note: "Check-up", note_date: "2026-10-01", created_by_role: "owner", created_at: "2026-11-26T23:30:00.000Z" }],
+    };
+    const s = render(<HealthVetRecord />);
+    openNotes(s);
+    expect(s.getByText(/added through a shared link · 27 November 2026/)).toBeTruthy();
+    expect(s.getByText(/Added by .*27 November 2026/)).toBeTruthy();
+    expect(s.getByText("26 November 2026")).toBeTruthy();
+    expect(s.getByText("1 October 2026")).toBeTruthy();
+  });
 });

@@ -1183,14 +1183,17 @@ const StepAge = ({ formData, setFormData }) => {
         subtitle={t("onboarding.ageSubtitle")}
       />
 
-      <Text
-        style={[
-          TYPE.callout,
-          { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.xs },
-        ]}
-      >
-        {t("onboarding.birthDateLabel")}
-      </Text>
+      {/* The heading names the date field, which an estimate replaces. */}
+      {formData.birthdayUnknown ? null : (
+        <Text
+          style={[
+            TYPE.callout,
+            { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.xs },
+          ]}
+        >
+          {t("onboarding.birthDateLabel")}
+        </Text>
+      )}
       <BirthdayOrAgeField
         birthdayUnknown={formData.birthdayUnknown}
         // Switching clears the other answer: only one of them describes the dog.

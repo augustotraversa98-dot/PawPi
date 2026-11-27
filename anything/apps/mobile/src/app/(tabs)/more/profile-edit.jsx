@@ -544,9 +544,12 @@ export default function ProfileEditScreen() {
 
           {/* Birth date (known) or estimated age (unknown) — mutually exclusive */}
           <View style={{ marginBottom: SPACING.xl }}>
-            <Text style={[fieldLabelStyle, { marginBottom: SPACING.sm }]}>
-              {t("profileEdit.fieldBirthday")}
-            </Text>
+            {/* The heading names the date field, which an estimate replaces. */}
+            {formData.birthdayUnknown ? null : (
+              <Text style={[fieldLabelStyle, { marginBottom: SPACING.sm }]}>
+                {t("profileEdit.fieldBirthday")}
+              </Text>
+            )}
             <BirthdayOrAgeField
               birthdayUnknown={formData.birthdayUnknown}
               onToggleUnknown={(unknown) =>

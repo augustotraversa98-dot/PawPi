@@ -84,6 +84,16 @@ describe("Dog Profile edit — birthday vs. estimated age", () => {
     expect(api.queryByTestId("estimated-age-years")).toBeNull();
   });
 
+  it("shows the birth date heading only while the date field is there", () => {
+    mockCurrentPet = { id: 1, name: "Rex", birthday: "2020-01-01" };
+    const api = renderScreen();
+    expect(api.getByText("Birth date")).toBeTruthy();
+    fireEvent.press(api.getByTestId("birthday-unsure"));
+    expect(api.queryByText("Birth date")).toBeNull();
+    fireEvent.press(api.getByTestId("birthday-unsure"));
+    expect(api.getByText("Birth date")).toBeTruthy();
+  });
+
   it("sends the typed estimate and clears birthday when saving the estimate", async () => {
     mockCurrentPet = { id: 1, name: "Rex", birthday: "2020-01-01" };
     global.fetch = jest.fn().mockResolvedValue({
