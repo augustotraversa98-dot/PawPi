@@ -11,6 +11,12 @@ import {
   SHARE_EXPIRY_INTERVALS,
 } from "@/app/api/utils/careAccess";
 import { isMissingSchema } from "@/app/api/utils/shareOffers";
+import {
+  editAccessSupported,
+  editAccessUnavailable,
+  parseEditSections,
+  sameSections,
+} from "@/app/api/utils/editAccess";
 
 // GET /api/care-access/grants — the OWNER's trust view: who has (or requested)
 // access to which of my pets. Ticket 7 (docs/provider-design.md §2 + §4 item 7).
@@ -26,6 +32,8 @@ import { isMissingSchema } from "@/app/api/utils/shareOffers";
 //
 // `sections` is null for a grant by scope. `status` is the EFFECTIVE status: a
 // pending or active row past its expires_at reads 'expired' (also for ?status).
+// `edit_sections` are the shared parts the vet may add to (empty = view only);
+// `editAccessAvailable` is false while the database cannot store them.
 //
 // DB is porsager's tagged-template `sql` (SCHEMA_NOTES "neon→porsager"): every
 // query is a tagged template; params bind via `${}`. The optional filters are
@@ -57,6 +65,7 @@ async function GET(request, { params }) {
         g.provider_id,
         g.scopes,
         g.sections,
+        COALESCE(to_jsonb(g) -> 'edit_sections', '[]'::jsonb) AS edit_sections,
         eff.status,
         g.requested_by,
         g.booking_id,
@@ -82,7 +91,7 @@ async function GET(request, { params }) {
       ORDER BY g.created_at DESC
     `;
 
-    return Response.json({ grants });
+    return Response.json({ grants, editAccessAvailable: await editAccessSupported() });
   } catch (error) {
     console.error("[GET /api/care-access/grants] Error:", error.message);
     return Response.json(
@@ -131,11 +140,23 @@ async function lockOpenGrant({ userId, petId, providerId }) {
   `;
 }
 
+// The parts the vet may add to, written onto a row that already shares them. New rows are view only, so nothing is
+// written (and nothing new is asked of the database) for a view-only share.
+async function applyEditSections(grant, editSections) {
+  if (!editSections?.length) return grant;
+  const rows = await sql`
+    UPDATE care_access_grants SET edit_sections = ${editSections}, updated_at = NOW()
+    WHERE id = ${grant.id}
+    RETURNING *
+  `;
+  return rows[0];
+}
+
 // The vet's pending request, if there is one, approved with exactly what the owner chose: scopes,
 // sections and expiry are all overwritten, so nothing the request asked for stays unless the owner
 // chose it too. `sections` and `interval` are null for a share by scope. Returns the 200 response,
 // or null when nothing is pending.
-async function approvePendingRequest({ userId, petId, providerId, scopes, sections, interval }) {
+async function approvePendingRequest({ userId, petId, providerId, scopes, sections, editSections, interval }) {
   const approved = await sql`
     UPDATE care_access_grants
     SET status = 'active',
@@ -153,8 +174,9 @@ async function approvePendingRequest({ userId, petId, providerId, scopes, sectio
   if (approved.length === 0) {
     return null;
   }
-  await notifyCareAccess({ type: "care_access_granted", grant: approved[0], actor: userId });
-  return Response.json({ grant: approved[0], approvedRequest: true });
+  const grant = await applyEditSections(approved[0], editSections);
+  await notifyCareAccess({ type: "care_access_granted", grant, actor: userId });
+  return Response.json({ grant, approvedRequest: true });
 }
 
 // A repeated share changes no access row, so an unanswered invitation to this provider (0154) is withdrawn here, as
@@ -181,7 +203,7 @@ async function withdrawOpenOffer({ userId, petId, providerId }) {
 const SAME_SHARE_WINDOW = "2 minutes";
 
 // The active grant by section this exact choice created moments ago, or null. `interval` is null for no end date.
-async function sameRecentShare({ userId, petId, providerId, sections, interval }) {
+async function sameRecentShare({ userId, petId, providerId, sections, editSections, interval }) {
   const rows = await sql`
     SELECT * FROM care_access_grants
     WHERE owner_user_id = ${userId}
@@ -194,14 +216,15 @@ async function sameRecentShare({ userId, petId, providerId, sections, interval }
       AND granted_at > now() - ${SAME_SHARE_WINDOW}::interval
     LIMIT 1
   `;
-  return rows[0] ?? null;
+  const grant = rows[0] ?? null;
+  return grant && sameSections(grant.edit_sections, editSections) ? grant : null;
 }
 
 // End the active grant for this pet and provider, if any, then approve the vet's pending request or
 // create a new grant, with exactly the chosen sections and expiry. Everything runs on the request
 // transaction: it all applies or none of it does. The same choice sent again moments later answers with the grant it
 // already created: 200 { grant, deduped: true }.
-async function shareBySection({ userId, petId, providerId, sections, interval }) {
+async function shareBySection({ userId, petId, providerId, sections, editSections, interval }) {
   const chosen = RECORD_SECTIONS.filter((s) => sections.includes(s));
   const choice = {
     userId,
@@ -209,6 +232,7 @@ async function shareBySection({ userId, petId, providerId, sections, interval })
     providerId,
     scopes: [RECORD_SECTIONS_SCOPE],
     sections: chosen,
+    editSections,
     interval,
   };
   const repeated = await sameRecentShare(choice);
@@ -253,8 +277,9 @@ async function shareBySection({ userId, petId, providerId, sections, interval })
       )
       RETURNING *
     `);
-    await notifyCareAccess({ type: "care_access_granted", grant: created[0], actor: userId });
-    return Response.json({ grant: created[0] }, { status: 201 });
+    const grant = await applyEditSections(created[0], editSections);
+    await notifyCareAccess({ type: "care_access_granted", grant, actor: userId });
+    return Response.json({ grant }, { status: 201 });
   } catch (e) {
     // The one-open-grant index (0128) refused the row: the vet's request arrived after the check.
     const late = e?.code === "23505" ? await approvePendingRequest(choice) : null;
@@ -277,8 +302,9 @@ async function shareBySection({ userId, petId, providerId, sections, interval })
 //     scopes (existing.scopes ⊇ requested), return it instead of inserting a duplicate.
 //     While an active grant BY SECTION exists this answers 409 'sectioned_grant_exists': it is
 //     never widened by this shape.
-//   • { petId, providerId, sections, expiry } — a grant by section (docs/vet-sharing-design.md):
-//     exactly what the owner chose, nothing by default. An active grant for the same pet and
+//   • { petId, providerId, sections, expiry, editSections? } — a grant by section
+//     (docs/vet-sharing-design.md): exactly what the owner chose, nothing by default, view only unless
+//     editSections names shared parts the vet may add to (409 'edit_access_unavailable' before 0158). An active grant for the same pet and
 //     provider ends and a new row replaces it, unless this same choice created it moments ago
 //     (shareBySection).
 // A grant or request past its date is closed first, so it never blocks a new one.
@@ -297,7 +323,7 @@ async function POST(request) {
     }
 
     const body = (await request.json()) ?? {};
-    const { petId, providerId, scopes, sections, expiry } = body;
+    const { petId, providerId, scopes, sections, expiry, editSections } = body;
 
     if (!petId || !providerId) {
       return Response.json(
@@ -306,13 +332,19 @@ async function POST(request) {
       );
     }
 
-    // Naming either field at all selects the by-section shape, which then requires both.
-    const bySection =
-      Object.hasOwn(body, "sections") || Object.hasOwn(body, "expiry");
+    // Naming any of these fields selects the by-section shape, which then requires sections and expiry.
+    const bySection = ["sections", "expiry", "editSections"].some((field) =>
+      Object.hasOwn(body, field),
+    );
+    let edit = { value: [] };
     if (bySection) {
       const invalid = invalidShareBySection(body, sections, expiry);
       if (invalid) {
         return Response.json({ error: invalid }, { status: 400 });
+      }
+      edit = parseEditSections(editSections, sections);
+      if (edit.error) {
+        return Response.json({ error: edit.error }, { status: 400 });
       }
     }
 
@@ -346,6 +378,11 @@ async function POST(request) {
       return Response.json({ error: "Provider not found" }, { status: 404 });
     }
 
+    // Asked before anything is written, so a refusal ends no access.
+    if (edit.value.length > 0 && !(await editAccessSupported())) {
+      return editAccessUnavailable();
+    }
+
     await lockOpenGrant({ userId, petId, providerId });
     await sql`SELECT app_expire_care_grants(${petId}::int, ${providerId}::int)`;
 
@@ -355,6 +392,7 @@ async function POST(request) {
         petId,
         providerId,
         sections,
+        editSections: edit.value,
         interval: SHARE_EXPIRY_INTERVALS[expiry],
       });
     }

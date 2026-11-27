@@ -7,6 +7,8 @@ export default {
     owner: "From {owner}",
     someone: "From a pet owner",
     parts: "Parts they want to share",
+    canAdd: "You'll be able to add to",
+    viewOnly: "Nothing. View only.",
     lengthLabel: "How long",
     length: {
       "7d": "7 days, from when you accept",
@@ -31,6 +33,8 @@ export default {
     owner: "De {owner}",
     someone: "De un dueño",
     parts: "Partes que quieren compartir",
+    canAdd: "Vas a poder agregar en",
+    viewOnly: "Nada. Solo lectura.",
     lengthLabel: "Por cuánto tiempo",
     length: {
       "7d": "7 días, desde que aceptes",

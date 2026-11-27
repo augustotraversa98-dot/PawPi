@@ -107,6 +107,18 @@ A `care_access_requested` notification, in the list or as a tapped push, opens D
 In app versions that create record links (section 5), the share sheet no longer creates invites: it lists the ones made
 earlier, with **Withdraw** on open ones.
 
+### View and add (migration 0158)
+
+Every share is view only unless the owner says otherwise. `edit_sections` on a grant, a link and an invitation names the
+shared parts the vet may add to; only `vet_notes`, `vaccines`, `files` and `lab_results` can ever be named. The database
+keeps it a subset of what is shared, except that a link may allow adding notes without showing them (what `allow_notes`
+already did; the database keeps the two equal). A grant by scope has none: its `medical_write` and `vaccinations_write`
+scopes keep meaning what they meant (a request approved as asked still grants them).
+
+`POST /api/care-access/grants`, `/links` and `/offers` take an optional `editSections` (409 `edit_access_unavailable`
+on a database without 0158, before anything is written). The lists answer `edit_sections` on every entry, and grants and
+links answer `editAccessAvailable`. Accepting an invitation copies its permission to the access.
+
 ## 2. What the vet sees
 
 Who: every active staff member of that provider. Read at request time: expiry and revocation apply to the next request.

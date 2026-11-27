@@ -73,6 +73,12 @@ export default function ClinicalShareOffers({ providerId }) {
               <span className="font-semibold">{t.parts}: </span>
               {offer.sections.map((key) => sections[key] ?? key).join(", ")}
             </p>
+            <p className="text-sm text-[#3B241B]" data-testid={`share-offer-can-add-${offer.id}`}>
+              <span className="font-semibold">{t.canAdd}: </span>
+              {offer.edit_sections?.length
+                ? offer.edit_sections.map((key) => sections[key] ?? key).join(", ")
+                : t.viewOnly}
+            </p>
             <p className="text-sm text-[#3B241B]">
               <span className="font-semibold">{t.lengthLabel}: </span>
               {t.length[offer.expiry] ?? offer.expiry}

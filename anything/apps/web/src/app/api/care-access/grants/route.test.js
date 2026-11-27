@@ -13,6 +13,11 @@ import sql from '@/app/api/utils/sql';
 vi.mock('@/auth', () => ({ auth: vi.fn() }));
 // getActiveTx → null: no request transaction here, so withSavepoint runs its callback directly.
 vi.mock('@/app/api/utils/sql', () => ({ default: vi.fn(), getActiveTx: () => null }));
+// Whether the database can store edit permission is asked once and remembered; these tests read the grants query last.
+vi.mock('@/app/api/utils/editAccess', async (importOriginal) => ({
+  ...(await importOriginal()),
+  editAccessSupported: vi.fn(async () => true),
+}));
 
 const SESSION = { user: { id: 42 }, expires: '9999999999' };
 const PROFILE_ROW = { id: 7, auth_user_id: 42 };
