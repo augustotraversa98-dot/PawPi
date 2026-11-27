@@ -19,3 +19,20 @@ export async function postRecordLink(path, body, { withSession = false, method =
     return { status: 0, data: null };
   }
 }
+
+// The one multipart request: a document being added. The token travels inside the form.
+export async function postRecordLinkForm(path, form) {
+  try {
+    const response = await fetch(`/api/public/record-link/${path}`, {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+      referrerPolicy: "no-referrer",
+      body: form,
+    });
+    const data = await response.json().catch(() => null);
+    return { status: response.status, data };
+  } catch {
+    return { status: 0, data: null };
+  }
+}

@@ -3,13 +3,15 @@ import { PET_PAGE_BUTTON } from "@/components/publicPet/PetPageParts";
 import { BRAND } from "@/lib/brand/tokens";
 import { RECORD_LINK_COPY } from "@/lib/recordLink/copy";
 import { postRecordLink } from "@/lib/recordLink/request";
-import { keepReturnToken, newReturnId, signInHref } from "./signInReturn";
+import { SignInLink } from "./SignInLink";
+import AddEntryForm from "./AddEntryForm";
 import recordCopy from "@/app/provider/i18n/record";
 import { fill } from "@/app/provider/i18n/lib/format";
-import { formatRecordDate } from "@/app/provider/lib/record";
+import { formatRecordDate, linkAuthorName } from "@/app/provider/lib/record";
 
 // The parts of a record a link shares, and what a link may allow: adding a vet note and correcting the notes added
-// through it. Only the sections in `record.sections` are drawn, plus the link's own notes.
+// through it, and adding to the parts in `record.edit_sections`. Only the sections in `record.sections` are drawn, plus
+// the link's own notes.
 
 // The record screen's section keys, in the order they are shown.
 const ORDER = [
@@ -44,6 +46,8 @@ const FIELD_COPY = {
 };
 
 const NOTE_MAX = 2000;
+// Notes have their own form below.
+const ADDABLE = ["vaccines", "files", "lab_results"];
 
 const card = {
   background: BRAND.card,
@@ -124,17 +128,6 @@ const textArea = {
   fontFamily: "inherit",
 };
 const plainButton = { ...button, background: "transparent", color: BRAND.brown, textDecoration: "underline" };
-
-// Leaves for the sign-in page and comes back to this same link.
-function SignInLink({ token, children }) {
-  const [id] = useState(newReturnId);
-  const keep = () => keepReturnToken(id, token);
-  return (
-    <a href={signInHref(id)} onClick={keep} onAuxClick={keep} style={link}>
-      {children}
-    </a>
-  );
-}
 
 // One note added through this link, with its correction form when the visitor may change it. `own` is the entry of
 // `record.link_notes`; without it the note is only shown.
@@ -416,6 +409,10 @@ export default function RecordSections({ lang, record, token, signedIn, onReload
   // When the owner did not share the notes, the ones added through this link still show, so they can be reviewed.
   const ownNotesOnly = !record.sections?.includes("vet_notes") && linkNotes.length > 0;
 
+  // Says when a vaccination, document or lab result was added by someone with a link.
+  const fromLink = (entry) =>
+    entry.via_link && fill(copy.fromLink, { name: linkAuthorName(entry, copy) });
+
   const body = (key) => {
     if (FIELDS[key]) return <Fields section={key} values={record[key]} lang={lang} />;
     const list = record[key] ?? [];
@@ -447,6 +444,7 @@ export default function RecordSections({ lang, record, token, signedIn, onReload
               v.expires_on && `${copy.vaccinations.expires}: ${formatRecordDate(v.expires_on, lang)}`,
               v.lot && `${copy.vaccinations.lot}: ${v.lot}`,
               v.clinic_name && `${t.clinic}: ${v.clinic_name}`,
+              fromLink(v),
             ])}
           </div>
           {v.notes ? <p style={text}>{v.notes}</p> : null}
@@ -459,7 +457,11 @@ export default function RecordSections({ lang, record, token, signedIn, onReload
         <div key={d.id} style={item}>
           <strong>{d.name}</strong>
           <div style={muted}>
-            {join([d.document_type, d.document_date && formatRecordDate(d.document_date, lang)])}
+            {join([
+              d.document_type,
+              d.document_date && formatRecordDate(d.document_date, lang),
+              fromLink(d),
+            ])}
           </div>
           {d.notes ? <p style={text}>{d.notes}</p> : null}
           <FileButton {...files} kind="document" entry={d} label={d.name} />
@@ -488,6 +490,7 @@ export default function RecordSections({ lang, record, token, signedIn, onReload
           {join([
             formatRecordDate(r.test_date, lang),
             r.ordered_by && fill(copy.labResults.orderedBy, { name: r.ordered_by }),
+            fromLink(r),
           ])}
         </div>
         {r.results ? <p style={text}>{r.results}</p> : null}
@@ -501,6 +504,9 @@ export default function RecordSections({ lang, record, token, signedIn, onReload
       {shared.map((key) => (
         <Section key={key} title={copy.sections[key]}>
           {body(key)}
+          {ADDABLE.includes(key) && record.edit_sections?.includes(key) ? (
+            <AddEntryForm section={key} signedIn={signedIn} {...files} />
+          ) : null}
         </Section>
       ))}
       {ownNotesOnly ? (

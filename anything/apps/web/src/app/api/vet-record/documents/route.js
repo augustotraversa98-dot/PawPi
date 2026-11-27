@@ -3,6 +3,7 @@ import sql from "@/app/api/utils/sql";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
+import { presentSharedRow } from "@/app/api/utils/sharedWrites";
 
 // VR-B: owner-OR-family(Editor) gated reads/writes with authorship attribution (0120).
 // See vet-record/allergies/route.js for the shared rationale.
@@ -27,14 +28,17 @@ async function GET(request) {
     }
 
     const documents = await sql`
-      SELECT d.*, COALESCE(NULLIF(BTRIM(up.full_name), ''), CASE WHEN d.created_by_role = 'editor' AND d.created_by_user_id IS NULL THEN 'Former member' END) AS created_by_name
+      SELECT d.*, COALESCE(NULLIF(BTRIM(up.full_name), ''), CASE WHEN d.created_by_role = 'editor' AND d.created_by_user_id IS NULL THEN 'Former member' END) AS created_by_name,
+        ap.name AS added_by_provider_name, o.preferred_locale AS owner_locale
       FROM vet_documents d
       LEFT JOIN user_profiles up ON up.id = d.created_by_user_id
+      LEFT JOIN user_profiles o ON o.id = d.owner_user_id
+      LEFT JOIN providers ap ON ap.id = (to_jsonb(d) ->> 'added_by_provider_id')::int
       WHERE d.pet_id = ${petId} AND d.owner_user_id = ${gate.ownerUserId}
       ORDER BY d.document_date DESC NULLS LAST, d.created_at DESC
     `;
 
-    return Response.json({ documents });
+    return Response.json({ documents: documents.map(presentSharedRow) });
   } catch (error) {
     console.error("[Vet Record Documents] Error:", error);
     return Response.json(

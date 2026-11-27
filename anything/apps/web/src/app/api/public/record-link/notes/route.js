@@ -1,6 +1,6 @@
 import sql from "@/app/api/utils/sql";
-import { auth } from "@/auth";
-import { resolveOrCreateUserId } from "@/app/api/utils/currentUser";
+import { identifyVisitor } from "@/app/api/utils/recordLinkVisitor";
+import { cleanText } from "@/app/api/utils/cleanText";
 import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
 import {
   RECORD_LINK_NOTE_BODY_BYTES,
@@ -29,19 +29,6 @@ const refuse = (outcome) => {
   return answer({ error, code }, status);
 };
 
-// A signed-in visitor gets their identity on this request even before their first use of the app, so a note carries
-// their name and stays theirs to edit. A signed-out one has none.
-async function identifyVisitor() {
-  const session = await auth();
-  if (session?.user?.id) {
-    const user = { ...session.user, name: withoutNul(session.user.name) };
-    await resolveOrCreateUserId({ ...session, user });
-  }
-}
-
-// The database's text cannot hold the NUL character, so it is left out of what is stored.
-const withoutNul = (text) => (typeof text === "string" ? text.replaceAll("\u0000", "") : text);
-
 // POST /api/public/record-link/notes { token, note } → 201 { note: { note_date, created_at, author_name } }: adds one
 // vet note through a link that allows it (migration 0153). No account needed. Only the note is read from the body: the
 // author is whoever the session says is signed in (the database reads the request's identity), otherwise nobody
@@ -53,7 +40,7 @@ async function addNote(request, { body }) {
     if (limited) return limited;
 
     if (!isLinkToken(body.token)) return linkNotValid();
-    const note = typeof body.note === "string" ? withoutNul(body.note).trim() : "";
+    const note = typeof body.note === "string" ? cleanText(body.note).trim() : "";
     if (!note || note.length > RECORD_LINK_NOTE_MAX) {
       return answer({ error: REFUSALS.bad_note[2], code: "bad_note" }, 400);
     }
@@ -108,7 +95,7 @@ async function editNote(request, { body }) {
     if (!Number.isInteger(noteId) || noteId <= 0 || noteId > 2147483647) {
       return refuse("not_found");
     }
-    const note = typeof body.note === "string" ? withoutNul(body.note).trim() : "";
+    const note = typeof body.note === "string" ? cleanText(body.note).trim() : "";
     if (!note || note.length > RECORD_LINK_NOTE_MAX) return refuse("bad_note");
 
     await identifyVisitor();

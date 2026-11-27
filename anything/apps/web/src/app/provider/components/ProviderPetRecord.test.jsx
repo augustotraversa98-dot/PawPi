@@ -10,6 +10,12 @@ import {
 // The data + mutation hooks are mocked so this test isolates the consent state
 // machine (403 → request → pending → granted → write, plus revoke-mid-session)
 // and the write forms. react-router's Link is stubbed to a plain anchor.
+// The writes an access with "can add" offers.
+const writes = vi.hoisted(() => ({
+  editNote: { mutate: vi.fn(), isPending: false },
+  addLabResult: { mutate: vi.fn(), isPending: false },
+  addDocument: { mutate: vi.fn(), isPending: false },
+}));
 vi.mock("react-router", () => ({
   Link: ({ to, children, ...p }) => (
     <a href={to} {...p}>
@@ -22,6 +28,9 @@ vi.mock("../hooks/useProviders", () => ({
   useRequestAccess: vi.fn(),
   useAddVetNote: vi.fn(),
   useAddVaccination: vi.fn(),
+  useEditVetNote: () => writes.editNote,
+  useAddLabResult: () => writes.addLabResult,
+  useAddDocument: () => writes.addDocument,
 }));
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
@@ -408,5 +417,98 @@ describe("ProviderPetRecord — Spanish", () => {
     fireEvent.change(screen.getByPlaceholderText(/Hallazgos del examen/), { target: { value: "Control" } });
     fireEvent.click(screen.getByRole("button", { name: "Agregar nota" }));
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith("No encontramos esta mascota."));
+  });
+});
+
+describe("ProviderPetRecord — a share that lets the business add", () => {
+  const OWN = { id: 31, note_date: "2026-11-20", vet_name: "Dr Paula", note: "My note", editable: true };
+  const adding = (editSections) => ({
+    ...SHARED,
+    editSections,
+    notes: [...SHARED.notes, OWN],
+  });
+  const forms = () => ({
+    note: screen.queryByPlaceholderText(/Exam findings/i),
+    vaccine: screen.queryByPlaceholderText("Rabies"),
+    lab: screen.queryByRole("form", { name: "Add lab result" }),
+    document: screen.queryByRole("form", { name: "Add document" }),
+    edit: screen.queryByRole("button", { name: "Edit note" }),
+  });
+
+  it.each([
+    ["vet_notes", ["note", "edit"]],
+    ["vaccines", ["vaccine"]],
+    ["lab_results", ["lab"]],
+    ["files", ["document"]],
+  ])("offers only what '%s' allows", (section, expected) => {
+    setRecord({ data: adding([section]) });
+    renderScreen();
+    for (const [form, element] of Object.entries(forms())) {
+      expect(!!element, form).toBe(expected.includes(form));
+    }
+    expect(screen.getByTestId("shared-access")).toHaveTextContent("You can add to:");
+  });
+
+  it("marks what came through a record link, with the name or as anonymous", () => {
+    setRecord({
+      data: {
+        ...adding([]),
+        vaccinations: [{ id: 5, name: "Parvo", via_record_link: true }],
+        lab_results: [{ id: 6, test_name: "Urine", test_date: "2026-11-01", via_record_link: true, external_author_name: "Dr. Gómez" }],
+      },
+    });
+    renderScreen();
+    expect(screen.getByText("From a shared link: Anonymous")).toBeInTheDocument();
+    expect(screen.getByText("From a shared link: Dr. Gómez")).toBeInTheDocument();
+  });
+
+  it("view only offers nothing, even for a note marked editable", () => {
+    setRecord({ data: adding([]) });
+    renderScreen();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.getByTestId("shared-access")).toHaveTextContent("Read only");
+  });
+
+  it("corrects its own note", async () => {
+    setRecord({ data: adding(["vet_notes"]) });
+    renderScreen();
+    fireEvent.click(screen.getByRole("button", { name: "Edit note" }));
+    expect(screen.getByLabelText("Correct your note")).toHaveValue("My note");
+    fireEvent.change(screen.getByLabelText("Correct your note"), { target: { value: " Fixed " } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(writes.editNote.mutate).toHaveBeenCalledWith({ noteId: 31, note: "Fixed" }, expect.anything());
+  });
+
+  it("sends a lab result with only what was written", async () => {
+    setRecord({ data: adding(["lab_results"]) });
+    renderScreen();
+    const form = screen.getByRole("form", { name: "Add lab result" });
+    fireEvent.submit(form);
+    expect(await screen.findByText("Write the test name and its date")).toBeInTheDocument();
+    fireEvent.change(within(form).getByLabelText("Test *"), { target: { value: "Urine" } });
+    fireEvent.change(within(form).getByLabelText("Test date *"), { target: { value: "2026-11-01" } });
+    fireEvent.submit(form);
+    await waitFor(() =>
+      expect(writes.addLabResult.mutate).toHaveBeenCalledWith(
+        { test_name: "Urine", test_date: "2026-11-01" },
+        expect.anything(),
+      ),
+    );
+  });
+
+  it("uploads a document as a form with its file", () => {
+    setRecord({ data: adding(["files"]) });
+    renderScreen();
+    const form = screen.getByRole("form", { name: "Add document" });
+    fireEvent.submit(form);
+    expect(screen.getByText("Choose a file and give it a name")).toBeInTheDocument();
+    const file = new File(["%PDF-1.4"], "blood.pdf", { type: "application/pdf" });
+    fireEvent.change(within(form).getByLabelText("File *"), { target: { files: [file] } });
+    fireEvent.change(within(form).getByLabelText("Document name *"), { target: { value: "Blood" } });
+    fireEvent.submit(form);
+    const sent = writes.addDocument.mutate.mock.calls[0][0];
+    expect(sent.get("name")).toBe("Blood");
+    expect(sent.get("category")).toBe("lab");
+    expect(sent.get("file").name).toBe("blood.pdf");
   });
 });

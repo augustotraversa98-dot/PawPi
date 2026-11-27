@@ -13,7 +13,7 @@ import sql from "@/app/api/utils/sql";
 import { assertCareAccess } from "@/app/api/utils/careAccess";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
-vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
+vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn(), getActiveTx: () => null }));
 vi.mock("@/app/api/utils/careAccess", () => {
   class CareAccessError extends Error {
     constructor(message) {
@@ -27,6 +27,8 @@ vi.mock("@/app/api/utils/careAccess", () => {
 
 const SESSION = { user: { id: 42 }, expires: "9999999999" };
 const PROFILE_ROW = { id: 7, auth_user_id: 42 };
+// The database function of 0160 is not there.
+const NO_0160 = Object.assign(new Error("missing function"), { code: "42883" });
 const PET_OWNER_ROW = { owner_user_id: 3 };
 const PARAMS = { params: { id: "100", petId: "55" } };
 
@@ -69,6 +71,7 @@ describe("POST /api/providers/[id]/pets/[petId]/notes", () => {
     const INSERTED = { id: 1, note: "Looks healthy", owner_user_id: 3 };
     sql
       .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
+      .mockRejectedValueOnce(NO_0160) // a database without 0160: the older insert below
       .mockResolvedValueOnce([PET_OWNER_ROW]) // pet owner
       .mockResolvedValueOnce([{ provider_name: "City Vets" }]) // name lookup (no vet_name)
       .mockResolvedValueOnce([INSERTED]); // insert
@@ -101,6 +104,7 @@ describe("POST /api/providers/[id]/pets/[petId]/notes", () => {
     auth.mockResolvedValue(SESSION);
     sql
       .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
+      .mockRejectedValueOnce(NO_0160) // a database without 0160: the older insert below
       .mockResolvedValueOnce([PET_OWNER_ROW]) // pet owner
       .mockResolvedValueOnce([{ id: 1, vet_name: "Dr. Who" }]); // insert (no name lookup)
     assertCareAccess.mockResolvedValue({ id: 555 });
@@ -110,8 +114,8 @@ describe("POST /api/providers/[id]/pets/[petId]/notes", () => {
       PARAMS,
     );
     expect(res.status).toBe(201);
-    // profile + pet-owner + insert = 3 calls; no name lookup.
-    expect(sql).toHaveBeenCalledTimes(3);
+    // profile + database function + pet-owner + insert = 4 calls; no name lookup.
+    expect(sql).toHaveBeenCalledTimes(4);
     expect(lastValues()).toContain("Dr. Who");
     expect(lastValues()).toContain("2026-06-01");
   });
@@ -123,6 +127,7 @@ describe("POST /api/providers/[id]/pets/[petId]/notes", () => {
     });
     sql
       .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
+      .mockRejectedValueOnce(NO_0160) // a database without 0160: the older insert below
       .mockResolvedValueOnce([PET_OWNER_ROW]) // pet owner
       .mockResolvedValueOnce([
         { provider_name: null, staff_name: null },
@@ -142,6 +147,7 @@ describe("POST /api/providers/[id]/pets/[petId]/notes", () => {
     auth.mockResolvedValue(SESSION); // no email on the session
     sql
       .mockResolvedValueOnce([PROFILE_ROW])
+      .mockRejectedValueOnce(NO_0160) // a database without 0160
       .mockResolvedValueOnce([PET_OWNER_ROW])
       .mockResolvedValueOnce([
         { provider_name: null, staff_name: null },
@@ -156,12 +162,14 @@ describe("POST /api/providers/[id]/pets/[petId]/notes", () => {
 
   it("assertCareAccess throws → 403, nothing inserted", async () => {
     auth.mockResolvedValue(SESSION);
-    sql.mockResolvedValueOnce([PROFILE_ROW]);
+    sql.mockResolvedValueOnce([PROFILE_ROW]).mockRejectedValueOnce(NO_0160);
     const { CareAccessError } = await import("@/app/api/utils/careAccess");
     assertCareAccess.mockRejectedValue(new CareAccessError("denied"));
 
     const res = await POST(postReq({ note: "hi" }), PARAMS);
     expect(res.status).toBe(403);
-    expect(sql).toHaveBeenCalledTimes(1); // only the profile lookup
+    // The profile lookup and the missing database function: nothing is inserted.
+    expect(sql).toHaveBeenCalledTimes(2);
+    expect(allQueryText()).not.toContain("INSERT INTO");
   });
 });

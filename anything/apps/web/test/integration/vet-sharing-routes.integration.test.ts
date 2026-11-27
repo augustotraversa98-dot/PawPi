@@ -280,7 +280,7 @@ describe("C. each section opens its own data and files, nothing else", () => {
     const body = await res.json();
     expect(body.sharedSections).toEqual(SECTIONS.filter((s) => chosen.includes(s)));
     expect(Object.keys(body).sort()).toEqual(
-      ["documents", "lab_results", "medical_profile", "notes", "photo_checks", "sharedSections", "vaccinations"],
+      ["documents", "editSections", "lab_results", "medical_profile", "notes", "photo_checks", "sharedSections", "vaccinations"],
     );
     for (const [section, key] of Object.entries(ROWS_KEY)) {
       expect(body[key as string], section).toHaveLength(chosen.includes(section as Section) ? 1 : 0);

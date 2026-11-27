@@ -3,6 +3,7 @@ import sql from "@/app/api/utils/sql";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
+import { presentSharedRow } from "@/app/api/utils/sharedWrites";
 
 // VR-B: owner-OR-family(Editor) gated reads/writes with authorship attribution (0120).
 // See vet-record/allergies/route.js for the shared rationale.
@@ -27,14 +28,17 @@ async function GET(request) {
     }
 
     const labResults = await sql`
-      SELECT l.*, COALESCE(NULLIF(BTRIM(up.full_name), ''), CASE WHEN l.created_by_role = 'editor' AND l.created_by_user_id IS NULL THEN 'Former member' END) AS created_by_name
+      SELECT l.*, COALESCE(NULLIF(BTRIM(up.full_name), ''), CASE WHEN l.created_by_role = 'editor' AND l.created_by_user_id IS NULL THEN 'Former member' END) AS created_by_name,
+        ap.name AS added_by_provider_name, o.preferred_locale AS owner_locale
       FROM pet_lab_results l
       LEFT JOIN user_profiles up ON up.id = l.created_by_user_id
+      LEFT JOIN user_profiles o ON o.id = l.owner_user_id
+      LEFT JOIN providers ap ON ap.id = (to_jsonb(l) ->> 'added_by_provider_id')::int
       WHERE l.pet_id = ${petId} AND l.owner_user_id = ${gate.ownerUserId}
       ORDER BY l.test_date DESC
     `;
 
-    return Response.json({ labResults });
+    return Response.json({ labResults: labResults.map(presentSharedRow) });
   } catch (error) {
     console.error("[Vet Record Lab Results] Error:", error);
     return Response.json(

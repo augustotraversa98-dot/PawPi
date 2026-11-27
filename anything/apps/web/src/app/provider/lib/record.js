@@ -19,3 +19,9 @@ export function recordFileHref(value, providerId) {
   }
   return /^https:\/\//i.test(value) ? value : null;
 }
+
+// Who added something through a record link: their name, or that they had no account. `copy` is the record copy.
+export function linkAuthorName(row, copy) {
+  if (row.external_author_name === "Former member") return copy.notes.formerMember;
+  return row.external_author_name || copy.notes.anonymous;
+}

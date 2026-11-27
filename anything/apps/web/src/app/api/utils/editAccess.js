@@ -8,14 +8,14 @@ export const EDITABLE_SECTIONS = ["vet_notes", "vaccines", "files", "lab_results
 
 let supported = false;
 
-/** Whether the database can store the permission. Asked until it can, then remembered. */
+/**
+ * Whether the database can both store the permission and let a vet use it (0158 and 0160). Asked until it can, then
+ * remembered, so an owner is never offered a permission that would do nothing.
+ */
 export async function editAccessSupported() {
   if (supported) return true;
   const rows = await sql`
-    SELECT EXISTS (
-      SELECT 1 FROM information_schema.columns
-      WHERE table_schema = 'public' AND table_name = 'care_access_grants' AND column_name = 'edit_sections'
-    ) AS ok
+    SELECT to_regprocedure('app_record_link_add_record(text,text,jsonb)') IS NOT NULL AS ok
   `;
   supported = rows?.[0]?.ok === true;
   return supported;

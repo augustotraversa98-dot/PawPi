@@ -129,11 +129,37 @@ gap, and a waiting invitation to that business is withdrawn. Only the pet's owne
 `grant_not_editable`). Links are edited through `app_update_record_link` and may then end up to a year from that edit.
 The business is told (`care_access_granted`, with wording that says the access changed) when something actually changed.
 
+### What a vet can add (migration 0160)
+
+| Part | Business (grant by section with that edit permission) | Record link |
+|---|---|---|
+| `vet_notes` | `POST .../pets/[petId]/notes`; correct its own: `PATCH .../notes/[noteId]` | notes routes (section 5) |
+| `vaccines` | `POST .../pets/[petId]/vaccinations` | `POST /api/public/record-link/records` |
+| `lab_results` | `POST .../pets/[petId]/lab-results` | `POST /api/public/record-link/records` |
+| `files` | `POST .../pets/[petId]/documents` (PDF or photo, 25 MB) | `POST /api/public/record-link/documents` (PDF or photo, 10 MB) |
+
+The older `medical_write` and `vaccinations_write` scopes still add notes and vaccines. Nothing a vet or a link holder
+can do changes the owner's own entries or deletes anything; the owner (and their family, as before) removes rows.
+
+Rows land in the owner's own tables, so they show in the Vet Record as usual. Provenance is written only by the
+database: `added_by_provider_id` with `created_by_user_id` for a business, `via_record_link`, `record_link_id` and the
+signed-in author's name (or none) for a link, `created_at` for when. The owner's reads name the clinic
+(`created_by_name`, `added_by_provider_name`) or say it came through a shared link. A signed-in author's name becomes
+"Former member" if they delete their account. A grant by section still has no insert or update policy: the writing
+functions (`app_provider_add_record`, `app_provider_update_vet_note`, `app_record_link_add_record`) are its only way in,
+and they check the live grant or link on every call under the same lock as the owner's edits. A note added under a grant
+by section counts for no other permission. A link adds at most 20 rows (notes counted separately) in 24 hours; file
+routes check permission before storing, check the file's first bytes, and remove a stored file whose row was refused.
+A vaccination, document or lab result added through a link is marked "From a shared link" on the link page and in the
+business panel, so it is never read as a clinic's or the owner's entry; a business never receives the link visitor's
+account or link id. Removing access waits for a row being written (the writing functions hold the grant), and the
+access is audited only for a row that was written.
+
 ## 2. What the vet sees
 
 Who: every active staff member of that provider. Read at request time: expiry and revocation apply to the next request.
 
-### Grant by section (read only)
+### Grant by section (view; "can add" per section, above)
 
 | Section | Opened | Private files opened through `GET /api/media?providerId=` |
 |---|---|---|
@@ -150,8 +176,9 @@ Who: every active staff member of that provider. Read at request time: expiry an
   which returns just the granted columns.
 - `GET /api/providers/[id]/pets/[petId]/record` returns `sharedSections` plus `medical_profile`, `notes`,
   `vaccinations`, `documents`, `photo_checks`, `lab_results`; whatever was not shared is null or empty.
-- The web provider panel shows only the shared sections, names the ones not shared, and has no write forms.
-- No write, prescription, vaccine check or care module is opened.
+- The web provider panel shows only the shared sections, names the ones not shared, and has a form only for the parts
+  the owner lets it add to.
+- No prescription, vaccine check or care module is opened.
 
 ### Grant with `medical_read` (the app lists it as "Older access"; keep `mobile/src/utils/vetShare.js` in step)
 
