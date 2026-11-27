@@ -19,6 +19,17 @@ import {
 import { useProviderSales } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
 import PaymentAccountCard from "./PaymentAccountCard";
+import salesCopy from "../i18n/sales";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import {
+  fill,
+  formatDate,
+  formatMoney,
+  formatMonth,
+  formatNumber,
+  plural,
+} from "../i18n/lib/format";
+import { serverErrorMessage } from "../i18n/lib/serverError";
 
 // Provider SALES / PAYOUTS / RECONCILIATION (Wave 7 ticket 2.69). Read-only surfacing of the 2.3
 // money already captured: revenue (net/gross over the last 6 months), a transactions ledger
@@ -26,22 +37,17 @@ import PaymentAccountCard from "./PaymentAccountCard";
 // ties captured → orders → payouts. NO money is mutated here. Every figure is scoped to the active
 // provider; this screen NEVER reads another business's money. Empty data → empty states.
 
-// Format integer cents in the provider's currency (e.g. "ARS 1,250.00").
-function formatMoney(cents, currency) {
-  const v = (Number(cents) || 0) / 100;
-  return `${currency || "ARS"} ${v.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
+const METRICS = ["net", "gross"];
 
-const LEDGER_TYPE_LABEL = {
-  booking: "Booking",
-  product: "Order",
-  adoption_fee: "Adoption fee",
-  donation: "Donation",
-  subscription: "Subscription",
-};
+// The name of a stored value; a value without a name is shown as stored.
+const named = (names, value) =>
+  Object.hasOwn(names, value) ? names[value] : value;
+
+// The day part of a timestamp: "2026-12-31" (es: "31/12/2026").
+function dayOf(value, lang) {
+  const day = String(value).slice(0, 10);
+  return formatDate(day, lang) || day;
+}
 
 function StatCard({ Icon, label, value, sub, accent }) {
   return (
@@ -65,7 +71,9 @@ function StatCard({ Icon, label, value, sub, accent }) {
   );
 }
 
-function StatusPill({ status }) {
+// `names` is the dictionary group for this kind of status.
+function StatusPill({ status, names }) {
+  const { lang } = useProviderCopy(salesCopy);
   const tone =
     status === "approved" || status === "paid"
       ? "bg-[#E6F4EC] text-[#2F7D54]"
@@ -74,14 +82,21 @@ function StatusPill({ status }) {
         : "bg-[#FFF1E2] text-[#B75D32]";
   return (
     <span
-      className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${tone}`}
+      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+        lang === "en" ? "capitalize " : ""
+      }${tone}`}
     >
-      {status || "—"}
+      {status ? named(names, status) : "—"}
     </span>
   );
 }
 
 export default function ProviderSales({ providerId }) {
+  const { t, lang } = useProviderCopy(salesCopy);
+  const money = (cents, currency) => formatMoney(cents, currency, lang);
+  const monthLabel = (month) => formatMonth(month, lang);
+  const numberLabel = (value) =>
+    lang === "es" ? formatNumber(value, lang) : value;
   const { data, isLoading, isError, error } = useProviderSales(providerId);
   const [metric, setMetric] = useState("net"); // "net" | "gross"
 
@@ -114,7 +129,7 @@ export default function ProviderSales({ providerId }) {
       <div className="p-6">
         <div className="rounded-2xl border border-[#FFD9B3] bg-white p-8 text-center">
           <p className="text-sm text-[#7A6254]">
-            {error?.message || "Couldn't load your sales."}
+            {serverErrorMessage(error, lang, t.loadError, salesCopy)}
           </p>
         </div>
       </div>
@@ -129,10 +144,8 @@ export default function ProviderSales({ providerId }) {
   return (
     <div className="p-6">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-[#3B241B]">Sales</h1>
-        <p className="text-sm text-[#7A6254]">
-          Revenue, payouts and reconciliation — only this provider's money, read-only.
-        </p>
+        <h1 className="text-2xl font-bold text-[#3B241B]">{t.title}</h1>
+        <p className="text-sm text-[#7A6254]">{t.subtitle}</p>
       </header>
 
       {/* Payment account connection (ACTION 2 §1) — provider links their own MercadoPago
@@ -143,30 +156,30 @@ export default function ProviderSales({ providerId }) {
       <div className="mb-6 flex flex-col gap-4 sm:flex-row">
         <StatCard
           Icon={DollarSign}
-          label="Net revenue"
-          value={formatMoney(revenue.net_cents, currency)}
-          sub={`${revenue.approved_count ?? 0} paid transactions`}
+          label={t.stats.net}
+          value={money(revenue.net_cents, currency)}
+          sub={plural(t.stats.paidTransactions, revenue.approved_count ?? 0, lang)}
           accent={COLORS.coral}
         />
         <StatCard
           Icon={TrendingUp}
-          label="Gross"
-          value={formatMoney(revenue.gross_cents, currency)}
-          sub="before commission & refunds"
+          label={t.stats.gross}
+          value={money(revenue.gross_cents, currency)}
+          sub={t.stats.grossSub}
           accent={COLORS.terracotta}
         />
         <StatCard
           Icon={Scissors}
-          label="Commission"
-          value={formatMoney(revenue.commission_cents, currency)}
-          sub="platform fee (set by platform)"
+          label={t.stats.commission}
+          value={money(revenue.commission_cents, currency)}
+          sub={t.stats.commissionSub}
           accent="#9A6CB4"
         />
         <StatCard
           Icon={RefreshCcw}
-          label="Refunds"
-          value={formatMoney(revenue.refunds_cents, currency)}
-          sub="returned to customers"
+          label={t.stats.refunds}
+          value={money(revenue.refunds_cents, currency)}
+          sub={t.stats.refundsSub}
           accent="#B23A2E"
         />
       </div>
@@ -175,28 +188,28 @@ export default function ProviderSales({ providerId }) {
       <div className="mb-6 rounded-2xl border border-[#FFD9B3] bg-white p-5">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-bold text-[#3B241B]">
-            Revenue by month ({currency})
+            {fill(t.chart.title, { currency })}
           </h2>
           <div className="flex overflow-hidden rounded-lg border border-[#FFD9B3] text-xs font-semibold">
-            {["net", "gross"].map((m) => (
+            {METRICS.map((m) => (
               <button
                 key={m}
                 type="button"
                 onClick={() => setMetric(m)}
-                className={`px-3 py-1.5 capitalize ${
+                className={`px-3 py-1.5 ${lang === "en" ? "capitalize " : ""}${
                   metric === m
                     ? "bg-[#FF6F61] text-white"
                     : "bg-white text-[#7A6254]"
                 }`}
               >
-                {m}
+                {t.chart[m]}
               </button>
             ))}
           </div>
         </div>
         {revenueSeries.length === 0 ? (
           <div className="flex h-48 items-center justify-center text-sm text-[#B8A99D]">
-            No sales yet.
+            {t.chart.empty}
           </div>
         ) : (
           <div style={{ width: "100%", height: 240 }}>
@@ -205,13 +218,15 @@ export default function ProviderSales({ providerId }) {
                 <CartesianGrid strokeDasharray="3 3" stroke="#FFE9D6" />
                 <XAxis
                   dataKey="month"
+                  tickFormatter={monthLabel}
                   tick={{ fontSize: 12, fill: "#7A6254" }}
                 />
-                <YAxis tick={{ fontSize: 12, fill: "#7A6254" }} />
-                <Tooltip />
+                <YAxis tickFormatter={numberLabel} tick={{ fontSize: 12, fill: "#7A6254" }} />
+                <Tooltip labelFormatter={monthLabel} formatter={numberLabel} />
                 <Line
                   type="monotone"
                   dataKey="value"
+                  name={t.chart.series}
                   stroke={COLORS.coral}
                   strokeWidth={2}
                   dot={{ r: 3 }}
@@ -227,29 +242,29 @@ export default function ProviderSales({ providerId }) {
         <div className="rounded-2xl border border-[#FFD9B3] bg-white p-5">
           <div className="mb-4 flex items-center gap-2">
             <Wallet className="h-5 w-5" style={{ color: COLORS.coral }} />
-            <h2 className="text-base font-bold text-[#3B241B]">Payouts</h2>
+            <h2 className="text-base font-bold text-[#3B241B]">{t.payouts.title}</h2>
           </div>
           <div className="mb-4 flex gap-4">
             <div className="flex-1 rounded-xl bg-[#FFF8F1] p-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-[#7A6254]">
-                Paid out
+                {t.payouts.paidOut}
               </p>
               <p className="text-lg font-bold text-[#3B241B]">
-                {formatMoney(payouts.paid_out_cents, currency)}
+                {money(payouts.paid_out_cents, currency)}
               </p>
             </div>
             <div className="flex-1 rounded-xl bg-[#FFF8F1] p-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-[#7A6254]">
-                Pending
+                {t.payouts.pending}
               </p>
               <p className="text-lg font-bold text-[#3B241B]">
-                {formatMoney(payouts.pending_payout_cents, currency)}
+                {money(payouts.pending_payout_cents, currency)}
               </p>
             </div>
           </div>
           {payouts.rows.length === 0 ? (
             <div className="flex h-24 items-center justify-center text-sm text-[#B8A99D]">
-              No payouts yet.
+              {t.payouts.empty}
             </div>
           ) : (
             <ul className="divide-y divide-[#FFF1E2]">
@@ -260,13 +275,14 @@ export default function ProviderSales({ providerId }) {
                 >
                   <div>
                     <p className="font-semibold text-[#3B241B]">
-                      {formatMoney(p.amount_cents, currency)}
+                      {money(p.amount_cents, currency)}
                     </p>
                     <p className="text-xs text-[#7A6254]">
-                      {String(p.created_at).slice(0, 10)} · {p.rail || "—"}
+                      {dayOf(p.created_at, lang)} ·{" "}
+                      {p.rail ? named(t.rails, p.rail) : "—"}
                     </p>
                   </div>
-                  <StatusPill status={p.status} />
+                  <StatusPill status={p.status} names={t.payoutStatus} />
                 </li>
               ))}
             </ul>
@@ -275,36 +291,34 @@ export default function ProviderSales({ providerId }) {
 
         <div className="rounded-2xl border border-[#FFD9B3] bg-white p-5">
           <h2 className="mb-4 text-base font-bold text-[#3B241B]">
-            Reconciliation
+            {t.reconciliation.title}
           </h2>
-          <p className="mb-4 text-xs text-[#7A6254]">
-            What you've earned versus what you've been paid.
-          </p>
+          <p className="mb-4 text-xs text-[#7A6254]">{t.reconciliation.hint}</p>
           <dl className="divide-y divide-[#FFF1E2]">
             <div className="flex items-center justify-between py-2.5">
-              <dt className="text-sm text-[#7A6254]">Net captured</dt>
+              <dt className="text-sm text-[#7A6254]">{t.reconciliation.netCaptured}</dt>
               <dd className="font-semibold text-[#3B241B]">
-                {formatMoney(recon.net_captured_cents, currency)}
+                {money(recon.net_captured_cents, currency)}
               </dd>
             </div>
             <div className="flex items-center justify-between py-2.5">
-              <dt className="text-sm text-[#7A6254]">Paid out</dt>
+              <dt className="text-sm text-[#7A6254]">{t.reconciliation.paidOut}</dt>
               <dd className="font-semibold text-[#3B241B]">
-                − {formatMoney(recon.paid_out_cents, currency)}
+                − {money(recon.paid_out_cents, currency)}
               </dd>
             </div>
             <div className="flex items-center justify-between py-2.5">
-              <dt className="text-sm text-[#7A6254]">Pending payout</dt>
+              <dt className="text-sm text-[#7A6254]">{t.reconciliation.pendingPayout}</dt>
               <dd className="font-semibold text-[#3B241B]">
-                − {formatMoney(recon.pending_payout_cents, currency)}
+                − {money(recon.pending_payout_cents, currency)}
               </dd>
             </div>
             <div className="flex items-center justify-between py-3">
               <dt className="text-sm font-bold text-[#3B241B]">
-                Unreconciled balance
+                {t.reconciliation.unreconciled}
               </dt>
               <dd className="text-lg font-bold text-[#B75D32]">
-                {formatMoney(recon.unreconciled_cents, currency)}
+                {money(recon.unreconciled_cents, currency)}
               </dd>
             </div>
           </dl>
@@ -314,26 +328,26 @@ export default function ProviderSales({ providerId }) {
       {/* Ledger */}
       <div className="rounded-2xl border border-[#FFD9B3] bg-white p-5">
         <h2 className="mb-4 text-base font-bold text-[#3B241B]">
-          Transactions
+          {t.ledger.title}
         </h2>
         {ledger.length === 0 ? (
           <div className="flex h-32 items-center justify-center text-sm text-[#B8A99D]">
-            No transactions yet.
+            {t.ledger.empty}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-[#FFE9D6] text-xs uppercase tracking-wide text-[#7A6254]">
-                  <th className="py-2 pr-3 font-semibold">Date</th>
-                  <th className="py-2 pr-3 font-semibold">Type</th>
-                  <th className="py-2 pr-3 font-semibold">Customer</th>
-                  <th className="py-2 pr-3 text-right font-semibold">Gross</th>
+                  <th className="py-2 pr-3 font-semibold">{t.ledger.date}</th>
+                  <th className="py-2 pr-3 font-semibold">{t.ledger.type}</th>
+                  <th className="py-2 pr-3 font-semibold">{t.ledger.customer}</th>
+                  <th className="py-2 pr-3 text-right font-semibold">{t.ledger.gross}</th>
                   <th className="py-2 pr-3 text-right font-semibold">
-                    Commission
+                    {t.ledger.commission}
                   </th>
-                  <th className="py-2 pr-3 text-right font-semibold">Net</th>
-                  <th className="py-2 font-semibold">Status</th>
+                  <th className="py-2 pr-3 text-right font-semibold">{t.ledger.net}</th>
+                  <th className="py-2 font-semibold">{t.ledger.status}</th>
                 </tr>
               </thead>
               <tbody>
@@ -343,27 +357,27 @@ export default function ProviderSales({ providerId }) {
                     className="border-b border-[#FFF6EC] text-[#3B241B]"
                   >
                     <td className="py-2.5 pr-3 text-[#7A6254]">
-                      {String(row.created_at).slice(0, 10)}
+                      {dayOf(row.created_at, lang)}
                     </td>
                     <td className="py-2.5 pr-3">
-                      {LEDGER_TYPE_LABEL[row.type] || row.type || "—"}
+                      {row.type ? named(t.orderKinds, row.type) : "—"}
                     </td>
                     <td className="py-2.5 pr-3">{row.counterpart || "—"}</td>
                     <td className="py-2.5 pr-3 text-right tabular-nums">
-                      {formatMoney(row.gross_cents, currency)}
+                      {money(row.gross_cents, currency)}
                     </td>
                     <td className="py-2.5 pr-3 text-right tabular-nums text-[#7A6254]">
-                      {formatMoney(row.commission_cents, currency)}
+                      {money(row.commission_cents, currency)}
                     </td>
                     <td
                       className={`py-2.5 pr-3 text-right font-semibold tabular-nums ${
                         row.net_cents < 0 ? "text-[#B23A2E]" : ""
                       }`}
                     >
-                      {formatMoney(row.net_cents, currency)}
+                      {money(row.net_cents, currency)}
                     </td>
                     <td className="py-2.5">
-                      <StatusPill status={row.status} />
+                      <StatusPill status={row.status} names={t.paymentStatus} />
                     </td>
                   </tr>
                 ))}

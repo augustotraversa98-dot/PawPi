@@ -1,6 +1,7 @@
 // Pure date/grid helpers for the provider bookings calendar (ticket 2.24). No React,
 // no network — kept in a leaf module so the grid math is unit-testable on its own.
 // Week starts MONDAY (app-wide convention, Mon=0; see the mobile DayChips).
+import { WEEKDAYS, weekdayName } from "./hours";
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -176,17 +177,18 @@ export function layoutDay(bookings, gridStartMin, timeZone) {
   return items;
 }
 
-export function hourLabel(h) {
+// The time-axis label of an hour: "7 AM" (es: "07:00", 24 h clock).
+export function hourLabel(h, lang = "en") {
+  if (lang === "es") return `${pad2(h)}:00`;
+  // i18n-ok: English 12 h clock only; Spanish returns above
   const ampm = h < 12 ? "AM" : "PM";
   const hour12 = h % 12 === 0 ? 12 : h % 12;
   return `${hour12} ${ampm}`;
 }
 
-const WEEKDAY = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-// Short column header e.g. "Mon 16". index is the day's position from Monday.
-export function dayHeader(date) {
+// Short column header e.g. "Mon 16" (es: "Lun 16"). index is the day's position from Monday.
+export function dayHeader(date, lang = "en") {
   const d = new Date(date);
   const idx = (d.getDay() + 6) % 7;
-  return `${WEEKDAY[idx]} ${d.getDate()}`;
+  return `${weekdayName(WEEKDAYS[idx].key, lang)} ${d.getDate()}`;
 }
