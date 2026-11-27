@@ -26,6 +26,10 @@ import { getStorefrontTabs } from "../lib/storefrontTabs";
 import { deriveOpenNow } from "../lib/openNow";
 import { COLORS } from "../lib/colors";
 import StorefrontEditor from "./StorefrontEditor";
+import storefrontCopy from "../i18n/storefront";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { fill, formatNumber } from "../i18n/lib/format";
+import { providerTypeName } from "../i18n/lib/labels";
 
 // /provider/storefront → "View as customer" (Storefront Phase 2b). A READ-ONLY, faithful web
 // re-render of the mobile storefront shell (StoreHeader → tab bar → panels) so the owner sees
@@ -36,27 +40,6 @@ import StorefrontEditor from "./StorefrontEditor";
 // writes — that is Phase 2c. Section-order logic comes from lib/storefrontTabs.js, a verbatim
 // mirror of the mobile resolver, so web preview and mobile render stay in lockstep.
 const MUTED = "#7A6254";
-
-// English labels (the extranet is hardcoded-English; no i18n). Keyed by section/capability.
-const TAB_LABELS = {
-  services: "Services",
-  items: "Products",
-  posts: "Posts",
-  reviews: "Reviews",
-  locations: "Locations",
-  about: "About",
-};
-const CAP_LABELS = {
-  vet: "Vet",
-  groomer: "Grooming",
-  telehealth: "Telehealth",
-  walker: "Walking",
-  sitter: "Sitting",
-  daycare: "Daycare",
-  trainer: "Training",
-  shop: "Shop",
-  pharmacy: "Pharmacy",
-};
 
 // Mirrors mobile utils/money.js formatMoney — ARS shows as a bare "$" with es-AR grouping
 // ($1.500) so the preview reads in the customer's currency; a non-ARS currency keeps its ISO
@@ -99,6 +82,7 @@ function byMerchandising(createdDir) {
 }
 
 export default function StorefrontPreview({ providerId }) {
+  const { t } = useProviderCopy(storefrontCopy);
   const { data: providerData, isLoading: pLoading } = useProvider(providerId);
   const { data: services = [] } = useProviderServices(providerId);
   // Only a shop-capable provider can read shop-products (the endpoint 403s otherwise), so skip
@@ -139,12 +123,12 @@ export default function StorefrontPreview({ providerId }) {
     return (
       <div className="flex items-center gap-2 py-16 text-[#7A6254]">
         <Loader2 className="h-5 w-5 animate-spin" style={{ color: COLORS.coral }} />
-        Loading preview…
+        {t.preview.loading}
       </div>
     );
   }
   if (!provider) {
-    return <p className="py-16 text-center text-sm text-[#7A6254]">No provider to preview.</p>;
+    return <p className="py-16 text-center text-sm text-[#7A6254]">{t.preview.none}</p>;
   }
 
   const isDraft = provider.status !== "published";
@@ -160,7 +144,7 @@ export default function StorefrontPreview({ providerId }) {
           style={{ color: COLORS.brown, border: `1px solid ${COLORS.peach}` }}
         >
           <Pencil className="h-4 w-4" style={{ color: COLORS.coral }} />
-          Edit storefront
+          {t.preview.edit}
         </button>
       </div>
 
@@ -169,9 +153,7 @@ export default function StorefrontPreview({ providerId }) {
         className="mb-3 rounded-xl border px-3 py-2 text-center text-xs font-semibold"
         style={{ borderColor: COLORS.peach, backgroundColor: COLORS.cream, color: MUTED }}
       >
-        {isDraft
-          ? "Draft preview · this is how customers will see your store once you publish"
-          : "Preview · this is how customers see your store"}
+        {isDraft ? t.preview.draftBanner : t.preview.banner}
       </div>
 
       <div
@@ -181,7 +163,7 @@ export default function StorefrontPreview({ providerId }) {
         {provider.cover_image_url ? (
           <img
             src={provider.cover_image_url}
-            alt="Cover"
+            alt={t.preview.coverAlt}
             className="h-32 w-full object-cover"
             style={{ backgroundColor: COLORS.cream }}
           />
@@ -227,6 +209,7 @@ export default function StorefrontPreview({ providerId }) {
 
 // ── Header ──────────────────────────────────────────────────────────────────────
 function StoreHeader({ provider, capabilities, services, openNow }) {
+  const { t, lang } = useProviderCopy(storefrontCopy);
   const prices = services.map((s) => s.price_cents).filter((c) => c != null);
   const fromPrice = prices.length ? Math.min(...prices) : null;
   return (
@@ -258,13 +241,16 @@ function StoreHeader({ provider, capabilities, services, openNow }) {
                 className="rounded-full border px-2 py-0.5 text-xs font-bold"
                 style={{ borderColor: COLORS.peach, color: COLORS.coral, backgroundColor: "#FFF3EE" }}
               >
-                {CAP_LABELS[c] ?? c}
+                {t.preview.capabilities[c] ?? c}
               </span>
             ))}
           </div>
         ) : provider.provider_type ? (
-          <p className="mt-1 text-xs font-bold capitalize" style={{ color: COLORS.coral }}>
-            {provider.provider_type}
+          <p
+            className={`mt-1 text-xs font-bold ${lang === "en" ? "capitalize" : ""}`}
+            style={{ color: COLORS.coral }}
+          >
+            {providerTypeName(provider.provider_type, lang)}
           </p>
         ) : null}
         <div className="mt-1.5 flex flex-wrap items-center gap-3">
@@ -272,7 +258,7 @@ function StoreHeader({ provider, capabilities, services, openNow }) {
           {openNow != null ? <OpenNowPill open={openNow} /> : null}
           {fromPrice != null ? (
             <span className="text-xs font-semibold" style={{ color: MUTED }}>
-              from {formatMoney(fromPrice)}
+              {fill(t.preview.fromPrice, { price: formatMoney(fromPrice) })}
             </span>
           ) : null}
         </div>
@@ -283,25 +269,29 @@ function StoreHeader({ provider, capabilities, services, openNow }) {
 
 // Mirrors the mobile RatingBadge: no reviews → muted "New"; else star + avg + (count).
 function RatingSummary({ avg, count }) {
+  const { t, lang } = useProviderCopy(storefrontCopy);
   const c = Number(count) || 0;
   const a = avg == null ? null : Number(avg);
   if (c === 0 || a == null || Number.isNaN(a)) {
     return (
       <span className="flex items-center gap-1 text-xs font-bold" style={{ color: MUTED }}>
-        <Star className="h-3.5 w-3.5" /> New
+        <Star className="h-3.5 w-3.5" /> {t.preview.noRating}
       </span>
     );
   }
   return (
     <span className="flex items-center gap-1 text-xs">
       <Star className="h-3.5 w-3.5" style={{ color: COLORS.coral, fill: COLORS.coral }} />
-      <span className="font-extrabold" style={{ color: COLORS.brown }}>{a.toFixed(1)}</span>
+      <span className="font-extrabold" style={{ color: COLORS.brown }}>
+        {formatNumber(a.toFixed(1), lang, { minimumFractionDigits: 1 })}
+      </span>
       <span className="font-semibold" style={{ color: MUTED }}>({c})</span>
     </span>
   );
 }
 
 function OpenNowPill({ open }) {
+  const { t } = useProviderCopy(storefrontCopy);
   return (
     <span
       className="flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-bold"
@@ -311,13 +301,14 @@ function OpenNowPill({ open }) {
         color: open ? "#3F7A50" : MUTED,
       }}
     >
-      <Clock className="h-3 w-3" /> {open ? "Open now" : "Closed"}
+      <Clock className="h-3 w-3" /> {open ? t.preview.openNow : t.preview.closed}
     </span>
   );
 }
 
 // ── Tab bar ─────────────────────────────────────────────────────────────────────
 function TabBar({ tabs, active, onSelect }) {
+  const { t } = useProviderCopy(storefrontCopy);
   return (
     <div className="mt-4 flex gap-1 overflow-x-auto border-b" style={{ borderColor: COLORS.peach }}>
       {tabs.map((tab) => {
@@ -333,7 +324,7 @@ function TabBar({ tabs, active, onSelect }) {
               borderBottom: `2px solid ${selected ? COLORS.coral : "transparent"}`,
             }}
           >
-            {TAB_LABELS[tab.key] ?? tab.key}
+            {t.tabs[tab.key] ?? tab.key}
           </button>
         );
       })}
@@ -343,12 +334,13 @@ function TabBar({ tabs, active, onSelect }) {
 
 // ── Badges / chips ──────────────────────────────────────────────────────────────
 function FeaturedBadge() {
+  const { t } = useProviderCopy(storefrontCopy);
   return (
     <span
       className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-extrabold"
       style={{ backgroundColor: "#FFF0EC", color: COLORS.coral }}
     >
-      <Star className="h-2.5 w-2.5" style={{ fill: COLORS.coral }} /> Featured
+      <Star className="h-2.5 w-2.5" style={{ fill: COLORS.coral }} /> {t.preview.featured}
     </span>
   );
 }
@@ -369,13 +361,14 @@ function DiscountBadge({ priceCents, compareAtCents, currency }) {
 }
 
 // Owner-only marker for content the live store hides (inactive item / draft store).
-function HiddenChip({ label = "Hidden" }) {
+function HiddenChip() {
+  const { t } = useProviderCopy(storefrontCopy);
   return (
     <span
       className="rounded-full px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide"
       style={{ backgroundColor: COLORS.cream, color: MUTED, border: `1px solid ${COLORS.peach}` }}
     >
-      {label}
+      {t.preview.hidden}
     </span>
   );
 }
@@ -401,11 +394,12 @@ function EmptyState({ children }) {
 
 // ── Panels ──────────────────────────────────────────────────────────────────────
 function ServicesPanel({ services }) {
+  const { t } = useProviderCopy(storefrontCopy);
   const sorted = [...services].sort(byMerchandising("asc"));
-  if (sorted.length === 0) return <EmptyState>No services listed yet.</EmptyState>;
+  if (sorted.length === 0) return <EmptyState>{t.preview.noServices}</EmptyState>;
   return (
     <div>
-      <PanelTitle>Services</PanelTitle>
+      <PanelTitle>{t.tabs.services}</PanelTitle>
       <div className="space-y-2">
         {sorted.map((s) => (
           <div
@@ -428,7 +422,7 @@ function ServicesPanel({ services }) {
             ) : null}
             {s.duration_min ? (
               <p className="mt-1 flex items-center gap-1 text-xs" style={{ color: MUTED }}>
-                <Clock className="h-3 w-3" /> {s.duration_min} min
+                <Clock className="h-3 w-3" /> {fill(t.preview.duration, { minutes: s.duration_min })}
               </p>
             ) : null}
           </div>
@@ -439,10 +433,11 @@ function ServicesPanel({ services }) {
 }
 
 function ItemsPanel({ products }) {
-  if (products.length === 0) return <EmptyState>This store hasn&apos;t listed any products yet.</EmptyState>;
+  const { t } = useProviderCopy(storefrontCopy);
+  if (products.length === 0) return <EmptyState>{t.preview.noProducts}</EmptyState>;
   return (
     <div>
-      <PanelTitle>Items</PanelTitle>
+      <PanelTitle>{t.preview.itemsTitle}</PanelTitle>
       <div className="grid grid-cols-2 gap-2">
         {products.map((p) => {
           const soldOut = p.stock_qty <= 0;
@@ -468,14 +463,14 @@ function ItemsPanel({ products }) {
                 <span className="truncate text-sm font-bold" style={{ color: COLORS.brown }}>{p.name}</span>
                 {p.is_rx ? (
                   <span className="inline-flex items-center gap-0.5 rounded-full px-1 py-0.5 text-[10px] font-extrabold" style={{ backgroundColor: "#F6E8DF", color: COLORS.terracotta }}>
-                    <Pill className="h-2.5 w-2.5" /> Rx
+                    <Pill className="h-2.5 w-2.5" /> {t.preview.rx}
                   </span>
                 ) : null}
               </div>
               <div className="text-sm font-extrabold" style={{ color: COLORS.coral }}>{formatMoney(p.price_cents, p.currency)}</div>
               <DiscountBadge priceCents={p.price_cents} compareAtCents={p.compare_at_cents} currency={p.currency} />
               <div className="text-xs" style={{ color: MUTED }}>
-                {soldOut ? "Sold out" : `${p.stock_qty} in stock`}
+                {soldOut ? t.preview.soldOut : fill(t.preview.inStock, { count: p.stock_qty })}
               </div>
             </div>
           );
@@ -486,10 +481,11 @@ function ItemsPanel({ products }) {
 }
 
 function PostsPanel({ posts }) {
-  if (posts.length === 0) return <EmptyState>No posts yet.</EmptyState>;
+  const { t } = useProviderCopy(storefrontCopy);
+  if (posts.length === 0) return <EmptyState>{t.preview.noPosts}</EmptyState>;
   return (
     <div>
-      <PanelTitle>Posts</PanelTitle>
+      <PanelTitle>{t.tabs.posts}</PanelTitle>
       <div className="space-y-2">
         {posts.map((post) => (
           <div key={post.id} className="rounded-xl border p-3" style={{ borderColor: COLORS.peach, backgroundColor: "#fff" }}>
@@ -509,26 +505,27 @@ function PostsPanel({ posts }) {
 }
 
 function ReviewsPanel({ reviews, avgRating, reviewCount }) {
+  const { t } = useProviderCopy(storefrontCopy);
   return (
     <div>
-      <PanelTitle>Reviews</PanelTitle>
+      <PanelTitle>{t.tabs.reviews}</PanelTitle>
       <div className="mb-3 flex items-center gap-2">
         <RatingSummary avg={avgRating} count={reviewCount} />
       </div>
       {reviews.length === 0 ? (
-        <EmptyState>No reviews yet. After a completed appointment, customers can leave the first one.</EmptyState>
+        <EmptyState>{t.preview.noReviews}</EmptyState>
       ) : (
         <div className="space-y-2">
           {reviews.map((rv) => (
             <div key={rv.id} className="rounded-xl border p-3" style={{ borderColor: COLORS.peach, backgroundColor: "#fff" }}>
               <div className="flex items-center justify-between gap-2">
-                <span className="truncate font-bold" style={{ color: COLORS.brown }}>{rv.reviewer_name || "Pet parent"}</span>
+                <span className="truncate font-bold" style={{ color: COLORS.brown }}>{rv.reviewer_name || t.preview.reviewerFallback}</span>
                 <span className="flex items-center gap-1">
                   <Star className="h-3.5 w-3.5" style={{ color: COLORS.coral, fill: COLORS.coral }} />
                   <span className="font-extrabold" style={{ color: COLORS.brown }}>{rv.rating}</span>
                 </span>
               </div>
-              {rv.pet_name ? <p className="mt-0.5 text-xs font-bold" style={{ color: COLORS.coral }}>with {rv.pet_name}</p> : null}
+              {rv.pet_name ? <p className="mt-0.5 text-xs font-bold" style={{ color: COLORS.coral }}>{fill(t.preview.withPet, { name: rv.pet_name })}</p> : null}
               {rv.body ? <p className="mt-1.5 text-sm" style={{ color: MUTED }}>{rv.body}</p> : null}
             </div>
           ))}
@@ -539,10 +536,11 @@ function ReviewsPanel({ reviews, avgRating, reviewCount }) {
 }
 
 function LocationsPanel({ locations }) {
-  if (locations.length === 0) return <EmptyState>No locations listed yet.</EmptyState>;
+  const { t } = useProviderCopy(storefrontCopy);
+  if (locations.length === 0) return <EmptyState>{t.preview.noLocations}</EmptyState>;
   return (
     <div>
-      <PanelTitle>Locations</PanelTitle>
+      <PanelTitle>{t.tabs.locations}</PanelTitle>
       <div className="space-y-2">
         {locations.map((l) => (
           <div key={l.id} className="rounded-xl border p-3" style={{ borderColor: COLORS.peach, backgroundColor: "#fff" }}>
@@ -565,16 +563,17 @@ function LocationsPanel({ locations }) {
 }
 
 function AboutPanel({ provider, locations, includeLocations }) {
+  const { t } = useProviderCopy(storefrontCopy);
   const links = [
-    { url: provider.website_url, label: "Website", Icon: Globe },
-    { url: provider.instagram_url, label: "Instagram", Icon: Instagram },
-    { url: provider.facebook_url, label: "Facebook", Icon: Facebook },
-    { url: provider.google_maps_url, label: "Google Maps", Icon: MapIcon },
+    { url: provider.website_url, label: t.preview.links.website, Icon: Globe },
+    { url: provider.instagram_url, label: t.preview.links.instagram, Icon: Instagram },
+    { url: provider.facebook_url, label: t.preview.links.facebook, Icon: Facebook },
+    { url: provider.google_maps_url, label: t.preview.links.googleMaps, Icon: MapIcon },
   ].filter((l) => typeof l.url === "string" && l.url.trim().length > 0);
   const hasLocations = includeLocations && locations.length > 0;
 
   if (!provider.bio && links.length === 0 && !hasLocations) {
-    return <EmptyState>No additional details yet.</EmptyState>;
+    return <EmptyState>{t.preview.noDetails}</EmptyState>;
   }
   return (
     <div>

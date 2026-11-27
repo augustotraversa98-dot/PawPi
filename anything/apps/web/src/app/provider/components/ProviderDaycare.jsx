@@ -21,6 +21,10 @@ import {
   usePetVaccineCheck,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
+import daycareCopy from "../i18n/daycare";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { fill, formatDate } from "../i18n/lib/format";
+import { serverErrorMessage } from "../i18n/lib/serverError";
 
 // /provider/daycare — the facility's Daycare & Boarding workspace (ticket 2.8).
 // Occupancy list (per-row check-in/out + cancel), daily report cards, required-vaccine
@@ -28,26 +32,31 @@ import { COLORS } from "../lib/colors";
 // backend; RLS (0034) + assertCareAccess are the real guards.
 
 const STATUS_BADGE = {
-  booked: { bg: "#FFF1E2", fg: "#B75D32", label: "Booked" },
-  checked_in: { bg: "#E5F4EC", fg: "#1F7A4D", label: "Checked in" },
-  checked_out: { bg: "#EFEAE6", fg: "#7A6254", label: "Checked out" },
-  cancelled: { bg: "#FBE6E4", fg: "#B23B30", label: "Cancelled" },
+  booked: { bg: "#FFF1E2", fg: "#B75D32" },
+  checked_in: { bg: "#E5F4EC", fg: "#1F7A4D" },
+  checked_out: { bg: "#EFEAE6", fg: "#7A6254" },
+  cancelled: { bg: "#FBE6E4", fg: "#B23B30" },
 };
 
+// A stay's calendar day; the API may send it with a time part, which is not shown.
+const stayDay = (value, lang) => formatDate(String(value).slice(0, 10), lang) || value;
+
 function StatusBadge({ status }) {
-  const s = STATUS_BADGE[status] || { bg: "#EFEAE6", fg: "#7A6254", label: status };
+  const { t } = useProviderCopy(daycareCopy);
+  const s = STATUS_BADGE[status] || { bg: "#EFEAE6", fg: "#7A6254" };
   return (
     <span
       className="inline-block rounded-full px-2.5 py-1 text-xs font-semibold"
       style={{ backgroundColor: s.bg, color: s.fg }}
     >
-      {s.label}
+      {t.status[status] ?? status}
     </span>
   );
 }
 
 export default function ProviderDaycare({ providerId }) {
   const { data: stays, isLoading, isError, error } = useDaycareStays(providerId);
+  const { t, lang } = useProviderCopy(daycareCopy);
 
   return (
     <div className="mx-auto w-full max-w-5xl px-6 py-8">
@@ -59,27 +68,25 @@ export default function ProviderDaycare({ providerId }) {
           <Home className="h-5 w-5" style={{ color: COLORS.terracotta }} />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-[#3B241B]">Daycare & Boarding</h1>
-          <p className="text-sm text-[#7A6254]">
-            Occupancy, check-in/out, report cards, and vaccine checks.
-          </p>
+          <h1 className="text-xl font-bold text-[#3B241B]">{t.title}</h1>
+          <p className="text-sm text-[#7A6254]">{t.subtitle}</p>
         </div>
       </div>
 
       <RequirementsSection providerId={providerId} />
 
       <h2 className="mb-3 mt-8 text-sm font-bold uppercase tracking-wide text-[#7A6254]">
-        Occupancy
+        {t.occupancy}
       </h2>
 
       {isLoading ? (
         <div className="flex items-center gap-2 py-12 text-[#7A6254]">
           <Loader2 className="h-5 w-5 animate-spin" style={{ color: COLORS.coral }} />
-          Loading stays…
+          {t.loading}
         </div>
       ) : isError ? (
         <p className="py-8 text-sm text-[#B23B30]">
-          {error?.message || "Couldn't load stays."}
+          {serverErrorMessage(error, lang, t.loadFailed, daycareCopy)}
         </p>
       ) : !stays || stays.length === 0 ? (
         <EmptyState />
@@ -95,13 +102,12 @@ export default function ProviderDaycare({ providerId }) {
 }
 
 function EmptyState() {
+  const { t } = useProviderCopy(daycareCopy);
   return (
     <div className="rounded-2xl border border-[#FFD9B3] bg-white p-10 text-center">
       <Home className="mx-auto h-8 w-8 text-[#B8A99D]" />
-      <p className="mt-3 font-semibold text-[#3B241B]">No stays yet</p>
-      <p className="mt-1 text-sm text-[#7A6254]">
-        When owners book a stay with you, it appears here for check-in.
-      </p>
+      <p className="mt-3 font-semibold text-[#3B241B]">{t.emptyTitle}</p>
+      <p className="mt-1 text-sm text-[#7A6254]">{t.emptyBody}</p>
     </div>
   );
 }
@@ -109,6 +115,7 @@ function EmptyState() {
 function RequirementsSection({ providerId }) {
   const { data: requirements, isLoading } = useDaycareRequirements(providerId);
   const addReq = useAddDaycareRequirement(providerId);
+  const { t, lang } = useProviderCopy(daycareCopy);
   const [name, setName] = useState("");
 
   const submit = async (e) => {
@@ -118,9 +125,9 @@ function RequirementsSection({ providerId }) {
     try {
       await addReq.mutateAsync({ vaccine_name: v });
       setName("");
-      toast.success("Required vaccine added");
+      toast.success(t.requirements.added);
     } catch (err) {
-      toast.error(err.message || "Couldn't add requirement");
+      toast.error(serverErrorMessage(err, lang, t.requirements.addFailed, daycareCopy));
     }
   };
 
@@ -129,16 +136,14 @@ function RequirementsSection({ providerId }) {
       <div className="mb-3 flex items-center gap-2">
         <Syringe className="h-4 w-4" style={{ color: COLORS.terracotta }} />
         <h2 className="text-sm font-bold uppercase tracking-wide text-[#7A6254]">
-          Required vaccines
+          {t.requirements.heading}
         </h2>
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-[#7A6254]">Loading…</p>
+        <p className="text-sm text-[#7A6254]">{t.requirements.loading}</p>
       ) : !requirements || requirements.length === 0 ? (
-        <p className="text-sm text-[#7A6254]">
-          No required vaccines yet. Add the vaccines you require for a stay.
-        </p>
+        <p className="text-sm text-[#7A6254]">{t.requirements.empty}</p>
       ) : (
         <div className="flex flex-wrap gap-2">
           {requirements
@@ -158,7 +163,7 @@ function RequirementsSection({ providerId }) {
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Rabies"
+          placeholder={t.requirements.placeholder}
           className="flex-1 rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-3 py-2 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
         />
         <button
@@ -168,7 +173,7 @@ function RequirementsSection({ providerId }) {
           style={{ backgroundColor: COLORS.coral }}
         >
           <Plus className="h-4 w-4" />
-          Add
+          {t.requirements.add}
         </button>
       </form>
     </div>
@@ -178,15 +183,16 @@ function RequirementsSection({ providerId }) {
 function StayRow({ providerId, stay }) {
   const action = useDaycareStayAction(providerId);
   const [showCard, setShowCard] = useState(false);
+  const { t, lang } = useProviderCopy(daycareCopy);
 
   const run = async (a) => {
     try {
       await action.mutateAsync({ stayId: stay.id, action: a });
       toast.success(
-        a === "check_in" ? "Checked in" : a === "check_out" ? "Checked out" : "Cancelled",
+        a === "check_in" ? t.stay.checkedIn : a === "check_out" ? t.stay.checkedOut : t.stay.cancelled,
       );
     } catch (err) {
-      toast.error(err.message || "Action failed");
+      toast.error(serverErrorMessage(err, lang, t.stay.actionFailed, daycareCopy));
     }
   };
 
@@ -195,13 +201,15 @@ function StayRow({ providerId, stay }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <p className="font-bold text-[#3B241B]">{stay.pet_name || `Pet #${stay.pet_id}`}</p>
+            <p className="font-bold text-[#3B241B]">{stay.pet_name || fill(t.stay.petFallback, { id: stay.pet_id })}</p>
             <StatusBadge status={stay.status} />
           </div>
           <p className="mt-0.5 text-sm text-[#7A6254]">
             {stay.owner_name ? `${stay.owner_name} · ` : ""}
-            {stay.start_date}
-            {stay.end_date && stay.end_date !== stay.start_date ? ` → ${stay.end_date}` : ""}
+            {stayDay(stay.start_date, lang)}
+            {stay.end_date && stay.end_date !== stay.start_date
+              ? ` → ${stayDay(stay.end_date, lang)}`
+              : ""}
             {stay.location_name ? ` · ${stay.location_name}` : ""}
           </p>
         </div>
@@ -215,7 +223,7 @@ function StayRow({ providerId, stay }) {
               style={{ backgroundColor: COLORS.coral }}
             >
               <LogIn className="h-4 w-4" />
-              Check in
+              {t.stay.checkIn}
             </button>
           )}
           {stay.status === "checked_in" && (
@@ -225,7 +233,7 @@ function StayRow({ providerId, stay }) {
               className="flex items-center gap-1.5 rounded-xl border-2 border-[#FFD9B3] px-3 py-2 text-sm font-bold text-[#3B241B]"
             >
               <LogOut className="h-4 w-4" />
-              Check out
+              {t.stay.checkOut}
             </button>
           )}
           {(stay.status === "booked" || stay.status === "checked_in") && (
@@ -235,7 +243,7 @@ function StayRow({ providerId, stay }) {
               className="flex items-center gap-1.5 rounded-xl border-2 border-[#FBE6E4] px-3 py-2 text-sm font-bold text-[#B23B30]"
             >
               <Ban className="h-4 w-4" />
-              Cancel
+              {t.stay.cancel}
             </button>
           )}
           <button
@@ -243,7 +251,7 @@ function StayRow({ providerId, stay }) {
             className="flex items-center gap-1.5 rounded-xl border-2 border-[#FFD9B3] px-3 py-2 text-sm font-bold text-[#3B241B]"
           >
             <FileText className="h-4 w-4" />
-            Report card
+            {t.stay.reportCard}
           </button>
         </div>
       </div>
@@ -276,6 +284,7 @@ function VaccineCheck({ providerId, petId, locationId }) {
     petId,
     locationId,
   );
+  const { t, lang } = useProviderCopy(daycareCopy);
 
   const run = async () => {
     try {
@@ -297,15 +306,15 @@ function VaccineCheck({ providerId, petId, locationId }) {
         ) : (
           <Syringe className="h-4 w-4" />
         )}
-        Check vaccines
+        {t.vaccines.check}
       </button>
 
       {error && (
         <p className="mt-2 flex items-center gap-1.5 text-sm text-[#B23B30]">
           <ShieldAlert className="h-4 w-4" />
           {error.status === 403
-            ? "Owner consent needed to read vaccinations."
-            : error.message}
+            ? t.vaccines.consentNeeded
+            : serverErrorMessage(error, lang, t.vaccines.checkFailed, daycareCopy)}
         </p>
       )}
 
@@ -314,14 +323,12 @@ function VaccineCheck({ providerId, petId, locationId }) {
           {data.passed ? (
             <p className="flex items-center gap-1.5 font-semibold text-[#1F7A4D]">
               <ShieldCheck className="h-4 w-4" />
-              {data.required.length === 0
-                ? "No vaccines required"
-                : "All required vaccines present"}
+              {data.required.length === 0 ? t.vaccines.noneRequired : t.vaccines.allPresent}
             </p>
           ) : (
             <p className="flex items-center gap-1.5 font-semibold text-[#B23B30]">
               <ShieldAlert className="h-4 w-4" />
-              Missing: {data.missing.join(", ")}
+              {fill(t.vaccines.missing, { vaccines: data.missing.join(", ") })}
             </p>
           )}
         </div>
@@ -332,6 +339,7 @@ function VaccineCheck({ providerId, petId, locationId }) {
 
 function ReportCardForm({ providerId, stayId, defaultDate, onDone }) {
   const post = usePostReportCard(providerId);
+  const { t, lang } = useProviderCopy(daycareCopy);
   const [date, setDate] = useState(defaultDate || "");
   const [mood, setMood] = useState("");
   const [meals, setMeals] = useState("");
@@ -341,7 +349,7 @@ function ReportCardForm({ providerId, stayId, defaultDate, onDone }) {
   const submit = async (e) => {
     e.preventDefault();
     if (!date) {
-      toast.error("Pick a date for the card");
+      toast.error(t.card.dateRequired);
       return;
     }
     try {
@@ -353,10 +361,10 @@ function ReportCardForm({ providerId, stayId, defaultDate, onDone }) {
         activities: activities || null,
         notes: notes || null,
       });
-      toast.success("Report card posted");
+      toast.success(t.card.posted);
       onDone?.();
     } catch (err) {
-      toast.error(err.message || "Couldn't post card");
+      toast.error(serverErrorMessage(err, lang, t.card.postFailed, daycareCopy));
     }
   };
 
@@ -365,20 +373,20 @@ function ReportCardForm({ providerId, stayId, defaultDate, onDone }) {
 
   return (
     <form onSubmit={submit} className="mt-4 space-y-2 rounded-xl bg-[#FFF7EF] p-4">
-      <label className="block text-xs font-semibold text-[#7A6254]">Date</label>
+      <label className="block text-xs font-semibold text-[#7A6254]">{t.card.date}</label>
       <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={field} />
-      <input value={mood} onChange={(e) => setMood(e.target.value)} placeholder="Mood" className={field} />
-      <input value={meals} onChange={(e) => setMeals(e.target.value)} placeholder="Meals" className={field} />
+      <input value={mood} onChange={(e) => setMood(e.target.value)} placeholder={t.card.mood} className={field} />
+      <input value={meals} onChange={(e) => setMeals(e.target.value)} placeholder={t.card.meals} className={field} />
       <input
         value={activities}
         onChange={(e) => setActivities(e.target.value)}
-        placeholder="Activities"
+        placeholder={t.card.activities}
         className={field}
       />
       <textarea
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
-        placeholder="Notes"
+        placeholder={t.card.notes}
         className={field}
         rows={2}
       />
@@ -389,14 +397,14 @@ function ReportCardForm({ providerId, stayId, defaultDate, onDone }) {
           className="rounded-xl px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
           style={{ backgroundColor: COLORS.coral }}
         >
-          Post card
+          {t.card.post}
         </button>
         <button
           type="button"
           onClick={onDone}
           className="rounded-xl border-2 border-[#FFD9B3] px-4 py-2 text-sm font-bold text-[#3B241B]"
         >
-          Cancel
+          {t.card.cancel}
         </button>
       </div>
     </form>

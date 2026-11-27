@@ -5,6 +5,10 @@ import {
   useDisconnectMercadoPago,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
+import salesCopy from "../i18n/sales";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { fill } from "../i18n/lib/format";
+import { serverErrorMessage } from "../i18n/lib/serverError";
 
 // Payment-account connection card for the Sales dashboard (ACTION 2 §1). Shows whether the
 // provider has linked their own MercadoPago account and starts the OAuth connect flow. PawPi
@@ -15,30 +19,31 @@ import { COLORS } from "../lib/colors";
 // which mints the state + returns authUrl) and sends the browser there. MercadoPago redirects
 // back to the fixed return page (/provider/payments/mercadopago/return), which completes it.
 export default function PaymentAccountCard({ providerId }) {
+  const { t, lang } = useProviderCopy(salesCopy);
   const { data, isLoading } = usePaymentAccounts(providerId);
   const mp = data?.accounts?.mercadopago ?? null;
   const connected = mp?.connected === true;
 
   const [connecting, setConnecting] = useState(false);
+  // { message?: the server's text, key: our own text in salesCopy.account }
   const [error, setError] = useState(null);
   const disconnect = useDisconnectMercadoPago(providerId);
+  const errorText =
+    error &&
+    serverErrorMessage(error.message, lang, t.account[error.key], salesCopy);
 
   const startDisconnect = async () => {
     setError(null);
     if (
       typeof window !== "undefined" &&
-      !window.confirm(
-        "Disconnect MercadoPago? Payments for your services and products will stop until you reconnect.",
-      )
+      !window.confirm(t.account.confirmDisconnect)
     ) {
       return;
     }
     try {
       await disconnect.mutateAsync();
     } catch (e) {
-      setError(
-        e?.message || "Couldn't disconnect. Please try again.",
-      );
+      setError({ message: e?.message, key: "disconnectFailed" });
     }
   };
 
@@ -54,8 +59,8 @@ export default function PaymentAccountCard({ providerId }) {
         setConnecting(false);
         setError(
           res.status === 503
-            ? "Payments aren't set up on PawPi yet. Please try again later."
-            : body.error || "Couldn't start the connection. Please try again.",
+            ? { key: "notSetUp" }
+            : { message: body.error, key: "connectFailed" },
         );
         return;
       }
@@ -63,7 +68,7 @@ export default function PaymentAccountCard({ providerId }) {
       window.location.href = body.authUrl;
     } catch {
       setConnecting(false);
-      setError("Couldn't reach the server. Check your connection and try again.");
+      setError({ key: "unreachable" });
     }
   };
 
@@ -71,28 +76,25 @@ export default function PaymentAccountCard({ providerId }) {
     <div className="mb-6 rounded-2xl border border-[#FFD9B3] bg-white p-5">
       <div className="mb-3 flex items-center gap-2">
         <CreditCard className="h-5 w-5" style={{ color: COLORS.coral }} />
-        <h2 className="text-base font-bold text-[#3B241B]">Payment account</h2>
+        <h2 className="text-base font-bold text-[#3B241B]">{t.account.title}</h2>
       </div>
 
       {isLoading ? (
         <div className="flex items-center gap-2 text-sm text-[#7A6254]">
-          <Loader2 className="h-4 w-4 animate-spin" /> Checking connection…
+          <Loader2 className="h-4 w-4 animate-spin" /> {t.account.checking}
         </div>
       ) : connected ? (
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold text-[#2E8F62]">
             <CheckCircle2 className="h-5 w-5" />
-            MercadoPago connected
+            {t.account.connected}
             {mp?.account_ref ? (
               <span className="font-normal text-[#7A6254]">
-                (account {mp.account_ref})
+                {fill(t.account.accountRef, { ref: mp.account_ref })}
               </span>
             ) : null}
           </div>
-          <p className="mt-2 text-xs text-[#7A6254]">
-            Payments failing or charges not going through? Disconnect and reconnect
-            to refresh your MercadoPago link.
-          </p>
+          <p className="mt-2 text-xs text-[#7A6254]">{t.account.reconnectHint}</p>
           <button
             type="button"
             onClick={startDisconnect}
@@ -101,22 +103,20 @@ export default function PaymentAccountCard({ providerId }) {
           >
             {disconnect.isPending ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Disconnecting…
+                <Loader2 className="h-4 w-4 animate-spin" />{" "}
+                {t.account.disconnecting}
               </>
             ) : (
-              "Disconnect MercadoPago"
+              t.account.disconnect
             )}
           </button>
           {error ? (
-            <p className="mt-3 text-sm text-red-600">{error}</p>
+            <p className="mt-3 text-sm text-red-600">{errorText}</p>
           ) : null}
         </div>
       ) : (
         <div>
-          <p className="mb-3 text-sm text-[#7A6254]">
-            Connect your MercadoPago account to start receiving payments for your
-            services and products.
-          </p>
+          <p className="mb-3 text-sm text-[#7A6254]">{t.account.intro}</p>
           <button
             type="button"
             onClick={startConnect}
@@ -125,14 +125,15 @@ export default function PaymentAccountCard({ providerId }) {
           >
             {connecting ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Redirecting…
+                <Loader2 className="h-4 w-4 animate-spin" />{" "}
+                {t.account.redirecting}
               </>
             ) : (
-              "Connect MercadoPago"
+              t.account.connect
             )}
           </button>
           {error ? (
-            <p className="mt-3 text-sm text-red-600">{error}</p>
+            <p className="mt-3 text-sm text-red-600">{errorText}</p>
           ) : null}
         </div>
       )}

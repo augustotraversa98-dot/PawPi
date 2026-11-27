@@ -31,6 +31,10 @@ import {
 import { COLORS } from "../lib/colors";
 import ImageUploader from "./ImageUploader";
 import VideoUploader from "./VideoUploader";
+import adoptionCopy from "../i18n/adoption";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { fill, formatMoney, plural } from "../i18n/lib/format";
+import { serverErrorMessage } from "../i18n/lib/serverError";
 
 // /provider/adoption — the adoption PLACE's listing + application workspace (ticket 2.12).
 // Manage adoptable DOGS (in the dog-profile field shape) and REVIEW incoming APPLICATIONS
@@ -38,16 +42,18 @@ import VideoUploader from "./VideoUploader";
 // adopted (server-side app_approve_adoption). RLS (0038) + the 'adoption' capability gate +
 // shelter-admin writes are the real guards. Fees/donations + chat REUSE the 2.3 / 2.5 layers.
 
-function money(cents, currency = "ARS") {
+function money(cents, currency = "ARS", lang = "en") {
   if (cents == null) return "";
-  if (cents === 0) return "Free";
+  if (cents === 0) return adoptionCopy[lang].free;
+  if (lang === "es") return formatMoney(cents, currency, lang);
   return `${currency} ${(cents / 100).toFixed(2)}`;
 }
 
 // Parse the editor's age inputs (years + optional months) into DB values so a listing
 // no longer always saves NULL → "Age unknown". Empty → null (age genuinely unknown).
 // Validates: years a non-negative integer; months a whole number 0–11. Returns either
-// { ok: true, age_years, age_months } or { ok: false, error }. Both create + edit use it.
+// { ok: true, age_years, age_months } or { ok: false, error } (a key of the dictionary's `age`).
+// Both create + edit use it.
 function parseAge(yearsStr, monthsStr) {
   const field = (s) => {
     const t = String(s ?? "").trim();
@@ -59,22 +65,19 @@ function parseAge(yearsStr, monthsStr) {
   const y = field(yearsStr);
   const m = field(monthsStr);
   if (y.error) {
-    return { ok: false, error: "Age (years) must be a whole number, 0 or more." };
+    return { ok: false, error: "invalidYears" };
   }
   if (m.error || (m.value != null && m.value > 11)) {
-    return { ok: false, error: "Months must be a whole number from 0 to 11." };
+    return { ok: false, error: "invalidMonths" };
   }
   return { ok: true, age_years: y.value, age_months: m.value };
 }
-
-// A recommended starter question so every new listing captures a phone the shelter can call
-// (there is no phone field on the applicant's profile). The shelter can edit or remove it.
-const DEFAULT_QUESTIONS = ["Best contact number"];
 
 // Application questions editor (adoption applications v2) — an ordered list the applicant answers
 // on apply. Add / edit / remove / reorder; the parent owns the array. Used by both the create and
 // the edit form so a listing's questions are managed the same way in both.
 function QuestionsEditor({ questions, onChange }) {
+  const { t } = useProviderCopy(adoptionCopy);
   const [draft, setDraft] = useState("");
 
   const add = () => {
@@ -95,18 +98,15 @@ function QuestionsEditor({ questions, onChange }) {
 
   return (
     <div>
-      <p className="text-sm font-semibold text-[#3B241B]">Application questions</p>
-      <p className="mb-2 text-xs text-[#7A6254]">
-        Ask adopters a few questions (home, other pets, a phone to reach them). They answer these
-        when they apply.
-      </p>
+      <p className="text-sm font-semibold text-[#3B241B]">{t.questions.heading}</p>
+      <p className="mb-2 text-xs text-[#7A6254]">{t.questions.help}</p>
       <div className="space-y-2">
         {questions.map((q, i) => (
           <div key={i} className="flex items-center gap-2">
             <input
               value={q}
               onChange={(e) => editAt(i, e.target.value)}
-              aria-label={`Question ${i + 1}`}
+              aria-label={fill(t.questions.itemAria, { position: i + 1 })}
               className="flex-1 rounded-lg border px-3 py-2 text-sm"
               style={{ borderColor: COLORS.peach }}
             />
@@ -114,7 +114,7 @@ function QuestionsEditor({ questions, onChange }) {
               type="button"
               onClick={() => move(i, -1)}
               disabled={i === 0}
-              aria-label={`Move question ${i + 1} up`}
+              aria-label={fill(t.questions.moveUpAria, { position: i + 1 })}
               className="rounded-lg border p-2 disabled:opacity-40"
               style={{ borderColor: COLORS.peach, color: "#3B241B" }}
             >
@@ -124,7 +124,7 @@ function QuestionsEditor({ questions, onChange }) {
               type="button"
               onClick={() => move(i, 1)}
               disabled={i === questions.length - 1}
-              aria-label={`Move question ${i + 1} down`}
+              aria-label={fill(t.questions.moveDownAria, { position: i + 1 })}
               className="rounded-lg border p-2 disabled:opacity-40"
               style={{ borderColor: COLORS.peach, color: "#3B241B" }}
             >
@@ -133,7 +133,7 @@ function QuestionsEditor({ questions, onChange }) {
             <button
               type="button"
               onClick={() => remove(i)}
-              aria-label={`Remove question ${i + 1}`}
+              aria-label={fill(t.questions.removeAria, { position: i + 1 })}
               className="rounded-lg border p-2"
               style={{ borderColor: COLORS.peach, color: COLORS.terracotta }}
             >
@@ -152,8 +152,8 @@ function QuestionsEditor({ questions, onChange }) {
               add();
             }
           }}
-          placeholder="Add a question"
-          aria-label="Add a question"
+          placeholder={t.questions.addPlaceholder}
+          aria-label={t.questions.addPlaceholder}
           className="flex-1 rounded-lg border px-3 py-2 text-sm"
           style={{ borderColor: COLORS.peach }}
         />
@@ -163,7 +163,7 @@ function QuestionsEditor({ questions, onChange }) {
           className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold text-white"
           style={{ backgroundColor: COLORS.coral }}
         >
-          <Plus className="h-3.5 w-3.5" /> Add
+          <Plus className="h-3.5 w-3.5" /> {t.questions.add}
         </button>
       </div>
     </div>
@@ -173,11 +173,12 @@ function QuestionsEditor({ questions, onChange }) {
 // Render an application's answers for the shelter's review. v2 stores an ordered array of
 // { question, answer } (self-describing). Legacy rows stored a flat object → render its entries.
 function AnswerLines({ answers }) {
+  const { t } = useProviderCopy(adoptionCopy);
   let rows = [];
   if (Array.isArray(answers)) {
     rows = answers
       .filter((a) => a && (a.question || a.answer))
-      .map((a) => [a.question || "Question", a.answer]);
+      .map((a) => [a.question || t.applications.questionFallback, a.answer]);
   } else if (answers && typeof answers === "object") {
     rows = Object.entries(answers);
   }
@@ -195,6 +196,7 @@ function AnswerLines({ answers }) {
 }
 
 export default function ProviderAdoption({ providerId }) {
+  const { t } = useProviderCopy(adoptionCopy);
   return (
     <div className="mx-auto w-full max-w-5xl px-6 py-8">
       <div className="mb-6 flex items-center gap-3">
@@ -205,22 +207,20 @@ export default function ProviderAdoption({ providerId }) {
           <PawPrint className="h-5 w-5" style={{ color: COLORS.terracotta }} />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-[#3B241B]">Adoption</h1>
-          <p className="text-sm text-[#7A6254]">
-            List adoptable dogs and review adoption applications.
-          </p>
+          <h1 className="text-xl font-bold text-[#3B241B]">{t.title}</h1>
+          <p className="text-sm text-[#7A6254]">{t.subtitle}</p>
         </div>
       </div>
 
       <CreateListingForm providerId={providerId} />
 
       <h2 className="mb-3 mt-8 text-sm font-bold uppercase tracking-wide text-[#7A6254]">
-        Adoptable dogs
+        {t.dogsHeading}
       </h2>
       <ListingList providerId={providerId} />
 
       <h2 className="mb-3 mt-10 text-sm font-bold uppercase tracking-wide text-[#7A6254]">
-        Applications
+        {t.applicationsHeading}
       </h2>
       <ApplicationList providerId={providerId} />
     </div>
@@ -229,6 +229,7 @@ export default function ProviderAdoption({ providerId }) {
 
 function CreateListingForm({ providerId }) {
   const create = useCreateAdoptableListing(providerId);
+  const { t, lang } = useProviderCopy(adoptionCopy);
   const [name, setName] = useState("");
   const [breed, setBreed] = useState("");
   const [ageYears, setAgeYears] = useState("");
@@ -239,18 +240,21 @@ function CreateListingForm({ providerId }) {
   const [photos, setPhotos] = useState([]);
   const [videoUrl, setVideoUrl] = useState(null);
   // Per-listing application questions (adoption applications v2). Seeded with a recommended
-  // "Best contact number" question; the shelter can edit/remove/reorder or add more.
-  const [questions, setQuestions] = useState(DEFAULT_QUESTIONS);
+  // starter question so every new listing captures a phone the shelter can call (there is no phone
+  // field on the applicant's profile); the shelter can edit/remove/reorder or add more. null = the
+  // seed is untouched, so it follows the panel's language until then.
+  const [editedQuestions, setQuestions] = useState(null);
+  const questions = editedQuestions ?? [t.questions.defaultQuestion];
 
   const submit = async (e) => {
     e.preventDefault();
     if (!name) {
-      toast.error("Enter the dog's name.");
+      toast.error(t.form.nameRequired);
       return;
     }
     const age = parseAge(ageYears, ageMonths);
     if (!age.ok) {
-      toast.error(age.error);
+      toast.error(t.age[age.error]);
       return;
     }
     const feeCents = fee ? Math.round(parseFloat(fee) * 100) : 0;
@@ -266,7 +270,7 @@ function CreateListingForm({ providerId }) {
         video_url: videoUrl || null,
         application_questions: questions,
       });
-      toast.success("Dog listed");
+      toast.success(t.form.listed);
       setName("");
       setBreed("");
       setAgeYears("");
@@ -275,9 +279,9 @@ function CreateListingForm({ providerId }) {
       setStory("");
       setPhotos([]);
       setVideoUrl(null);
-      setQuestions(DEFAULT_QUESTIONS);
+      setQuestions(null);
     } catch (err) {
-      toast.error(err.message || "Couldn't list the dog");
+      toast.error(serverErrorMessage(err, lang, t.form.listFailed, adoptionCopy));
     }
   };
 
@@ -291,39 +295,39 @@ function CreateListingForm({ providerId }) {
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Dog's name"
+          placeholder={t.form.namePlaceholder}
           className="rounded-lg border px-3 py-2 text-sm"
           style={{ borderColor: COLORS.peach }}
         />
         <input
           value={breed}
           onChange={(e) => setBreed(e.target.value)}
-          placeholder="Breed"
+          placeholder={t.form.breedPlaceholder}
           className="rounded-lg border px-3 py-2 text-sm"
           style={{ borderColor: COLORS.peach }}
         />
         <input
           value={ageYears}
           onChange={(e) => setAgeYears(e.target.value)}
-          placeholder="Age in years (blank = unknown)"
+          placeholder={t.form.ageYearsPlaceholder}
           inputMode="numeric"
-          aria-label="Age in years"
+          aria-label={t.form.ageYearsAria}
           className="rounded-lg border px-3 py-2 text-sm"
           style={{ borderColor: COLORS.peach }}
         />
         <input
           value={ageMonths}
           onChange={(e) => setAgeMonths(e.target.value)}
-          placeholder="Extra months 0–11 (optional)"
+          placeholder={t.form.ageMonthsPlaceholder}
           inputMode="numeric"
-          aria-label="Extra months"
+          aria-label={t.form.ageMonthsAria}
           className="rounded-lg border px-3 py-2 text-sm"
           style={{ borderColor: COLORS.peach }}
         />
         <input
           value={fee}
           onChange={(e) => setFee(e.target.value)}
-          placeholder="Adoption fee (e.g. 50.00, blank = free)"
+          placeholder={t.form.feePlaceholder}
           inputMode="decimal"
           className="rounded-lg border px-3 py-2 text-sm"
           style={{ borderColor: COLORS.peach }}
@@ -332,7 +336,7 @@ function CreateListingForm({ providerId }) {
       <textarea
         value={story}
         onChange={(e) => setStory(e.target.value)}
-        placeholder="Story / about this dog"
+        placeholder={t.form.storyPlaceholder}
         rows={2}
         className="mt-3 w-full rounded-lg border px-3 py-2 text-sm"
         style={{ borderColor: COLORS.peach }}
@@ -340,7 +344,7 @@ function CreateListingForm({ providerId }) {
 
       {/* Media (ticket 2.85) — photos[0] is the cover; one short intro video. Real uploads only. */}
       <div className="mt-4">
-        <ImageUploader value={photos} onChange={setPhotos} label="Photos (first is the cover)" />
+        <ImageUploader value={photos} onChange={setPhotos} label={t.form.photosLabel} />
       </div>
       <div className="mt-4">
         <VideoUploader value={videoUrl} onChange={setVideoUrl} />
@@ -357,7 +361,7 @@ function CreateListingForm({ providerId }) {
         style={{ backgroundColor: COLORS.coral }}
       >
         <Plus className="h-4 w-4" />
-        {create.isPending ? "Listing…" : "List a dog"}
+        {create.isPending ? t.form.submitting : t.form.submit}
       </button>
     </form>
   );
@@ -414,7 +418,8 @@ function FilterBar({ query, onQuery, searchPlaceholder, searchLabel, chips = [],
 // A default-collapsed "Past (n)" section so finished/resolved rows tuck away below the active
 // ones. `open` is controlled by the parent (a search forces it open so a past match still
 // surfaces). Not rendered at all when there are no past rows.
-function PastSection({ label = "Past", count, open, onToggle, children }) {
+function PastSection({ label, count, open, onToggle, children }) {
+  const { t } = useProviderCopy(adoptionCopy);
   return (
     <div className="mt-3">
       <button
@@ -425,7 +430,7 @@ function PastSection({ label = "Past", count, open, onToggle, children }) {
       >
         {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         <span>
-          {label} ({count})
+          {label ?? t.past} ({count})
         </span>
       </button>
       {open ? <div className="mt-2 space-y-3">{children}</div> : null}
@@ -433,12 +438,7 @@ function PastSection({ label = "Past", count, open, onToggle, children }) {
   );
 }
 
-const DOG_CHIPS = [
-  { value: "all", label: "All" },
-  { value: "available", label: "Available" },
-  { value: "pending", label: "Pending" },
-  { value: "adopted", label: "Adopted" },
-];
+const DOG_CHIP_VALUES = ["all", "available", "pending", "adopted"];
 
 // Order applications within a dog: open (submitted/under_review) first, then approved, then
 // declined; newest first within each rank. So a shelter sees who still needs a decision on top and
@@ -460,7 +460,7 @@ function groupApplicationsByDog(apps) {
       map.set(key, {
         key,
         listingId: a.listing_id ?? null,
-        listingName: a.listing_name || "Dog",
+        listingName: a.listing_name || null,
         listingBreed: a.listing_breed || null,
         listingStatus: a.listing_status || null,
         apps: [],
@@ -494,6 +494,8 @@ function ListingList({ providerId }) {
   const update = useUpdateAdoptableListing(providerId);
   const del = useDeleteAdoptableListing(providerId);
   const relist = useRelistAdoptableListing(providerId);
+  const { t, lang } = useProviderCopy(adoptionCopy);
+  const failed = (err, fallback) => serverErrorMessage(err, lang, fallback, adoptionCopy);
   const [editingMedia, setEditingMedia] = useState(null); // the listing whose media is open
   const [query, setQuery] = useState(""); // fast type-search over name + breed
   const [chip, setChip] = useState("all"); // status filter chip
@@ -504,28 +506,28 @@ function ListingList({ providerId }) {
       onSuccess: (data) => {
         toast.success(
           data?.reopened_application_ids?.length
-            ? "Back up for adoption — the approved application was re-opened"
-            : "Back up for adoption",
+            ? t.listing.backUpReopened
+            : t.listing.backUp,
         );
       },
-      onError: (err) => toast.error(err?.message || "Couldn't re-list the dog"),
+      onError: (err) => toast.error(failed(err, t.listing.relistFailed)),
     });
 
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 py-12 text-[#7A6254]">
         <Loader2 className="h-5 w-5 animate-spin" style={{ color: COLORS.coral }} />
-        Loading dogs…
+        {t.listing.loading}
       </div>
     );
   }
   if (isError) {
-    return <p className="py-8 text-sm text-[#B4452F]">{error?.message || "Couldn't load dogs."}</p>;
+    return <p className="py-8 text-sm text-[#B4452F]">{failed(error, t.listing.loadFailed)}</p>;
   }
   // No dogs at all → the original onboarding empty state (distinct from "nothing matched a
   // search/filter", which shows below only once some dogs exist).
   if (!listings || listings.length === 0) {
-    return <EmptyCard title="No dogs listed yet" body="Add your first dog above to start." />;
+    return <EmptyCard title={t.listing.emptyTitle} body={t.listing.emptyBody} />;
   }
 
   const q = query.trim().toLowerCase();
@@ -560,10 +562,10 @@ function ListingList({ providerId }) {
           { listingId: editingMedia.id, ...patch },
           {
             onSuccess: () => {
-              toast.success("Listing updated");
+              toast.success(t.listing.updated);
               setEditingMedia(null);
             },
-            onError: (err) => toast.error(err?.message || "Couldn't save changes"),
+            onError: (err) => toast.error(failed(err, t.listing.saveFailed)),
           },
         )
       }
@@ -574,9 +576,9 @@ function ListingList({ providerId }) {
     <FilterBar
       query={query}
       onQuery={setQuery}
-      searchPlaceholder="Search dogs by name or breed"
-      searchLabel="Search dogs"
-      chips={DOG_CHIPS}
+      searchPlaceholder={t.listing.searchPlaceholder}
+      searchLabel={t.listing.searchAria}
+      chips={DOG_CHIP_VALUES.map((value) => ({ value, label: t.chips[value] }))}
       chip={chip}
       onChip={setChip}
     />
@@ -590,7 +592,7 @@ function ListingList({ providerId }) {
       <div>
         {toolbar}
         {filtered.length === 0 ? (
-          <EmptyCard title="No dogs match" body="Try a different search or filter." />
+          <EmptyCard title={t.listing.noMatchTitle} body={t.listing.noMatchBody} />
         ) : (
           <div className="space-y-3">{filtered.map(row)}</div>
         )}
@@ -603,7 +605,7 @@ function ListingList({ providerId }) {
     <div>
       {toolbar}
       {filtered.length === 0 ? (
-        <EmptyCard title="No dogs match" body="Try a different search or filter." />
+        <EmptyCard title={t.listing.noMatchTitle} body={t.listing.noMatchBody} />
       ) : (
         <>
           {active.length > 0 ? <div className="space-y-3">{active.map(row)}</div> : null}
@@ -626,6 +628,7 @@ function ListingList({ providerId }) {
 // One adoptable-dog row. Extracted so the Active and Past groups map the same markup. Adopted
 // rows dim and lose Edit/Remove (they're finished) but keep "Put back up" to re-list them.
 function ListingRow({ listing: l, onEdit, onRemove, onRelist, relistPending }) {
+  const { t, lang } = useProviderCopy(adoptionCopy);
   return (
     <div
       className="flex items-center gap-4 rounded-2xl border p-4"
@@ -653,11 +656,11 @@ function ListingRow({ listing: l, onEdit, onRemove, onRelist, relistPending }) {
         <p className="text-sm text-[#7A6254]">
           {[
             l.breed,
-            money(l.adoption_fee_cents, l.currency),
+            money(l.adoption_fee_cents, l.currency, lang),
             (l.photo_urls?.length || 0) > 0
-              ? `${l.photo_urls.length} photo${l.photo_urls.length === 1 ? "" : "s"}`
+              ? plural(t.listing.photos, l.photo_urls.length, lang)
               : null,
-            l.video_url ? "video" : null,
+            l.video_url ? t.listing.video : null,
           ]
             .filter(Boolean)
             .join(" · ")}
@@ -671,14 +674,14 @@ function ListingRow({ listing: l, onEdit, onRemove, onRelist, relistPending }) {
               className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold"
               style={{ color: "#3B241B" }}
             >
-              <ImageIcon className="h-3.5 w-3.5" /> Edit
+              <ImageIcon className="h-3.5 w-3.5" /> {t.listing.edit}
             </button>
             <button
               onClick={onRemove}
               className="rounded-lg px-3 py-1.5 text-xs font-semibold"
               style={{ color: COLORS.terracotta }}
             >
-              Remove
+              {t.listing.remove}
             </button>
           </>
         ) : null}
@@ -689,7 +692,7 @@ function ListingRow({ listing: l, onEdit, onRemove, onRelist, relistPending }) {
             className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
             style={{ color: "#3FA34D" }}
           >
-            <RotateCcw className="h-3.5 w-3.5" /> Put back up
+            <RotateCcw className="h-3.5 w-3.5" /> {t.listing.putBackUp}
           </button>
         ) : null}
       </div>
@@ -703,6 +706,7 @@ function ListingRow({ listing: l, onEdit, onRemove, onRelist, relistPending }) {
 // via the existing useUpdateAdoptableListing PATCH (which COALESCEs unspecified fields). Previously
 // only media was editable, so a business couldn't fix a name/story/fee or see the info it wrote.
 function ListingEditModal({ listing, onClose, onSave, saving }) {
+  const { t } = useProviderCopy(adoptionCopy);
   const [name, setName] = useState(listing.name || "");
   const [breed, setBreed] = useState(listing.breed || "");
   const [ageYears, setAgeYears] = useState(
@@ -730,12 +734,12 @@ function ListingEditModal({ listing, onClose, onSave, saving }) {
 
   const save = () => {
     if (!name.trim()) {
-      toast.error("Enter the dog's name.");
+      toast.error(t.form.nameRequired);
       return;
     }
     const age = parseAge(ageYears, ageMonths);
     if (!age.ok) {
-      toast.error(age.error);
+      toast.error(t.age[age.error]);
       return;
     }
     const feeCents = fee === "" ? 0 : Math.round(parseFloat(fee) * 100);
@@ -763,19 +767,19 @@ function ListingEditModal({ listing, onClose, onSave, saving }) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
       role="dialog"
       aria-modal="true"
-      aria-label={`Edit ${listing.name}`}
+      aria-label={fill(t.edit.title, { name: listing.name })}
     >
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-7 shadow-xl">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-[#3B241B]">Edit {listing.name}</h2>
-          <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 text-[#7A6254]">
+          <h2 className="text-xl font-bold text-[#3B241B]">{fill(t.edit.title, { name: listing.name })}</h2>
+          <button type="button" onClick={onClose} aria-label={t.edit.close} className="p-1.5 text-[#7A6254]">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="space-y-3">
           <label className="block text-sm font-semibold text-[#3B241B]">
-            Name
+            {t.edit.name}
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -785,7 +789,7 @@ function ListingEditModal({ listing, onClose, onSave, saving }) {
           </label>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block text-sm font-semibold text-[#3B241B]">
-              Breed
+              {t.edit.breed}
               <input
                 value={breed}
                 onChange={(e) => setBreed(e.target.value)}
@@ -794,12 +798,12 @@ function ListingEditModal({ listing, onClose, onSave, saving }) {
               />
             </label>
             <label className="block text-sm font-semibold text-[#3B241B]">
-              Adoption fee (blank = free)
+              {t.edit.fee}
               <input
                 value={fee}
                 onChange={(e) => setFee(e.target.value)}
                 inputMode="decimal"
-                placeholder="e.g. 50.00"
+                placeholder={t.edit.feePlaceholder}
                 className={`mt-1 ${inputCls}`}
                 style={{ borderColor: COLORS.peach }}
               />
@@ -807,30 +811,30 @@ function ListingEditModal({ listing, onClose, onSave, saving }) {
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block text-sm font-semibold text-[#3B241B]">
-              Age in years (blank = unknown)
+              {t.edit.ageYears}
               <input
                 value={ageYears}
                 onChange={(e) => setAgeYears(e.target.value)}
                 inputMode="numeric"
-                placeholder="e.g. 3"
+                placeholder={t.edit.ageYearsPlaceholder}
                 className={`mt-1 ${inputCls}`}
                 style={{ borderColor: COLORS.peach }}
               />
             </label>
             <label className="block text-sm font-semibold text-[#3B241B]">
-              Extra months 0–11 (optional)
+              {t.edit.ageMonths}
               <input
                 value={ageMonths}
                 onChange={(e) => setAgeMonths(e.target.value)}
                 inputMode="numeric"
-                placeholder="e.g. 6"
+                placeholder={t.edit.ageMonthsPlaceholder}
                 className={`mt-1 ${inputCls}`}
                 style={{ borderColor: COLORS.peach }}
               />
             </label>
           </div>
           <label className="block text-sm font-semibold text-[#3B241B]">
-            Story / about this dog
+            {t.edit.story}
             <textarea
               value={story}
               onChange={(e) => setStory(e.target.value)}
@@ -840,23 +844,23 @@ function ListingEditModal({ listing, onClose, onSave, saving }) {
             />
           </label>
           <label className="block text-sm font-semibold text-[#3B241B]">
-            Status
+            {t.edit.status}
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              aria-label="Listing status"
+              aria-label={t.edit.statusAria}
               className={`mt-1 ${inputCls}`}
               style={{ borderColor: COLORS.peach }}
             >
-              <option value="available">Available</option>
-              <option value="pending">Pending</option>
-              <option value="adopted">Adopted</option>
+              <option value="available">{t.status.available}</option>
+              <option value="pending">{t.status.pending}</option>
+              <option value="adopted">{t.status.adopted}</option>
             </select>
           </label>
         </div>
 
         <div className="mt-4">
-          <ImageUploader value={photos} onChange={setPhotos} label="Photos (first is the cover)" />
+          <ImageUploader value={photos} onChange={setPhotos} label={t.form.photosLabel} />
         </div>
         <div className="mt-4">
           <VideoUploader value={videoUrl} onChange={setVideoUrl} />
@@ -873,7 +877,7 @@ function ListingEditModal({ listing, onClose, onSave, saving }) {
             className="rounded-xl border-2 px-4 py-2.5 text-sm font-bold text-[#7A6254]"
             style={{ borderColor: COLORS.peach }}
           >
-            Cancel
+            {t.edit.cancel}
           </button>
           <button
             type="button"
@@ -883,7 +887,7 @@ function ListingEditModal({ listing, onClose, onSave, saving }) {
             style={{ backgroundColor: COLORS.coral }}
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            Save changes
+            {t.edit.save}
           </button>
         </div>
       </div>
@@ -896,34 +900,37 @@ function ApplicationList({ providerId }) {
   const review = useReviewAdoptionApplication(providerId);
   const openThread = useOpenAdoptionApplicantThread(providerId);
   const navigate = useNavigate();
+  const { t, lang } = useProviderCopy(adoptionCopy);
+  const failed = (err, fallback) => serverErrorMessage(err, lang, fallback, adoptionCopy);
   const [query, setQuery] = useState(""); // fast type-search over applicant + email + dog name
 
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 py-12 text-[#7A6254]">
         <Loader2 className="h-5 w-5 animate-spin" style={{ color: COLORS.coral }} />
-        Loading applications…
+        {t.applications.loading}
       </div>
     );
   }
   if (isError) {
-    return <p className="py-8 text-sm text-[#B4452F]">{error?.message || "Couldn't load applications."}</p>;
+    return <p className="py-8 text-sm text-[#B4452F]">{failed(error, t.applications.loadFailed)}</p>;
   }
   // No applications at all → the original empty state (distinct from "nothing matched").
   if (!apps || apps.length === 0) {
-    return <EmptyCard title="No applications yet" body="Applications to adopt your dogs appear here." />;
+    return <EmptyCard title={t.applications.emptyTitle} body={t.applications.emptyBody} />;
   }
 
   const act = async (applicationId, status) => {
     try {
       await review.mutateAsync({ applicationId, status });
-      toast.success(
-        status === "approved"
-          ? "Approved — the dog is now the adopter's pet"
-          : `Marked ${status.replace(/_/g, " ")}`,
-      );
+      const done = {
+        approved: t.applications.approvedToast,
+        under_review: t.applications.underReviewToast,
+        declined: t.applications.declinedToast,
+      };
+      toast.success(done[status]);
     } catch (err) {
-      toast.error(err.message || "Couldn't update the application");
+      toast.error(failed(err, t.applications.updateFailed));
     }
   };
 
@@ -934,7 +941,7 @@ function ApplicationList({ providerId }) {
       const { thread } = await openThread.mutateAsync({ applicationId });
       if (thread?.id != null) navigate(`/provider/chats?thread=${thread.id}`);
     } catch (err) {
-      toast.error(err?.message || "Couldn't open the chat");
+      toast.error(failed(err, t.applications.chatFailed));
     }
   };
 
@@ -952,11 +959,11 @@ function ApplicationList({ providerId }) {
       <FilterBar
         query={query}
         onQuery={setQuery}
-        searchPlaceholder="Search by applicant, email or dog"
-        searchLabel="Search applications"
+        searchPlaceholder={t.applications.searchPlaceholder}
+        searchLabel={t.applications.searchAria}
       />
       {filtered.length === 0 ? (
-        <EmptyCard title="No applications match" body="Try a different search." />
+        <EmptyCard title={t.applications.noMatchTitle} body={t.applications.noMatchBody} />
       ) : (
         <div className="space-y-6">
           {groups.map((g) => (
@@ -977,18 +984,21 @@ function ApplicationList({ providerId }) {
 // One per-dog section of applications (ticket A4): a header naming the dog (name + breed + its
 // listing status + how many applications) over that dog's ranked application cards.
 function DogApplicationGroup({ group, onAct, onMessage, messaging }) {
+  const { t, lang } = useProviderCopy(adoptionCopy);
   const n = group.apps.length;
   return (
     <div>
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <Dog className="h-4 w-4" style={{ color: COLORS.coral }} />
-        <span className="font-semibold text-[#3B241B]">{group.listingName}</span>
+        <span className="font-semibold text-[#3B241B]">
+          {group.listingName || t.applications.dogHeadingFallback}
+        </span>
         {group.listingBreed ? (
           <span className="text-sm text-[#7A6254]">{group.listingBreed}</span>
         ) : null}
         {group.listingStatus ? <StatusTag status={group.listingStatus} /> : null}
         <span className="text-xs text-[#7A6254]">
-          {n} application{n === 1 ? "" : "s"}
+          {plural(t.applications.count, n, lang)}
         </span>
       </div>
       <div className="space-y-3">
@@ -1010,6 +1020,7 @@ function DogApplicationGroup({ group, onAct, onMessage, messaging }) {
 // (approved/declined) cards drop them. Every card — decided or not — keeps a Message button so the
 // shelter can always reach the applicant (ticket A4).
 function ApplicationCard({ app: a, onAct, onMessage, messaging }) {
+  const { t } = useProviderCopy(adoptionCopy);
   const decided = a.status === "approved" || a.status === "declined";
   return (
     <div
@@ -1018,7 +1029,8 @@ function ApplicationCard({ app: a, onAct, onMessage, messaging }) {
     >
       <div className="flex items-center justify-between">
         <span className="font-semibold text-[#3B241B]">
-          {a.applicant_name || `Applicant #${a.applicant_owner_user_id}`} → {a.listing_name || "dog"}
+          {a.applicant_name || fill(t.applications.applicantFallback, { id: a.applicant_owner_user_id })} →{" "}
+          {a.listing_name || t.applications.dogFallback}
         </span>
         <StatusTag status={a.status} />
       </div>
@@ -1038,21 +1050,21 @@ function ApplicationCard({ app: a, onAct, onMessage, messaging }) {
               className="rounded-lg border px-3 py-1.5 text-xs font-semibold"
               style={{ borderColor: COLORS.peach, color: "#3B241B" }}
             >
-              Mark under review
+              {t.applications.markUnderReview}
             </button>
             <button
               onClick={() => onAct(a.id, "approved")}
               className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
               style={{ backgroundColor: "#3FA34D" }}
             >
-              <Check className="h-3.5 w-3.5" /> Approve
+              <Check className="h-3.5 w-3.5" /> {t.applications.approve}
             </button>
             <button
               onClick={() => onAct(a.id, "declined")}
               className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold"
               style={{ borderColor: COLORS.peach, color: COLORS.terracotta }}
             >
-              <X className="h-3.5 w-3.5" /> Decline
+              <X className="h-3.5 w-3.5" /> {t.applications.decline}
             </button>
           </>
         ) : null}
@@ -1062,7 +1074,7 @@ function ApplicationCard({ app: a, onAct, onMessage, messaging }) {
           className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
           style={{ borderColor: COLORS.peach, color: "#3B241B" }}
         >
-          <MessageSquare className="h-3.5 w-3.5" /> Message
+          <MessageSquare className="h-3.5 w-3.5" /> {t.applications.message}
         </button>
       </div>
     </div>
@@ -1070,22 +1082,23 @@ function ApplicationCard({ app: a, onAct, onMessage, messaging }) {
 }
 
 function StatusTag({ status }) {
-  const map = {
-    available: { label: "Available", color: "#3FA34D" },
-    pending: { label: "Pending", color: COLORS.coral },
-    adopted: { label: "Adopted", color: COLORS.mutedBrown },
-    submitted: { label: "Submitted", color: COLORS.mutedBrown },
-    under_review: { label: "Under review", color: COLORS.coral },
-    approved: { label: "Approved", color: "#3FA34D" },
-    declined: { label: "Declined", color: COLORS.terracotta },
+  const { t } = useProviderCopy(adoptionCopy);
+  const colors = {
+    available: "#3FA34D",
+    pending: COLORS.coral,
+    adopted: COLORS.mutedBrown,
+    submitted: COLORS.mutedBrown,
+    under_review: COLORS.coral,
+    approved: "#3FA34D",
+    declined: COLORS.terracotta,
   };
-  const s = map[status] || { label: status, color: COLORS.mutedBrown };
+  const color = colors[status] || COLORS.mutedBrown;
   return (
     <span
       className="rounded-full px-2 py-0.5 text-[10px] font-bold"
-      style={{ backgroundColor: s.color + "22", color: s.color }}
+      style={{ backgroundColor: color + "22", color }}
     >
-      {s.label}
+      {t.status[status] ?? status}
     </span>
   );
 }

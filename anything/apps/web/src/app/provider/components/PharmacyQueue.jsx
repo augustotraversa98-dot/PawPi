@@ -7,6 +7,10 @@ import {
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
 import { centsToCurrency, dollarsToCents } from "../lib/money";
+import pharmacyCopy from "../i18n/pharmacy";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { plural } from "../i18n/lib/format";
+import { serverErrorMessage } from "../i18n/lib/serverError";
 
 // Provider Rx FULFILLMENT QUEUE (Wave 7 ticket 2.71). A `pharmacy`-capable provider sees incoming
 // fulfillment orders (pet + drug from the linked Rx, delivery/pickup), sets a price, accepts, and
@@ -21,17 +25,8 @@ const NEXT_STATUS = {
   ready: "out_for_delivery",
   out_for_delivery: "fulfilled",
 };
-const STATUS_LABEL = {
-  requested: "Requested",
-  accepted: "Accepted",
-  preparing: "Preparing",
-  ready: "Ready",
-  out_for_delivery: "Out for delivery",
-  fulfilled: "Fulfilled",
-  cancelled: "Cancelled",
-};
-
 function PriceEditor({ order, onSave, disabled }) {
+  const { t, lang } = useProviderCopy(pharmacyCopy);
   const [raw, setRaw] = useState(
     order.price_cents != null ? (order.price_cents / 100).toFixed(2) : "",
   );
@@ -48,13 +43,13 @@ function PriceEditor({ order, onSave, disabled }) {
         type="button"
         disabled={disabled}
         onClick={() => {
-          const { cents, error } = dollarsToCents(raw);
+          const { cents, error } = dollarsToCents(raw, lang);
           if (error) return toast.error(error);
           onSave(cents);
         }}
         className="rounded-lg bg-[#FFF1E2] px-3 py-1 text-sm font-semibold text-[#B75D32] disabled:opacity-50"
       >
-        Set price
+        {t.setPrice}
       </button>
     </div>
   );
@@ -63,13 +58,14 @@ function PriceEditor({ order, onSave, disabled }) {
 export default function PharmacyQueue({ providerId }) {
   const { data, isLoading, isError, error } = useProviderRxFulfillment(providerId);
   const action = useRxFulfillmentAction(providerId);
+  const { t, lang } = useProviderCopy(pharmacyCopy);
 
   const run = (orderId, patch, verb) =>
     action.mutate(
       { orderId, ...patch },
       {
         onSuccess: () => toast.success(verb),
-        onError: (e) => toast.error(e?.message || "Action failed"),
+        onError: (e) => toast.error(serverErrorMessage(e, lang, t.actionFailed, pharmacyCopy)),
       },
     );
 
@@ -86,8 +82,8 @@ export default function PharmacyQueue({ providerId }) {
         <div className="rounded-2xl border border-[#FFD9B3] bg-white p-8 text-center">
           <p className="text-sm text-[#7A6254]">
             {error?.status === 403
-              ? "This business doesn't offer Rx fulfillment (the 'pharmacy' capability)."
-              : error?.message || "Couldn't load the fulfillment queue."}
+              ? t.noCapability
+              : serverErrorMessage(error, lang, t.loadFailed, pharmacyCopy)}
           </p>
         </div>
       </div>
@@ -101,16 +97,14 @@ export default function PharmacyQueue({ providerId }) {
       <header className="mb-6 flex items-center gap-2">
         <Pill className="h-6 w-6" style={{ color: COLORS.coral }} />
         <div>
-          <h1 className="text-2xl font-bold text-[#3B241B]">Rx Fulfillment</h1>
-          <p className="text-sm text-[#7A6254]">
-            Incoming prescription fulfillment orders — only this provider's.
-          </p>
+          <h1 className="text-2xl font-bold text-[#3B241B]">{t.title}</h1>
+          <p className="text-sm text-[#7A6254]">{t.subtitle}</p>
         </div>
       </header>
 
       {orders.length === 0 ? (
         <div className="rounded-2xl border border-[#FFD9B3] bg-white p-10 text-center text-sm text-[#B8A99D]">
-          No fulfillment orders yet.
+          {t.empty}
         </div>
       ) : (
         <ul className="space-y-3">
@@ -125,28 +119,28 @@ export default function PharmacyQueue({ providerId }) {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-bold text-[#3B241B]">
-                      {o.drug_name || "Medication"}
+                      {o.drug_name || t.medicationFallback}
                       {o.strength ? ` · ${o.strength}` : ""}
                     </p>
                     <p className="text-sm text-[#7A6254]">
-                      {o.pet_name || "Pet"}
+                      {o.pet_name || t.petFallback}
                       {o.owner_name ? ` · ${o.owner_name}` : ""} ·{" "}
-                      {o.method === "pickup" ? "Pickup" : "Delivery"}
+                      {o.method === "pickup" ? t.pickup : t.delivery}
                       {o.method === "delivery" && o.delivery_address
                         ? ` · ${o.delivery_address}`
                         : ""}
                     </p>
                     <p className="mt-1 text-xs text-[#7A6254]">
-                      {o.is_refill ? "Refill" : "Fill"} ·{" "}
-                      {o.refills_remaining ?? 0} refills left
+                      {o.is_refill ? t.refill : t.fill} ·{" "}
+                      {plural(t.refillsLeft, o.refills_remaining ?? 0, lang)}
                       {o.price_cents != null
-                        ? ` · ${centsToCurrency(o.price_cents)}`
+                        ? ` · ${centsToCurrency(o.price_cents, lang)}`
                         : ""}
-                      {o.order_status === "paid" ? " · Paid" : ""}
+                      {o.order_status === "paid" ? ` · ${t.paid}` : ""}
                     </p>
                   </div>
                   <span className="rounded-full bg-[#FFF1E2] px-2.5 py-1 text-xs font-semibold text-[#B75D32]">
-                    {STATUS_LABEL[o.status] || o.status}
+                    {t.status[o.status] ?? o.status}
                   </span>
                 </div>
 
@@ -156,7 +150,7 @@ export default function PharmacyQueue({ providerId }) {
                       order={o}
                       disabled={action.isPending}
                       onSave={(cents) =>
-                        run(o.id, { price_cents: cents }, "Price set")
+                        run(o.id, { price_cents: cents }, t.priceSet)
                       }
                     />
                     {next && (
@@ -164,28 +158,22 @@ export default function PharmacyQueue({ providerId }) {
                         type="button"
                         disabled={action.isPending}
                         onClick={() =>
-                          run(
-                            o.id,
-                            { status: next },
-                            `Marked ${STATUS_LABEL[next].toLowerCase()}`,
-                          )
+                          run(o.id, { status: next }, t.marked[next])
                         }
                         className="rounded-lg bg-[#FF6F61] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
                       >
-                        {next === "fulfilled"
-                          ? "Mark fulfilled"
-                          : `Mark ${STATUS_LABEL[next].toLowerCase()}`}
+                        {t.mark[next]}
                       </button>
                     )}
                     <button
                       type="button"
                       disabled={action.isPending}
                       onClick={() =>
-                        run(o.id, { status: "cancelled" }, "Cancelled")
+                        run(o.id, { status: "cancelled" }, t.cancelled)
                       }
                       className="rounded-lg px-3 py-1.5 text-sm font-semibold text-[#B23A2E] disabled:opacity-50"
                     >
-                      Cancel
+                      {t.cancel}
                     </button>
                   </div>
                 )}

@@ -11,7 +11,11 @@ import {
   useDeleteAvailabilityWindow,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
-import { WEEKDAYS } from "../lib/hours";
+import { WEEKDAYS, weekdayName } from "../lib/hours";
+import availabilityCopy from "../i18n/availability";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { fill, plural } from "../i18n/lib/format";
+import { serverErrorMessage } from "../i18n/lib/serverError";
 
 // Open-hours editor. Sets the open days & hours + time zone the slot engine generates over
 // (slot LENGTH now comes from each service's duration — Phase 1 — so no slot-length control
@@ -29,16 +33,16 @@ function toHHMM(t) {
 // value it needs to display.
 const COMMON_ZONES = [
   "America/Argentina/Buenos_Aires",
-  "America/Montevideo",
+  "America/Montevideo", // i18n-ok: time zone ids
   "America/Santiago",
   "America/Sao_Paulo",
-  "America/Bogota",
+  "America/Bogota", // i18n-ok: time zone ids
   "America/Mexico_City",
   "America/New_York",
-  "America/Chicago",
+  "America/Chicago", // i18n-ok: time zone ids
   "America/Denver",
   "America/Los_Angeles",
-  "Europe/Madrid",
+  "Europe/Madrid", // i18n-ok: time zone ids
   "Europe/London",
   "UTC",
 ];
@@ -63,6 +67,9 @@ function useTimeZoneOptions(current) {
 }
 
 export default function ProviderAvailability({ providerId }) {
+  const { t, lang } = useProviderCopy(availabilityCopy);
+  const errorText = (err, fallback) =>
+    serverErrorMessage(err, lang, fallback, availabilityCopy);
   const { data: providerData } = useProvider(providerId);
   const currentZone = providerData?.provider?.time_zone ?? "";
 
@@ -85,8 +92,8 @@ export default function ProviderAvailability({ providerId }) {
     updateProfile.mutate(
       { time_zone },
       {
-        onSuccess: () => toast.success("Time zone saved"),
-        onError: (err) => toast.error(err?.message || "Couldn't save time zone"),
+        onSuccess: () => toast.success(t.done.zone),
+        onError: (err) => toast.error(errorText(err, t.failed.zone)),
       },
     );
   };
@@ -97,32 +104,32 @@ export default function ProviderAvailability({ providerId }) {
         { availabilityId: editing.id, ...body },
         {
           onSuccess: () => {
-            toast.success("Hours updated");
+            toast.success(t.done.updated);
             setEditing(null);
           },
-          onError: (err) => toast.error(err?.message || "Couldn't save hours"),
+          onError: (err) => toast.error(errorText(err, t.failed.update)),
         },
       );
     } else {
       create.mutate(body, {
         onSuccess: () => {
-          toast.success("Hours added");
+          toast.success(t.done.added);
           setEditing(null);
         },
-        onError: (err) => toast.error(err?.message || "Couldn't add hours"),
+        onError: (err) => toast.error(errorText(err, t.failed.add)),
       });
     }
   };
 
   const onDelete = (w) => {
-    if (
-      window.confirm(
-        `Delete these hours (${toHHMM(w.start_time)}–${toHHMM(w.end_time)})? This cannot be undone.`,
-      )
-    ) {
+    const question = fill(t.confirmDelete, {
+      start: toHHMM(w.start_time),
+      end: toHHMM(w.end_time),
+    });
+    if (window.confirm(question)) {
       del.mutate(w.id, {
-        onSuccess: () => toast.success("Hours deleted"),
-        onError: (err) => toast.error(err?.message || "Couldn't delete hours"),
+        onSuccess: () => toast.success(t.done.deleted),
+        onError: (err) => toast.error(errorText(err, t.failed.delete)),
       });
     }
   };
@@ -140,9 +147,7 @@ export default function ProviderAvailability({ providerId }) {
 
   return (
     <div>
-      <p className="mb-6 text-sm text-[#7A6254]">
-        Your open days &amp; hours — this is what owners see when they book
-      </p>
+      <p className="mb-6 text-sm text-[#7A6254]">{t.intro}</p>
 
       {/* Time zone */}
       <div className="mb-6 rounded-2xl border border-[#FFD9B3] bg-white p-5">
@@ -150,14 +155,12 @@ export default function ProviderAvailability({ providerId }) {
           htmlFor="availability-timezone"
           className="mb-1 block text-sm font-semibold text-[#3B241B]"
         >
-          Time zone
+          {t.timeZone}
         </label>
-        <p className="mb-3 text-xs text-[#7A6254]">
-          Your hours below are in this zone. Owners see slots in the same local time.
-        </p>
+        <p className="mb-3 text-xs text-[#7A6254]">{t.timeZoneHint}</p>
         <select
           id="availability-timezone"
-          aria-label="Time zone"
+          aria-label={t.timeZone}
           value={currentZone}
           onChange={(e) => onZoneChange(e.target.value)}
           disabled={updateProfile.isPending || !currentZone}
@@ -174,24 +177,20 @@ export default function ProviderAvailability({ providerId }) {
       {scopedCount > 0 && (
         <div className="mb-6 flex items-start gap-2 rounded-2xl border border-[#FFD9B3] bg-[#FFF7EF] px-4 py-3 text-sm text-[#7A6254]">
           <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#B75D32]" />
-          <span>
-            This provider also has {scopedCount} per-staff, per-service, or per-location{" "}
-            {scopedCount === 1 ? "window" : "windows"} that aren't shown here. Editing those
-            isn't supported yet — the hours below are the provider-wide schedule.
-          </span>
+          <span>{plural(t.scoped, scopedCount, lang)}</span>
         </div>
       )}
 
       {isLoading ? (
         <div className="flex items-center justify-center gap-3 rounded-2xl border border-[#FFD9B3] bg-white px-6 py-16 text-[#7A6254]">
           <Loader2 className="h-5 w-5 animate-spin" style={{ color: COLORS.coral }} />
-          Loading hours…
+          {t.loading}
         </div>
       ) : isError ? (
         <div className="rounded-2xl border border-[#FFD9B3] bg-white px-6 py-16 text-center">
-          <p className="font-semibold text-[#B23B30]">Couldn't load hours</p>
+          <p className="font-semibold text-[#B23B30]">{t.loadError}</p>
           <p className="mt-1 text-sm text-[#7A6254]">
-            {error?.message || "Please try again."}
+            {errorText(error, t.tryAgain)}
           </p>
         </div>
       ) : (
@@ -205,7 +204,7 @@ export default function ProviderAvailability({ providerId }) {
               >
                 <div className="flex items-center justify-between gap-3">
                   <span className="w-24 text-sm font-bold text-[#3B241B]">
-                    {day.label}
+                    {weekdayName(day.key, lang)}
                   </span>
                   <button
                     type="button"
@@ -218,12 +217,12 @@ export default function ProviderAvailability({ providerId }) {
                     }}
                   >
                     <Plus className="h-3.5 w-3.5" />
-                    Add hours
+                    {t.addHours}
                   </button>
                 </div>
 
                 {dayWindows.length === 0 ? (
-                  <p className="mt-2 text-sm text-[#B8A99D]">Closed</p>
+                  <p className="mt-2 text-sm text-[#B8A99D]">{t.closed}</p>
                 ) : (
                   <ul className="mt-2 space-y-2">
                     {dayWindows.map((w) => {
@@ -239,20 +238,20 @@ export default function ProviderAvailability({ providerId }) {
                             {toHHMM(w.start_time)} – {toHHMM(w.end_time)}
                             {!w.active && (
                               <span className="ml-2 text-xs font-semibold text-[#B75D32]">
-                                Off
+                                {t.off}
                               </span>
                             )}
                           </span>
                           <div className="flex flex-shrink-0 items-center gap-2">
                             <RowButton
-                              label="Edit"
+                              label={t.edit}
                               Icon={Pencil}
                               onClick={() => setEditing(w)}
                               disabled={busy}
                               variant="muted"
                             />
                             <RowButton
-                              label="Delete"
+                              label={t.delete}
                               Icon={Trash2}
                               onClick={() => onDelete(w)}
                               disabled={busy}
@@ -289,6 +288,7 @@ const inputCls =
 // Add / edit one window. weekday, start/end (native time inputs), slot length, and an enabled
 // toggle. Client-side guards start<end before any request (mirrors the server 400).
 function WindowFormModal({ window: win, weekday, onClose, onSubmit, saving }) {
+  const { t, lang } = useProviderCopy(availabilityCopy);
   const isEdit = win != null;
   const {
     register,
@@ -318,7 +318,8 @@ function WindowFormModal({ window: win, weekday, onClose, onSubmit, saving }) {
     if (!(values.start_time < values.end_time)) {
       setError("end_time", {
         type: "validate",
-        message: "End time must be after start time",
+        // i18n-ok: a dictionary key, looked up at render so it follows the language
+        message: "endAfterStart",
       });
       return;
     }
@@ -335,17 +336,17 @@ function WindowFormModal({ window: win, weekday, onClose, onSubmit, saving }) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
       role="dialog"
       aria-modal="true"
-      aria-label={isEdit ? "Edit hours" : "Add hours"}
+      aria-label={isEdit ? t.editHours : t.addHours}
     >
       <div className="w-full max-w-md rounded-3xl bg-white p-7 shadow-xl">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-xl font-bold text-[#3B241B]">
-            {isEdit ? "Edit hours" : "Add hours"}
+            {isEdit ? t.editHours : t.addHours}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t.form.close}
             className="rounded-lg p-1.5 text-[#7A6254] hover:bg-[#FFF7EF]"
           >
             <X className="h-5 w-5" />
@@ -353,33 +354,36 @@ function WindowFormModal({ window: win, weekday, onClose, onSubmit, saving }) {
         </div>
 
         <form onSubmit={handleSubmit(submit)} className="space-y-4">
-          <Field label="Day">
+          <Field label={t.form.day}>
             <select
-              aria-label="Day"
+              aria-label={t.form.day}
               {...register("weekday")}
               className={inputCls}
             >
               {WEEKDAYS.map((day, i) => (
                 <option key={day.key} value={i}>
-                  {day.label}
+                  {weekdayName(day.key, lang)}
                 </option>
               ))}
             </select>
           </Field>
 
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Start">
+            <Field label={t.form.start}>
               <input
                 type="time"
-                aria-label="Start time"
+                aria-label={t.form.startAria}
                 {...register("start_time")}
                 className={inputCls}
               />
             </Field>
-            <Field label="End" error={errors.end_time?.message}>
+            <Field
+              label={t.form.end}
+              error={errors.end_time && t.rules[errors.end_time.message]}
+            >
               <input
                 type="time"
-                aria-label="End time"
+                aria-label={t.form.endAria}
                 {...register("end_time")}
                 className={inputCls}
               />
@@ -388,7 +392,7 @@ function WindowFormModal({ window: win, weekday, onClose, onSubmit, saving }) {
 
           <label className="flex items-center gap-2 text-sm font-semibold text-[#3B241B]">
             <input type="checkbox" {...register("active")} />
-            Enabled (owners can book these hours)
+            {t.form.enabled}
           </label>
 
           <div className="flex justify-end gap-3 pt-2">
@@ -397,7 +401,7 @@ function WindowFormModal({ window: win, weekday, onClose, onSubmit, saving }) {
               onClick={onClose}
               className="rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-4 py-2.5 text-sm font-bold text-[#7A6254]"
             >
-              Cancel
+              {t.form.cancel}
             </button>
             <button
               type="submit"
@@ -406,7 +410,7 @@ function WindowFormModal({ window: win, weekday, onClose, onSubmit, saving }) {
               style={{ backgroundColor: COLORS.coral }}
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isEdit ? "Save changes" : "Add hours"}
+              {isEdit ? t.form.save : t.addHours}
             </button>
           </div>
         </form>

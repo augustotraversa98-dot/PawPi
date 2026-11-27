@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
+import salesCopy from "../../../i18n/sales";
+import { useProviderCopy } from "../../../i18n/lib/useProviderCopy";
+import { serverErrorMessage } from "../../../i18n/lib/serverError";
 
 // /provider/payments/mercadopago/return — the OAuth REDIRECT TARGET for the MercadoPago
 // marketplace connect flow (ACTION 2 §1). This is the single fixed URL registered with
@@ -20,6 +23,7 @@ const CTA =
   "inline-block w-full rounded-xl bg-[#FF6F61] px-4 py-3.5 text-base font-bold text-white shadow-md transition-all hover:bg-[#E85D51]";
 
 export default function MercadoPagoReturnPage() {
+  const { t, lang } = useProviderCopy(salesCopy);
   const [searchParams] = useSearchParams();
   const code = searchParams.get("code") || "";
   const state = searchParams.get("state") || "";
@@ -27,6 +31,7 @@ export default function MercadoPagoReturnPage() {
 
   // "working" | "success" | "error"
   const [status, setStatus] = useState("working");
+  // { message?: the server's text, key: our own text in salesCopy.mpReturn }
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -34,9 +39,7 @@ export default function MercadoPagoReturnPage() {
     // truncated/hand-typed link — post nothing we can't complete.
     if (!code || !providerId) {
       setStatus("error");
-      setError(
-        "This link is missing information from MercadoPago. Start the connection again from your dashboard.",
-      );
+      setError({ key: "missingInfo" });
       return;
     }
 
@@ -55,19 +58,14 @@ export default function MercadoPagoReturnPage() {
         if (cancelled) return;
         if (!res.ok) {
           setStatus("error");
-          setError(
-            data.error ||
-              "We couldn't finish connecting your MercadoPago account. Please try again.",
-          );
+          setError({ message: data.error, key: "failed" });
           return;
         }
         setStatus("success");
       } catch {
         if (cancelled) return;
         setStatus("error");
-        setError(
-          "Couldn't reach the server. Check your connection and try again.",
-        );
+        setError({ key: "unreachable" });
       }
     })();
 
@@ -82,9 +80,9 @@ export default function MercadoPagoReturnPage() {
         <div className={CARD}>
           <div className="mb-6 text-5xl">⏳</div>
           <h1 className="mb-4 text-2xl font-bold text-[#3B241B]">
-            Connecting your MercadoPago account…
+            {t.mpReturn.workingTitle}
           </h1>
-          <p className="text-[#7A6254]">This only takes a moment.</p>
+          <p className="text-[#7A6254]">{t.mpReturn.workingBody}</p>
         </div>
       </div>
     );
@@ -96,13 +94,11 @@ export default function MercadoPagoReturnPage() {
         <div className={CARD}>
           <div className="mb-6 text-5xl">🎉</div>
           <h1 className="mb-4 text-2xl font-bold text-[#3B241B]">
-            MercadoPago connected
+            {t.mpReturn.successTitle}
           </h1>
-          <p className="mb-8 text-[#7A6254]">
-            You can now receive payments for your services and products.
-          </p>
+          <p className="mb-8 text-[#7A6254]">{t.mpReturn.successBody}</p>
           <a href="/provider/sales" className={CTA}>
-            Back to Sales
+            {t.mpReturn.back}
           </a>
         </div>
       </div>
@@ -114,11 +110,14 @@ export default function MercadoPagoReturnPage() {
       <div className={CARD}>
         <div className="mb-6 text-5xl">⚠️</div>
         <h1 className="mb-4 text-2xl font-bold text-[#3B241B]">
-          Couldn't connect MercadoPago
+          {t.mpReturn.errorTitle}
         </h1>
-        <p className="mb-8 text-[#7A6254]">{error}</p>
+        <p className="mb-8 text-[#7A6254]">
+          {error &&
+            serverErrorMessage(error.message, lang, t.mpReturn[error.key], salesCopy)}
+        </p>
         <a href="/provider/sales" className={CTA}>
-          Back to Sales
+          {t.mpReturn.back}
         </a>
       </div>
     </div>

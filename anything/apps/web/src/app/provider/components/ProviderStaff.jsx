@@ -14,6 +14,11 @@ import {
   useRemoveStaff,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
+import staffCopy from "../i18n/staff";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { fill } from "../i18n/lib/format";
+import { roleName } from "../i18n/lib/labels";
+import { serverErrorMessage } from "../i18n/lib/serverError";
 
 // Staff management (c2c). Owner/admin can see the provider's staff (JOINED to
 // user_profiles for names via the dedicated staff GET), invite an existing user
@@ -25,12 +30,16 @@ import { COLORS } from "../lib/colors";
 // (set only at provider creation; no ownership transfer in the MVP).
 const ASSIGNABLE_ROLES = ["admin", "staff", "vet"];
 
+const COLUMNS = ["member", "role", "status", "actions"];
+
 // Active first, then invited, then removed (dimmed) — within a status, owner
 // floats to the top so it always reads as the anchor of the org.
 const STATUS_ORDER = { active: 0, invited: 1, removed: 2 };
 
-function displayName(m) {
-  return m.full_name || m.username || `User #${m.user_profile_id}`;
+function displayName(m, t) {
+  return (
+    m.full_name || m.username || fill(t.userFallback, { id: m.user_profile_id })
+  );
 }
 
 const ROLE_BADGE = {
@@ -41,41 +50,45 @@ const ROLE_BADGE = {
 };
 
 function RoleBadge({ role }) {
+  const { lang } = useProviderCopy(staffCopy);
   const s = ROLE_BADGE[role] || ROLE_BADGE.staff;
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold capitalize"
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold${
+        lang === "en" ? " capitalize" : ""
+      }`}
       style={{ backgroundColor: s.bg, color: s.fg }}
     >
       {role === "owner" && <ShieldCheck className="h-3.5 w-3.5" />}
-      {role || "—"}
+      {role ? roleName(role, lang) : "—"}
     </span>
   );
 }
 
 const STATUS_BADGE = {
-  active: { bg: "#E5F4EC", fg: "#1F7A4D", label: "Active" },
-  invited: { bg: "#FFF1E2", fg: "#B75D32", label: "Invited" },
-  removed: { bg: "#EFEAE6", fg: "#7A6254", label: "Removed" },
+  active: { bg: "#E5F4EC", fg: "#1F7A4D" },
+  invited: { bg: "#FFF1E2", fg: "#B75D32" },
+  removed: { bg: "#EFEAE6", fg: "#7A6254" },
 };
 
 function StatusBadge({ status }) {
-  const s = STATUS_BADGE[status] || {
-    bg: "#EFEAE6",
-    fg: "#7A6254",
-    label: status || "—",
-  };
+  const { t } = useProviderCopy(staffCopy);
+  const s = STATUS_BADGE[status] || { bg: "#EFEAE6", fg: "#7A6254" };
+  const label = Object.hasOwn(t.status, status) ? t.status[status] : status || "—";
   return (
     <span
       className="inline-block rounded-full px-2.5 py-1 text-xs font-semibold"
       style={{ backgroundColor: s.bg, color: s.fg }}
     >
-      {s.label}
+      {label}
     </span>
   );
 }
 
 export default function ProviderStaff({ providerId }) {
+  const { t, lang } = useProviderCopy(staffCopy);
+  const errorText = (err, fallback) =>
+    serverErrorMessage(err, lang, fallback, staffCopy);
   const { data: staff, isLoading, isError, error } =
     useProviderStaff(providerId);
 
@@ -88,21 +101,18 @@ export default function ProviderStaff({ providerId }) {
     updateRole.mutate(
       { userProfileId: m.user_profile_id, role },
       {
-        onSuccess: () => toast.success("Role updated"),
-        onError: (err) => toast.error(err?.message || "Couldn't change role"),
+        onSuccess: () => toast.success(t.roleUpdated),
+        onError: (err) => toast.error(errorText(err, t.roleFailed)),
       },
     );
   };
 
   const onRemove = (m) => {
-    if (
-      window.confirm(
-        `Remove ${displayName(m)} from your team? They'll lose access; you can re-invite them later.`,
-      )
-    ) {
+    const question = fill(t.confirmRemove, { name: displayName(m, t) });
+    if (window.confirm(question)) {
       remove.mutate(m.user_profile_id, {
-        onSuccess: () => toast.success("Member removed"),
-        onError: (err) => toast.error(err?.message || "Couldn't remove member"),
+        onSuccess: () => toast.success(t.removed),
+        onError: (err) => toast.error(errorText(err, t.removeFailed)),
       });
     }
   };
@@ -127,10 +137,8 @@ export default function ProviderStaff({ providerId }) {
           <Users className="h-5 w-5" style={{ color: COLORS.terracotta }} />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-[#3B241B]">Staff</h1>
-          <p className="text-sm text-[#7A6254]">
-            Who can manage this provider and handle bookings
-          </p>
+          <h1 className="text-2xl font-bold text-[#3B241B]">{t.title}</h1>
+          <p className="text-sm text-[#7A6254]">{t.subtitle}</p>
         </div>
       </div>
 
@@ -143,34 +151,32 @@ export default function ProviderStaff({ providerId }) {
               className="h-5 w-5 animate-spin"
               style={{ color: COLORS.coral }}
             />
-            Loading staff…
+            {t.loading}
           </div>
         ) : isError ? (
           <div className="px-6 py-16 text-center">
-            <p className="font-semibold text-[#B23B30]">Couldn't load staff</p>
+            <p className="font-semibold text-[#B23B30]">{t.loadError}</p>
             <p className="mt-1 text-sm text-[#7A6254]">
-              {error?.message || "Please try again."}
+              {errorText(error, t.tryAgain)}
             </p>
           </div>
         ) : list.length === 0 ? (
           <div className="px-6 py-16 text-center">
             <p className="text-base font-semibold text-[#3B241B]">
-              No staff yet
+              {t.emptyTitle}
             </p>
-            <p className="mt-1 text-sm text-[#7A6254]">
-              Invite a teammate by username to help manage this provider.
-            </p>
+            <p className="mt-1 text-sm text-[#7A6254]">{t.emptyBody}</p>
           </div>
         ) : (
           <table className="w-full border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-[#FFF1E2] bg-[#FFFBF6]">
-                {["Member", "Role", "Status", "Actions"].map((h) => (
+                {COLUMNS.map((column) => (
                   <th
-                    key={h}
+                    key={column}
                     className="px-4 py-3 text-xs font-bold uppercase tracking-wide text-[#7A6254]"
                   >
-                    {h}
+                    {t.columns[column]}
                   </th>
                 ))}
               </tr>
@@ -192,7 +198,7 @@ export default function ProviderStaff({ providerId }) {
                   >
                     <td className="px-4 py-3 align-middle">
                       <div className="font-semibold text-[#3B241B]">
-                        {displayName(m)}
+                        {displayName(m, t)}
                       </div>
                       {m.username && (
                         <div className="mt-0.5 text-xs text-[#7A6254]">
@@ -209,24 +215,28 @@ export default function ProviderStaff({ providerId }) {
                     <td className="px-4 py-3 align-middle">
                       {isOwner ? (
                         <span className="text-xs text-[#B8A99D]">
-                          Owner — protected
+                          {t.ownerProtected}
                         </span>
                       ) : (
                         <div className="flex flex-wrap items-center gap-2">
                           <label className="sr-only" htmlFor={`role-${m.id}`}>
-                            Change role for {displayName(m)}
+                            {fill(t.changeRoleFor, { name: displayName(m, t) })}
                           </label>
                           <select
                             id={`role-${m.id}`}
-                            aria-label={`Change role for ${displayName(m)}`}
+                            aria-label={fill(t.changeRoleFor, {
+                              name: displayName(m, t),
+                            })}
                             value={m.role}
                             disabled={busy}
                             onChange={(e) => onChangeRole(m, e.target.value)}
-                            className="rounded-lg border-2 border-[#FFD9B3] bg-[#FFF7EF] px-2.5 py-1.5 text-xs font-semibold capitalize text-[#3B241B] outline-none focus:border-[#FF6F61] disabled:opacity-50"
+                            className={`rounded-lg border-2 border-[#FFD9B3] bg-[#FFF7EF] px-2.5 py-1.5 text-xs font-semibold text-[#3B241B] outline-none focus:border-[#FF6F61] disabled:opacity-50${
+                              lang === "en" ? " capitalize" : ""
+                            }`}
                           >
                             {ASSIGNABLE_ROLES.map((r) => (
                               <option key={r} value={r}>
-                                {r}
+                                {roleName(r, lang)}
                               </option>
                             ))}
                           </select>
@@ -242,7 +252,7 @@ export default function ProviderStaff({ providerId }) {
                             }}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
-                            Remove
+                            {t.remove}
                           </button>
                         </div>
                       )}
@@ -265,6 +275,7 @@ const inputCls =
 // side (404 if unknown); a previously-removed user is re-invited just by entering
 // their username again (the backend flips removed→invited), so no special UI.
 function InviteForm({ invite }) {
+  const { t, lang } = useProviderCopy(staffCopy);
   const {
     register,
     handleSubmit,
@@ -278,10 +289,11 @@ function InviteForm({ invite }) {
       { username, role: values.role },
       {
         onSuccess: () => {
-          toast.success("Invitation sent");
+          toast.success(t.invite.sent);
           reset({ username: "", role: "staff" });
         },
-        onError: (err) => toast.error(err?.message || "Couldn't send invite"),
+        onError: (err) =>
+          toast.error(serverErrorMessage(err, lang, t.invite.failed, staffCopy)),
       },
     );
   };
@@ -290,7 +302,7 @@ function InviteForm({ invite }) {
     <div className="mb-6 rounded-2xl border border-[#FFD9B3] bg-white p-5">
       <div className="mb-3 flex items-center gap-2">
         <UserPlus className="h-4 w-4" style={{ color: COLORS.terracotta }} />
-        <h2 className="text-sm font-bold text-[#3B241B]">Invite a teammate</h2>
+        <h2 className="text-sm font-bold text-[#3B241B]">{t.invite.title}</h2>
       </div>
       <form
         onSubmit={handleSubmit(submit)}
@@ -298,38 +310,41 @@ function InviteForm({ invite }) {
       >
         <div className="min-w-[200px] flex-1">
           <label className="sr-only" htmlFor="invite-username">
-            Username
+            {t.invite.username}
           </label>
           <input
             id="invite-username"
             type="text"
-            placeholder="@username"
+            placeholder={t.invite.usernamePlaceholder}
+            // Messages are dictionary keys, looked up at render.
             {...register("username", {
-              required: "Username is required",
+              required: "usernameRequired",
               validate: (v) =>
-                v.trim().replace(/^@/, "").length > 0 || "Username is required",
+                v.trim().replace(/^@/, "").length > 0 || "usernameRequired",
             })}
             className={inputCls}
           />
           {errors.username && (
             <p className="mt-1 text-xs font-semibold text-[#B23B30]">
-              {errors.username.message}
+              {t.rules[errors.username.message]}
             </p>
           )}
         </div>
         <div>
           <label className="sr-only" htmlFor="invite-role">
-            Role
+            {t.invite.role}
           </label>
           <select
             id="invite-role"
-            aria-label="Invite role"
+            aria-label={t.invite.roleAria}
             {...register("role")}
-            className="rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-3 py-2.5 text-sm font-semibold capitalize text-[#3B241B] outline-none focus:border-[#FF6F61]"
+            className={`rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-3 py-2.5 text-sm font-semibold text-[#3B241B] outline-none focus:border-[#FF6F61]${
+              lang === "en" ? " capitalize" : ""
+            }`}
           >
             {ASSIGNABLE_ROLES.map((r) => (
               <option key={r} value={r}>
-                {r}
+                {roleName(r, lang)}
               </option>
             ))}
           </select>
@@ -345,11 +360,11 @@ function InviteForm({ invite }) {
           ) : (
             <UserPlus className="h-4 w-4" />
           )}
-          Invite
+          {t.invite.button}
         </button>
       </form>
       <p className="mt-2 text-xs text-[#B8A99D]">
-        Re-inviting someone you removed? Just enter their username again.
+        {t.invite.hint}
       </p>
     </div>
   );
