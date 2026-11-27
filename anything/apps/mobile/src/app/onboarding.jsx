@@ -14,6 +14,8 @@ import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { defaultWeightUnit } from "@/utils/weightUnit";
+import { parseWeight } from "@/utils/decimal";
+import { hasInvalidAge } from "@/utils/petAgeForm";
 import { ChevronLeft, Check } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -144,16 +146,22 @@ export function firstIncompleteRequiredStep(formData) {
   if (!isHandleAcceptable(formData.handle)) return 1;
   if (!formData.breed.trim()) return 2;
   // A birth date, or an estimated age (years OR months).
-  if (
-    formData.ageYears.trim() === "" &&
-    formData.ageMonths.trim() === "" &&
-    !formData.birthday
-  ) {
-    return 3;
-  }
+  if (!hasAgeAnswer(formData)) return 3;
   if (!GENDER_VALUES.includes(formData.gender)) return 4;
-  if (!(parseFloat(formData.weight) > 0)) return 5;
+  if (enteredWeight(formData) === undefined) return 5;
   return null;
+}
+
+// A birth date, or an estimated age (years OR months) typed as whole numbers.
+function hasAgeAnswer(formData) {
+  if (formData.birthday) return true;
+  const typed = formData.ageYears.trim() !== "" || formData.ageMonths.trim() !== "";
+  return typed && !hasInvalidAge({ ...formData, birthdayUnknown: true });
+}
+
+// The typed weight as a number, or undefined while it is blank or not one plausible weight (utils/decimal.js).
+function enteredWeight(formData) {
+  return parseWeight(formData.weight, formData.weightUnit).value;
 }
 
 // age_years to persist. A months-only puppy (e.g. "6 months", no years entered)
@@ -438,7 +446,7 @@ function OnboardingScreen() {
         breed: formData.breed || null,
         ...ageFieldsForNewPet(formData),
         gender: formData.gender || null,
-        weight: formData.weight ? parseFloat(formData.weight) : null,
+        weight: enteredWeight(formData) ?? null,
         weight_unit: formData.weightUnit || defaultWeightUnit(),
         adoption_date: formData.adoptionDate || null,
         notes: formData.notes || null,
@@ -712,15 +720,11 @@ function OnboardingScreen() {
       case 3:
         // A birth date, or an estimated age (years OR months), so rescue/adopted dogs with
         // an unknown birth date can still complete it.
-        return (
-          formData.ageYears.trim() !== "" ||
-          formData.ageMonths.trim() !== "" ||
-          !!formData.birthday
-        );
+        return hasAgeAnswer(formData);
       case 4:
         return GENDER_VALUES.includes(formData.gender);
       case 5:
-        return parseFloat(formData.weight) > 0;
+        return enteredWeight(formData) !== undefined;
       default:
         return true;
     }
@@ -736,11 +740,17 @@ function OnboardingScreen() {
       case 2:
         return t("onboarding.validation.breed");
       case 3:
-        return t("onboarding.validation.age");
+        return hasInvalidAge({ ...formData, birthdayUnknown: true })
+          ? t("common.wholeNumber")
+          : t("onboarding.validation.age");
       case 4:
         return t("onboarding.validation.gender");
-      case 5:
-        return t("onboarding.validation.weight");
+      case 5: {
+        const typed = parseWeight(formData.weight, formData.weightUnit);
+        return typed.invalid
+          ? t("common.invalidWeight", { max: typed.max, unit: typed.unit })
+          : t("onboarding.validation.weight");
+      }
       // Step 1 (handle) renders its own specific inline error inside StepHandle.
       default:
         return "";
@@ -1325,12 +1335,8 @@ const StepWeight = ({ formData, setFormData }) => {
         placeholder="0"
         placeholderTextColor={COLORS.mutedBrown}
         value={formData.weight}
-        onChangeText={(text) =>
-          setFormData((prev) => ({
-            ...prev,
-            weight: text.replace(/[^0-9.]/g, ""),
-          }))
-        }
+        // Kept as typed ("12,5"): the Next button reads it with utils/decimal.js and says why when it cannot.
+        onChangeText={(text) => setFormData((prev) => ({ ...prev, weight: text }))}
         keyboardType="decimal-pad"
       />
 

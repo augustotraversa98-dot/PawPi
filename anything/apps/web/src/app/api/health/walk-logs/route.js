@@ -5,6 +5,11 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 import { recordBusinessEvent } from "@/lib/telemetry/business";
 import { withLoggedByNames } from "@/app/api/utils/loggedBy";
+import { invalidNumberResponse } from "@/app/api/utils/invalidNumber";
+import { DISTANCE_MAX, INT_MAX, readClientDecimal, readClientInteger } from "@/lib/decimal";
+
+// The most average_speed numeric(5,2) can hold.
+const SPEED_MAX = 999.99;
 
 async function POST(request) {
   try {
@@ -60,6 +65,18 @@ async function POST(request) {
     }
     const ownerUserId = access.ownerUserId;
 
+    // Numeric and integer columns. Typed text from installed builds is read ("2,5"); anything unreadable is a 400
+    // rather than a database error. A tracked distance may carry any precision; the column rounds it.
+    const miles = readClientDecimal(distance, { max: DISTANCE_MAX });
+    if (miles.invalid) return invalidNumberResponse(request, "distance_invalid", "distance");
+    const speed = readClientDecimal(averageSpeed, { max: SPEED_MAX });
+    if (speed.invalid) return invalidNumberResponse(request, "speed_invalid", "averageSpeed", { max: SPEED_MAX });
+    // Negative minutes were stored before this check and still are: only what the column cannot hold is refused.
+    const minutes = readClientInteger(durationMinutes, { min: -INT_MAX });
+    if (minutes.invalid) return invalidNumberResponse(request, "whole_number_invalid", "durationMinutes");
+    const stepCount = readClientInteger(steps);
+    if (stepCount.invalid) return invalidNumberResponse(request, "whole_number_invalid", "steps");
+
     // Use provided startTime or default to NOW()
     const walkStartTime = startTime ? new Date(startTime).toISOString() : null;
 
@@ -84,16 +101,16 @@ async function POST(request) {
         ${petId},
         ${ownerUserId},
         ${walkStartTime || sql`NOW()`},
-        ${durationMinutes || null},
-        ${distance || null},
+        ${minutes.value || null},
+        ${miles.value || null},
         ${distanceUnit || "miles"},
         ${pace || null},
         ${energyAfter || null},
         ${pottyEvents ? sql.json(jsonbWriteValue(pottyEvents)) : null},
         ${routeOrLocation || null},
         ${notes || null},
-        ${steps || null},
-        ${averageSpeed || null},
+        ${stepCount.value || null},
+        ${speed.value || null},
         ${source || "manual"},
         ${sourceDevice || null}
       )
@@ -105,8 +122,8 @@ async function POST(request) {
     // Create timeline event
     try {
       const walkName = routeOrLocation || "Walk";
-      const summary = durationMinutes
-        ? `${walkName} · ${durationMinutes} min`
+      const summary = minutes.value
+        ? `${walkName} · ${minutes.value} min`
         : walkName;
 
       await sql`

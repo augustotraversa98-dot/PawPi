@@ -2,6 +2,8 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { invalidNumberResponse } from "@/app/api/utils/invalidNumber";
+import { readClientInteger } from "@/lib/decimal";
 
 // /api/nutrition-plans/[id] — owner edits or soft-deletes their plan (Wave 7 ticket 2.75). RLS
 // owner_all scopes the row; a non-owner touches ZERO → 404.
@@ -20,17 +22,19 @@ async function PATCH(request, { params }) {
       return Response.json({ error: "User profile not found" }, { status: 404 });
     }
     const body = (await request.json()) ?? {};
-    const { food_brand, food_product, food_form, daily_portion, target_calories, notes, active } = body;
+    const { food_brand, food_product, food_form, daily_portion, notes, active } = body;
     if (food_form != null && !FORMS.includes(food_form)) {
       return Response.json({ error: "Invalid food_form" }, { status: 400 });
     }
+    const calories = readClientInteger(body.target_calories);
+    if (calories.invalid) return invalidNumberResponse(request, "whole_number_invalid", "target_calories");
     const updated = await sql`
       UPDATE nutrition_plans SET
         food_brand = COALESCE(${food_brand ?? null}, food_brand),
         food_product = COALESCE(${food_product ?? null}, food_product),
         food_form = COALESCE(${food_form ?? null}, food_form),
         daily_portion = COALESCE(${daily_portion ?? null}, daily_portion),
-        target_calories = COALESCE(${target_calories ?? null}, target_calories),
+        target_calories = COALESCE(${calories.value}, target_calories),
         notes = COALESCE(${notes ?? null}, notes),
         active = COALESCE(${active ?? null}, active),
         updated_at = now()

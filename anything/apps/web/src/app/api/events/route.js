@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { moderationResponse } from "@/app/api/utils/moderateText";
+import { invalidNumberResponse } from "@/app/api/utils/invalidNumber";
+import { readClientInteger } from "@/lib/decimal";
 
 // /api/events — community events / meetups (Wave 7 ticket 2.74; forum-style public read).
 //   GET  — upcoming published events, optional ?lat&lng&radiusKm bounding box, with attendee_count
@@ -96,6 +98,8 @@ async function POST(request) {
     if (!validCoord(lat, 90) || !validCoord(lng, 180)) {
       return Response.json({ error: "Invalid lat/lng" }, { status: 400 });
     }
+    const capacity = readClientInteger(body.capacity);
+    if (capacity.invalid) return invalidNumberResponse(request, "whole_number_invalid", "capacity");
 
     const created = await sql`
       INSERT INTO events
@@ -104,7 +108,7 @@ async function POST(request) {
       VALUES (
         ${userId}, ${title}, ${body.description ?? null}, ${startsAt}, ${body.ends_at ?? null},
         ${lat}, ${lng}, ${body.location_name ?? null}, ${body.address ?? null},
-        ${body.cover_image_url ?? null}, ${body.capacity ?? null}, 'published'
+        ${body.cover_image_url ?? null}, ${capacity.value}, 'published'
       )
       RETURNING *
     `;

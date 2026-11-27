@@ -12,7 +12,7 @@
 //
 // Hermes-safe: no Intl/toLocaleString (grouping is done manually).
 
-import { getI18n } from "react-i18next";
+import { inputLanguage, splitTypedNumber } from "./decimal";
 
 export function formatMoney(cents, currency = "ARS") {
   if (cents == null || Number.isNaN(cents)) return null;
@@ -34,7 +34,8 @@ export function formatMoney(cents, currency = "ARS") {
 }
 
 // --- typed amounts -----------------------------------------------------------------------------------------------
-// How a typed amount is read (same rules as the web panel's app/provider/lib/money.js; the apps share no package).
+// How a typed amount is read (the separator rules live in utils/decimal.js, shared with weights and distances; the web
+// panel's twin is app/provider/lib/money.js).
 // es-AR: decimal ",", thousands "."; en-US: decimal ".", thousands ",".
 //   - Surrounding spaces and one leading "$" are ignored. Anything else that is not a digit, "." or "," is invalid
 //     (signs, letters, currency codes, spaces between digits).
@@ -51,45 +52,6 @@ export function formatMoney(cents, currency = "ARS") {
 // provider money columns are Postgres int4.
 const MAX_CENTS = 2147483647;
 
-// The language whose separators apply: "en" or, like the rest of the app, Spanish.
-function moneyLanguage(lang) {
-  let active = lang;
-  if (!active) {
-    try {
-      active = getI18n()?.language;
-    } catch {
-      active = null; // i18n not initialised (e.g. a unit test that mocks react-i18next)
-    }
-  }
-  return String(active || "es").toLowerCase().startsWith("en") ? "en" : "es";
-}
-
-const isGrouped = (text, separator) =>
-  new RegExp(`^[1-9]\\d{0,2}(\\${separator}\\d{3})+$`).test(text);
-
-// "1.234,5" → ["1234", "5"]; null when the text has no single reading.
-function splitAmount(text, language) {
-  if (!/^[\d.,]+$/.test(text)) return null;
-  const hasDot = text.includes(".");
-  const hasComma = text.includes(",");
-  if (hasDot && hasComma) {
-    const decimal = text.lastIndexOf(".") > text.lastIndexOf(",") ? "." : ",";
-    const group = decimal === "." ? "," : ".";
-    const [whole, fraction, ...rest] = text.split(decimal);
-    if (rest.length || !/^\d{1,2}$/.test(fraction) || !isGrouped(whole, group)) return null;
-    return [whole.split(group).join(""), fraction];
-  }
-  if (!hasDot && !hasComma) return [text, ""];
-
-  const separator = hasDot ? "." : ",";
-  const pieces = text.split(separator);
-  if (pieces.length === 2 && /^\d{1,2}$/.test(pieces[1])) {
-    return [pieces[0] || "0", pieces[1]];
-  }
-  const thousands = pieces.length > 2 || separator === (language === "es" ? "." : ",");
-  return thousands && isGrouped(text, separator) ? [pieces.join(""), ""] : null;
-}
-
 // A typed amount → integer cents. `lang` defaults to the app's language. Returns:
 //   { cents: undefined }          blank
 //   { cents: <non-negative int> } a valid amount
@@ -97,7 +59,8 @@ function splitAmount(text, language) {
 export function parseMoneyToCents(raw, lang) {
   const trimmed = String(raw ?? "").trim();
   if (trimmed === "") return { cents: undefined };
-  const parts = splitAmount(trimmed.replace(/^\$/, "").trim(), moneyLanguage(lang));
+  const thousands = inputLanguage(lang) === "es" ? "." : ",";
+  const parts = splitTypedNumber(trimmed.replace(/^\$/, "").trim(), thousands);
   // Built from the digits, so there is no floating-point rounding.
   const cents = parts ? Number(parts[0]) * 100 + Number(parts[1].padEnd(2, "0")) : NaN;
   return cents <= MAX_CENTS ? { cents } : { invalid: true };
@@ -109,5 +72,5 @@ export function numberToMoneyInput(value, lang) {
   const cents = value * 100;
   const exact = Math.abs(cents - Math.round(cents)) < 1e-6;
   const text = exact ? (Math.round(cents) / 100).toFixed(2) : String(value);
-  return moneyLanguage(lang) === "es" ? text.replace(".", ",") : text;
+  return inputLanguage(lang) === "es" ? text.replace(".", ",") : text;
 }

@@ -19,36 +19,12 @@
 //   - Anything else ("49,", "49.905", "0.500") is invalid. Nothing is ever rounded or cut off.
 import shared from "../i18n/shared";
 import { formatNumber } from "../i18n/lib/format";
+// The separator rules above, shared with the panel's other numbers and the API.
+import { splitTypedNumber } from "../../../lib/decimal";
 
 const THOUSANDS = { es: ".", en: "," };
 // provider money columns are Postgres int4.
 const MAX_CENTS = 2147483647;
-
-const isGrouped = (text, separator) =>
-  new RegExp(`^[1-9]\\d{0,2}(\\${separator}\\d{3})+$`).test(text);
-
-// "1.234,5" → ["1234", "5"]; null when the text has no single reading.
-function splitAmount(text, lang) {
-  if (!/^[\d.,]+$/.test(text)) return null;
-  const hasDot = text.includes(".");
-  const hasComma = text.includes(",");
-  if (hasDot && hasComma) {
-    const decimal = text.lastIndexOf(".") > text.lastIndexOf(",") ? "." : ",";
-    const group = decimal === "." ? "," : ".";
-    const [whole, fraction, ...rest] = text.split(decimal);
-    if (rest.length || !/^\d{1,2}$/.test(fraction) || !isGrouped(whole, group)) return null;
-    return [whole.split(group).join(""), fraction];
-  }
-  if (!hasDot && !hasComma) return [text, ""];
-
-  const separator = hasDot ? "." : ",";
-  const pieces = text.split(separator);
-  if (pieces.length === 2 && /^\d{1,2}$/.test(pieces[1])) {
-    return [pieces[0] || "0", pieces[1]];
-  }
-  const thousands = pieces.length > 2 || separator === (THOUSANDS[lang] ?? THOUSANDS.en);
-  return thousands && isGrouped(text, separator) ? [pieces.join(""), ""] : null;
-}
 
 // Format integer cents as "$12.50" (en) or "$ 12,50" (es). null/undefined → em-dash.
 export function centsToCurrency(cents, lang = "en") {
@@ -85,7 +61,7 @@ export function importedPriceToInput(value, lang = "en") {
 export function dollarsToCents(raw, lang = "en") {
   const trimmed = String(raw ?? "").trim();
   if (trimmed === "") return { cents: undefined };
-  const parts = splitAmount(trimmed.replace(/^\$/, "").trim(), lang);
+  const parts = splitTypedNumber(trimmed.replace(/^\$/, "").trim(), THOUSANDS[lang] ?? THOUSANDS.en);
   // Built from the digits, so there is no floating-point rounding.
   const cents = parts ? Number(parts[0]) * 100 + Number(parts[1].padEnd(2, "0")) : NaN;
   if (!(cents <= MAX_CENTS)) {

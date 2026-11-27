@@ -101,6 +101,11 @@
   },
   "common": {
     "invalidAmount": "Ingresá un importe válido (por ejemplo, 12,50 o 1.250,00)",
+    "invalidWeight": "Ingresá un peso válido, de hasta {{max}} {{unit}} (p. ej., 12,5).",
+    "invalidDistance": "Ingresá una distancia válida, de hasta {{max}} (p. ej., 2,5).",
+    "invalidMinutes": "Ingresá los minutos como un número entero (p. ej., 30).",
+    "wholeNumber": "Ingresá un número entero, sin comas ni puntos.",
+    "wholeNumberPositive": "Ingresá un número entero de 1 o más, sin comas ni puntos.",
     "offlineBanner": "Sin conexión a internet — mostrando datos guardados",
     "petParent": "Dueño/a",
     "save": "Guardar",
@@ -1396,7 +1401,7 @@
     "form_wet": "Húmedo",
     "form_raw": "Crudo",
     "form_mixed": "Mixto",
-    "portion": "Porción diaria (ej. 1.5 tazas)",
+    "portion": "Porción diaria (ej. 1,5 tazas)",
     "calories": "Calorías objetivo / día",
     "notes": "Notas",
     "feedingLink": "Configura los horarios de comida en Recordatorios y Rutinas → Alimentación.",
@@ -3164,7 +3169,7 @@
         "saving": "Guardando...",
         "weightInfo": "Información de peso",
         "currentWeight": "Peso actual ({{unit}}) *",
-        "weightPlaceholder": "ej., 48.5",
+        "weightPlaceholder": "ej., 48,5",
         "bodyShapeLabel": "Estimación visual de forma corporal",
         "notes": "Notas (opcional)",
         "notesPlaceholder": "Cualquier observación o contexto...",
@@ -6481,7 +6486,6 @@
     },
     "editMedicalProfileModal": {
       "validEmail": "Ingresá un email válido",
-      "validWeight": "Ingresá un peso válido",
       "validDate": "Ingresá una fecha válida",
       "male": "Macho",
       "female": "Hembra"

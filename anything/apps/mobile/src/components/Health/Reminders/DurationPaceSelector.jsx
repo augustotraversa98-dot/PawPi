@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
 import { WALK_ROUTINE_COLORS as C } from "@/constants/walkRoutineColors";
 import { useTranslation } from "react-i18next";
+import { parseWholeNumber, WALK_MINUTES_MAX } from "@/utils/decimal";
 
 const PACE_OPTIONS = ["relaxed", "normal", "active"];
 
@@ -12,6 +13,13 @@ export default function DurationPaceSelector({
   onPaceChange,
 }) {
   const { t } = useTranslation();
+  const invalid = parseWholeNumber(durationMinutes, { max: WALK_MINUTES_MAX }).invalid;
+  // Whole minutes become a number (blank or 0 → 30, as before). Anything else is kept as typed, so it is neither cut
+  // ("1,5" → 1) nor replaced; WalkRoutineModal refuses to save it.
+  const changeDuration = (text) => {
+    const typed = parseWholeNumber(text, { max: WALK_MINUTES_MAX });
+    onDurationChange(typed.invalid ? text : typed.value || 30);
+  };
   return (
     <View
       style={{
@@ -33,7 +41,7 @@ export default function DurationPaceSelector({
         </Text>
         <TextInput
           value={durationMinutes?.toString() || "30"}
-          onChangeText={(text) => onDurationChange(parseInt(text) || 30)}
+          onChangeText={changeDuration}
           placeholder="30"
           placeholderTextColor={C.mutedBrown}
           keyboardType="number-pad"
@@ -47,6 +55,11 @@ export default function DurationPaceSelector({
             borderColor: C.peach,
           }}
         />
+        {invalid ? (
+          <Text accessibilityRole="alert" style={{ fontSize: 12, color: C.terracotta, marginTop: 6 }}>
+            {t("common.invalidMinutes")}
+          </Text>
+        ) : null}
       </View>
       <View style={{ flex: 1 }}>
         <Text

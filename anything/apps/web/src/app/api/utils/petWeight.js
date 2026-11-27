@@ -37,6 +37,19 @@ export async function getCurrentWeight(
     : { weight: fallbackWeight, weight_unit: fallbackWeightUnit };
 }
 
+// True when `value` in `unit` is what is already shown as the pet's current weight. The edit forms send the weight
+// back on every save, so a stored weight that is no longer accepted (e.g. 455 from a dropped comma) must not block the
+// rest of the form: the routes leave it exactly as it is. `pet` is the caller-scoped pets row.
+export async function isStoredWeight(pet, value, unit) {
+  const current = await getCurrentWeight(pet.id, pet.owner_user_id, pet.weight, pet.weight_unit);
+  const named = (u) => normalizeWeightUnit(u) || 'lbs';
+  return (
+    current.weight != null &&
+    Number(current.weight) === Number(value) &&
+    named(unit) === named(current.weight_unit)
+  );
+}
+
 // logCurrentWeight — the single "how does a weight edit get saved" write,
 // shared by every screen that lets an owner edit a pet's current weight
 // (Dog Profile edit, Edit Medical Profile, and any future one). Mirrors the

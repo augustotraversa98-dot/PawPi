@@ -2,7 +2,9 @@ import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
 import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 import { withRequestContext } from "@/app/api/utils/requestContext";
-import { getCurrentWeight, logCurrentWeight } from "@/app/api/utils/petWeight";
+import { getCurrentWeight, isStoredWeight, logCurrentWeight } from "@/app/api/utils/petWeight";
+import { invalidWeightResponse } from "@/app/api/utils/invalidNumber";
+import { readClientWeight } from "@/lib/decimal";
 import { estimateColumnsOf, planAgeUpdate, presentPet } from "@/app/api/utils/petAge";
 
 async function GET(request) {
@@ -171,6 +173,17 @@ async function POST(request) {
     }
     const anchorOwnerId = access.ownerUserId;
 
+    // Installed builds send the weight as the typed text: "12,5" must be 12.5, not 12. It is checked before anything
+    // is written. The form sends it back on every save, so an unchanged stored value never blocks the other fields.
+    const typedWeight = readClientWeight(currentWeight, weightUnit);
+    const keepStoredWeight = typedWeight.invalid === true;
+    if (keepStoredWeight) {
+      const [stored] = await sql`SELECT * FROM pets WHERE id = ${petId} AND owner_user_id = ${anchorOwnerId}`;
+      if (!stored || !(await isStoredWeight(stored, currentWeight, weightUnit))) {
+        return invalidWeightResponse(request, weightUnit, "currentWeight");
+      }
+    }
+
     // Update shared fields in pets table
     const updateFields = [];
     const updateValues = [];
@@ -198,7 +211,7 @@ async function POST(request) {
       updateFields.push(`gender = $${paramIndex++}`);
       updateValues.push(gender);
     }
-    if (weightUnit !== undefined) {
+    if (weightUnit !== undefined && !keepStoredWeight) {
       updateFields.push(`weight_unit = $${paramIndex++}`);
       updateValues.push(weightUnit || "lbs");
     }
@@ -217,20 +230,13 @@ async function POST(request) {
     // Handle weight update: routed through the shared logCurrentWeight
     // helper (petWeight.js) — the same one Dog Profile edit uses — so there
     // is exactly one implementation of "how a weight edit gets saved".
-    if (
-      currentWeight !== undefined &&
-      currentWeight !== null &&
-      currentWeight !== ""
-    ) {
-      const numericWeight = parseFloat(currentWeight);
-      if (!isNaN(numericWeight)) {
-        await logCurrentWeight(
-          petId,
-          anchorOwnerId,
-          numericWeight,
-          weightUnit || "lbs",
-        );
-      }
+    if (!keepStoredWeight && typedWeight.value !== null) {
+      await logCurrentWeight(
+        petId,
+        anchorOwnerId,
+        typedWeight.value,
+        weightUnit || "lbs",
+      );
     }
 
     // Upsert medical profile

@@ -27,6 +27,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { defaultWeightUnit } from "@/utils/weightUnit";
+import { decimalToInput, parseWeight } from "@/utils/decimal";
 import { formatLocalDate } from "@/utils/localeDateTime";
 import { friendlyErrorMessage } from "@/utils/appAlert";
 import LoggedByLine from "@/components/Health/LoggedByLine";
@@ -113,7 +114,12 @@ export default function WeightModal({ visible, onClose }) {
   });
 
   const saveWeightLog = async () => {
-    if (!weight) {
+    const typed = parseWeight(weight, weightUnit);
+    if (typed.invalid) {
+      Alert.alert(t("common.error"), t("common.invalidWeight", { max: typed.max, unit: typed.unit }));
+      return;
+    }
+    if (typed.value === undefined) {
       alert(t("trackers.weight.modal.enterWeight"));
       return;
     }
@@ -130,7 +136,7 @@ export default function WeightModal({ visible, onClose }) {
       console.log("[WeightTracker] Saving weight log:", {
         petId: currentPet.id,
         petName: currentPet.name,
-        weight: parseFloat(weight),
+        weight: typed.value,
         bodyShape,
       });
 
@@ -139,7 +145,7 @@ export default function WeightModal({ visible, onClose }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           petId: currentPet.id,
-          weight: parseFloat(weight),
+          weight: typed.value,
           weightUnit,
           bodyShapeEstimate: bodyShape,
           photoUrl: null,
@@ -609,7 +615,7 @@ export default function WeightModal({ visible, onClose }) {
                                 marginBottom: 2,
                               }}
                             >
-                              {entry.weight} {normalizeWeightUnit(entry.weight_unit)}
+                              {decimalToInput(entry.weight)} {normalizeWeightUnit(entry.weight_unit)}
                             </Text>
                             <View
                               style={{

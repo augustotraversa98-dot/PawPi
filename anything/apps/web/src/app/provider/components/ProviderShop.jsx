@@ -19,6 +19,7 @@ import { useProviderCopy } from "../i18n/lib/useProviderCopy";
 import { fill, formatMoney } from "../i18n/lib/format";
 import { serverErrorMessage } from "../i18n/lib/serverError";
 import { dollarsToCents } from "../lib/money";
+import { parseWholeNumber } from "../../../lib/decimal";
 
 // /provider/shop — the SHOP's catalog/inventory + order workspace (ticket 2.11). Manage
 // PRODUCTS (price, stock, Rx flag, active) and advance incoming ORDERS' FULFILLMENT
@@ -156,11 +157,16 @@ function CreateProductForm({ providerId }) {
       toast.error(priceError);
       return;
     }
+    const quantity = parseWholeNumber(stock);
+    if (quantity.invalid) {
+      toast.error(t.form.stockInvalid);
+      return;
+    }
     try {
       await create.mutateAsync({
         name,
         price_cents: priceCents,
-        stock_qty: parseInt(stock, 10) || 0,
+        stock_qty: quantity.value ?? 0,
         category: category || null,
         is_rx: isRx,
         image_urls: images,

@@ -1,4 +1,5 @@
 import { normalizeWeightUnit } from "@/utils/weightUnitAlias";
+import { decimalToInput } from "@/utils/decimal";
 import React, { useState, useCallback } from "react";
 import {
   View,
@@ -1971,7 +1972,7 @@ export default function HealthVetRecord() {
                       {
                         label: t("health.vetRecord.fieldWeight"),
                         value: medicalProfileData?.currentWeight?.weight
-                          ? `${medicalProfileData.currentWeight.weight} ${normalizeWeightUnit(medicalProfileData.currentWeight.weight_unit) || "lbs"}`
+                          ? `${decimalToInput(medicalProfileData.currentWeight.weight)} ${normalizeWeightUnit(medicalProfileData.currentWeight.weight_unit) || "lbs"}`
                           : null,
                       },
                     ]

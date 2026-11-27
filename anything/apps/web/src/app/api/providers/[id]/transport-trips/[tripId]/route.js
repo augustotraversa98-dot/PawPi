@@ -8,6 +8,7 @@ import {
   ProviderAuthError,
 } from "@/app/api/utils/providerAuth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { readClientDecimal } from "@/lib/decimal";
 
 // PATCH /api/providers/[id]/transport-trips/[tripId] — the provider STAFF acts on a trip
 // (ticket 2.52): confirm, assign a driver, advance status, set the fare. The capability gate is
@@ -48,11 +49,9 @@ async function PATCH(request, { params }) {
     if (status !== undefined && !STATUSES.includes(status)) {
       return Response.json({ error: "Invalid status" }, { status: 400 });
     }
-    if (
-      fare_amount !== undefined &&
-      fare_amount !== null &&
-      !(Number.isFinite(Number(fare_amount)) && Number(fare_amount) >= 0)
-    ) {
+    // Text must have one reading: Number("1.500") would store a fare of 1.5.
+    const fare = readClientDecimal(fare_amount, { max: Number.MAX_SAFE_INTEGER });
+    if (fare_amount !== undefined && fare_amount !== null && (fare.invalid || fare.value === null)) {
       return Response.json({ error: "Invalid fare_amount" }, { status: 400 });
     }
     // An assigned driver must be active staff of THIS provider.
@@ -76,7 +75,7 @@ async function PATCH(request, { params }) {
       SET
         status = COALESCE(${status ?? null}, status),
         assigned_staff_id = COALESCE(${assigned_staff_id ?? null}, assigned_staff_id),
-        fare_amount = COALESCE(${fare_amount ?? null}, fare_amount),
+        fare_amount = COALESCE(${fare.value}, fare_amount),
         updated_at = now()
       WHERE id = ${tripId} AND provider_id = ${providerId}
       RETURNING *

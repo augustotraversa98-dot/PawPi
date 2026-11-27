@@ -13,6 +13,7 @@
 
 import { normalizeWeightUnit } from "@/utils/weightUnitAlias";
 import { tr } from "@/utils/healthText";
+import { parseWeight } from "@/utils/decimal";
 
 export const WELLNESS_CHECK_TYPES = {
   WEIGHT: "weight",
@@ -158,8 +159,14 @@ export function validateWellnessForm(checkType, form) {
   const schema = rawWellnessSchema(checkType);
 
   if (schema.kind === "weight") {
-    const n = Number(form?.value);
-    if (form?.value == null || form.value === "" || Number.isNaN(n) || n <= 0) {
+    const typed = parseWeight(form?.value, form?.unit || schema.defaultUnit);
+    if (typed.invalid) {
+      return tr("common.invalidWeight", "Enter a valid weight, up to {{max}} {{unit}} (e.g. 12.5).", {
+        max: typed.max,
+        unit: typed.unit,
+      });
+    }
+    if (typed.value === undefined) {
       return tr("healthDataUi.wellnessLog.errors.weight", "Please enter a valid weight");
     }
     return null;
@@ -200,12 +207,13 @@ export function buildWellnessLogPayload(reminder, form, { now } = {}) {
 
   // Weight feeds the existing weight history / Insights path.
   if (schema.kind === "weight") {
+    const unit = normalizeWeightUnit(form.unit) || schema.defaultUnit;
     return {
       endpoint: "/api/health/weight-logs",
       body: {
         petId: reminder.petId,
-        weight: Number(form.value),
-        weightUnit: normalizeWeightUnit(form.unit) || schema.defaultUnit,
+        weight: parseWeight(form.value, unit).value,
+        weightUnit: unit,
         notes: note,
       },
     };

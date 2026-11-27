@@ -5,6 +5,8 @@ import { withRequestContext } from "@/app/api/utils/requestContext";
 import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 import { recordBusinessEvent } from "@/lib/telemetry/business";
 import { withLoggedByNames } from "@/app/api/utils/loggedBy";
+import { invalidWeightResponse } from "@/app/api/utils/invalidNumber";
+import { readClientWeight } from "@/lib/decimal";
 
 async function GET(request) {
   try {
@@ -89,6 +91,12 @@ async function POST(request) {
       );
     }
 
+    // Builds already installed may send the typed text ("12,5"); parseFloat would store 12, or NaN for blank text.
+    const typed = readClientWeight(weight, weightUnit);
+    if (typed.invalid || typed.value === null) {
+      return invalidWeightResponse(request, weightUnit);
+    }
+
     // FF2: owner OR accepted FAMILY caregiver may log (0049); the write anchors to
     // the pet's OWNER. Also the ownership gate — a caller cannot write a log against
     // a pet they neither own nor were granted family access to.
@@ -108,7 +116,7 @@ async function POST(request) {
       ) VALUES (
         ${parseInt(petId)},
         ${ownerUserId},
-        ${parseFloat(weight)},
+        ${typed.value},
         ${normalizeWeightUnit(weightUnit) || "lbs"},
         ${bodyShapeEstimate || null},
         ${photoUrl || null},

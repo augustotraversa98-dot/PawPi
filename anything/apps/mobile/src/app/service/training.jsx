@@ -45,6 +45,7 @@ import ProviderListControls, {
   useProviderListFilter,
 } from "@/components/Providers/ProviderListControls";
 import { friendlyErrorMessage } from "@/utils/appAlert";
+import { parseWholeNumber } from "@/utils/decimal";
 
 // PROVIDER Training discovery + progress (ticket 2.10) — HIRING a trainer. This is DISTINCT
 // from the consumer self-Training tab ((tabs)/training.jsx — static how-to content, no
@@ -420,10 +421,15 @@ function BookTrainingModal({ provider, petId, onClose }) {
         });
         Alert.alert(t("training.classBookedTitle"), t("training.classBookedBody"));
       } else {
-        const n =
-          serviceType === "program"
-            ? Math.max(1, parseInt(totalSessions, 10) || 1)
-            : 1;
+        let n = 1;
+        if (serviceType === "program") {
+          const sessions = parseWholeNumber(totalSessions, { min: 1 });
+          if (sessions.invalid) {
+            Alert.alert(t("common.error"), t("common.wholeNumberPositive"));
+            return;
+          }
+          n = sessions.value ?? 1;
+        }
         await enroll.mutateAsync({
           petId,
           provider_id: provider.id,
