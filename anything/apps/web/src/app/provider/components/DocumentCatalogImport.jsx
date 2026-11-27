@@ -9,6 +9,10 @@ import {
 import useUpload from "@/utils/useUpload";
 import { COLORS } from "../lib/colors";
 import { dollarsToCents, parseDurationMin } from "../lib/money";
+import catalogImportCopy from "../i18n/catalogImport";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { fill } from "../i18n/lib/format";
+import { serverErrorMessage } from "../i18n/lib/serverError";
 
 // DocumentCatalogImport (ticket 2.82) — the confirm-first review panel for the DOCUMENT enrichment
 // source. The provider uploads a price-list/menu (PDF or Excel/CSV) through the existing Storage
@@ -21,6 +25,8 @@ export default function DocumentCatalogImport({ providerId }) {
   const createService = useCreateService(providerId);
   const createProduct = useCreateShopProduct(providerId);
   const [upload, { loading: uploading }] = useUpload();
+  const { t, lang } = useProviderCopy(catalogImportCopy);
+  const failed = (err, fallback) => serverErrorMessage(err, lang, fallback, catalogImportCopy);
 
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState(null); // [{ kind, name, price, duration?, description, status }]
@@ -34,7 +40,7 @@ export default function DocumentCatalogImport({ providerId }) {
 
     const up = await upload({ file });
     if (up?.error || !up?.url) {
-      toast.error(up?.error || "Upload failed");
+      toast.error(failed(up?.error, t.uploadFailed));
       return;
     }
     enrich.mutate(
@@ -61,14 +67,14 @@ export default function DocumentCatalogImport({ providerId }) {
           const all = [...services, ...products];
           setRows(all);
           if (all.length === 0) {
-            toast.info("No services or products found in that file");
+            toast.info(t.nothingFound);
           }
         },
         onError: (err) => {
           if (err?.status === 503 || /not set up/i.test(err?.message || "")) {
             setNotConfigured(true);
           } else {
-            toast.error(err?.message || "Couldn't read that document");
+            toast.error(failed(err, t.readFailed));
           }
         },
       },
@@ -82,16 +88,16 @@ export default function DocumentCatalogImport({ providerId }) {
 
   const apply = (row) => {
     if (!row.name?.trim()) {
-      toast.error("A name is required");
+      toast.error(t.nameRequired);
       return;
     }
-    const price = dollarsToCents(row.price);
+    const price = dollarsToCents(row.price, lang);
     if (price.error) {
       toast.error(price.error);
       return;
     }
     if (row.kind === "service") {
-      const dur = parseDurationMin(row.duration);
+      const dur = parseDurationMin(row.duration, lang);
       if (dur.error) {
         toast.error(dur.error);
         return;
@@ -105,10 +111,10 @@ export default function DocumentCatalogImport({ providerId }) {
         },
         {
           onSuccess: () => {
-            toast.success(`Added service "${row.name.trim()}"`);
+            toast.success(fill(t.serviceAdded, { name: row.name.trim() }));
             setRow(row.key, { status: "applied" });
           },
-          onError: (err) => toast.error(err?.message || "Couldn't add service"),
+          onError: (err) => toast.error(failed(err, t.serviceFailed)),
         },
       );
     } else {
@@ -120,10 +126,10 @@ export default function DocumentCatalogImport({ providerId }) {
         },
         {
           onSuccess: () => {
-            toast.success(`Added product "${row.name.trim()}"`);
+            toast.success(fill(t.productAdded, { name: row.name.trim() }));
             setRow(row.key, { status: "applied" });
           },
-          onError: (err) => toast.error(err?.message || "Couldn't add product"),
+          onError: (err) => toast.error(failed(err, t.productFailed)),
         },
       );
     }
@@ -146,11 +152,9 @@ export default function DocumentCatalogImport({ providerId }) {
         </div>
         <div className="flex-1">
           <p className="text-sm font-bold text-[#3B241B]">
-            Import from a price list or menu
+            {t.title}
           </p>
-          <p className="text-xs text-[#7A6254]">
-            Upload a PDF or Excel/CSV — we propose a catalog you review before saving
-          </p>
+          <p className="text-xs text-[#7A6254]">{t.subtitle}</p>
         </div>
       </button>
 
@@ -164,38 +168,32 @@ export default function DocumentCatalogImport({ providerId }) {
             ) : (
               <FileUp className="h-4 w-4" />
             )}
-            {uploading
-              ? "Uploading…"
-              : enrich.isPending
-                ? "Reading…"
-                : "Choose a document"}
+            {uploading ? t.uploading : enrich.isPending ? t.reading : t.choose}
             <input
               type="file"
               accept=".pdf,.csv,.xlsx,.xls,application/pdf,text/csv"
               className="hidden"
               onChange={onFile}
-              aria-label="Upload price list or menu"
+              aria-label={t.fileAria}
             />
           </label>
 
           {notConfigured && (
             <p className="mt-3 text-sm text-[#7A6254]">
-              Document import isn’t set up yet.
+              {t.notConfigured}
             </p>
           )}
 
           {rows != null && pending.length === 0 && !enrich.isPending && (
             <p className="mt-3 text-sm text-[#7A6254]">
-              {rows.length === 0
-                ? "Nothing to import from that file."
-                : "All proposed rows handled."}
+              {rows.length === 0 ? t.nothingToImport : t.allHandled}
             </p>
           )}
 
           {pending.length > 0 && (
             <div className="mt-4 space-y-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-[#B8A99D]">
-                Proposed — edit, then apply or skip
+                {t.proposedHeading}
               </p>
               {pending.map((row) => (
                 <ProposedRow
@@ -219,6 +217,7 @@ const cell =
   "rounded-lg border-2 border-[#FFD9B3] bg-white px-2 py-1.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]";
 
 function ProposedRow({ row, onChange, onApply, onSkip, saving }) {
+  const { t } = useProviderCopy(catalogImportCopy);
   return (
     <div className="rounded-xl border border-[#FFD9B3] bg-white p-3">
       <div className="mb-2 flex items-center gap-2">
@@ -226,13 +225,13 @@ function ProposedRow({ row, onChange, onApply, onSkip, saving }) {
           className="rounded-md px-2 py-0.5 text-[10px] font-bold uppercase"
           style={{ backgroundColor: COLORS.peach, color: COLORS.terracotta }}
         >
-          {row.kind}
+          {t.kinds[row.kind] ?? row.kind}
         </span>
         <input
           value={row.name}
           onChange={(e) => onChange({ name: e.target.value })}
-          placeholder="Name"
-          aria-label="Proposed name"
+          placeholder={t.row.namePlaceholder}
+          aria-label={t.row.nameAria}
           className={`${cell} flex-1`}
         />
       </div>
@@ -240,8 +239,8 @@ function ProposedRow({ row, onChange, onApply, onSkip, saving }) {
         <input
           value={row.price}
           onChange={(e) => onChange({ price: e.target.value })}
-          placeholder="Price (e.g. 25)"
-          aria-label="Proposed price"
+          placeholder={t.row.pricePlaceholder}
+          aria-label={t.row.priceAria}
           inputMode="decimal"
           className={`${cell} w-28`}
         />
@@ -249,8 +248,8 @@ function ProposedRow({ row, onChange, onApply, onSkip, saving }) {
           <input
             value={row.duration}
             onChange={(e) => onChange({ duration: e.target.value })}
-            placeholder="Mins"
-            aria-label="Proposed duration"
+            placeholder={t.row.durationPlaceholder}
+            aria-label={t.row.durationAria}
             inputMode="numeric"
             className={`${cell} w-20`}
           />
@@ -258,8 +257,8 @@ function ProposedRow({ row, onChange, onApply, onSkip, saving }) {
         <input
           value={row.description}
           onChange={(e) => onChange({ description: e.target.value })}
-          placeholder="Description"
-          aria-label="Proposed description"
+          placeholder={t.row.descriptionPlaceholder}
+          aria-label={t.row.descriptionAria}
           className={`${cell} min-w-[8rem] flex-1`}
         />
         <button
@@ -270,7 +269,7 @@ function ProposedRow({ row, onChange, onApply, onSkip, saving }) {
           style={{ backgroundColor: COLORS.coral }}
         >
           <Check className="h-3.5 w-3.5" />
-          Apply
+          {t.row.apply}
         </button>
         <button
           type="button"
@@ -278,7 +277,7 @@ function ProposedRow({ row, onChange, onApply, onSkip, saving }) {
           className="inline-flex items-center gap-1 rounded-lg border border-[#FFD9B3] bg-[#FFF7EF] px-3 py-1.5 text-xs font-semibold text-[#7A6254]"
         >
           <X className="h-3.5 w-3.5" />
-          Skip
+          {t.row.skip}
         </button>
       </div>
     </div>
