@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { View, Text, ActivityIndicator, Linking, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -20,6 +20,7 @@ import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import { useBookingDetail, useStartThread } from "@/hooks/useProviders";
 import { useCareAccessGrants, useUpdateGrant } from "@/hooks/useCareAccessGrants";
+import { useSharingLive } from "@/hooks/useSharingLive";
 import { usePetProfile } from "@/hooks/usePetProfile";
 import ShareWithVetSheet from "@/components/Health/VetShare/ShareWithVetSheet";
 import GrantAccess from "@/components/Health/VetShare/GrantAccess";
@@ -67,6 +68,7 @@ export default function BookingSummaryScreen() {
 
   // Current sharing state for THIS provider + pet (real data; empty until loaded).
   const { data: grants } = useCareAccessGrants(petId);
+  useSharingLive();
   const providerAccess = providerGrants(grants, providerId);
   const activeGrant = providerAccess.find((g) => isGrantActive(g));
   const pendingGrant = providerAccess.find((g) => g.status === "pending");
@@ -122,6 +124,8 @@ export default function BookingSummaryScreen() {
     );
   };
 
+  // A second confirmation in the same moment must not send a second change.
+  const revoking = useRef(false);
   const revokeAccess = () => {
     if (!activeGrant || updateGrant.isPending) return;
     Alert.alert(t("bookingSummary.revokeTitle"), t("bookingSummary.revokeBody"), [
@@ -129,14 +133,20 @@ export default function BookingSummaryScreen() {
       {
         text: t("bookingSummary.revoke"),
         style: "destructive",
-        onPress: () =>
+        onPress: () => {
+          if (revoking.current) return;
+          revoking.current = true;
           updateGrant.mutate(
             { grantId: activeGrant.id, action: "revoke" },
             {
               onError: (e) =>
                 Alert.alert(t("dataAccess.errorTitle"), friendlyErrorMessage(e, "dataAccess.tryAgain")),
+              onSettled: () => {
+                revoking.current = false;
+              },
             },
-          ),
+          );
+        },
       },
     ]);
   };

@@ -15,6 +15,7 @@
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
 import { ROUTINE_TYPES } from "@/data/routinesData";
+import { refreshSharing } from "@/utils/sharingRefresh";
 
 const HEALTH_ROUTE = "/(tabs)/health";
 const INBOX_ROUTE = "/notifications";
@@ -27,6 +28,14 @@ const OWNER_ACCESS_TYPES = new Set([
   "care_access_requested",
   "care_share_accepted",
   "care_share_declined",
+]);
+
+// Pushes that say an access, or something waiting to become one, has changed.
+const SHARING_CHANGE_TYPES = new Set([
+  ...OWNER_ACCESS_TYPES,
+  "care_share_offered",
+  "care_access_granted",
+  "care_access_revoked",
 ]);
 
 // Reminder types whose home is the Vet Record section; everything else lands on Today,
@@ -109,6 +118,18 @@ export function registerNotificationTapRouting() {
       if (response) deliver(response);
     })
     .catch(() => {});
+  return () => sub?.remove?.();
+}
+
+/**
+ * While the app is open, a sharing notification means the sharing lists on screen are out of date. Returns an
+ * unsubscribe.
+ */
+export function registerSharingNotificationRefresh(queryClient) {
+  const sub = Notifications.addNotificationReceivedListener((notification) => {
+    const type = notification?.request?.content?.data?.type;
+    if (SHARING_CHANGE_TYPES.has(type)) refreshSharing(queryClient);
+  });
   return () => sub?.remove?.();
 }
 

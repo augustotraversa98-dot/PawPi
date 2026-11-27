@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { showChange } from "@/utils/sharingRefresh";
 
 // The owner's invite link routes (docs/vet-sharing-design.md "Invite by link"). This app version creates record links
 // instead (useRecordLinks); invites made earlier can still be seen and withdrawn:
@@ -40,13 +41,18 @@ export function useWithdrawVetInvite({ onError } = {}) {
         body: JSON.stringify({ action: "revoke" }),
       });
       if (!response.ok) throw await failure(response);
-      return response.json();
+      const data = await response.json();
+      await showChange(queryClient, INVITES_KEY, (invites) =>
+        invites.map((i) => (i.id === inviteId ? { ...i, status: "revoked" } : i)),
+      );
+      return data;
     },
     onError,
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: INVITES_KEY });
-      // A used invite means the vet's request exists: the access lists may be behind.
-      queryClient.invalidateQueries({ queryKey: ["care-access-grants"] });
-    },
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: INVITES_KEY }),
+        // A used invite means the vet's request exists: the access lists may be behind.
+        queryClient.invalidateQueries({ queryKey: ["care-access-grants"] }),
+      ]),
   });
 }

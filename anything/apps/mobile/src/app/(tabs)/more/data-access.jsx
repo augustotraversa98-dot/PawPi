@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import useBottomClearance from "@/hooks/useBottomClearance";
@@ -29,6 +29,7 @@ import RecordLinks from "@/components/Health/VetShare/RecordLinks";
 import ShareOffers from "@/components/Health/VetShare/ShareOffers";
 import { useRecordLinks } from "@/hooks/useRecordLinks";
 import { useShareOffers } from "@/hooks/useShareOffers";
+import { useSharingLive } from "@/hooks/useSharingLive";
 import {
   asksForRecord,
   grantAccessLines,
@@ -53,6 +54,8 @@ export default function DataAccessScreen() {
   const { data: grants, isLoading, isError, refetch } =
     useCareAccessGrants(petId);
   const updateGrant = useUpdateGrant(petId);
+  // A vet answers on another phone: what this screen shows is read again while something is waiting.
+  useSharingLive();
   const bookings = useMyBookings();
   const refetchBookings = bookings.refetch;
   // A request may have just arrived (this screen is where its notification leads): never rely on cached lists.
@@ -74,12 +77,24 @@ export default function DataAccessScreen() {
   // null = closed. { provider } shares with that one only (answering its request); {} lets the owner pick.
   const [shareSheet, setShareSheet] = useState(null);
 
+  // State changes too late to stop a second confirmation in the same moment, and a confirmation opened before a change
+  // was applied would send it again: both are checked against the latest list.
+  const changing = useRef(false);
+  const latest = useRef(grants);
+  latest.current = grants;
   const act = (grantId, action) => {
+    if (changing.current) return;
+    const current = latest.current?.find((g) => g.id === grantId);
+    if (current && current.status !== (action === "revoke" ? "active" : "pending")) return;
+    changing.current = true;
     updateGrant.mutate(
       { grantId, action },
       {
         onError: (err) =>
           Alert.alert(t("dataAccess.errorTitle"), friendlyErrorMessage(err, "dataAccess.tryAgain")),
+        onSettled: () => {
+          changing.current = false;
+        },
       },
     );
   };

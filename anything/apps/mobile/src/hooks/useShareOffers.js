@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { showChange } from "@/utils/sharingRefresh";
 
 // Inviting a vet that is on PawPi (docs/vet-sharing-design.md "Invitations to a vet on PawPi"). The owner finds a
 // business and offers it parts of the record; nothing is visible until the business accepts.
@@ -79,6 +80,12 @@ async function withdraw(offerId) {
   return response.json();
 }
 
+const showWithdrawn = (queryClient, offerId) =>
+  showChange(queryClient, OWNER_OFFERS_KEY, (data) => ({
+    ...data,
+    offers: data.offers.map((o) => (o.id === offerId ? { ...o, status: "withdrawn" } : o)),
+  }));
+
 const refreshOwner = (queryClient) =>
   Promise.all([
     queryClient.invalidateQueries({ queryKey: OWNER_OFFERS_KEY }),
@@ -104,8 +111,11 @@ export function useSendShareOffer({ onSuccess, onError, onSettled } = {}) {
 
   return useMutation({
     retry: false,
-    mutationFn: async ({ petId, providerId, sections, expiry, replaceOfferId }) => {
-      if (replaceOfferId != null) await withdraw(replaceOfferId);
+    mutationFn: async ({ petId, providerId, providerName, sections, expiry, replaceOfferId }) => {
+      if (replaceOfferId != null) {
+        await withdraw(replaceOfferId);
+        await showWithdrawn(queryClient, replaceOfferId);
+      }
       const response = await fetch(`/api/care-access/offers`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -115,6 +125,10 @@ export function useSendShareOffer({ onSuccess, onError, onSettled } = {}) {
       const data = await response.json().catch(() => null);
       const offer = data?.offer ?? null;
       if (!sameChoice(offer, { sections, expiry })) return { outcome: "unconfirmed", offer };
+      await showChange(queryClient, OWNER_OFFERS_KEY, (list) => ({
+        ...list,
+        offers: [{ provider_name: providerName, ...offer }, ...list.offers.filter((o) => o.id !== offer.id)],
+      }));
       return { outcome: data.deduped ? "alreadySent" : "sent", offer };
     },
     onSuccess,
@@ -130,7 +144,11 @@ export function useWithdrawShareOffer({ onError } = {}) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: withdraw,
+    mutationFn: async (offerId) => {
+      const data = await withdraw(offerId);
+      await showWithdrawn(queryClient, offerId);
+      return data;
+    },
     onError,
     onSettled: () => refreshOwner(queryClient),
   });
@@ -159,7 +177,12 @@ export function useAnswerShareOffer(providerId, { onSuccess, onError, onSettled 
         body: JSON.stringify({ action }),
       });
       if (!response.ok) throw await failure(response);
-      return response.json();
+      const data = await response.json();
+      await showChange(queryClient, providerOffersKey(providerId), (list) => ({
+        ...list,
+        offers: list.offers.filter((o) => o.id !== offerId),
+      }));
+      return data;
     },
     onSuccess,
     onError,

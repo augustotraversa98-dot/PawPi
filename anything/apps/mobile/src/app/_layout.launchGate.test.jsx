@@ -26,7 +26,10 @@ jest.mock("@/utils/telehealthReminderSync", () => ({
 }));
 jest.mock("@/utils/notifications", () => ({ initNotifications: jest.fn() }));
 jest.mock("@/utils/registerPushToken", () => ({ registerPushTokenAsync: jest.fn() }));
-jest.mock("@/utils/notificationDeepLink", () => ({ registerNotificationTapRouting: jest.fn(() => () => {}) }));
+jest.mock("@/utils/notificationDeepLink", () => ({
+  registerNotificationTapRouting: jest.fn(() => () => {}),
+  registerSharingNotificationRefresh: jest.fn(() => () => {}),
+}));
 jest.mock("@/utils/notificationPreferences", () => ({ recordAppOpenHour: jest.fn() }));
 jest.mock("@/utils/auth/useAuthModal", () => ({ AuthModal: () => null }));
 jest.mock("@/components/OfflineBanner", () => ({ OfflineBanner: () => null }));
