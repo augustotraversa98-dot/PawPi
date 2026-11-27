@@ -8,6 +8,7 @@ import {
   phoneLink,
 } from "@/components/publicPet/PetPageParts";
 import { BRAND } from "@/lib/brand/tokens";
+import { breedName } from "@/lib/publicPet/breeds";
 import { useDocumentHead } from "@/lib/legal/head";
 import { PET_PAGE_COPY } from "@/lib/publicPet/copy";
 import { useVisitorLang } from "@/lib/publicPet/useVisitorLang";
@@ -91,7 +92,7 @@ export default function PublicVetCardPage() {
           </div>
           <div style={{ marginTop: 12 }}>
             {row(copy.species, copy.speciesValues[String(pet.species || "").toLowerCase()] || pet.species)}
-            {row(copy.breed, pet.breed)}
+            {row(copy.breed, breedName(pet.breed, lang))}
             {row(copy.microchip, card.microchip_id)}
           </div>
 

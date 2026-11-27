@@ -4,6 +4,7 @@ import { Image } from "expo-image";
 import { Store, Star, ChevronRight } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { COLORS } from "@/constants/colors";
+import { providerTypeLabel } from "@/utils/providerTypeLabel";
 
 // Phase 2 ticket 2.13 — a provider "discover this business" suggestion card, rendered INLINE in
 // the feed between pet posts. Visually DISTINCT from PostCard: a sage-tinted card with a
@@ -14,7 +15,7 @@ export const ProviderFeedCard = memo(function ProviderFeedCard({ provider, onPre
   const rating =
     provider.avg_rating != null ? Number(provider.avg_rating) : null;
   const reviewCount = provider.review_count ?? 0;
-  const typeLabel = (provider.provider_type || "service").replace(/_/g, " ");
+  const typeLabel = providerTypeLabel(t, provider.provider_type);
 
   return (
     <TouchableOpacity
@@ -85,17 +86,14 @@ export const ProviderFeedCard = memo(function ProviderFeedCard({ provider, onPre
           >
             {provider.name}
           </Text>
-          <Text
-            style={{
-              fontSize: 12,
-              color: COLORS.mutedBrown,
-              textTransform: "capitalize",
-              marginTop: 1,
-            }}
-            numberOfLines={1}
-          >
-            {typeLabel}
-          </Text>
+          {typeLabel ? (
+            <Text
+              style={{ fontSize: 12, color: COLORS.mutedBrown, marginTop: 1 }}
+              numberOfLines={1}
+            >
+              {typeLabel}
+            </Text>
+          ) : null}
           <View
             style={{
               flexDirection: "row",

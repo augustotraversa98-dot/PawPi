@@ -5,20 +5,23 @@ import en from "./locales/en.json";
 import es from "./locales/es.json";
 
 // i18n framework (ticket 2.29). English + Spanish; defaults to the PHONE's language,
-// falls back to English for anything else. A persisted manual override lives in
-// ./localePreference (Settings → Language). New screens use t("namespace.key"); any
-// missing key falls back to English so a raw key is never shown on screen.
+// falls back to Spanish (PawPi's primary language) when the phone asks for neither. A
+// persisted manual override lives in ./localePreference (Settings → Language). New screens
+// use t("namespace.key"); any missing key falls back to English so a raw key is never
+// shown on screen.
 
 export const SUPPORTED_LANGUAGES = ["en", "es"];
+export const DEFAULT_LANGUAGE = "es";
 
-// The device's primary language if we support it, else English.
+// The first language in the phone's preferred list that we support. None supported, none
+// reported, or the lookup fails → Spanish.
 export function deviceLanguage() {
   try {
     const locales = Localization.getLocales?.() || [];
-    const code = locales[0]?.languageCode;
-    return SUPPORTED_LANGUAGES.includes(code) ? code : "en";
+    const preferred = locales.find((l) => SUPPORTED_LANGUAGES.includes(l?.languageCode));
+    return preferred ? preferred.languageCode : DEFAULT_LANGUAGE;
   } catch {
-    return "en";
+    return DEFAULT_LANGUAGE;
   }
 }
 

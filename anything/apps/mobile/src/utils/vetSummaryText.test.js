@@ -1,3 +1,4 @@
+import i18n from "@/i18n";
 import { summaryToText } from "./vetSummaryText";
 
 const summary = {
@@ -41,4 +42,15 @@ it("is empty-safe", () => {
 it("shows a legacy \"lb\" weigh-in as lbs", () => {
   const legacy = { ...summary, weight: { series: [{ weight: 50, unit: "lb" }, { weight: 46, unit: "lbs" }] } };
   expect(summaryToText(legacy)).toContain("Weight: 50lbs → 46lbs");
+});
+
+it("names the breed in the app's language, and keeps an unlisted one as stored", async () => {
+  await i18n.changeLanguage("es");
+  const lines = (breed) => summaryToText({ ...summary, pet: { name: "Rex", breed } }).split("\n");
+  expect(lines("Poodle")).toContain("Caniche");
+  expect(lines("Mixed Breed")).toContain("Mestizo");
+  expect(lines("Beagle")).toContain("Beagle");
+  expect(lines("Perro de la cuadra")).toContain("Perro de la cuadra");
+  await i18n.changeLanguage("en");
+  expect(lines("Poodle")).toContain("Poodle");
 });

@@ -134,9 +134,9 @@ describe('the 429 response', () => {
     expect(body.error).toBe(body.message_es);
   });
 
-  it('defaults `error` to English', async () => {
+  it('defaults `error` to Spanish', async () => {
     const body = await rateLimitResponse({ retryAfterSeconds: 1, locale: undefined }).json();
-    expect(body.error).toBe(body.message_en);
+    expect(body.error).toBe(body.message_es);
   });
 });
 
@@ -147,11 +147,30 @@ describe('pickLocale', () => {
   it('reads Accept-Language when there is no stored preference', () => {
     expect(pickLocale(req({ 'accept-language': 'es-AR,es;q=0.9' }), null)).toBe('es');
   });
-  it('does not match a language that merely CONTAINS "es"', () => {
-    expect(pickLocale(req({ 'accept-language': 'test-lang' }), null)).toBe('en');
+  it.each([
+    ['en-US', 'en'],
+    ['EN', 'en'],
+    ['en-US,es;q=0.9', 'en'],
+    ['en,es', 'en'],
+    ['fr-FR,en;q=0.8', 'en'],
+    ['es;q=0.4,en;q=0.9', 'en'],
+    ['es,en', 'es'],
+    ['es-419,en;q=0.9', 'es'],
+    ['en;q=0.5,es-AR', 'es'],
+    ['pt-BR,pt;q=0.9', 'es'],
+    ['en;q=0', 'es'],
+    ['*', 'es'],
+    // A language that merely contains "en" or "es" is neither.
+    ['test-lang,eng', 'es'],
+  ])('with Accept-Language %s answers in %s', (header, expected) => {
+    expect(pickLocale(req({ 'accept-language': header }), null)).toBe(expected);
   });
-  it('falls back to English', () => {
-    expect(pickLocale(req(), null)).toBe('en');
+  it('falls back to Spanish', () => {
+    expect(pickLocale(req(), null)).toBe('es');
+    expect(pickLocale(req(), 'pt')).toBe('es');
+  });
+  it('honours a stored English preference', () => {
+    expect(pickLocale(req({ 'accept-language': 'es-AR' }), 'en')).toBe('en');
   });
 });
 

@@ -321,6 +321,10 @@ function PlaceHeader({
   onJumpToReviews,
   t,
 }) {
+  // The stored category is an English id; a category without a label is shown as stored.
+  const categoryLabel = place.category
+    ? t(`discover.placeCat.${place.category}`, { defaultValue: place.category })
+    : null;
   return (
     <Card
       level="md"
@@ -352,10 +356,10 @@ function PlaceHeader({
             <Text
               style={[
                 TYPE.footnote,
-                { fontWeight: "700", color: COLORS.coral, textTransform: "capitalize" },
+                { fontWeight: "700", color: COLORS.coral },
               ]}
             >
-              {place.category}
+              {categoryLabel}
             </Text>
           ) : null}
           {place.neighborhood ? (

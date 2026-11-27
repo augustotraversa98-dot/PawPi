@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Sparkles } from "lucide-react-native";
 import { COLORS, TYPE, RADIUS, SPACING } from "@/constants/theme";
 import { PRIVACY_POLICY_URL } from "@/constants/legal";
+import { withAppLanguage } from "@/utils/webLinks";
 
 // The permission screen shown the first time a Vet Record document could be read (Apple 5.1.2(i)): who receives it (Anthropic), why,
 // and that it is the person's choice. The document is already saved when this appears, so neither answer can lose it.
@@ -39,7 +40,7 @@ export function AiDocConsentScreen({ onAllow, onNotNow }) {
             testID="ai-doc-consent-privacy"
             accessibilityRole="link"
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            onPress={() => Linking.openURL(PRIVACY_POLICY_URL).catch(() => {})}
+            onPress={() => Linking.openURL(withAppLanguage(PRIVACY_POLICY_URL)).catch(() => {})}
             style={{ marginTop: SPACING.lg, paddingVertical: 4 }}
           >
             <Text style={[TYPE.body, { color: COLORS.warmBrown, fontWeight: "700", textDecorationLine: "underline" }]}>

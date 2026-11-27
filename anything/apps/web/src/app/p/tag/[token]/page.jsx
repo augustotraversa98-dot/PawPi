@@ -9,6 +9,7 @@ import {
   PetRow,
 } from "@/components/publicPet/PetPageParts";
 import { BRAND } from "@/lib/brand/tokens";
+import { breedName } from "@/lib/publicPet/breeds";
 import { useDocumentHead } from "@/lib/legal/head";
 import { PET_PAGE_COPY } from "@/lib/publicPet/copy";
 import { FINDER_LIMITS, cleanFinderFields, finderContactError } from "@/lib/publicPet/finder";
@@ -178,7 +179,7 @@ export default function PublicTagPage() {
 
           <div style={{ marginTop: 12 }}>
             {row(copy.species, copy.speciesValues[String(pet.species || "").toLowerCase()] || pet.species)}
-            {row(copy.breed, pet.breed)}
+            {row(copy.breed, breedName(pet.breed, lang))}
             {row(copy.microchip, card.microchip_id)}
           </div>
 
