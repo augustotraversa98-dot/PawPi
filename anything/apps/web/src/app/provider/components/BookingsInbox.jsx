@@ -30,29 +30,32 @@ import {
 import { COLORS } from "../lib/colors";
 import { formatBookingWhen } from "../lib/bookingTime";
 import { bookingActions } from "../lib/bookingActions";
+import bookingsCopy from "../i18n/bookings";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { fill } from "../i18n/lib/format";
+import { bookingStatusName, roleName } from "../i18n/lib/labels";
+import { serverErrorMessage } from "../i18n/lib/serverError";
 
 // Display name for a staff member, falling back to username then a raw id.
-function staffName(member, fallbackId) {
-  if (!member) return `Staff #${fallbackId}`;
-  return member.full_name || member.username || `Staff #${fallbackId}`;
+function staffName(member, fallbackId, t) {
+  return (
+    member?.full_name || member?.username || fill(t.staffFallback, { id: fallbackId })
+  );
 }
 
 // booking_status filter options. "all" sends no ?booking_status (full inbox).
 const STATUS_FILTERS = [
-  { value: "all", label: "All" },
-  { value: "requested", label: "Requested" },
-  { value: "confirmed", label: "Confirmed" },
-  { value: "completed", label: "Completed" },
-  { value: "declined", label: "Declined" },
-  { value: "cancelled", label: "Cancelled" },
+  "all",
+  "requested",
+  "confirmed",
+  "completed",
+  "declined",
+  "cancelled",
 ];
 
 // Client-side sort of the (unpaginated) inbox. Default matches the server's
 // appointment_date DESC ordering; "created" reveals newest-booked first.
-const SORT_OPTIONS = [
-  { value: "appointment", label: "Appointment date" },
-  { value: "created", label: "Date created" },
-];
+const SORT_OPTIONS = ["appointment", "created"];
 
 const BADGE_STYLES = {
   requested: { bg: "#FFF1E2", fg: "#B75D32" },
@@ -62,14 +65,16 @@ const BADGE_STYLES = {
   cancelled: { bg: "#EFEAE6", fg: "#7A6254" },
 };
 
-function StatusBadge({ status }) {
+function StatusBadge({ status, lang }) {
   const s = BADGE_STYLES[status] || { bg: "#EFEAE6", fg: "#7A6254" };
   return (
     <span
-      className="inline-block rounded-full px-2.5 py-1 text-xs font-semibold capitalize"
+      className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold${
+        lang === "en" ? " capitalize" : ""
+      }`}
       style={{ backgroundColor: s.bg, color: s.fg }}
     >
-      {status || "—"}
+      {status ? bookingStatusName(status, lang) : "—"}
     </span>
   );
 }
@@ -105,6 +110,9 @@ function searchHaystack(b) {
 const columnHelper = createColumnHelper();
 
 export default function BookingsInbox({ providerId }) {
+  const { t, lang } = useProviderCopy(bookingsCopy);
+  const errorText = (err, fallback) =>
+    serverErrorMessage(err, lang, fallback, bookingsCopy);
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -156,36 +164,32 @@ export default function BookingsInbox({ providerId }) {
   const [assigning, setAssigning] = useState(null);
 
   // Run an action and toast the outcome. The hook invalidates on success;
-  // backend 400/404/409 messages surface verbatim so the user sees e.g.
-  // "Only a requested booking can be confirmed".
+  // backend 400/404/409 messages surface (translated in Spanish) so the user sees
+  // why, e.g. that only a requested booking can be confirmed.
   const runAction = (appointmentId, action, staffUserId) => {
     mutate(
       { appointmentId, action, staffUserId },
       {
         onSuccess: () => {
-          const verb = {
-            confirm: "confirmed",
-            decline: "declined",
-            cancel: "cancelled",
-            assign: "assigned",
-          }[action];
-          toast.success(`Booking ${verb}`);
+          toast.success(t.done[action]);
         },
         onError: (err) => {
-          toast.error(err?.message || "Action failed");
+          toast.error(errorText(err, t.actionFailed));
         },
       },
     );
   };
 
   const onConfirm = (b) => runAction(b.id, "confirm");
+  const askAbout = (question, b) =>
+    window.confirm(fill(question, { pet: b.pet_name || t.thisPet }));
   const onDecline = (b) => {
-    if (window.confirm(`Decline the booking for ${b.pet_name || "this pet"}?`)) {
+    if (askAbout(t.prompts.decline, b)) {
       runAction(b.id, "decline");
     }
   };
   const onCancel = (b) => {
-    if (window.confirm(`Cancel the booking for ${b.pet_name || "this pet"}?`)) {
+    if (askAbout(t.prompts.cancel, b)) {
       runAction(b.id, "cancel");
     }
   };
@@ -214,7 +218,7 @@ export default function BookingsInbox({ providerId }) {
       );
       if (!createRes.ok) {
         const e = await createRes.json().catch(() => ({}));
-        throw new Error(e.error || "Couldn't start the consult");
+        throw new Error(e.error || t.consult.startFailed);
       }
       const { session } = await createRes.json();
       const joinRes = await fetch(
@@ -223,13 +227,13 @@ export default function BookingsInbox({ providerId }) {
       );
       if (!joinRes.ok) {
         const e = await joinRes.json().catch(() => ({}));
-        throw new Error(e.error || "Couldn't join the consult");
+        throw new Error(e.error || t.consult.joinFailed);
       }
       const { joinUrl } = await joinRes.json();
       if (joinUrl) window.open(joinUrl, "_blank", "noopener");
-      else toast.error("No join link was returned");
+      else toast.error(t.consult.noLink);
     } catch (err) {
-      toast.error(err?.message || "Couldn't join the consult");
+      toast.error(errorText(err, t.consult.joinFailed));
     }
   };
 
@@ -239,13 +243,13 @@ export default function BookingsInbox({ providerId }) {
   // optional quick recap the PATCH endpoint already accepts; a cancelled prompt still ends
   // the consult with no summary rather than aborting the action entirely.
   const onEndConsult = (b) => {
-    if (!window.confirm(`End the consult for ${b.pet_name || "this pet"}?`)) return;
-    const summary = window.prompt("Optional recap for the owner (leave blank to skip):", "");
+    if (!askAbout(t.prompts.endConsult, b)) return;
+    const summary = window.prompt(t.prompts.recap, "");
     endConsult(
       { sessionId: b.telehealth_session_id, summary: summary || undefined },
       {
-        onSuccess: () => toast.success("Consult ended"),
-        onError: (err) => toast.error(err?.message || "Couldn't end the consult"),
+        onSuccess: () => toast.success(t.consult.ended),
+        onError: (err) => toast.error(errorText(err, t.consult.endFailed)),
       },
     );
   };
@@ -267,39 +271,41 @@ export default function BookingsInbox({ providerId }) {
       // "Booking #<id>" convention (chats, pet record). Visible + searchable.
       columnHelper.accessor((row) => row.id, {
         id: "ref",
-        header: "Booking #",
+        header: t.columns.ref,
         cell: (info) => (
           <span className="whitespace-nowrap font-semibold text-[#7A6254]">
             {`#${info.getValue()}`}
           </span>
         ),
       }),
-      columnHelper.accessor((row) => formatBookingWhen(row, timeZone), {
+      // Formatted at render (not as a cached accessor value) so it follows the
+      // provider's zone and the language.
+      columnHelper.display({
         id: "when",
-        header: "Date & time",
-        cell: (info) => (
+        header: t.columns.when,
+        cell: ({ row }) => (
           <span className="whitespace-nowrap font-medium text-[#3B241B]">
-            {info.getValue()}
+            {formatBookingWhen(row.original, timeZone, lang)}
           </span>
         ),
       }),
       columnHelper.accessor((row) => row.pet_name || "—", {
         id: "pet",
-        header: "Pet",
+        header: t.columns.pet,
       }),
       columnHelper.accessor((row) => row.owner_name || "—", {
         id: "owner",
-        header: "Owner",
+        header: t.columns.owner,
       }),
       columnHelper.accessor((row) => row.service_name || "—", {
         id: "service",
-        header: "Service",
+        header: t.columns.service,
       }),
       // The owner's free-text note for the visit (replaces the old reason chips on mobile).
       // Truncated with the full text on hover; blank when none so the cell stays quiet.
       columnHelper.accessor((row) => row.notes || "", {
         id: "notes",
-        header: "Notes",
+        header: t.columns.notes,
         cell: (info) => {
           const v = info.getValue();
           return v ? (
@@ -314,26 +320,26 @@ export default function BookingsInbox({ providerId }) {
       }),
       columnHelper.accessor((row) => row.booking_status, {
         id: "status",
-        header: "Status",
-        cell: (info) => <StatusBadge status={info.getValue()} />,
+        header: t.columns.status,
+        cell: (info) => <StatusBadge status={info.getValue()} lang={lang} />,
       }),
       columnHelper.accessor((row) => row.staff_user_id, {
         id: "assigned",
-        header: "Assigned",
+        header: t.columns.assigned,
         cell: (info) => {
           const v = info.getValue();
           if (v == null)
-            return <span className="text-[#B8A99D]">Unassigned</span>;
+            return <span className="text-[#B8A99D]">{t.unassigned}</span>;
           return (
             <span className="text-[#3B241B]">
-              {staffName(staffById.get(String(v)), v)}
+              {staffName(staffById.get(String(v)), v, t)}
             </span>
           );
         },
       }),
       columnHelper.display({
         id: "actions",
-        header: "Actions",
+        header: t.columns.actions,
         cell: ({ row }) => {
           const b = row.original;
           // Status-correct action set (shared with the calendar popover in PR-B).
@@ -353,7 +359,7 @@ export default function BookingsInbox({ providerId }) {
             <div className="flex flex-wrap items-center gap-2">
               {canJoinConsult && (
                 <ActionButton
-                  label="Join consult"
+                  label={t.actions.join}
                   Icon={Video}
                   onClick={() => onJoinConsult(b)}
                   variant="primary"
@@ -361,7 +367,7 @@ export default function BookingsInbox({ providerId }) {
               )}
               {canEndConsult && (
                 <ActionButton
-                  label="End consult"
+                  label={t.actions.end}
                   Icon={PhoneOff}
                   onClick={() => onEndConsult(b)}
                   disabled={ending}
@@ -370,7 +376,7 @@ export default function BookingsInbox({ providerId }) {
               )}
               {canOpenRecord && (
                 <ActionButton
-                  label="Open record"
+                  label={t.actions.openRecord}
                   Icon={Stethoscope}
                   onClick={() => onOpenRecord(b)}
                   variant="muted"
@@ -378,7 +384,7 @@ export default function BookingsInbox({ providerId }) {
               )}
               {canConfirm && (
                 <ActionButton
-                  label="Confirm"
+                  label={t.actions.confirm}
                   Icon={Check}
                   onClick={() => onConfirm(b)}
                   disabled={busy}
@@ -387,7 +393,7 @@ export default function BookingsInbox({ providerId }) {
               )}
               {canDecline && (
                 <ActionButton
-                  label="Decline"
+                  label={t.actions.decline}
                   Icon={X}
                   onClick={() => onDecline(b)}
                   disabled={busy}
@@ -396,7 +402,7 @@ export default function BookingsInbox({ providerId }) {
               )}
               {canCancel && (
                 <ActionButton
-                  label="Cancel"
+                  label={t.actions.cancel}
                   Icon={Ban}
                   onClick={() => onCancel(b)}
                   disabled={busy}
@@ -405,7 +411,7 @@ export default function BookingsInbox({ providerId }) {
               )}
               {canAssign && (
                 <ActionButton
-                  label="Assign"
+                  label={t.actions.assign}
                   Icon={UserPlus}
                   onClick={() => onAssign(b)}
                   disabled={busy}
@@ -419,7 +425,7 @@ export default function BookingsInbox({ providerId }) {
                 !canOpenRecord &&
                 !canJoinConsult &&
                 !canEndConsult && (
-                  <span className="text-xs text-[#B8A99D]">No actions</span>
+                  <span className="text-xs text-[#B8A99D]">{t.actions.none}</span>
                 )}
             </div>
           );
@@ -428,8 +434,9 @@ export default function BookingsInbox({ providerId }) {
     ],
     // handlers are stable enough for this screen; rebuild on pending change so
     // the busy state reflects in the cells, on staff load so the assigned column
-    // resolves names, and on timeZone load so the when column re-renders zoned.
-    [isPending, variables, isEnding, endingVars, staffById, timeZone],
+    // resolves names, on timeZone load so the when column re-renders zoned, and on
+    // a language change.
+    [isPending, variables, isEnding, endingVars, staffById, timeZone, lang],
   );
 
   const table = useReactTable({
@@ -449,10 +456,8 @@ export default function BookingsInbox({ providerId }) {
             <Calendar className="h-5 w-5" style={{ color: COLORS.terracotta }} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-[#3B241B]">Bookings</h1>
-            <p className="text-sm text-[#7A6254]">
-              Incoming appointments from pet owners
-            </p>
+            <h1 className="text-2xl font-bold text-[#3B241B]">{t.title}</h1>
+            <p className="text-sm text-[#7A6254]">{t.subtitle}</p>
           </div>
         </div>
 
@@ -462,32 +467,32 @@ export default function BookingsInbox({ providerId }) {
             className="inline-flex items-center gap-1.5 rounded-xl border-2 border-[#FFD9B3] bg-white px-3 py-2 text-sm font-semibold text-[#7A6254]"
           >
             <CalendarDays className="h-4 w-4" />
-            Calendar view
+            {t.calendarView}
           </Link>
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#B8A99D]" />
             <input
               type="search"
-              aria-label="Search bookings"
-              placeholder="Search pet, owner, service, #id"
+              aria-label={t.searchAria}
+              placeholder={t.searchPlaceholder}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-56 rounded-xl border-2 border-[#FFD9B3] bg-white py-2 pl-9 pr-3 text-sm font-medium text-[#3B241B] outline-none focus:border-[#FF6F61]"
             />
           </div>
           <label htmlFor="booking-sort" className="text-sm font-semibold text-[#7A6254]">
-            Sort
+            {t.sortLabel}
           </label>
           <select
             id="booking-sort"
-            aria-label="Sort bookings"
+            aria-label={t.sortAria}
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
             className="rounded-xl border-2 border-[#FFD9B3] bg-white px-3 py-2 text-sm font-semibold text-[#3B241B] outline-none focus:border-[#FF6F61]"
           >
-            {SORT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
+            {SORT_OPTIONS.map((value) => (
+              <option key={value} value={value}>
+                {t.sort[value]}
               </option>
             ))}
           </select>
@@ -495,18 +500,18 @@ export default function BookingsInbox({ providerId }) {
             htmlFor="booking-status-filter"
             className="text-sm font-semibold text-[#7A6254]"
           >
-            Status
+            {t.statusLabel}
           </label>
           <select
             id="booking-status-filter"
-            aria-label="Filter by booking status"
+            aria-label={t.statusAria}
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="rounded-xl border-2 border-[#FFD9B3] bg-white px-3 py-2 text-sm font-semibold text-[#3B241B] outline-none focus:border-[#FF6F61]"
           >
-            {STATUS_FILTERS.map((f) => (
-              <option key={f.value} value={f.value}>
-                {f.label}
+            {STATUS_FILTERS.map((value) => (
+              <option key={value} value={value}>
+                {t.filters[value]}
               </option>
             ))}
           </select>
@@ -517,26 +522,22 @@ export default function BookingsInbox({ providerId }) {
         {isLoading ? (
           <div className="flex items-center justify-center gap-3 px-6 py-16 text-[#7A6254]">
             <Loader2 className="h-5 w-5 animate-spin" style={{ color: COLORS.coral }} />
-            Loading bookings…
+            {t.loading}
           </div>
         ) : isError ? (
           <div className="px-6 py-16 text-center">
-            <p className="font-semibold text-[#B23B30]">
-              Couldn't load bookings
-            </p>
+            <p className="font-semibold text-[#B23B30]">{t.loadError}</p>
             <p className="mt-1 text-sm text-[#7A6254]">
-              {error?.message || "Please try again."}
+              {errorText(error, t.tryAgain)}
             </p>
           </div>
         ) : rows.length === 0 ? (
           <div className="px-6 py-16 text-center">
             <p className="text-base font-semibold text-[#3B241B]">
-              {search.trim() ? "No matching bookings" : "No bookings yet"}
+              {search.trim() ? t.noMatchTitle : t.emptyTitle}
             </p>
             <p className="mt-1 text-sm text-[#7A6254]">
-              {search.trim()
-                ? "Try a different pet, owner, service, or booking number."
-                : "When a pet owner books with you, it will appear here."}
+              {search.trim() ? t.noMatchBody : t.emptyBody}
             </p>
           </div>
         ) : (
@@ -593,22 +594,25 @@ export default function BookingsInbox({ providerId }) {
 // assign mutation with that member's user_profile_id; if there are no active
 // staff, it points the user at the Staff screen instead of dead-ending.
 function AssignModal({ booking, staff, currentStaffId, onPick, onClose }) {
+  const { t, lang } = useProviderCopy(bookingsCopy);
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Assign staff"
+      aria-label={t.assignModal.aria}
     >
       <div className="w-full max-w-md rounded-3xl bg-white p-7 shadow-xl">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-xl font-bold text-[#3B241B]">
-            Assign {booking.pet_name || "booking"}
+            {fill(t.assignModal.title, {
+              name: booking.pet_name || t.assignModal.booking,
+            })}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t.assignModal.close}
             className="rounded-lg p-1.5 text-[#7A6254] hover:bg-[#FFF7EF]"
           >
             <X className="h-5 w-5" />
@@ -617,7 +621,7 @@ function AssignModal({ booking, staff, currentStaffId, onPick, onClose }) {
 
         {staff.length === 0 ? (
           <p className="py-6 text-center text-sm text-[#7A6254]">
-            No active staff to assign yet. Add a teammate from the Staff screen.
+            {t.assignModal.empty}
           </p>
         ) : (
           <ul className="space-y-2">
@@ -633,7 +637,7 @@ function AssignModal({ booking, staff, currentStaffId, onPick, onClose }) {
                     className="flex w-full items-center justify-between rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-3 py-2.5 text-left text-sm font-semibold text-[#3B241B] transition-colors hover:border-[#FF6F61]"
                   >
                     <span>
-                      {staffName(m, m.user_profile_id)}
+                      {staffName(m, m.user_profile_id, t)}
                       {m.username && (
                         <span className="ml-2 text-xs font-normal text-[#7A6254]">
                           @{m.username}
@@ -641,12 +645,16 @@ function AssignModal({ booking, staff, currentStaffId, onPick, onClose }) {
                       )}
                     </span>
                     <span className="flex items-center gap-2">
-                      <span className="text-xs font-normal capitalize text-[#B8A99D]">
-                        {m.role}
+                      <span
+                        className={`text-xs font-normal text-[#B8A99D]${
+                          lang === "en" ? " capitalize" : ""
+                        }`}
+                      >
+                        {roleName(m.role, lang)}
                       </span>
                       {isCurrent && (
                         <span className="rounded-full bg-[#E5F4EC] px-2 py-0.5 text-[10px] font-semibold text-[#1F7A4D]">
-                          Current
+                          {t.assignModal.current}
                         </span>
                       )}
                     </span>
