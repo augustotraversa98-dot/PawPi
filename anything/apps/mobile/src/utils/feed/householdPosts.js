@@ -21,3 +21,11 @@ export function isHouseholdPost(post, householdPetIds) {
   if (post.pet_id == null || !householdPetIds || typeof householdPetIds.has !== "function") return false;
   return householdPetIds.has(String(post.pet_id));
 }
+
+/** Pet ids of the posts whose dog is NOT the viewer's household: the dogs that may be a friend's. */
+export function friendDogIds(posts, householdPetIds) {
+  if (!Array.isArray(posts)) return [];
+  return posts
+    .filter((p) => p && p.item_type !== "provider_post" && p.pet_id != null && !isHouseholdPost(p, householdPetIds))
+    .map((p) => p.pet_id);
+}

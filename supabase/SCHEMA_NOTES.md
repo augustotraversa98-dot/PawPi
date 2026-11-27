@@ -344,6 +344,15 @@ ACTION 1).
 > Verify: `supabase/verify_0132.sql` (all PASS). Proven in `notifications-v2-owner-push.integration.test.ts`
 > (idempotent re-apply, RLS, and the acceptance matrix: category off / quiet hours / cap / invalid token ⇒ no push).
 
+> **0155** shows a friend's Care Ring streak. ONE read-only DEFINER function, `app_friend_streaks(integer[])` →
+> `(pet_id, streak)`; no table, column or policy changes. The viewer is `current_app_user_id()`; a row comes back
+> only for a dog that one of the viewer's own dogs follows, is an accepted `pet_friendships` friend of, or shares an
+> active pack streak with, never the viewer's own dog, never across a block or for a banned owner, and only when the
+> streak is **currently** alive and **>= 7** (same missed-day / rest / pause / freeze rules as
+> `app_advance_care_streak`, in the owner's time zone, without writing). Read through
+> `GET /api/posts/friend-streaks`, which answers `available: false` while the function is absent. **Hand-applied after
+> merge.** Verify: `supabase/verify_0155.sql` (all PASS). Proven in `friend-streaks.integration.test.ts`.
+
 Still deferred: **no seed data.**
 
 ---

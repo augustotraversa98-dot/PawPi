@@ -5,6 +5,7 @@ import {
   isBirthdayToday,
   getMilestone,
   getUpcomingMilestone,
+  postBirthday,
 } from "./feedDelight";
 
 describe("getMilestone (E3)", () => {
@@ -23,6 +24,46 @@ describe("getMilestone (E3)", () => {
     expect(getMilestone({}, "2026-06-18")).toBeNull();
     expect(getMilestone({ birthday: "2020-06-18" }, "bad")).toBeNull();
     expect(getMilestone(null, "2026-06-18")).toBeNull();
+  });
+});
+
+describe("birthdays from the feed (month and day only)", () => {
+  it("matches MM-DD against the reference day; the year is unknown", () => {
+    expect(getMilestone({ birthday: "06-18" }, "2026-06-18")).toEqual({ type: "birthday", years: 0 });
+    expect(getMilestone({ birthday: "06-17" }, "2026-06-18")).toBeNull();
+    expect(getMilestone({ birthday: "18-06" }, "2026-06-18")).toBeNull();
+    expect(getMilestone({ birthday: "6-18" }, "2026-06-18")).toBeNull();
+  });
+
+  it.each(["02-29", "2020-02-29"])("%s: Feb 28 in non-leap years, Feb 29 in leap years", (birthday) => {
+    const on = (day) => getMilestone({ birthday }, day)?.type ?? null;
+    expect(on("2027-02-28")).toBe("birthday");
+    expect(on("2027-03-01")).toBeNull();
+    expect(on("2028-02-29")).toBe("birthday");
+    expect(on("2028-02-28")).toBeNull();
+    expect(on("2100-02-28")).toBe("birthday"); // a century that is not a leap year
+    expect(on("2000-02-28")).toBeNull();
+  });
+
+  it("a Feb 28 birthday does not move", () => {
+    expect(getMilestone({ birthday: "02-28" }, "2027-02-28")?.type).toBe("birthday");
+    expect(getMilestone({ birthday: "02-28" }, "2028-02-29")).toBeNull();
+  });
+
+  it("the countdown points at the same Feb 28", () => {
+    expect(getUpcomingMilestone({ birthday: "2020-02-29" }, "2027-02-26")).toEqual({
+      type: "birthday",
+      years: 7,
+      daysUntil: 2,
+    });
+    expect(getUpcomingMilestone({ birthday: "2020-02-29" }, "2028-02-26")?.daysUntil).toBe(3);
+  });
+
+  it("postBirthday prefers the month-day and copes with an older server", () => {
+    expect(postBirthday({ pet_birthday_md: "06-18", pet_birthday: "9996-06-18" })).toBe("06-18");
+    expect(postBirthday({ pet_birthday: "2020-06-18T00:00:00.000Z" })).toBe("2020-06-18T00:00:00.000Z");
+    expect(postBirthday({ pet_birthday_md: null, pet_birthday: null })).toBeNull();
+    expect(postBirthday(undefined)).toBeNull();
   });
 });
 

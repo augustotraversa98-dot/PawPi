@@ -137,11 +137,12 @@ describe("PostCard — streak + birthday delight (2.37)", () => {
     expect(getByText("🎂")).toBeTruthy();
   });
 
-  it("shows the 🎂 on the adoption anniversary too", () => {
-    const { getByText } = render(
+  it("an adoption anniversary keeps its own ribbon, without the birthday 🎂", () => {
+    const { getByText, queryByText } = render(
       <PostCard post={{ ...basePost, pet_adoption_date: "2019-06-18" }} />,
     );
-    expect(getByText("🎂")).toBeTruthy();
+    expect(getByText("🎉 Phoebe's Gotcha Day")).toBeTruthy();
+    expect(queryByText("🎂")).toBeNull();
   });
 
   it("no 🎂 when it's not the pet's day", () => {
