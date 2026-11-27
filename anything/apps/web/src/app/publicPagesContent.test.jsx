@@ -206,7 +206,9 @@ describe("server-rendered head", () => {
   it("stays out of the rest of the web app", () => {
     expect(html("/provider")).toBe("");
     expect(html("/account/signin")).toBe("");
-    expect(documentLang("/account/signin", "")).toBe("en");
+    expect(documentLang("/account/logout", "")).toBe("en");
+    // The sign-in pages carry no public head, but they do speak the viewer's language (Spanish unless asked).
+    expect(documentLang("/account/signin", "")).toBe("es-AR");
   });
 
   it("sets <html lang> from the page language", () => {
