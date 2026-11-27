@@ -1,3 +1,4 @@
+import offerings from "../i18n/offerings";
 import { CAPABILITY_OPTIONS } from "./capabilities";
 
 // Presentation-only grouping of the capability offerings into a few clear parent sections,
@@ -7,34 +8,31 @@ import { CAPABILITY_OPTIONS } from "./capabilities";
 // (the ones in CAPABILITY_OPTIONS / the server's ALLOWED_CAPABILITIES) to a display section +
 // order. It is labels + grouping only, fully reversible. Keep in sync with CAPABILITY_OPTIONS.
 
-const SECTION_ORDER = [
-  "Veterinary & Health",
-  "Walking & Sitting",
-  "Training",
-  "Store",
-  "Adoption",
-  "Other",
-];
+// A section is identified by its English name; translated screens show sectionName(section, lang)
+// from ../i18n/lib/labels.
+const S = offerings.en.sections;
+
+const SECTION_ORDER = [S.health, S.walking, S.training, S.store, S.adoption, S.other];
 
 // Section each existing capability key belongs to. A key not listed here falls back to "Other",
 // so a newly-added capability is never silently dropped from the picker.
 const SECTION_BY_CAPABILITY = {
-  vet: "Veterinary & Health",
-  telehealth: "Veterinary & Health",
-  groomer: "Veterinary & Health",
-  pharmacy: "Veterinary & Health", // "Rx fulfillment" — a distinct existing key
-  walker: "Walking & Sitting",
-  sitter: "Walking & Sitting",
-  daycare: "Walking & Sitting",
-  trainer: "Training",
-  shop: "Store",
-  adoption: "Adoption",
-  transport: "Other",
-  insurance: "Other",
+  vet: S.health,
+  telehealth: S.health,
+  groomer: S.health,
+  pharmacy: S.health, // "Rx fulfillment" — a distinct existing key
+  walker: S.walking,
+  sitter: S.walking,
+  daycare: S.walking,
+  trainer: S.training,
+  shop: S.store,
+  adoption: S.adoption,
+  transport: S.other,
+  insurance: S.other,
 };
 
 export function sectionForCapability(value) {
-  return SECTION_BY_CAPABILITY[value] ?? "Other";
+  return SECTION_BY_CAPABILITY[value] ?? S.other;
 }
 
 // Grouped view of CAPABILITY_OPTIONS: [{ section, options: [{ value, label }, ...] }], ordered by

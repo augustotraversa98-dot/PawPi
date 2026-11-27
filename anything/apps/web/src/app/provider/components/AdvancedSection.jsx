@@ -1,16 +1,15 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import sharedCopy from "../i18n/shared";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
 
 // Collapsible "Advanced" section (Phase 3 form trimming). Essentials stay visible; the
 // less-common fields live here, COLLAPSED BY DEFAULT. Children stay MOUNTED when collapsed
 // — only the container's display is toggled — so their form values still submit and any
 // controlled state (image uploaders, hours grids) survives a collapse/expand. `defaultOpen`
-// lets a caller start expanded. Hardcoded English (the extranet has no i18n).
-export default function AdvancedSection({
-  label = "Advanced",
-  children,
-  defaultOpen = false,
-}) {
+// lets a caller start expanded.
+export default function AdvancedSection({ label, children, defaultOpen = false }) {
+  const { t } = useProviderCopy(sharedCopy);
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="rounded-xl border border-[#FFE7CE]">
@@ -20,7 +19,7 @@ export default function AdvancedSection({
         aria-expanded={open}
         className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold text-[#7A6254] hover:bg-[#FFF7EF]"
       >
-        <span>{label}</span>
+        <span>{label ?? t.advanced}</span>
         {open ? (
           <ChevronDown className="h-4 w-4" />
         ) : (

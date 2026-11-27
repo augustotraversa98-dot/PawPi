@@ -6,6 +6,7 @@ import useUser from "@/utils/useUser";
 import { getProviderQueryClient } from "../lib/queryClient";
 import { COLORS } from "../lib/colors";
 import ProviderInvites from "../components/ProviderInvites";
+import PanelLanguageSwitch from "../components/PanelLanguageSwitch";
 
 // /provider/invites — the staff-accept surface. CRITICAL: this page must NOT sit
 // behind ProviderShell's active-provider gate. An invited user has NO active
@@ -37,7 +38,14 @@ function InvitesGate() {
     );
   }
 
-  return <ProviderInvites />;
+  return (
+    <div className="min-h-screen w-full" style={{ backgroundColor: COLORS.cream }}>
+      <div className="flex justify-end px-6 pt-4">
+        <PanelLanguageSwitch />
+      </div>
+      <ProviderInvites />
+    </div>
+  );
 }
 
 export default function ProviderInvitesPage() {

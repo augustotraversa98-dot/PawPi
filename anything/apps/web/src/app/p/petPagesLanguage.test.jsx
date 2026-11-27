@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 
-// The private-link pet pages in Spanish and English: the browser's language picks, the toggle switches, and no
+// The private-link pet pages in Spanish and English: the viewer's language picks, the toggle switches, and no
 // word of the other language is left behind.
 
 vi.mock("react-router", () => ({ useParams: () => ({ token: "TOKEN1" }) }));
@@ -107,8 +107,16 @@ describe("tag page language", () => {
     expect(global.fetch).toHaveBeenCalledTimes(1); // switching language re-reads nothing
   });
 
-  it("opens in English for any other browser", async () => {
+  it("opens in Spanish for a browser in any other language", async () => {
     browserSpeaks("pt-BR");
+    respond(TAG);
+    render(<PublicTagPage />);
+    expect(await screen.findByText("Este perro tiene familia 💛")).toBeInTheDocument();
+    expectNoEnglish();
+  });
+
+  it("opens in English for an English browser", async () => {
+    browserSpeaks("en-US");
     respond(TAG);
     render(<PublicTagPage />);
     expect(await screen.findByText("This dog has a home 💛")).toBeInTheDocument();

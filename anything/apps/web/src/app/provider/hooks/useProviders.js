@@ -183,6 +183,7 @@ async function getJson(url, init) {
     data = {};
   }
   if (!res.ok) {
+    // i18n-ok: serverErrorMessage (i18n/lib/serverError.js) shows the screen's own text for this one in Spanish
     const err = new Error(data?.error || `Request failed (${res.status})`);
     // Attach the HTTP status so callers can branch — the clinical record query
     // treats 403 (no/expired/revoked grant or missing scope) as a first-class UI
