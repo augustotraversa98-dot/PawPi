@@ -5,6 +5,7 @@
 export default {
   en: {
     unauthorized: "Unauthorized",
+    sessionExpired: "Your session has expired. Please sign in again.",
     profileNotFound: "User profile not found",
     notAuthorized: "Not authorized for this provider",
     capabilityMissing: "Provider does not have the '{capability}' capability",
@@ -20,6 +21,7 @@ export default {
   },
   es: {
     unauthorized: "Tu sesión venció. Iniciá sesión de nuevo.",
+    sessionExpired: "Tu sesión venció. Iniciá sesión de nuevo.",
     profileNotFound: "No encontramos tu perfil.",
     notAuthorized: "No tenés permiso para hacer esto en este negocio.",
     capabilityMissing: "Este negocio no tiene activada la opción «{capability}».",

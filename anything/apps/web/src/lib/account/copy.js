@@ -7,6 +7,7 @@ import { PASSWORD_MIN_LENGTH } from "@/app/api/utils/passwordStrength";
 
 export const ACCOUNT_COPY = {
   en: {
+    languageLabel: "Language",
     email: "Email",
     emailPlaceholder: "your@email.com",
     logIn: "Log in",
@@ -111,6 +112,7 @@ export const ACCOUNT_COPY = {
     },
   },
   es: {
+    languageLabel: "Idioma",
     email: "Email",
     emailPlaceholder: "tu@email.com",
     logIn: "Iniciar sesión",
