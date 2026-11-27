@@ -23,6 +23,11 @@ import {
 import { COLORS } from "../lib/colors";
 import { PROVIDER_TYPES } from "../lib/providerTypes";
 import { groupedCapabilityOptions } from "../lib/capabilityGroups";
+import profileCopy from "../i18n/profile";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { fill, plural } from "../i18n/lib/format";
+import { capabilityName, providerTypeOption, sectionName } from "../i18n/lib/labels";
+import { serverErrorMessage } from "../i18n/lib/serverError";
 import AdvancedSection from "./AdvancedSection";
 import ProviderAvailability from "./ProviderAvailability";
 
@@ -50,6 +55,7 @@ const seedFrom = (p) =>
   Object.fromEntries(EDITABLE.map((f) => [f, asStr(p?.[f])]));
 
 export default function ProviderProfile({ providerId }) {
+  const { t, lang } = useProviderCopy(profileCopy);
   const { data, isLoading, isError, error } = useProvider(providerId);
   const provider = data?.provider;
 
@@ -87,19 +93,20 @@ export default function ProviderProfile({ providerId }) {
       if (next !== asStr(provider?.[field])) changes[field] = next;
     }
     if (Object.keys(changes).length === 0) {
-      toast("No changes to save");
+      toast(t.noChanges);
       return;
     }
     update.mutate(changes, {
       onSuccess: (p) => {
         reset(seedFrom(p));
-        toast.success("Profile saved");
+        toast.success(t.saved);
       },
       onError: (err) => {
-        const msg = err?.message || "Couldn't save profile";
-        // Surface a slug clash inline (and as a toast) — the most common 409/400.
-        if (/slug/i.test(msg)) setError("slug", { type: "server", message: msg });
-        toast.error(msg);
+        const sent = err?.message || "";
+        // Surface a slug clash inline (and as a toast) — the most common 409/400. The field keeps the
+        // server's text and translates it where it is shown.
+        if (/slug/i.test(sent)) setError("slug", { type: "server", message: sent });
+        toast.error(serverErrorMessage(err, lang, t.saveFailed, profileCopy));
       },
     });
   };
@@ -109,11 +116,10 @@ export default function ProviderProfile({ providerId }) {
     const next = isPublished ? "draft" : "published";
     setStatus.mutate(next, {
       onSuccess: () => {
-        toast.success(
-          next === "published" ? "Provider published" : "Provider unpublished",
-        );
+        toast.success(next === "published" ? t.published : t.unpublished);
       },
-      onError: (err) => toast.error(err?.message || "Couldn't change status"),
+      onError: (err) =>
+        toast.error(serverErrorMessage(err, lang, t.statusFailed, profileCopy)),
     });
   };
 
@@ -124,11 +130,9 @@ export default function ProviderProfile({ providerId }) {
       { auto_confirm_bookings: next },
       {
         onSuccess: () =>
-          toast.success(
-            next ? "New bookings will auto-confirm" : "Auto-confirm turned off",
-          ),
+          toast.success(next ? t.autoConfirmOn : t.autoConfirmOff),
         onError: (err) =>
-          toast.error(err?.message || "Couldn't update booking settings"),
+          toast.error(serverErrorMessage(err, lang, t.bookingSettingsFailed, profileCopy)),
       },
     );
   };
@@ -142,22 +146,20 @@ export default function ProviderProfile({ providerId }) {
           setValue("bio", draft.description, { shouldDirty: true });
         }
         const found = [];
-        if (draft?.address) found.push("address");
-        if (draft?.phone) found.push("phone");
-        if (draft?.hours) found.push("hours");
-        if (draft?.photos?.length) found.push(`${draft.photos.length} photo(s)`);
+        if (draft?.address) found.push(t.import.address);
+        if (draft?.phone) found.push(t.import.phone);
+        if (draft?.hours) found.push(t.import.hours);
+        if (draft?.photos?.length) found.push(plural(t.import.photos, draft.photos.length, lang));
         const extra = found.length
-          ? ` Also found ${found.join(", ")} — add via Locations/Services.`
+          ? ` ${fill(t.import.alsoFound, { items: found.join(", ") })}`
           : "";
-        toast.success(
-          `Imported a draft from your links. Review and Save.${extra}`,
-        );
+        toast.success(`${t.import.done}${extra}`);
         if (sources?.website === "failed" || sources?.google_place === "failed") {
-          toast("Some links couldn't be read — fill those fields in manually.");
+          toast(t.import.partial);
         }
       },
       onError: (err) =>
-        toast.error(err?.message || "Couldn't import from the web"),
+        toast.error(serverErrorMessage(err, lang, t.import.failed, profileCopy)),
     });
   };
 
@@ -165,16 +167,16 @@ export default function ProviderProfile({ providerId }) {
     return (
       <div className="flex items-center justify-center gap-3 px-8 py-20 text-[#7A6254]">
         <Loader2 className="h-5 w-5 animate-spin" style={{ color: COLORS.coral }} />
-        Loading profile…
+        {t.loading}
       </div>
     );
   }
   if (isError || !provider) {
     return (
       <div className="px-8 py-20 text-center">
-        <p className="font-semibold text-[#B23B30]">Couldn't load this provider</p>
+        <p className="font-semibold text-[#B23B30]">{t.loadErrorTitle}</p>
         <p className="mt-1 text-sm text-[#7A6254]">
-          {error?.message || "Please try again."}
+          {serverErrorMessage(error, lang, t.tryAgain, profileCopy)}
         </p>
       </div>
     );
@@ -190,10 +192,8 @@ export default function ProviderProfile({ providerId }) {
           <Building2 className="h-5 w-5" style={{ color: COLORS.terracotta }} />
         </div>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-[#3B241B]">Profile</h1>
-          <p className="text-sm text-[#7A6254]">
-            Your public business profile and listing status
-          </p>
+          <h1 className="text-2xl font-bold text-[#3B241B]">{t.title}</h1>
+          <p className="text-sm text-[#7A6254]">{t.subtitle}</p>
         </div>
         {/* Confirm-first enrichment (ticket 2.21) — proposes a draft from your links. */}
         <button
@@ -208,7 +208,7 @@ export default function ProviderProfile({ providerId }) {
           ) : (
             <Sparkles className="h-4 w-4" />
           )}
-          {enrich.isPending ? "Importing…" : "Import from the web"}
+          {enrich.isPending ? t.import.pending : t.import.action}
         </button>
       </div>
 
@@ -235,7 +235,7 @@ export default function ProviderProfile({ providerId }) {
           a collapsible section here. Collapsed by default to keep Profile scannable; the editor
           manages its own hooks/mutations (its data loads when the section mounts). */}
       <div className="mt-4 rounded-2xl border border-[#FFD9B3] bg-white p-6">
-        <AdvancedSection label="Open hours">
+        <AdvancedSection label={t.openHours}>
           <ProviderAvailability providerId={providerId} />
         </AdvancedSection>
       </div>
@@ -244,27 +244,30 @@ export default function ProviderProfile({ providerId }) {
         onSubmit={handleSubmit(onSave)}
         className="mt-6 max-w-2xl space-y-5 rounded-2xl border border-[#FFD9B3] bg-white p-6"
       >
-        <Field label="Business name" error={errors.name?.message} required>
+        <Field label={t.form.name} error={errors.name && t.form.nameRequired} required>
           <input
             type="text"
             {...register("name", {
-              required: "Business name is required",
-              validate: (v) =>
-                v.trim().length > 0 || "Business name is required",
+              required: true,
+              validate: (v) => v.trim().length > 0,
             })}
             className={inputCls}
           />
         </Field>
 
-        <Field label="Provider type" error={errors.provider_type?.message} required>
+        <Field
+          label={t.form.type}
+          error={errors.provider_type && t.form.typeRequired}
+          required
+        >
           <select
-            aria-label="Provider type"
-            {...register("provider_type", { required: "Choose a provider type" })}
+            aria-label={t.form.type}
+            {...register("provider_type", { required: true })}
             className={inputCls}
           >
-            {PROVIDER_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
+            {PROVIDER_TYPES.map(({ value }) => (
+              <option key={value} value={value}>
+                {providerTypeOption(value, lang)}
               </option>
             ))}
           </select>
@@ -272,34 +275,37 @@ export default function ProviderProfile({ providerId }) {
 
         {/* Optional profile + public-link fields (Phase 3): collapsed by default,
             still submit their values (changed-fields diff is unchanged). */}
-        <AdvancedSection label="Public links">
+        <AdvancedSection label={t.form.publicLinks}>
           <Field
-            label="Slug"
-            error={errors.slug?.message}
-            hint="Used in your public listing URL"
+            label={t.form.slug}
+            error={
+              errors.slug?.message &&
+              serverErrorMessage(errors.slug.message, lang, t.saveFailed, profileCopy)
+            }
+            hint={t.form.slugHint}
           >
             <input type="text" {...register("slug")} className={inputCls} />
           </Field>
 
-          <Field label="Bio" hint="Optional">
+          <Field label={t.form.bio} hint={t.form.optional}>
             <textarea rows={3} {...register("bio")} className={`${inputCls} resize-y`} />
           </Field>
 
-          <Field label="Logo URL" hint="Optional">
+          <Field label={t.form.logoUrl} hint={t.form.optional}>
             <input type="text" {...register("logo_url")} className={inputCls} />
           </Field>
 
           {/* Public business links (ticket 2.20) — optional. */}
-          <Field label="Website" hint="Optional">
+          <Field label={t.form.website} hint={t.form.optional}>
             <input type="text" {...register("website_url")} className={inputCls} placeholder="https://…" />
           </Field>
-          <Field label="Instagram" hint="Optional">
+          <Field label={t.form.instagram} hint={t.form.optional}>
             <input type="text" {...register("instagram_url")} className={inputCls} placeholder="https://instagram.com/…" />
           </Field>
-          <Field label="Facebook" hint="Optional">
+          <Field label={t.form.facebook} hint={t.form.optional}>
             <input type="text" {...register("facebook_url")} className={inputCls} placeholder="https://facebook.com/…" />
           </Field>
-          <Field label="Google Maps" hint="Optional">
+          <Field label={t.form.googleMaps} hint={t.form.optional}>
             <input type="text" {...register("google_maps_url")} className={inputCls} placeholder="https://maps.google.com/…" />
           </Field>
         </AdvancedSection>
@@ -315,7 +321,7 @@ export default function ProviderProfile({ providerId }) {
           ) : (
             <Save className="h-4 w-4" />
           )}
-          {update.isPending ? "Saving…" : "Save changes"}
+          {update.isPending ? t.form.saving : t.form.save}
         </button>
       </form>
     </div>
@@ -329,11 +335,12 @@ const inputCls =
 // shown (the public profile itself is served by the API and consumed by the
 // owner mobile app — no public web page is built here).
 function StatusCard({ isPublished, slug, onToggle, pending }) {
+  const { t } = useProviderCopy(profileCopy);
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#FFD9B3] bg-white p-6">
       <div>
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-[#7A6254]">Status</span>
+          <span className="text-sm font-semibold text-[#7A6254]">{t.status.label}</span>
           <span
             className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
             style={
@@ -343,22 +350,20 @@ function StatusCard({ isPublished, slug, onToggle, pending }) {
             }
           >
             {isPublished && <Check className="h-3 w-3" />}
-            {isPublished ? "Published" : "Draft"}
+            {isPublished ? t.status.published : t.status.draft}
           </span>
         </div>
         {isPublished ? (
           <p className="mt-2 text-sm text-[#7A6254]">
-            Your listing is live. Pet owners can find you in discovery at{" "}
+            {t.status.liveBody}{" "}
             <code className="rounded bg-[#FFF1E2] px-1.5 py-0.5 text-[#B75D32]">
+              {/* i18n-ok: a URL path, not words */}
               /providers/public/{slug}
             </code>
             .
           </p>
         ) : (
-          <p className="mt-2 text-sm text-[#7A6254]">
-            Your profile is a draft and not yet visible to pet owners. Publish to
-            appear in discovery.
-          </p>
+          <p className="mt-2 text-sm text-[#7A6254]">{t.status.draftBody}</p>
         )}
       </div>
       <button
@@ -379,7 +384,7 @@ function StatusCard({ isPublished, slug, onToggle, pending }) {
         ) : (
           <Globe className="h-4 w-4" />
         )}
-        {isPublished ? "Unpublish" : "Publish"}
+        {isPublished ? t.status.unpublish : t.status.publish}
       </button>
     </div>
   );
@@ -389,12 +394,13 @@ function StatusCard({ isPublished, slug, onToggle, pending }) {
 // so there is no Save button here. When ON, new bookings are accepted without a manual step;
 // bookings that require upfront payment are still confirmed only after payment clears.
 function BookingSettingsCard({ autoConfirm, onToggle, pending }) {
+  const { t } = useProviderCopy(profileCopy);
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#FFD9B3] bg-white p-6">
       <div className="max-w-lg">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-[#7A6254]">
-            Automatically confirm new bookings
+            {t.autoConfirm.label}
           </span>
           <span
             className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
@@ -405,13 +411,10 @@ function BookingSettingsCard({ autoConfirm, onToggle, pending }) {
             }
           >
             {autoConfirm && <Check className="h-3 w-3" />}
-            {autoConfirm ? "On" : "Off"}
+            {autoConfirm ? t.autoConfirm.on : t.autoConfirm.off}
           </span>
         </div>
-        <p className="mt-2 text-sm text-[#7A6254]">
-          New bookings are accepted automatically. Bookings that require upfront payment are
-          still confirmed after payment.
-        </p>
+        <p className="mt-2 text-sm text-[#7A6254]">{t.autoConfirm.body}</p>
       </div>
       <button
         type="button"
@@ -425,7 +428,7 @@ function BookingSettingsCard({ autoConfirm, onToggle, pending }) {
         }
       >
         {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-        {autoConfirm ? "Turn off" : "Turn on"}
+        {autoConfirm ? t.autoConfirm.turnOff : t.autoConfirm.turnOn}
       </button>
     </div>
   );
@@ -437,6 +440,7 @@ function BookingSettingsCard({ autoConfirm, onToggle, pending }) {
 // immediately — this is the "enable path" for a hidden module. Non-admins get a 403
 // surfaced as a toast; the per-module server guards remain the real enforcement.
 function CapabilitiesCard({ providerId }) {
+  const { t, lang } = useProviderCopy(profileCopy);
   const { data: caps, isLoading } = useProviderCapabilities(providerId);
   const add = useAddCapability(providerId);
   const remove = useRemoveCapability(providerId);
@@ -447,7 +451,7 @@ function CapabilitiesCard({ providerId }) {
     const mutation = selected.has(value) ? remove : add;
     mutation.mutate(value, {
       onError: (err) =>
-        toast.error(err?.message || "Couldn't update what you offer"),
+        toast.error(serverErrorMessage(err, lang, t.offers.failed, profileCopy)),
     });
   };
 
@@ -455,18 +459,13 @@ function CapabilitiesCard({ providerId }) {
     <div className="rounded-2xl border border-[#FFD9B3] bg-white p-6">
       <div className="mb-1 flex items-center gap-2">
         <Layers className="h-4 w-4" style={{ color: COLORS.terracotta }} />
-        <span className="text-sm font-semibold text-[#7A6254]">
-          What this business offers
-        </span>
+        <span className="text-sm font-semibold text-[#7A6254]">{t.offers.title}</span>
       </div>
-      <p className="mb-4 max-w-lg text-sm text-[#7A6254]">
-        Turn services on or off. Your dashboard shows only the sections you offer —
-        enabling one here reveals its tools in the sidebar.
-      </p>
+      <p className="mb-4 max-w-lg text-sm text-[#7A6254]">{t.offers.body}</p>
       {isLoading ? (
         <div className="flex items-center gap-2 text-sm text-[#7A6254]">
           <Loader2 className="h-4 w-4 animate-spin" style={{ color: COLORS.coral }} />
-          Loading…
+          {t.offers.loading}
         </div>
       ) : (
         // Grouped under clear parent sections (ticket 2.89) so the list is easy to scan —
@@ -475,10 +474,10 @@ function CapabilitiesCard({ providerId }) {
           {groupedCapabilityOptions().map(({ section, options }) => (
             <div key={section}>
               <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-[#B8A99D]">
-                {section}
+                {sectionName(section, lang)}
               </p>
               <div className="flex flex-wrap gap-2">
-                {options.map(({ value, label }) => {
+                {options.map(({ value }) => {
                   const on = selected.has(value);
                   const pendingThis =
                     (add.isPending && add.variables === value) ||
@@ -510,7 +509,7 @@ function CapabilitiesCard({ providerId }) {
                       ) : on ? (
                         <Check className="h-3.5 w-3.5" />
                       ) : null}
-                      {label}
+                      {capabilityName(value, lang)}
                     </button>
                   );
                 })}
