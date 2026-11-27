@@ -76,7 +76,7 @@ test("the quote form prefills from the pet and posts a lead", async () => {
         pet_id: 5,
         pet_species: "dog",
         pet_breed: "Beagle",
-        pet_age: "3",
+        pet_age: "~3",
         contact_email: "me@example.com",
       }),
     ),

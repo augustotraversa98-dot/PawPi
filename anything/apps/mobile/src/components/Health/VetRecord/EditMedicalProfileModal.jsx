@@ -17,10 +17,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
 import DateField from "@/components/DateField";
 import BirthdayOrAgeField from "@/components/Pets/BirthdayOrAgeField";
+import AdoptionDateField from "@/components/Pets/AdoptionDateField";
+import { ageFormFromPet, estimateToSave, petKeepsEstimates } from "@/utils/petAgeForm";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
 import { defaultWeightUnit } from "@/utils/weightUnit";
-import { parseDateValue } from "@/utils/canonicalDateTime";
+import { canonicalizeDateValue, parseDateValue } from "@/utils/canonicalDateTime";
 
 // The form pieces live at MODULE scope on purpose. Declared inside the modal they were a
 // new component type on every render, so each keystroke unmounted and remounted the
@@ -300,26 +302,20 @@ export default function EditMedicalProfileModal({
   // Shared fields (from pets table)
   const [breed, setBreed] = useState(initialData?.pet?.breed || "");
   const [birthday, setBirthday] = useState(
-    initialData?.pet?.birthday
-      ? new Date(initialData.pet.birthday).toISOString().split("T")[0]
-      : "",
+    canonicalizeDateValue(initialData?.pet?.birthday),
   );
+  // The age answers as loaded, so a save only sends an estimate the owner changed.
+  const [seededAge] = useState(() => ageFormFromPet(initialData?.pet));
   // Explicit "I don't know the birthday" state (docs/roadmap.md) — not just
   // "birthday happens to be blank". Derived from the pet on open, then owned
   // by the toggle in BirthdayOrAgeField.
   const [birthdayUnknown, setBirthdayUnknown] = useState(
-    !initialData?.pet?.birthday,
+    seededAge.birthdayUnknown,
   );
-  const [ageYears, setAgeYears] = useState(
-    initialData?.pet?.age_years?.toString() || "",
-  );
-  const [ageMonths, setAgeMonths] = useState(
-    initialData?.pet?.age_months?.toString() || "",
-  );
+  const [ageYears, setAgeYears] = useState(seededAge.ageYears);
+  const [ageMonths, setAgeMonths] = useState(seededAge.ageMonths);
   const [adoptionDate, setAdoptionDate] = useState(
-    initialData?.pet?.adoption_date
-      ? new Date(initialData.pet.adoption_date).toISOString().split("T")[0]
-      : "",
+    canonicalizeDateValue(initialData?.pet?.adoption_date),
   );
   // Stored lowercase (app-wide convention — see profile-edit.jsx / AddDogModal.jsx);
   // normalize on read so a pre-existing differently-cased value still matches an option.
@@ -428,17 +424,15 @@ export default function EditMedicalProfileModal({
     setErrors({});
 
     try {
-      // Age model (docs/roadmap.md): when the birthday is known, age_years/
-      // age_months are left OUT of the body entirely (not sent as null) so a
-      // previously-stored estimate stays in the database untouched — it's
-      // harmless once a birthday exists since display always prefers the
-      // calculated age. When the birthday is marked unknown, birthday is
-      // explicitly cleared and the estimate (if any) is written.
-      const ageFields = birthdayUnknown
-        ? {
-            ageYears: ageYears ? parseInt(ageYears, 10) : null,
-            ageMonths: ageMonths ? parseInt(ageMonths, 10) : null,
-          }
+      // When the birthday is marked unknown, birthday is explicitly cleared.
+      // ageYears/ageMonths are only included for an estimate the owner entered
+      // or changed (utils/petAgeForm.js).
+      const estimate = estimateToSave(
+        { birthdayUnknown, ageYears, ageMonths },
+        seededAge,
+      );
+      const ageFields = estimate
+        ? { ageYears: estimate.years, ageMonths: estimate.months }
         : {};
 
       const response = await fetch("/api/pet-medical-profiles", {
@@ -534,15 +528,22 @@ export default function EditMedicalProfileModal({
             onAgeYearsChange={setAgeYears}
             ageMonths={ageMonths}
             onAgeMonthsChange={setAgeMonths}
+            estimateGrows={petKeepsEstimates(initialData?.pet)}
           />
         </View>
-        <FormDateField
-          label={t("editMedicalProfile.fieldAdoptionDate")}
-          value={adoptionDate}
-          onChange={setAdoptionDate}
-          maximumDate={new Date()}
-          error={errors.adoptionDate}
-        />
+        <View style={{ marginBottom: 16 }}>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: "600",
+              color: COLORS.warmBrown,
+              marginBottom: 6,
+            }}
+          >
+            {t("editMedicalProfile.fieldAdoptionDate")}
+          </Text>
+          <AdoptionDateField value={adoptionDate} onChange={setAdoptionDate} />
+        </View>
         <GenderSelector selected={gender} onSelect={setGender} />
         <FormInput
           label={t("editMedicalProfile.fieldWeight")}

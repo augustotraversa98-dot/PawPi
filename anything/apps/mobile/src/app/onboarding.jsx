@@ -19,9 +19,11 @@ import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import UseDifferentAccountLink from "@/components/onboarding/UseDifferentAccountLink";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
-import DateField from "@/components/DateField";
+import BirthdayOrAgeField from "@/components/Pets/BirthdayOrAgeField";
+import AdoptionDateField from "@/components/Pets/AdoptionDateField";
 import BreedPicker from "@/components/BreedPicker";
 import { formatDisplayDate } from "@/utils/canonicalDateTime";
+import { formatPetAge, getDisplayAgeParts } from "@/utils/petAge";
 import useUser from "@/utils/auth/useUser";
 import useUpload from "@/utils/useUpload";
 import { useQueryClient } from "@tanstack/react-query";
@@ -141,7 +143,7 @@ export function firstIncompleteRequiredStep(formData) {
   if (!formData.name.trim()) return 0;
   if (!isHandleAcceptable(formData.handle)) return 1;
   if (!formData.breed.trim()) return 2;
-  // Approximate age is enough — years OR months OR a birthday.
+  // A birth date, or an estimated age (years OR months).
   if (
     formData.ageYears.trim() === "" &&
     formData.ageMonths.trim() === "" &&
@@ -162,6 +164,30 @@ export function computeAgeYears(formData) {
   if (formData.ageYears !== "") return parseInt(formData.ageYears, 10);
   if (formData.ageMonths !== "") return 0;
   return null;
+}
+
+// Saved progress from an earlier version may hold both a birthday and an estimate (they were two steps): the
+// birthday wins. Progress with only an estimate opens on the estimate.
+export function normalizeAgeAnswers(formData) {
+  if (formData.birthday) {
+    return { ...formData, birthdayUnknown: false, ageYears: "", ageMonths: "" };
+  }
+  if (formData.ageYears || formData.ageMonths) {
+    return { ...formData, birthdayUnknown: true };
+  }
+  return formData;
+}
+
+// The age fields of the new pet: the exact birth date, or else the estimate (never both).
+export function ageFieldsForNewPet(formData) {
+  if (formData.birthday) {
+    return { birthday: formData.birthday, age_years: null, age_months: null };
+  }
+  return {
+    birthday: null,
+    age_years: computeAgeYears(formData),
+    age_months: formData.ageMonths ? parseInt(formData.ageMonths, 10) : null,
+  };
 }
 
 function OnboardingScreen() {
@@ -195,14 +221,14 @@ function OnboardingScreen() {
     name: "",
     handle: "",
     breed: "",
+    // The birth date, or (birthdayUnknown) an estimated age. The adoption date is separate and optional.
+    birthdayUnknown: false,
+    birthday: "",
     ageYears: "",
     ageMonths: "",
     gender: "",
     weight: "",
     weightUnit: defaultWeightUnit(),
-    // E6: capture BOTH the birthday and the gotcha/adoption day inline (both optional) so E3
-    // milestone moments can fire for either later.
-    birthday: "",
     adoptionDate: "",
     notes: "",
   });
@@ -241,7 +267,7 @@ function OnboardingScreen() {
             // onboarding_progress — e.g. a revoked blob: URL from an earlier
             // session — overwrite it.
             const { photo: _ignore, ...rest } = parsed;
-            setFormData((prev) => ({ ...prev, ...rest }));
+            setFormData((prev) => normalizeAgeAnswers({ ...prev, ...rest }));
           }
         }
       } catch (error) {
@@ -410,12 +436,10 @@ function OnboardingScreen() {
         avatar_url: uploadedAvatarUrl,
         species: "dog",
         breed: formData.breed || null,
-        age_years: computeAgeYears(formData),
-        age_months: formData.ageMonths ? parseInt(formData.ageMonths) : null,
+        ...ageFieldsForNewPet(formData),
         gender: formData.gender || null,
         weight: formData.weight ? parseFloat(formData.weight) : null,
         weight_unit: formData.weightUnit || defaultWeightUnit(),
-        birthday: formData.birthday || null,
         adoption_date: formData.adoptionDate || null,
         notes: formData.notes || null,
       };
@@ -652,13 +676,7 @@ function OnboardingScreen() {
       case 5:
         return <StepWeight formData={formData} setFormData={setFormData} />;
       case 6:
-        return (
-          <StepBirthday
-            formData={formData}
-            setFormData={setFormData}
-            scrollTo={(y) => scrollRef.current?.scrollTo?.({ y, animated: true })}
-          />
-        );
+        return <StepAdoption formData={formData} setFormData={setFormData} />;
       case 7:
         return <StepNotes formData={formData} setFormData={setFormData} />;
       case 8:
@@ -679,7 +697,7 @@ function OnboardingScreen() {
 
   // Required steps aligned with isProfileComplete() so a new dog completes the
   // "Set up your dog's profile" checklist item at creation: name, @handle, breed,
-  // age (approx years OR a birthday), a real gender (male/female), and a weight.
+  // age (a birth date OR an estimate), a real gender (male/female), and a weight.
   const canGoNext = () => {
     switch (currentStep) {
       case 0:
@@ -692,8 +710,8 @@ function OnboardingScreen() {
       case 2:
         return formData.breed.trim().length > 0;
       case 3:
-        // Approximate age is enough — years OR months OR a birthday. This lets
-        // rescue/adopted dogs with an unknown exact birthday still complete it.
+        // A birth date, or an estimated age (years OR months), so rescue/adopted dogs with
+        // an unknown birth date can still complete it.
         return (
           formData.ageYears.trim() !== "" ||
           formData.ageMonths.trim() !== "" ||
@@ -729,7 +747,7 @@ function OnboardingScreen() {
     }
   };
 
-  // Only the birthday (6) and notes (7) steps are optional now.
+  // Only the adoption date (6) and notes (7) steps are optional.
   const isOptionalStep = currentStep === 6 || currentStep === 7;
 
   if (currentStep === TOTAL_STEPS) {
@@ -1151,10 +1169,11 @@ const StepBreed = ({ formData, setFormData }) => {
   );
 };
 
-// Step 4: Age (Required — approximate years OR months OR a birthday).
+// Step 4: Age (Required): the birth date, or an estimated age.
 const StepAge = ({ formData, setFormData }) => {
   const { t } = useTranslation();
   const dogName = formData.name || t("onboarding.yourDog");
+  const set = (patch) => setFormData((prev) => ({ ...prev, ...patch }));
 
   return (
     <View style={{ flex: 1, paddingTop: SPACING.xs }}>
@@ -1164,94 +1183,31 @@ const StepAge = ({ formData, setFormData }) => {
         subtitle={t("onboarding.ageSubtitle")}
       />
 
-      <View style={{ gap: SPACING.md }}>
-        {/* Years + Months side by side so both stay above the numeric keyboard. */}
-        <View style={{ flexDirection: "row", gap: SPACING.md }}>
-          <View style={{ flex: 1 }}>
-            <Text
-              style={[
-                TYPE.callout,
-                { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.xs },
-              ]}
-            >
-              {t("onboarding.ageYearsLabel")}
-            </Text>
-            <TextInput
-              style={[
-                TYPE.title,
-                {
-                  backgroundColor: MATERIALS.surfaceSunken,
-                  borderRadius: RADIUS.control,
-                  padding: SPACING.md,
-                  textAlign: "center",
-                  fontWeight: "600",
-                  color: COLORS.warmBrown,
-                  borderWidth: 2,
-                  borderColor: formData.ageYears ? COLORS.coral : MATERIALS.hairline,
-                },
-              ]}
-              placeholder="0"
-              placeholderTextColor={COLORS.mutedBrown}
-              value={formData.ageYears}
-              onChangeText={(text) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  ageYears: text.replace(/[^0-9]/g, ""),
-                }))
-              }
-              keyboardType="number-pad"
-              testID="onboarding-age-years"
-            />
-          </View>
-
-          <View style={{ flex: 1 }}>
-            <Text
-              style={[
-                TYPE.callout,
-                { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.xs },
-              ]}
-            >
-              {t("onboarding.ageMonthsLabel")}
-            </Text>
-            <TextInput
-              style={[
-                TYPE.title,
-                {
-                  backgroundColor: MATERIALS.surfaceSunken,
-                  borderRadius: RADIUS.control,
-                  padding: SPACING.md,
-                  textAlign: "center",
-                  fontWeight: "600",
-                  color: COLORS.warmBrown,
-                  borderWidth: 2,
-                  borderColor: formData.ageMonths ? COLORS.coral : MATERIALS.hairline,
-                },
-              ]}
-              placeholder="0"
-              placeholderTextColor={COLORS.mutedBrown}
-              value={formData.ageMonths}
-              onChangeText={(text) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  ageMonths: text.replace(/[^0-9]/g, ""),
-                }))
-              }
-              keyboardType="number-pad"
-              testID="onboarding-age-months"
-            />
-          </View>
-        </View>
-
-        {/* Rescue/adopted dogs: an approximate age is enough to continue. */}
-        <Text
-          style={[
-            TYPE.callout,
-            { color: COLORS.mutedBrown, textAlign: "center" },
-          ]}
-        >
-          {t("onboarding.ageApprox")}
-        </Text>
-      </View>
+      <Text
+        style={[
+          TYPE.callout,
+          { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.xs },
+        ]}
+      >
+        {t("onboarding.birthDateLabel")}
+      </Text>
+      <BirthdayOrAgeField
+        birthdayUnknown={formData.birthdayUnknown}
+        // Switching clears the other answer: only one of them describes the dog.
+        onToggleUnknown={(unknown) =>
+          set(
+            unknown
+              ? { birthdayUnknown: true, birthday: "" }
+              : { birthdayUnknown: false, ageYears: "", ageMonths: "" },
+          )
+        }
+        birthday={formData.birthday}
+        onBirthdayChange={(birthday) => set({ birthday })}
+        ageYears={formData.ageYears}
+        onAgeYearsChange={(ageYears) => set({ ageYears })}
+        ageMonths={formData.ageMonths}
+        onAgeMonthsChange={(ageMonths) => set({ ageMonths })}
+      />
     </View>
   );
 };
@@ -1415,95 +1371,39 @@ const StepWeight = ({ formData, setFormData }) => {
   );
 };
 
-// Step 7: Birthday + Gotcha/Adoption day (both optional).
-// E6: we capture BOTH dates inline (not one-or-the-other) so E3 milestone moments can celebrate a
-// birthday AND a gotcha day later. Both are optional — nothing is required to finish onboarding.
-const StepBirthday = ({ formData, setFormData, scrollTo }) => {
+// Step 7: Adoption date (optional). Separate from the birth date; it never replaces it.
+const StepAdoption = ({ formData, setFormData }) => {
   const { t } = useTranslation();
   const dogName = formData.name || t("onboarding.yourDog");
-
-  // Only one inline calendar may be open at a time — opening Gotcha collapses
-  // Birthday and vice-versa, so the two pickers never overlap/sprawl.
-  const [openField, setOpenField] = useState(null); // "birthday" | "gotcha" | null
-
-  // Y of each field inside the scroll content, so opening a calendar scrolls
-  // that field to the top and the whole inline calendar lands in view.
-  const fieldY = useRef({});
-  const fieldsY = useRef(0);
-  const toggleField = (name) => (next) => {
-    setOpenField(next ? name : null);
-    if (next) {
-      setTimeout(() => scrollTo?.(Math.max(0, fieldsY.current + (fieldY.current[name] ?? 0) - 8)), 60);
-    }
-  };
-
-  const dateFieldStyle = (filled) => ({
-    backgroundColor: MATERIALS.surfaceSunken,
-    borderRadius: RADIUS.control,
-    padding: SPACING.md,
-    borderWidth: 2,
-    borderColor: filled ? COLORS.coral : MATERIALS.hairline,
-  });
 
   return (
     <View style={{ flex: 1, paddingTop: SPACING.xs }}>
       <StepHeader
         icon="📅"
-        title={t("onboarding.birthdayTitle", { name: dogName })}
-        subtitle={t("onboarding.birthdaySubtitle")}
+        title={t("onboarding.adoptionTitle", { name: dogName })}
+        subtitle={t("onboarding.adoptionSubtitle")}
       />
 
-      <View
-        style={{ gap: SPACING.md }}
-        onLayout={(e) => (fieldsY.current = e.nativeEvent.layout.y)}
+      <Text
+        style={[
+          TYPE.callout,
+          { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.xs },
+        ]}
       >
-        <View onLayout={(e) => (fieldY.current.birthday = e.nativeEvent.layout.y)}>
-          <Text
-            style={[
-              TYPE.callout,
-              { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.xs },
-            ]}
-          >
-            {t("onboarding.birthdayLabel")}
-          </Text>
-          <DateField
-            value={formData.birthday}
-            placeholder={t("onboarding.birthdayPlaceholder")}
-            onChange={(birthday) => setFormData((prev) => ({ ...prev, birthday }))}
-            maximumDate={new Date()}
-            fieldStyle={dateFieldStyle(!!formData.birthday)}
-            textStyle={[TYPE.title2, { fontWeight: "600" }]}
-            open={openField === "birthday"}
-            onToggle={toggleField("birthday")}
-          />
-        </View>
-
-        <View onLayout={(e) => (fieldY.current.gotcha = e.nativeEvent.layout.y)}>
-          <Text
-            style={[
-              TYPE.callout,
-              { fontWeight: "700", color: COLORS.warmBrown, marginBottom: SPACING.xs },
-            ]}
-          >
-            {t("onboarding.gotchaLabel")}
-          </Text>
-          <DateField
-            value={formData.adoptionDate}
-            placeholder={t("onboarding.gotchaPlaceholder")}
-            onChange={(adoptionDate) => setFormData((prev) => ({ ...prev, adoptionDate }))}
-            maximumDate={new Date()}
-            fieldStyle={dateFieldStyle(!!formData.adoptionDate)}
-            textStyle={[TYPE.title2, { fontWeight: "600" }]}
-            open={openField === "gotcha"}
-            onToggle={toggleField("gotcha")}
-          />
-        </View>
-      </View>
-
-      {/* When a calendar is open, reserve extra scroll room so its last week
-          row + the fixed footer stay reachable (the inline iOS calendar is
-          ~320pt tall and would otherwise sit behind the footer). */}
-      {openField ? <View style={{ height: SPACING.lg }} /> : null}
+        {t("onboarding.adoptionLabel")}
+      </Text>
+      <AdoptionDateField
+        value={formData.adoptionDate}
+        onChange={(adoptionDate) => setFormData((prev) => ({ ...prev, adoptionDate }))}
+        fieldStyle={{
+          backgroundColor: MATERIALS.surfaceSunken,
+          borderRadius: RADIUS.control,
+          padding: SPACING.md,
+          borderWidth: 2,
+          borderColor: formData.adoptionDate ? COLORS.coral : MATERIALS.hairline,
+        }}
+        textStyle={[TYPE.title2, { fontWeight: "600" }]}
+      />
     </View>
   );
 };
@@ -1552,14 +1452,15 @@ const StepReview = ({ formData, goToStep }) => {
   const { t } = useTranslation();
   const dogName = formData.name || t("onboarding.yourDogCap");
 
-  const ageValue =
-    formData.ageYears || formData.ageMonths
-      ? `${formData.ageYears || 0} ${t("onboarding.reviewYearsUnit")}${
-          formData.ageMonths
-            ? `, ${formData.ageMonths} ${t("onboarding.reviewMonthsUnit")}`
-            : ""
-        }`
-      : t("onboarding.reviewNotSpecified");
+  // The age as the profile will show it, with the birth date when it is known.
+  const ageFields = ageFieldsForNewPet(formData);
+  const ageText = formatPetAge(
+    getDisplayAgeParts({ ...ageFields, age_is_estimate: !ageFields.birthday }),
+    t,
+  );
+  const ageValue = ageText
+    ? [ageText, formatDisplayDate(ageFields.birthday)].filter(Boolean).join(" · ")
+    : t("onboarding.reviewNotSpecified");
 
   const genderValue =
     formData.gender === "male"
@@ -1648,15 +1549,8 @@ const StepReview = ({ formData, goToStep }) => {
           onEdit={() => goToStep(5)}
         />
         <ReviewRow
-          label={t("onboarding.reviewSpecialDays")}
-          value={
-            [
-              formData.birthday ? `🎂 ${formatDisplayDate(formData.birthday)}` : null,
-              formData.adoptionDate ? `💝 ${formatDisplayDate(formData.adoptionDate)}` : null,
-            ]
-              .filter(Boolean)
-              .join("   ") || t("onboarding.reviewNotSpecified")
-          }
+          label={t("onboarding.reviewAdoption")}
+          value={formatDisplayDate(formData.adoptionDate) || t("onboarding.reviewNotSpecified")}
           onEdit={() => goToStep(6)}
         />
         <ReviewRow

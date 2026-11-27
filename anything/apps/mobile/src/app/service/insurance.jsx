@@ -25,6 +25,7 @@ import { breedLabel } from "@/data/dogBreeds";
 import { useDiscoverProviders } from "@/hooks/useProviders";
 import { useInsurancePlans, useSubmitInsuranceLead } from "@/hooks/useInsurance";
 import { friendlyErrorMessage } from "@/utils/appAlert";
+import { getDisplayAgeParts } from "@/utils/petAge";
 
 function priceRange(p) {
   const min = p.monthly_price_min;
@@ -32,6 +33,12 @@ function priceRange(p) {
   if (min == null && max == null) return "—";
   if (min != null && max != null) return `${min}–${max}/mo`;
   return `${min ?? max}/mo`;
+}
+
+// The age sent with a quote request: whole years, marked "~" when it is an estimate.
+function petAgeForQuote(pet) {
+  const age = getDisplayAgeParts(pet);
+  return age ? `${age.approximate ? "~" : ""}${age.years}` : null;
 }
 
 export default function InsuranceScreen() {
@@ -61,8 +68,7 @@ export default function InsuranceScreen() {
         pet_id: currentPet?.id ?? null,
         pet_species: currentPet?.species ?? null,
         pet_breed: currentPet?.breed ?? null,
-        pet_age:
-          currentPet?.age_years != null ? String(currentPet.age_years) : null,
+        pet_age: petAgeForQuote(currentPet),
         contact_email: email.trim() || null,
         contact_phone: phone.trim() || null,
         note: note.trim() || null,

@@ -33,7 +33,7 @@ import {
   usePetSocialProfile,
   useToggleFollow,
 } from "@/hooks/usePetSocialProfile";
-import { getDisplayAgeParts } from "@/utils/petAge";
+import { formatPetAge, getDisplayAgeParts } from "@/utils/petAge";
 import {
   COLORS,
   TYPE,
@@ -152,23 +152,11 @@ export default function PetProfileScreen({ embedded = false }) {
   const [barkPost, setBarkPost] = useState(null);
   const [likedPosts, setLikedPosts] = useState({});
   const [shareDeckVisible, setShareDeckVisible] = useState(false);
-  // Localized age string ("3 años", "2 años, 6 meses", "~6 meses"). Units come
-  // from i18n; the shared getDisplayAge stays English-only for its callers/tests.
-  const formatAge = (parts) => {
-    // No parts means the age is unknown. If the pet has loaded, that's a real
-    // "no age" answer — render nothing, never a stale navigation param (which
-    // could otherwise surface a wrong/garbage age). Only while the pet is still
-    // loading do we fall back to the param passed from the card as a placeholder.
-    if (!parts) return pet ? "" : params.age || "";
-    const segs = [];
-    if (parts.years > 0)
-      segs.push(`${parts.years} ${t(parts.years === 1 ? "petProfile.ageYear" : "petProfile.ageYears")}`);
-    if (parts.months > 0)
-      segs.push(`${parts.months} ${t(parts.months === 1 ? "petProfile.ageMonth" : "petProfile.ageMonths")}`);
-    const s = segs.length ? segs.join(", ") : t("petProfile.ageUnderMonth");
-    return parts.approximate ? `~${s}` : s;
-  };
-  const ageText = formatAge(ageParts);
+  // No parts means the age is unknown. If the pet has loaded, that's a real
+  // "no age" answer — render nothing, never a stale navigation param (which
+  // could otherwise surface a wrong/garbage age). Only while the pet is still
+  // loading do we fall back to the param passed from the card as a placeholder.
+  const ageText = formatPetAge(ageParts, t) ?? (pet ? "" : params.age || "");
   const togglePaw = useTogglePaw(detailPost?.id);
   // Edit / delete of the open post: the author rule. The profile payload does not carry authors, so for a dog of the
   // viewer's (own or shared) they are read from the dog's feed while a post is open.

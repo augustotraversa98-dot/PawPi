@@ -25,7 +25,7 @@ import { useCurrentPet } from "@/hooks/usePetProfile";
 import { usePetPermissions } from "@/hooks/usePetPermissions";
 import { SharedPetBadge } from "@/components/Pets/SharedPetBadge";
 import { useGroomSessions } from "@/hooks/useGroomSessions";
-import { getDisplayAgeParts } from "@/utils/petAge";
+import { formatPetAge, getDisplayAgeParts } from "@/utils/petAge";
 import { formatDisplayDate } from "@/utils/canonicalDateTime";
 import useUser from "@/utils/auth/useUser";
 import {
@@ -76,20 +76,6 @@ export default function ProfileScreen() {
     if (gender === "male") return t("profileEdit.genderMale");
     if (gender === "female") return t("profileEdit.genderFemale");
     return gender.charAt(0).toUpperCase() + gender.slice(1);
-  };
-
-  // Localized age string ("2 años", "1 año, 3 meses", "~6 meses"). Mirrors
-  // pet-profile.jsx's formatAge; getDisplayAge stays English-only for its
-  // other callers/tests.
-  const formatAge = (parts) => {
-    if (!parts) return null;
-    const segs = [];
-    if (parts.years > 0)
-      segs.push(`${parts.years} ${t(parts.years === 1 ? "petProfile.ageYear" : "petProfile.ageYears")}`);
-    if (parts.months > 0)
-      segs.push(`${parts.months} ${t(parts.months === 1 ? "petProfile.ageMonth" : "petProfile.ageMonths")}`);
-    const s = segs.length ? segs.join(", ") : t("petProfile.ageUnderMonth");
-    return parts.approximate ? `~${s}` : s;
   };
 
   const InfoRow = ({ label, value, icon: Icon }) => (
@@ -157,12 +143,11 @@ export default function ProfileScreen() {
     currentPet?.breed === MIXED_BREED_VALUE
       ? t("breedPicker.mixed")
       : breedLabel(t, currentPet?.breed);
-  const petAge = formatAge(currentPet ? getDisplayAgeParts(currentPet) : null);
+  const petAge = formatPetAge(getDisplayAgeParts(currentPet), t);
   const petGender = formatGender(currentPet?.gender);
   const petWeight = formatWeight(currentPet?.weight, currentPet?.weight_unit);
   const petBirthday = formatDisplayDate(currentPet?.birthday) || null;
   const petAdoptionDate = formatDisplayDate(currentPet?.adoption_date) || null;
-  const petDate = petBirthday || petAdoptionDate;
   const petNotes = currentPet?.notes;
   const petAvatar = currentPet?.avatar_url;
 
@@ -279,17 +264,24 @@ export default function ProfileScreen() {
             <InfoRow label={t("dogProfile.age")} value={petAge} icon={Calendar} />
             <InfoRow label={t("dogProfile.gender")} value={petGender} icon={User} />
             <InfoRow label={t("dogProfile.weight")} value={petWeight} icon={Weight} />
-            <InfoRow
-              label={
-                petBirthday
-                  ? t("profileEdit.fieldBirthday")
-                  : petAdoptionDate
-                    ? t("profileEdit.fieldAdoption")
+            {petBirthday || !petAdoptionDate ? (
+              <InfoRow
+                label={
+                  petBirthday
+                    ? t("profileEdit.fieldBirthday")
                     : t("dogProfile.birthdayOrAdoption")
-              }
-              value={petDate}
-              icon={Calendar}
-            />
+                }
+                value={petBirthday}
+                icon={Calendar}
+              />
+            ) : null}
+            {petAdoptionDate ? (
+              <InfoRow
+                label={t("profileEdit.fieldAdoption")}
+                value={petAdoptionDate}
+                icon={Calendar}
+              />
+            ) : null}
           </Card>
 
           <Text

@@ -421,7 +421,8 @@ describe("OnboardingScreen — gender step (Step 5 QA concern) cannot wedge Next
     fireEvent.press(screen.getByTestId("onboarding-next"));
     fireEvent.press(screen.getByTestId("breed-option-mixed"));
     fireEvent.press(screen.getByTestId("onboarding-next"));
-    fireEvent.changeText(screen.getByTestId("onboarding-age-years"), "3");
+    fireEvent.press(screen.getByTestId("birthday-unsure"));
+    fireEvent.changeText(screen.getByTestId("estimated-age-years"), "3");
     fireEvent.press(screen.getByTestId("onboarding-next"));
     expect(screen.getByText("What's Buddy's gender?")).toBeTruthy();
     return screen;
@@ -503,7 +504,8 @@ describe("OnboardingScreen — full 9-step walk with valid input never wedges", 
     fireEvent.press(screen.getByTestId("onboarding-next"));
 
     // Step 4 of 9: age.
-    fireEvent.changeText(screen.getByTestId("onboarding-age-years"), "3");
+    fireEvent.press(screen.getByTestId("birthday-unsure"));
+    fireEvent.changeText(screen.getByTestId("estimated-age-years"), "3");
     fireEvent.press(screen.getByTestId("onboarding-next"));
 
     // Step 5 of 9: gender — the QA-reported freeze point.
@@ -514,8 +516,8 @@ describe("OnboardingScreen — full 9-step walk with valid input never wedges", 
     fireEvent.changeText(screen.getByTestId("onboarding-weight"), "12");
     fireEvent.press(screen.getByTestId("onboarding-next"));
 
-    // Step 7 of 9: birthday/gotcha day (optional) — skip.
-    expect(screen.getByText("When are Buddy's special days?")).toBeTruthy();
+    // Step 7 of 9: adoption date (optional) — skip.
+    expect(screen.getByText("When did Buddy join your family?")).toBeTruthy();
     fireEvent.press(screen.getByText("Skip"));
 
     // Step 8 of 9: notes (optional) — skip.
@@ -631,7 +633,8 @@ describe("OnboardingScreen — never creates a duplicate dog for an existing own
     fireEvent.press(screen.getByTestId("onboarding-next"));
     fireEvent.press(screen.getByTestId("breed-option-mixed"));
     fireEvent.press(screen.getByTestId("onboarding-next"));
-    fireEvent.changeText(screen.getByTestId("onboarding-age-years"), "3");
+    fireEvent.press(screen.getByTestId("birthday-unsure"));
+    fireEvent.changeText(screen.getByTestId("estimated-age-years"), "3");
     fireEvent.press(screen.getByTestId("onboarding-next"));
     fireEvent.press(screen.getByTestId("onboarding-gender-female"));
     fireEvent.press(screen.getByTestId("onboarding-next"));

@@ -18,8 +18,9 @@ import { useCurrentPet } from "@/hooks/usePetProfile";
 import useUpload from "@/utils/useUpload";
 import { useQueryClient } from "@tanstack/react-query";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
-import DateField from "@/components/DateField";
 import BirthdayOrAgeField from "@/components/Pets/BirthdayOrAgeField";
+import AdoptionDateField from "@/components/Pets/AdoptionDateField";
+import { ageFormFromPet, estimateToSave, petKeepsEstimates } from "@/utils/petAgeForm";
 import BreedPicker from "@/components/BreedPicker";
 import { canonicalizeDateValue } from "@/utils/canonicalDateTime";
 import {
@@ -90,6 +91,8 @@ export default function ProfileEditScreen() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // The age answers as loaded, so a save only sends an estimate the owner changed.
+  const seededAge = useRef(null);
   // Same availability logic as onboarding: the pet's OWN current handle is fine; a taken or
   // malformed one blocks Save and offers free alternatives.
   const handleAvail = useHandleAvailability(formData.handle, {
@@ -133,14 +136,13 @@ export default function ProfileEditScreen() {
     if (currentPet) {
       console.log("[Profile Edit] Pre-filling form with pet data:", currentPet);
 
+      seededAge.current = ageFormFromPet(currentPet);
       setFormData({
         photo: currentPet.avatar_url || null,
         name: currentPet.name || "",
         handle: currentPet.handle || "",
         breed: currentPet.breed || "",
-        ageYears: currentPet.age_years?.toString() || "",
-        ageMonths: currentPet.age_months?.toString() || "",
-        birthdayUnknown: !currentPet.birthday,
+        ...seededAge.current,
         gender: currentPet.gender || "",
         weight: currentPet.weight?.toString() || "",
         weightUnit:
@@ -200,13 +202,10 @@ export default function ProfileEditScreen() {
         console.log("[Profile Edit] ✅ Photo uploaded:", uploadedAvatarUrl);
       }
 
-      // Prepare update payload. Age model (docs/roadmap.md): when the
-      // birthday is known, age_years/age_months are left OUT of the payload
-      // entirely (not set to null) so a previously-stored estimate stays in
-      // the database untouched — it's harmless once a birthday exists since
-      // display always prefers the calculated age. When the birthday is
-      // marked unknown, birthday is explicitly cleared and the estimate (if
-      // any) is written.
+      // Prepare update payload. When the birthday is marked unknown, birthday is
+      // explicitly cleared. age_years/age_months are only included for an
+      // estimate the owner entered or changed (utils/petAgeForm.js), so saving
+      // something else never restarts an estimate.
       const updatePayload = {
         name: formData.name,
         handle: formData.handle || null,
@@ -219,13 +218,10 @@ export default function ProfileEditScreen() {
         adoption_date: formData.adoptionDate || null,
         notes: formData.notes || null,
       };
-      if (formData.birthdayUnknown) {
-        updatePayload.age_years = formData.ageYears
-          ? parseInt(formData.ageYears)
-          : null;
-        updatePayload.age_months = formData.ageMonths
-          ? parseInt(formData.ageMonths)
-          : null;
+      const estimate = estimateToSave(formData, seededAge.current);
+      if (estimate) {
+        updatePayload.age_years = estimate.years;
+        updatePayload.age_months = estimate.months;
       }
 
       console.log(
@@ -546,7 +542,7 @@ export default function ProfileEditScreen() {
             </View>
           </View>
 
-          {/* Birthday (known) or estimated Age (unknown) — mutually exclusive */}
+          {/* Birth date (known) or estimated age (unknown) — mutually exclusive */}
           <View style={{ marginBottom: SPACING.xl }}>
             <Text style={[fieldLabelStyle, { marginBottom: SPACING.sm }]}>
               {t("profileEdit.fieldBirthday")}
@@ -568,6 +564,7 @@ export default function ProfileEditScreen() {
               onAgeMonthsChange={(text) =>
                 setFormData((prev) => ({ ...prev, ageMonths: text }))
               }
+              estimateGrows={petKeepsEstimates(currentPet)}
             />
           </View>
 
@@ -576,12 +573,11 @@ export default function ProfileEditScreen() {
             <Text style={[fieldLabelStyle, { marginBottom: SPACING.sm }]}>
               {t("profileEdit.fieldAdoption")}
             </Text>
-            <DateField
+            <AdoptionDateField
               value={formData.adoptionDate}
               onChange={(date) =>
                 setFormData((prev) => ({ ...prev, adoptionDate: date }))
               }
-              maximumDate={new Date()}
               fieldStyle={{
                 backgroundColor: MATERIALS.surfaceSunken,
                 padding: SPACING.md + 2,

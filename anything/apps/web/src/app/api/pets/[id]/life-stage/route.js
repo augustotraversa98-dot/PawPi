@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContext";
 import { detectLifeStage, effectiveLifeStage, ringGoalsForStage, LIFE_STAGES } from "./logic";
+import { estimateColumnsOf } from "@/app/api/utils/petAge";
 
 // GET / POST /api/pets/[id]/life-stage
 //
@@ -44,7 +45,8 @@ async function requirePetAccess(session, petIdRaw) {
 // Read the pet's life-stage inputs. life_stage_override degrades to null pre-0106 (missing column).
 async function readPet(petId, ownerUserId) {
   const [base] = await sql`
-    SELECT birthday, age_years, age_months, weight, weight_unit FROM pets WHERE id = ${petId}
+    SELECT birthday, age_years, age_months, weight, weight_unit, to_jsonb(pets) AS _row
+    FROM pets WHERE id = ${petId}
   `;
   let override = null;
   try {
@@ -76,6 +78,7 @@ async function GET(request, { params }) {
       birthday: toDayStr(base?.birthday),
       ageYears: base?.age_years,
       ageMonths: base?.age_months,
+      ...estimateColumnsOf(base?._row),
       weight: base?.weight,
       weightUnit: base?.weight_unit,
       today,
