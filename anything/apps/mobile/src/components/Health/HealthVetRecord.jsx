@@ -64,7 +64,7 @@ import {
 import { Card, PressableScale } from "@/components/ui";
 import { breedLabel } from "@/data/dogBreeds";
 import { spayNeuterLabel } from "@/utils/healthText";
-import { memberDisplayName } from "@/utils/sharingLabels";
+import { linkNoteAuthor, memberDisplayName, vetNoteAuthor } from "@/utils/sharingLabels";
 import { usePetPermissions } from "@/hooks/usePetPermissions";
 
 // Ordered sub-tabs of the "Medical history" group. Each key drives its own
@@ -150,6 +150,22 @@ export default function HealthVetRecord() {
   // Localized "Added by {name} · {role} · {date}" line for a record row (VR-B, 0120).
   const renderAttribution = (row) => {
     if (!row) return null;
+    // A note added through a record link is never "added by" the owner or a family member.
+    if (row.via_record_link) {
+      const date = row.created_at ? formatDisplayDate(row.created_at) : "";
+      return (
+        <Text
+          style={{
+            fontSize: 11,
+            color: COLORS.mutedBrown,
+            marginTop: 8,
+            fontWeight: "500",
+          }}
+        >
+          {t("recordLink.addedViaLink", { name: linkNoteAuthor(t, row), date })}
+        </Text>
+      );
+    }
     const isEditor = row.created_by_role === "editor";
     const name =
       memberDisplayName(t, row.created_by_name) ||
@@ -1320,9 +1336,9 @@ export default function HealthVetRecord() {
                       date: formatDisplayDate(historyNotes[0].note_date),
                     },
                   )}
-                  {historyNotes[0].vet_name
+                  {vetNoteAuthor(t, historyNotes[0])
                     ? t("health.vetRecord.notesSummaryBy", {
-                        name: historyNotes[0].vet_name,
+                        name: vetNoteAuthor(t, historyNotes[0]),
                       })
                     : ""}
                 </Text>
@@ -1390,7 +1406,7 @@ export default function HealthVetRecord() {
                         color: COLORS.warmBrown,
                       }}
                     >
-                      {note.vet_name || t("health.vetRecord.you")}
+                      {vetNoteAuthor(t, note) || t("health.vetRecord.you")}
                     </Text>
                     <View
                       style={{

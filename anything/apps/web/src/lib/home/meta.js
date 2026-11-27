@@ -17,10 +17,10 @@ export function isPublicPath(pathname) {
 
 // Pages under /p/ (pet tag, vet card) open for anyone holding the private link and show one pet's data,
 // so they must never be indexed: public/robots.txt disallows /p/ and the server-rendered head carries
-// noindex. The vet invite page (/vet-invite) is reached by a private link too and also carries noindex.
-// Case-insensitive because the router also matches /P/Tag/....
+// noindex. The vet invite page (/vet-invite) and the shared record page (/shared-record) are reached by a private link
+// too and also carry noindex. Case-insensitive because the router also matches /P/Tag/....
 export function isPrivateLinkPath(pathname) {
-  return /^\/+(p|vet-invite)(\/|$)/i.test(String(pathname || ""));
+  return /^\/+(p|vet-invite|shared-record)(\/|$)/i.test(String(pathname || ""));
 }
 
 // <html lang> for a public page; the rest of the web app is English.

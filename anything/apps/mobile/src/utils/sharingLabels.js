@@ -47,6 +47,17 @@ export function memberDisplayName(t, name) {
   return trimmed;
 }
 
+/** Who added a vet note through a record link: their name, or that it was someone outside with no account. */
+export function linkNoteAuthor(t, note) {
+  return memberDisplayName(t, note?.external_author_name) ?? t("recordLink.anonymous");
+}
+
+/** The author a vet note shows, or null for the owner's own. */
+export function vetNoteAuthor(t, note) {
+  if (note?.via_record_link) return linkNoteAuthor(t, note);
+  return note?.vet_name || null;
+}
+
 /** "Shared by Sam" when the owner's public name is known, else "Shared with you". Never an e-mail or a raw handle-as-name. */
 export function sharedByLabel(t, ownerName) {
   return ownerName ? t("sharedDog.sharedBy", { name: ownerName }) : t("sharedDog.sharedWithYou");

@@ -43,6 +43,16 @@ jest.mock("@/hooks/useCareAccessGrants", () => ({
   useUpdateGrant: () => ({ mutate: mockMutate, isPending: false }),
 }));
 
+// The links block has its own tests (components/Health/VetShare/RecordLinks.test.jsx); here only where it appears.
+const mockRefetchLinks = jest.fn();
+jest.mock("@/hooks/useRecordLinks", () => ({ useRecordLinks: () => ({ refetch: mockRefetchLinks }) }));
+jest.mock("@/components/Health/VetShare/RecordLinks", () => {
+  const { Text } = require("react-native");
+  return {
+    __esModule: true,
+    default: ({ pet, onCreate }) => <Text testID="record-links">{`${pet.id}${onCreate ? ":create" : ""}`}</Text>,
+  };
+});
 jest.mock("@/components/Health/VetShare/ShareWithVetSheet", () => {
   const { Text } = require("react-native");
   return {
@@ -357,3 +367,10 @@ test("opening the screen reads the requests and bookings again", () => {
   expect(mockGrants.refetch).toHaveBeenCalled();
   expect(mockBookings.refetch).toHaveBeenCalled();
 });
+
+test("the owner's record links for this dog are listed here, without creating; a family member has none", () => {
+  expect(render(<DataAccessScreen />).getByTestId("record-links").props.children).toBe("7");
+  mockCurrentPet = { data: { id: 7, name: "Rex", is_shared: true } };
+  expect(render(<DataAccessScreen />).queryByTestId("record-links")).toBeNull();
+});
+

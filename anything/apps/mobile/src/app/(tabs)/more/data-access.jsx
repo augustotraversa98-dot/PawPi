@@ -25,6 +25,8 @@ import { friendlyErrorMessage } from "@/utils/appAlert";
 import { goBackOr } from "@/utils/navigationBack";
 import ShareWithVetSheet from "@/components/Health/VetShare/ShareWithVetSheet";
 import GrantAccess from "@/components/Health/VetShare/GrantAccess";
+import RecordLinks from "@/components/Health/VetShare/RecordLinks";
+import { useRecordLinks } from "@/hooks/useRecordLinks";
 import {
   asksForRecord,
   grantAccessLines,
@@ -57,7 +59,14 @@ export default function DataAccessScreen() {
     refetch();
     refetchBookings();
   }, [petId, refetch, refetchBookings]);
-  const refreshAll = () => Promise.all([refetch(), refetchBookings()]);
+  // Only the owner has record links (RecordLinks below reads the same list).
+  const links = useRecordLinks({ enabled: !!petId && !currentPet?.is_shared });
+  const refreshAll = () =>
+    Promise.all([
+      refetch(),
+      refetchBookings(),
+      ...(currentPet?.is_shared ? [] : [links.refetch()]),
+    ]);
   // null = closed. { provider } shares with that one only (answering its request); {} lets the owner pick.
   const [shareSheet, setShareSheet] = useState(null);
 
@@ -369,6 +378,9 @@ export default function DataAccessScreen() {
               </GrantCard>
             ))
           )}
+
+          {/* Links that open parts of the record without signing in. */}
+          {!currentPet.is_shared ? <RecordLinks pet={currentPet} /> : null}
 
           {ended.length > 0 ? (
             <>

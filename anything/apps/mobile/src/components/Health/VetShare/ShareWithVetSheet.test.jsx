@@ -36,11 +36,16 @@ jest.mock("@/components/KeyboardSafeFormModal", () => {
     ),
   };
 });
-// The invite block has its own tests (InviteVet.test.jsx); here only where it appears matters.
+// The link blocks have their own tests (RecordLinks.test.jsx, InviteVet.test.jsx); here only where they appear matters.
 jest.mock("./InviteVet", () => {
   const { Text } = require("react-native");
-  return { __esModule: true, default: ({ pet }) => <Text testID="vet-invite">{pet.name}</Text> };
+  return { __esModule: true, default: () => <Text testID="vet-invite" /> };
 });
+jest.mock("./RecordLinks", () => {
+  const { Text } = require("react-native");
+  return { __esModule: true, default: ({ pet }) => <Text testID="record-links">{pet.name}</Text> };
+});
+jest.mock("./useRecordLinkSteps", () => ({ __esModule: true, default: () => ({ step: null, start: jest.fn() }) }));
 jest.mock("@/hooks/useProviders", () => ({ useMyBookings: () => mockBookings }));
 jest.mock("@/hooks/useCareAccessGrants", () => ({
   useCareAccessGrants: () => mockGrants,
@@ -413,20 +418,30 @@ test("Spanish copy (voseo)", () => {
   expect(s.getByText(/Acepto que todo el equipo de Happy Paws/)).toBeTruthy();
 });
 
-describe("inviting a vet by link", () => {
-  test("is offered to the owner, with or without booked vets", () => {
-    expect(open().getByTestId("vet-invite")).toBeTruthy();
+describe("a vet without PawPi, by link", () => {
+  test("is offered to the owner, with or without booked vets, once", () => {
+    const booked = open();
+    expect(booked.getByTestId("record-links")).toBeTruthy();
+    expect(booked.getByTestId("vet-invite")).toBeTruthy();
     mockBookings = query({ upcoming: [], past: [] });
     const empty = open();
-    expect(empty.getAllByTestId("vet-invite")).toHaveLength(1);
-    expect(empty.getByText(/invite your vet by link below/)).toBeTruthy();
+    expect(empty.getAllByTestId("record-links")).toHaveLength(1);
+    expect(empty.getByText(/create a link for your vet below/)).toBeTruthy();
   });
 
-  test("is not offered to a family member, for one given business, or by a server without sections", () => {
-    expect(open({ pet: { ...pet, is_shared: true } }).queryByTestId("vet-invite")).toBeNull();
-    expect(open({ provider: { providerId: 1, name: "Happy Paws" } }).queryByTestId("vet-invite")).toBeNull();
+  test("is not offered to a family member or for one given business", () => {
+    for (const props of [{ pet: { ...pet, is_shared: true } }, { provider: { providerId: 1, name: "Happy Paws" } }]) {
+      const s = open(props);
+      expect(s.queryByTestId("record-links")).toBeNull();
+      expect(s.queryByTestId("vet-invite")).toBeNull();
+    }
+  });
+
+  test("earlier invites are listed only by a server that shares by section", () => {
     mockGrants = query([grant({ sections: undefined })]);
-    expect(open().queryByTestId("vet-invite")).toBeNull();
+    const s = open();
+    expect(s.queryByTestId("vet-invite")).toBeNull();
+    expect(s.getByTestId("record-links")).toBeTruthy();
   });
 
   test("answering a business with no booking keeps asking to check its name, up to the review", () => {

@@ -99,6 +99,13 @@ export const RATE_LIMITS = {
   vet_invite_create: { limit: 20, windowSeconds: 3600 },
   vet_invite_open: { limit: 30, windowSeconds: 600 },
   vet_invite_accept: { limit: 10, windowSeconds: 600 },
+  // Record links (0153). The owner creates them (also at most 10 in use per owner; removing one is never limited).
+  // Opening, opening a file and adding a note need no account and are counted per sender; each link also takes at most
+  // 10 notes in 24 hours.
+  record_link_create: { limit: 20, windowSeconds: 3600 },
+  record_link_open: { limit: 30, windowSeconds: 600 },
+  record_link_file: { limit: 60, windowSeconds: 600 },
+  record_link_note: { limit: 5, windowSeconds: 600 },
 };
 
 const RATE_LIMITED_CODE = 'rate_limited';

@@ -59,6 +59,10 @@ We collect only what the app needs to work. Specifically:
   they type. To prevent abuse we also keep a scrambled (hashed) form of their internet address.
   Opening a dog's tag page or a vet link may also record the visitor's internet address, to limit
   repeated requests.
+- **Visits and notes through a shared record link**: when someone uses a link you created to show
+  parts of your dog's Vet Record, we keep a scrambled (hashed) form of their internet address to
+  limit repeated requests, and delete it after 90 days. If they add a vet note through it, we collect
+  the note and, if they are signed in to PawPi, their account and its display name.
 
 **Information collected automatically**
 
@@ -204,8 +208,8 @@ We share information only as needed to run the Service:
   request a prescription/insurance quote, the relevant business receives the information needed to
   serve you, including what you write or attach yourself. **Your dog's Vet Record is opened to a
   business only when you choose to share it** (see "Sharing your dog's Vet Record with a business"
-  below in this section; vet links and vet invite links you create are also described in this
-  section).
+  below in this section; vet links, vet invite links and shared record links you create are also
+  described in this section).
 - **With people you invite** — family members or caregivers you grant access to, at the scope and for
   the duration you set; you can revoke access at any time.
 - **Finders, your dog's family and caregivers**: what a finder sends goes to the dog's owner and to
@@ -256,9 +260,9 @@ lab results. Approving everything a business asked for can also let its team add
 prescriptions or vaccinations to your dog's record and, if it asked for this, record care sessions
 such as walks or grooming.
 
-**Inviting a vet by link.** In app versions that offer it, as the dog's owner you can create an
-invite link for that dog and send it to your vet yourself; PawPi sends no email. It is not the same
-as the public vet link mentioned above. The invite link expires after 7 days, works once, and you can
+**Inviting a vet by link.** Some app versions let you, as the dog's owner, create an invite link
+for that dog and send it to your vet yourself; PawPi sends no email. It is not the same as the
+public vet link mentioned above, or as a shared record link (below). The invite link expires after 7 days, works once, and you can
 withdraw it while it has not been used. It is not tied to one particular business: any signed-in,
 active team member of a vet business published on PawPi who has the link can see your dog's name,
 your display name and the date the link expires, with no photo and nothing from the Vet Record. Send
@@ -286,6 +290,40 @@ to a private file opened just before can keep working for about a minute. Some f
 address that works for anyone who has it, without signing in: documents and health photos saved with
 earlier app versions (or with an older version still in use), and attachments sent in messages.
 Ending access does not switch those addresses off.
+
+### Sharing parts of your dog's Vet Record by link, without an account
+
+In app versions that offer it, as the dog's owner you can create a shared record link and send it
+yourself; PawPi sends nothing. **Anyone who has the link can see the parts you chose, without
+signing in**, including anyone it is forwarded to. It is not tied to a person or a business. Before
+creating it you choose at least one of the parts listed above under "Sharing by parts" (nothing is
+selected for you), how long it lasts (7 days, 30 days or 1 year) and whether it allows adding vet
+notes (off unless you turn it on), and you accept a warning that says this.
+
+The link shows your dog's name, your display name, the date the link ends and the chosen parts,
+including what is added to them while it works. The Vet notes part includes every note and the name
+shown on it. A document or photo saved to a private file opens through a temporary address that
+works for about a minute. Files that use a long web address, saved with earlier app versions, are
+listed but are not opened through the link, although a note or other text you share may contain
+addresses or details of its own.
+
+If you allow notes, whoever has the link can add vet notes to your dog's record. Nothing can be
+changed or deleted through a link. Such a note is marked as added through a shared link. If the
+person was signed in to PawPi, the note shows the display name of their account and we record which
+account added it; if they were not signed in, or their account has no display name, it shows as
+"Anonymous". The note is part of your dog's record: you, the people who can see that record and
+anyone you share the vet notes with can read it, and you can delete it. If its signed-in author
+deletes their account, their name on the note is replaced by "Former member".
+
+You can remove a link at any time in the app (from the share screen or Data Access), and it ends by
+itself on its date. PawPi checks the link on every request made with it, so new views, files and
+notes are refused as soon as you remove it or it ends. Removing it does not take back what someone
+already saw, downloaded, copied or noted, a temporary file address opened just before can keep
+working for about a minute, and notes already added stay until you delete them. We do not keep a log
+of who viewed a link. For each link we store the dog, your account, the parts, whether notes are
+allowed, when it was created and when it ends, and whether and when you removed it. We store a
+scrambled (hashed) form of the link's secret code, not the link itself, and keep that record until
+the dog or your account is deleted.
 
 ## 8. Subprocessors and third parties
 
@@ -386,8 +424,9 @@ outside your country). Where required, we use appropriate safeguards for such tr
 
 We use technical and organizational measures to protect your information, including **row-level
 security** so each user's data is scoped to that user (owner, an accepted caregiver you invited, or
-the team of a business you gave access to, for what that access covers), hashed passwords, and
-encrypted transport. No method of transmission or storage is 100% secure, but
+the team of a business you gave access to, for what that access covers; a shared record link you
+create opens only what that link covers), hashed passwords, and encrypted transport. No method of
+transmission or storage is 100% secure, but
 we work to protect your information and continually improve our safeguards.
 
 ## 15. Changes to this Policy

@@ -18,6 +18,7 @@ import { apiNotFound } from '../src/app/api/utils/apiNotFound.js';
 import { stampSessionExpired } from '../src/app/api/utils/sessionExpiredCode.js';
 import { blockProbePaths } from '../src/app/api/utils/probePaths.js';
 import { agentDiscovery } from '../src/app/api/utils/agentDiscovery.js';
+import { sharedRecordHeaders } from '../src/app/api/utils/sharedRecordHeaders.js';
 import { serializeError } from 'serialize-error';
 import { metrics } from '@opentelemetry/api';
 import NeonAdapter from './adapter';
@@ -142,6 +143,10 @@ app.use('*', blockProbePaths());
 // /.well-known catalog documents. GET/HEAD on those exact paths only; /api/* is never touched. Must stay
 // ahead of the static-file and React Router handlers. See src/app/api/utils/agentDiscovery.js.
 app.use('*', agentDiscovery());
+
+// The shared record page (a pet owner's record link) is never cached or indexed. See
+// src/app/api/utils/sharedRecordHeaders.js.
+app.use('*', sharedRecordHeaders());
 
 app.onError((err, c) => {
   // Always log the full error server-side (the console override above tags it

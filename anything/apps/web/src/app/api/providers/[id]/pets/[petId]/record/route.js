@@ -8,6 +8,7 @@ import {
   recordCareAccess,
   RECORD_SECTIONS,
 } from "@/app/api/utils/careAccess";
+import { presentVetNote } from "@/app/api/utils/recordLink";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 
 // GET /api/providers/[id]/pets/[petId]/record — provider staff read a pet's
@@ -84,7 +85,7 @@ async function readSharedRecord(petId, providerId, grantedSections) {
   return {
     sharedSections,
     medical_profile: medicalProfileRows[0] ?? null,
-    notes,
+    notes: notes.map(presentVetNote),
     vaccinations,
     documents,
     photo_checks: photoChecks,
@@ -146,7 +147,7 @@ async function GET(request, { params }) {
 
     return Response.json({
       medical_profile: medicalProfileRows[0] ?? null,
-      notes,
+      notes: notes.map(presentVetNote),
       vaccinations,
       sharedSections: null,
     });

@@ -21,6 +21,7 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { ownerDisplayName } from "@/utils/ownerDisplayName";
 import { parseFinderContact } from "@/utils/finderContact";
+import { vetNoteAuthor } from "@/utils/sharingLabels";
 import EmergencyContactActions from "@/components/Notifications/EmergencyContactActions";
 import { COLORS } from "@/constants/colors";
 import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
@@ -106,8 +107,9 @@ function mapVetNote(n, petName, t) {
     id: `vetnote-${n.id}`,
     _source: "vetNote",
     type: "vetNote",
-    title: n.vet_name, // guaranteed non-null for vet notes (see provider notes route)
-    message: t("notifications.vetNoteBody", {
+    title: vetNoteAuthor(t, n), // vet_name is set for every note this maps (see the filter)
+    // A note added through a record link says so: its author is not a vet the owner knows about.
+    message: t(n.via_record_link ? "recordLink.noteBell" : "notifications.vetNoteBody", {
       pet: petName || t("common.yourPet"),
     }),
     timestamp: n.created_at,

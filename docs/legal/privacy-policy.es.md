@@ -63,6 +63,11 @@ Recopilamos solo lo que la app necesita para funcionar. En particular:
   internet. Al abrir la página de la chapa de un perro o un enlace para veterinarias, también
   podemos registrar la dirección de internet de quien la abre, para limitar las solicitudes
   repetidas.
+- **Visitas y notas desde un enlace compartido de la historia clínica**: cuando alguien usa un
+  enlace que creaste para mostrar partes de la historia clínica de tu perro, guardamos una versión
+  codificada (hash) de su dirección de internet para limitar las solicitudes repetidas, y la borramos
+  a los 90 días. Si agrega una nota veterinaria desde el enlace, recopilamos la nota y, si inició
+  sesión en PawPi, su cuenta y el nombre visible de esa cuenta.
 
 **Información recopilada automáticamente**
 
@@ -216,8 +221,9 @@ Compartimos información solo según sea necesario para operar el Servicio:
   postulás para adoptar o pedís una receta/cotización de seguro, el negocio correspondiente recibe la
   información necesaria para atenderte, incluido lo que vos escribas o adjuntes. **La historia clínica
   de tu perro se abre a un negocio solo cuando vos elegís compartirla** (mirá "Compartir la historia
-  clínica de tu perro con un negocio", más abajo en esta sección; los enlaces para veterinarias y los
-  enlaces de invitación que creás también se describen en esta sección).
+  clínica de tu perro con un negocio", más abajo en esta sección; los enlaces para veterinarias, los
+  enlaces de invitación y los enlaces compartidos de la historia clínica que creás también se
+  describen en esta sección).
 - **Con las personas que invitás** — familiares o cuidadores a quienes otorgás acceso, con el alcance
   y por el plazo que definís; podés revocar el acceso en cualquier momento.
 - **Quien encuentra a tu perro, tu familia y cuidadores**: lo que envía quien encuentra a un perro
@@ -271,10 +277,10 @@ laboratorio. Aprobar todo lo que pidió un negocio también puede permitir que s
 veterinarias, recetas o vacunas a la historia de tu perro y, si lo pidió, que registre sesiones de
 cuidado, como paseos o peluquería.
 
-**Invitar a una veterinaria con un enlace.** En las versiones de la app que lo ofrecen, si sos la
-persona dueña del perro podés crear un enlace de invitación para ese perro y mandárselo vos a tu
+**Invitar a una veterinaria con un enlace.** Algunas versiones de la app te permiten, si sos la
+persona dueña del perro, crear un enlace de invitación para ese perro y mandárselo vos a tu
 veterinaria; PawPi no envía ningún correo. No es lo mismo que el enlace para veterinarias público que
-se menciona más arriba. El enlace de invitación vence a los 7 días, sirve una sola vez y podés
+se menciona más arriba, ni que un enlace compartido de la historia clínica (más abajo). El enlace de invitación vence a los 7 días, sirve una sola vez y podés
 anularlo mientras no se haya usado. No está atado a un negocio en particular: cualquier persona
 activa del equipo de una veterinaria publicada en PawPi que tenga el enlace e inicie sesión puede ver
 el nombre de tu perro, tu nombre visible y la fecha de vencimiento del enlace, sin foto ni nada de la
@@ -304,6 +310,43 @@ usan una dirección web larga que le funciona a cualquiera que la tenga, sin ini
 documentos y las fotos de salud guardados con versiones anteriores de la app (o con una versión vieja
 que todavía se use) y los adjuntos enviados por mensaje. Quitar el acceso no desactiva esas
 direcciones.
+
+### Compartir partes de la historia clínica de tu perro con un enlace, sin cuenta
+
+En las versiones de la app que lo ofrecen, si sos la persona dueña del perro podés crear un enlace
+compartido de la historia clínica y mandarlo vos; PawPi no envía nada. **Cualquier persona que tenga
+el enlace puede ver las partes que elegiste, sin iniciar sesión**, incluso quien lo reciba reenviado.
+No está atado a una persona ni a un negocio. Antes de crearlo elegís al menos una de las partes que
+figuran más arriba en "Compartir por partes" (no hay nada marcado de antemano), cuánto dura (7 días,
+30 días o 1 año) y si permite agregar notas veterinarias (desactivado salvo que lo actives), y
+aceptás una advertencia que lo dice.
+
+El enlace muestra el nombre de tu perro, tu nombre visible, la fecha en que vence y las partes
+elegidas, incluido lo que se les agregue mientras funcione. La parte de notas veterinarias incluye
+todas las notas y el nombre que figura en cada una. Un documento o una foto guardados como archivo
+privado se abren con una dirección temporal que funciona cerca de un minuto. Los archivos que usan
+una dirección web larga, guardados con versiones anteriores de la app, aparecen en la lista pero no se
+abren desde el enlace, aunque una nota u otro texto que compartas puede contener direcciones o datos
+propios.
+
+Si permitís las notas, cualquiera que tenga el enlace puede agregar notas veterinarias a la historia
+de tu perro. Con un enlace no se puede modificar ni borrar nada. Esa nota queda marcada como agregada
+desde un enlace compartido. Si la persona había iniciado sesión en PawPi, la nota muestra el nombre
+visible de su cuenta y registramos qué cuenta la agregó; si no había iniciado sesión, o su cuenta no
+tiene nombre visible, aparece como "Cambios de alguien externo". La nota es parte de la historia de
+tu perro: la pueden leer vos, las personas que ven esa historia y quienes reciban de vos las notas
+veterinarias, y podés borrarla. Si quien la escribió con su sesión elimina su cuenta, su nombre en la
+nota se reemplaza por "Ex integrante".
+
+Podés quitar un enlace cuando quieras en la app (desde la pantalla para compartir o desde Acceso a
+datos), y además vence solo en su fecha. PawPi controla el enlace en cada pedido que se hace con él,
+así que las nuevas visitas, archivos y notas se rechazan apenas lo quitás o vence. Quitarlo no borra
+lo que alguien ya vio, descargó, copió o anotó, una dirección temporal de un archivo abierta justo
+antes puede seguir funcionando cerca de un minuto, y las notas ya agregadas quedan hasta que las
+borres. No guardamos un registro de quién vio un enlace. De cada enlace guardamos el perro, tu cuenta,
+las partes, si permite notas, cuándo se creó y cuándo vence, y si lo quitaste y cuándo. Guardamos una
+versión codificada (hash) del código secreto del enlace, no el enlace en sí, y conservamos ese
+registro hasta que se borre el perro o tu cuenta.
 
 ## 8. Subprocesadores y terceros
 
@@ -410,7 +453,8 @@ para esas transferencias.
 Usamos medidas técnicas y organizativas para proteger tu información, incluida la **seguridad a nivel
 de fila** para que los datos de cada persona estén acotados a esa persona (dueño/a, un cuidador
 aceptado que hayas invitado o el equipo de un negocio al que diste acceso, para lo que ese acceso
-abarca), contraseñas con hash y transporte cifrado. Ningún método de transmisión
+abarca; un enlace compartido de la historia clínica que crees abre solo lo que ese enlace abarca),
+contraseñas con hash y transporte cifrado. Ningún método de transmisión
 o almacenamiento es 100% seguro, pero trabajamos para proteger tu información y mejorar continuamente
 nuestras salvaguardas.
 

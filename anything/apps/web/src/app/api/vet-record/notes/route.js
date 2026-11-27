@@ -3,6 +3,7 @@ import sql from "@/app/api/utils/sql";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
+import { presentVetNote } from "@/app/api/utils/recordLink";
 
 // VR-B: owner-OR-family(Editor) gated reads/writes with authorship attribution (0120).
 // vet_notes gained a family policy in 0120 so an Editor can append a clinical note too.
@@ -35,7 +36,8 @@ async function GET(request) {
       ORDER BY n.note_date DESC
     `;
 
-    return Response.json({ notes });
+    // A note added through a record link is never shown as the owner's (utils/recordLink).
+    return Response.json({ notes: notes.map(presentVetNote) });
   } catch (error) {
     console.error("[Vet Record Notes] Error:", error);
     return Response.json({ error: "Failed to fetch notes" }, { status: 500 });
