@@ -13,8 +13,9 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
     return Promise.resolve();
   }),
 }));
+const mockGetLocales = jest.fn(() => [{ languageCode: "en" }]); // phone = English
 jest.mock("expo-localization", () => ({
-  getLocales: () => [{ languageCode: "en" }], // phone = English
+  getLocales: () => mockGetLocales(),
 }));
 
 import i18n from "./index";
@@ -49,6 +50,29 @@ test("initLocaleFromStorage applies a saved override on startup", async () => {
   mockStore["pawpi:locale"] = "es";
   await initLocaleFromStorage();
   expect(i18n.language).toBe("es");
+});
+
+describe("the stored choice against the phone's language", () => {
+  afterEach(() => mockGetLocales.mockImplementation(() => [{ languageCode: "en" }]));
+
+  test.each([
+    ["en", "es"],
+    ["es", "en"],
+    ["en", "fr"],
+  ])("a stored %s wins on a %s phone", async (stored, phone) => {
+    mockGetLocales.mockImplementation(() => [{ languageCode: phone }]);
+    mockStore["pawpi:locale"] = stored;
+    await i18n.changeLanguage(stored === "en" ? "es" : "en");
+    await initLocaleFromStorage();
+    expect(i18n.language).toBe(stored);
+  });
+
+  test("with nothing stored, a phone in neither language opens in Spanish", async () => {
+    mockGetLocales.mockImplementation(() => [{ languageCode: "pt" }]);
+    await initLocaleFromStorage();
+    expect(i18n.language).toBe("es");
+    expect(mockStore["pawpi:locale"]).toBeUndefined();
+  });
 });
 
 describe("syncLocaleToServer (perf audit 2026-10-23: not on every launch)", () => {

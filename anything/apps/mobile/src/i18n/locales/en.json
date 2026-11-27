@@ -1521,7 +1521,8 @@
       "trainer": "Training",
       "transport": "Transport",
       "insurance": "Insurance",
-      "adoption": "Adoption"
+      "adoption": "Adoption",
+      "pet_friendly": "Pet-friendly"
     }
   },
   "activity": {

@@ -68,7 +68,7 @@ it("renders the result section headers and no-results state in Spanish", async (
     data: {
       pets: [{ id: 1, name: "Rex", breed: "Lab" }],
       owners: [{ id: 2, full_name: "Ana", username: "ana" }],
-      providers: [{ id: 9, slug: "happy-paws", name: "Happy Paws" }],
+      providers: [{ id: 9, slug: "happy-paws", name: "Happy Paws", provider_type: "walker" }],
     },
     isLoading: false,
   };
@@ -81,6 +81,7 @@ it("renders the result section headers and no-results state in Spanish", async (
   });
   expect(getByText("MASCOTAS")).toBeTruthy();
   expect(getByText("NEGOCIOS")).toBeTruthy();
+  expect(getByText("Paseos")).toBeTruthy();
   expect(getByText("DUEÑOS")).toBeTruthy();
 
   mockSearch = { data: { pets: [], owners: [], providers: [] }, isLoading: false };

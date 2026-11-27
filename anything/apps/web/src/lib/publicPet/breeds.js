@@ -1,0 +1,50 @@
+// Spanish names for breeds the app stores in English: a copy of the app's names (mobile es.json,
+// trainingUi.breeds and breedPicker.mixed). breeds.test.js keeps the two in step. A breed with no
+// entry here (including one the family typed) is shown as stored.
+
+export const BREED_NAMES_ES = {
+  "Afghan Hound": "Galgo Afgano",
+  "Alaskan Malamute": "Malamute de Alaska",
+  "American Bulldog": "Bulldog Americano",
+  "Belgian Malinois": "Pastor Belga Malinois",
+  "Belgian Sheepdog": "Pastor Belga",
+  "Bernese Mountain Dog": "Boyero de Berna",
+  "Bichon Frise": "Bichón Frisé",
+  "Bouvier des Flandres": "Boyero de Flandes",
+  "Dachshund": "Teckel (Salchicha)",
+  "Dalmatian": "Dálmata",
+  "Doberman Pinscher": "Dóberman",
+  "Dogue de Bordeaux": "Dogo de Burdeos",
+  "French Bulldog": "Bulldog Francés",
+  "German Shepherd Dog": "Pastor Alemán",
+  "Great Dane": "Gran Danés",
+  "Great Pyrenees": "Gran Pirineo",
+  "Havanese": "Bichón Habanero",
+  "Ibizan Hound": "Podenco Ibicenco",
+  "Irish Wolfhound": "Lobero Irlandés",
+  "Italian Greyhound": "Galgo Italiano",
+  "Maltese": "Maltés",
+  "Mastiff": "Mastín Inglés",
+  "Neapolitan Mastiff": "Mastín Napolitano",
+  "Newfoundland": "Terranova",
+  "Old English Sheepdog": "Antiguo Pastor Inglés",
+  "Pekingese": "Pequinés",
+  "Pharaoh Hound": "Perro del Faraón",
+  "Pomeranian": "Pomerania",
+  "Poodle": "Caniche",
+  "Poodle (Miniature)": "Caniche Mini",
+  "Poodle (Standard)": "Caniche Grande",
+  "Poodle (Toy)": "Caniche Toy",
+  "Portuguese Water Dog": "Perro de Agua Portugués",
+  "Saint Bernard": "San Bernardo",
+  "Samoyed": "Samoyedo",
+  "Siberian Husky": "Husky Siberiano",
+  "Spanish Water Dog": "Perro de Agua Español",
+  "Tibetan Mastiff": "Mastín Tibetano",
+  "Xoloitzcuintli": "Xoloitzcuintle",
+  "Mixed Breed": "Mestizo",
+};
+
+export function breedName(breed, lang) {
+  return lang === "es" && Object.hasOwn(BREED_NAMES_ES, breed) ? BREED_NAMES_ES[breed] : breed;
+}

@@ -14,6 +14,10 @@ import {
 import { COLORS } from "../lib/colors";
 import ImageUploader from "./ImageUploader";
 import AdvancedSection from "./AdvancedSection";
+import shopCopy from "../i18n/shop";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { fill, formatMoney } from "../i18n/lib/format";
+import { serverErrorMessage } from "../i18n/lib/serverError";
 
 // /provider/shop — the SHOP's catalog/inventory + order workspace (ticket 2.11). Manage
 // PRODUCTS (price, stock, Rx flag, active) and advance incoming ORDERS' FULFILLMENT
@@ -23,12 +27,17 @@ import AdvancedSection from "./AdvancedSection";
 
 const FULFILLMENT_OPTIONS = ["placed", "shipped", "delivered", "cancelled"];
 
-function money(cents, currency = "ARS") {
+function money(cents, currency = "ARS", lang = "en") {
   if (cents == null) return "";
+  if (lang === "es") return formatMoney(cents, currency, lang);
   return `${currency} ${(cents / 100).toFixed(2)}`;
 }
 
+// A stored order value in the viewer's language; a value without a name is shown as stored.
+const named = (names, value) => (Object.hasOwn(names, value) ? names[value] : value);
+
 export default function ProviderShop({ providerId }) {
+  const { t } = useProviderCopy(shopCopy);
   // Does this business sell products yet? Products is the `shop` offering (the same one the
   // Business Profile turns on). Until it's enabled, we show a friendly explainer + a single
   // "Enable Products" button instead of a jargon 403 — enabling flips the SAME offering the
@@ -41,7 +50,7 @@ export default function ProviderShop({ providerId }) {
     return (
       <div className="mx-auto flex w-full max-w-5xl items-center gap-2 px-6 py-16 text-[#7A6254]">
         <Loader2 className="h-5 w-5 animate-spin" style={{ color: COLORS.coral }} />
-        Loading…
+        {t.loading}
       </div>
     );
   }
@@ -60,22 +69,20 @@ export default function ProviderShop({ providerId }) {
           <ShoppingBag className="h-5 w-5" style={{ color: COLORS.terracotta }} />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-[#3B241B]">Products</h1>
-          <p className="text-sm text-[#7A6254]">
-            Catalog, inventory, and order fulfillment.
-          </p>
+          <h1 className="text-xl font-bold text-[#3B241B]">{t.title}</h1>
+          <p className="text-sm text-[#7A6254]">{t.subtitle}</p>
         </div>
       </div>
 
       <CreateProductForm providerId={providerId} />
 
       <h2 className="mb-3 mt-8 text-sm font-bold uppercase tracking-wide text-[#7A6254]">
-        Products
+        {t.headings.products}
       </h2>
       <ProductList providerId={providerId} />
 
       <h2 className="mb-3 mt-10 text-sm font-bold uppercase tracking-wide text-[#7A6254]">
-        Orders
+        {t.headings.orders}
       </h2>
       <OrderList providerId={providerId} />
     </div>
@@ -86,11 +93,12 @@ export default function ProviderShop({ providerId }) {
 // capability" message. Plain language a shop owner understands + one button that turns Products
 // on (the same `shop` offering the Business Profile controls) and lands them on add-a-product.
 function ProductsIntro({ providerId }) {
+  const { t, lang } = useProviderCopy(shopCopy);
   const add = useAddCapability(providerId);
   const enable = () =>
     add.mutate("shop", {
       onError: (err) =>
-        toast.error(err?.message || "Couldn't turn on Products — please try again"),
+        toast.error(serverErrorMessage(err, lang, t.intro.failed, shopCopy)),
     });
 
   return (
@@ -105,13 +113,8 @@ function ProductsIntro({ providerId }) {
         >
           <ShoppingBag className="h-7 w-7" style={{ color: COLORS.terracotta }} />
         </div>
-        <h1 className="mt-4 text-xl font-bold text-[#3B241B]">
-          Sell products to pet owners
-        </h1>
-        <p className="mx-auto mt-2 max-w-md text-sm text-[#7A6254]">
-          Turn on Products to list what you sell — food, toys, accessories, and more — each with
-          photos and a price. Pet owners can browse and buy them right from your business page.
-        </p>
+        <h1 className="mt-4 text-xl font-bold text-[#3B241B]">{t.intro.title}</h1>
+        <p className="mx-auto mt-2 max-w-md text-sm text-[#7A6254]">{t.intro.body}</p>
         <button
           type="button"
           onClick={enable}
@@ -124,7 +127,7 @@ function ProductsIntro({ providerId }) {
           ) : (
             <Plus className="h-4 w-4" />
           )}
-          {add.isPending ? "Turning on…" : "Enable Products"}
+          {add.isPending ? t.intro.enabling : t.intro.enable}
         </button>
       </div>
     </div>
@@ -132,6 +135,7 @@ function ProductsIntro({ providerId }) {
 }
 
 function CreateProductForm({ providerId }) {
+  const { t, lang } = useProviderCopy(shopCopy);
   const create = useCreateShopProduct(providerId);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -144,7 +148,7 @@ function CreateProductForm({ providerId }) {
     e.preventDefault();
     const priceCents = Math.round(parseFloat(price) * 100);
     if (!name || !Number.isFinite(priceCents) || priceCents < 0) {
-      toast.error("Enter a name and a valid price.");
+      toast.error(t.form.invalid);
       return;
     }
     try {
@@ -156,7 +160,7 @@ function CreateProductForm({ providerId }) {
         is_rx: isRx,
         image_urls: images,
       });
-      toast.success("Product added");
+      toast.success(t.form.added);
       setName("");
       setPrice("");
       setStock("");
@@ -164,7 +168,7 @@ function CreateProductForm({ providerId }) {
       setIsRx(false);
       setImages([]);
     } catch (err) {
-      toast.error(err.message || "Couldn't add the product");
+      toast.error(serverErrorMessage(err, lang, t.form.addFailed, shopCopy));
     }
   };
 
@@ -178,14 +182,14 @@ function CreateProductForm({ providerId }) {
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Product name"
+          placeholder={t.form.name}
           className="rounded-lg border px-3 py-2 text-sm"
           style={{ borderColor: COLORS.peach }}
         />
         <input
           value={price}
           onChange={(e) => setPrice(e.target.value)}
-          placeholder="Price (e.g. 49.90)"
+          placeholder={t.form.price}
           inputMode="decimal"
           className="rounded-lg border px-3 py-2 text-sm"
           style={{ borderColor: COLORS.peach }}
@@ -193,7 +197,7 @@ function CreateProductForm({ providerId }) {
         <input
           value={stock}
           onChange={(e) => setStock(e.target.value)}
-          placeholder="Stock quantity"
+          placeholder={t.form.stock}
           inputMode="numeric"
           className="rounded-lg border px-3 py-2 text-sm"
           style={{ borderColor: COLORS.peach }}
@@ -206,18 +210,18 @@ function CreateProductForm({ providerId }) {
           <input
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            placeholder="Category (food, toys, meds…)"
+            placeholder={t.form.category}
             className="w-full rounded-lg border px-3 py-2 text-sm"
             style={{ borderColor: COLORS.peach }}
           />
-          <ImageUploader label="Product photos" value={images} onChange={setImages} />
+          <ImageUploader label={t.form.photos} value={images} onChange={setImages} />
           <label className="flex items-center gap-2 text-sm text-[#7A6254]">
             <input
               type="checkbox"
               checked={isRx}
               onChange={(e) => setIsRx(e.target.checked)}
             />
-            Requires a prescription (Rx) — buyers must have a vet relationship
+            {t.form.rx}
           </label>
         </AdvancedSection>
       </div>
@@ -228,13 +232,14 @@ function CreateProductForm({ providerId }) {
         style={{ backgroundColor: COLORS.coral }}
       >
         <Plus className="h-4 w-4" />
-        {create.isPending ? "Adding…" : "Add product"}
+        {create.isPending ? t.form.adding : t.form.add}
       </button>
     </form>
   );
 }
 
 function ProductList({ providerId }) {
+  const { t, lang } = useProviderCopy(shopCopy);
   const { data: products, isLoading, isError, error } = useShopProducts(providerId);
   const update = useUpdateShopProduct(providerId);
   const del = useDeleteShopProduct(providerId);
@@ -243,23 +248,20 @@ function ProductList({ providerId }) {
     return (
       <div className="flex items-center gap-2 py-12 text-[#7A6254]">
         <Loader2 className="h-5 w-5 animate-spin" style={{ color: COLORS.coral }} />
-        Loading products…
+        {t.products.loading}
       </div>
     );
   }
   if (isError) {
     return (
       <p className="py-8 text-sm text-[#B4452F]">
-        {error?.message || "Couldn't load products."}
+        {serverErrorMessage(error, lang, t.products.loadFailed, shopCopy)}
       </p>
     );
   }
   if (!products || products.length === 0) {
     return (
-      <EmptyCard
-        title="No products yet"
-        body="Add your first product above to start selling."
-      />
+      <EmptyCard title={t.products.emptyTitle} body={t.products.emptyBody} />
     );
   }
 
@@ -267,9 +269,9 @@ function ProductList({ providerId }) {
     const next = (p.stock_qty ?? 0) + 10;
     try {
       await update.mutateAsync({ productId: p.id, stock_qty: next });
-      toast.success(`Restocked to ${next}`);
+      toast.success(fill(t.products.restocked, { count: next }));
     } catch (err) {
-      toast.error(err.message || "Couldn't restock");
+      toast.error(serverErrorMessage(err, lang, t.products.restockFailed, shopCopy));
     }
   };
 
@@ -293,6 +295,7 @@ function ProductList({ providerId }) {
 // thumbnail (a Package icon when there are none). "Photos" reveals the shared
 // ImageUploader seeded from the product; Save persists image_urls via the PATCH route.
 function ProductRow({ product: p, onRestock, onDeactivate, onReactivate, update }) {
+  const { t, lang } = useProviderCopy(shopCopy);
   const [editing, setEditing] = useState(false);
   const [images, setImages] = useState(
     Array.isArray(p.image_urls) ? p.image_urls : [],
@@ -302,10 +305,10 @@ function ProductRow({ product: p, onRestock, onDeactivate, onReactivate, update 
   const savePhotos = async () => {
     try {
       await update.mutateAsync({ productId: p.id, image_urls: images });
-      toast.success("Photos updated");
+      toast.success(t.products.photosUpdated);
       setEditing(false);
     } catch (err) {
-      toast.error(err.message || "Couldn't update photos");
+      toast.error(serverErrorMessage(err, lang, t.products.photosFailed, shopCopy));
     }
   };
 
@@ -338,17 +341,18 @@ function ProductRow({ product: p, onRestock, onDeactivate, onReactivate, update 
                 className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold"
                 style={{ backgroundColor: COLORS.terracotta + "22", color: COLORS.terracotta }}
               >
-                <Pill className="h-3 w-3" /> Rx
+                <Pill className="h-3 w-3" /> {t.rx}
               </span>
             ) : null}
             {!p.active ? (
               <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500">
-                Inactive
+                {t.products.inactive}
               </span>
             ) : null}
           </div>
           <p className="text-sm text-[#7A6254]">
-            {money(p.price_cents, p.currency)} · {p.stock_qty} in stock
+            {money(p.price_cents, p.currency, lang)} ·{" "}
+            {fill(t.products.inStock, { count: p.stock_qty })}
             {p.category ? ` · ${p.category}` : ""}
           </p>
         </div>
@@ -359,14 +363,14 @@ function ProductRow({ product: p, onRestock, onDeactivate, onReactivate, update 
             style={{ borderColor: COLORS.peach }}
           >
             <ImageIcon className="h-3.5 w-3.5" />
-            Photos
+            {t.products.photos}
           </button>
           <button
             onClick={onRestock}
             className="rounded-lg border px-3 py-1.5 text-xs font-semibold text-[#3B241B]"
             style={{ borderColor: COLORS.peach }}
           >
-            +10 stock
+            {t.products.addStock}
           </button>
           {p.active ? (
             <button
@@ -374,7 +378,7 @@ function ProductRow({ product: p, onRestock, onDeactivate, onReactivate, update 
               className="rounded-lg px-3 py-1.5 text-xs font-semibold"
               style={{ color: COLORS.terracotta }}
             >
-              Deactivate
+              {t.products.deactivate}
             </button>
           ) : (
             <button
@@ -382,7 +386,7 @@ function ProductRow({ product: p, onRestock, onDeactivate, onReactivate, update 
               className="rounded-lg px-3 py-1.5 text-xs font-semibold"
               style={{ color: COLORS.coral }}
             >
-              Reactivate
+              {t.products.reactivate}
             </button>
           )}
         </div>
@@ -390,7 +394,7 @@ function ProductRow({ product: p, onRestock, onDeactivate, onReactivate, update 
 
       {editing && (
         <div className="mt-4 border-t pt-4" style={{ borderColor: COLORS.peach }}>
-          <ImageUploader label="Product photos" value={images} onChange={setImages} />
+          <ImageUploader label={t.form.photos} value={images} onChange={setImages} />
           <div className="mt-3 flex gap-2">
             <button
               onClick={savePhotos}
@@ -398,7 +402,7 @@ function ProductRow({ product: p, onRestock, onDeactivate, onReactivate, update 
               className="rounded-lg px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
               style={{ backgroundColor: COLORS.coral }}
             >
-              {update.isPending ? "Saving…" : "Save photos"}
+              {update.isPending ? t.products.saving : t.products.savePhotos}
             </button>
             <button
               onClick={() => {
@@ -408,7 +412,7 @@ function ProductRow({ product: p, onRestock, onDeactivate, onReactivate, update 
               className="rounded-lg border px-4 py-2 text-xs font-semibold text-[#7A6254]"
               style={{ borderColor: COLORS.peach }}
             >
-              Cancel
+              {t.products.cancel}
             </button>
           </div>
         </div>
@@ -418,6 +422,7 @@ function ProductRow({ product: p, onRestock, onDeactivate, onReactivate, update 
 }
 
 function OrderList({ providerId }) {
+  const { t, lang } = useProviderCopy(shopCopy);
   const { data: orders, isLoading, isError, error } = useShopOrders(providerId);
   const setFulfillment = useSetOrderFulfillment(providerId);
 
@@ -425,27 +430,27 @@ function OrderList({ providerId }) {
     return (
       <div className="flex items-center gap-2 py-12 text-[#7A6254]">
         <Loader2 className="h-5 w-5 animate-spin" style={{ color: COLORS.coral }} />
-        Loading orders…
+        {t.orders.loading}
       </div>
     );
   }
   if (isError) {
     return (
       <p className="py-8 text-sm text-[#B4452F]">
-        {error?.message || "Couldn't load orders."}
+        {serverErrorMessage(error, lang, t.orders.loadFailed, shopCopy)}
       </p>
     );
   }
   if (!orders || orders.length === 0) {
-    return <EmptyCard title="No orders yet" body="Paid orders will appear here." />;
+    return <EmptyCard title={t.orders.emptyTitle} body={t.orders.emptyBody} />;
   }
 
   const advance = async (orderId, status) => {
     try {
       await setFulfillment.mutateAsync({ orderId, fulfillment_status: status });
-      toast.success(`Marked ${status}`);
+      toast.success(fill(t.orders.marked, { status: named(t.fulfillment, status) }));
     } catch (err) {
-      toast.error(err.message || "Couldn't update fulfillment");
+      toast.error(serverErrorMessage(err, lang, t.orders.updateFailed, shopCopy));
     }
   };
 
@@ -458,13 +463,18 @@ function OrderList({ providerId }) {
           style={{ borderColor: COLORS.peach, backgroundColor: "#fff" }}
         >
           <div className="flex items-center justify-between">
-            <span className="font-semibold text-[#3B241B]">Order #{o.id}</span>
+            <span className="font-semibold text-[#3B241B]">
+              {fill(t.orders.number, { id: o.id })}
+            </span>
             <span className="text-sm font-semibold" style={{ color: COLORS.coral }}>
-              {money(o.amount_cents, o.currency)}
+              {money(o.amount_cents, o.currency, lang)}
             </span>
           </div>
           <p className="mt-1 text-sm text-[#7A6254]">
-            Payment: {o.status} · Fulfillment: {o.fulfillment_status}
+            {fill(t.orders.summary, {
+              payment: named(t.paymentStatus, o.status),
+              fulfillment: named(t.fulfillment, o.fulfillment_status),
+            })}
           </p>
           {(o.items ?? []).map((it) => (
             <p key={it.id} className="text-sm text-[#7A6254]">
@@ -477,13 +487,15 @@ function OrderList({ providerId }) {
                 key={s}
                 onClick={() => advance(o.id, s)}
                 disabled={o.fulfillment_status === s}
-                className="rounded-lg border px-3 py-1.5 text-xs font-semibold capitalize disabled:opacity-50"
+                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:opacity-50 ${
+                  lang === "en" ? "capitalize" : ""
+                }`}
                 style={{
                   borderColor: COLORS.peach,
                   color: o.fulfillment_status === s ? COLORS.coral : "#3B241B",
                 }}
               >
-                {s}
+                {named(t.fulfillment, s)}
               </button>
             ))}
           </div>
