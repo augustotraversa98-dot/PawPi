@@ -325,3 +325,18 @@ test("withdrawing one already accepted says to revoke instead", async () => {
   await waitFor(() => expect(Alert.alert).toHaveBeenCalledTimes(2));
   expect(Alert.alert.mock.calls[1][1]).toBe("They already accepted it. Revoke their access instead.");
 });
+
+test.each([
+  [true, "No vet on PawPi matches. Check the spelling, or create a link instead."],
+  [false, "No vet on PawPi matches. Check the spelling."],
+])("an empty search suggests a link only when one can be created (%s)", async (links, message) => {
+  onSearch = () => reply({ available: true, vets: [] });
+  const answer = global.fetch;
+  global.fetch = jest.fn(async (url, init) =>
+    url === "/api/care-access/links" ? reply({ available: links, links: [] }) : answer(url, init),
+  );
+  const s = sheet();
+  await waitFor(() => expect(s.getByTestId("vet-search-input")).toBeTruthy());
+  fireEvent.changeText(s.getByTestId("vet-search-input"), "nobody");
+  await waitFor(() => expect(s.getByText(message)).toBeTruthy(), { timeout: 3000 });
+});

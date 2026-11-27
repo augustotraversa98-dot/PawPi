@@ -11,7 +11,8 @@ import {
   useShareRecord,
   useUpdateGrant,
 } from "@/hooks/useCareAccessGrants";
-import { OFFERS_UNAVAILABLE, useSendShareOffer } from "@/hooks/useShareOffers";
+import { useRecordLinks } from "@/hooks/useRecordLinks";
+import { OFFERS_UNAVAILABLE, useSendShareOffer, useVetSearch } from "@/hooks/useShareOffers";
 import { useSharingLive } from "@/hooks/useSharingLive";
 import { friendlyErrorMessage } from "@/utils/appAlert";
 import { formatLocalDate } from "@/utils/localeDateTime";
@@ -41,6 +42,18 @@ const ERROR_KEYS = {
   409: "vetShare.error.changed",
   429: "vetShare.error.tooMany",
 };
+
+// What the vet picker says depends on the other ways to reach a vet that this server offers. Until it has said, the copy
+// promises none.
+function vetCopy(canSearch, canLink) {
+  if (canSearch === undefined || canLink === undefined) {
+    return { hint: "vetShare.pickHintPlain", none: "vetShare.noVetsPlain" };
+  }
+  if (canSearch && canLink) return { hint: "vetShare.pickHint", none: "vetShare.noVets" };
+  if (canSearch) return { hint: "vetShare.pickHintSearchOnly", none: "vetShare.noVetsSearchOnly" };
+  if (canLink) return { hint: "vetShare.pickHintLinkOnly", none: "vetShare.noVetsLinkOnly" };
+  return { hint: "vetShare.pickHintNeither", none: "vetShare.noVetsNeither" };
+}
 
 function offerErrorKey(error) {
   if (error?.code === OFFERS_UNAVAILABLE) return "unavailable";
@@ -77,6 +90,10 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
   const bookings = useMyBookings();
   const grantsQuery = useCareAccessGrants(isOwner ? petId : null);
   const updateGrant = useUpdateGrant(petId);
+  const offersOthers = isOwner && !fixed;
+  const canSearch = useVetSearch("", { enabled: offersOthers }).data?.available;
+  const canLink = useRecordLinks({ enabled: offersOthers }).data?.available;
+  const copy = vetCopy(canSearch, canLink);
 
   const scrollRef = useRef(null);
   const [step, setStep] = useState("choose");
@@ -374,7 +391,7 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
     if (vets.length === 0) {
       return (
         <View style={card}>
-          <Text style={text}>{t("vetShare.noVets", { pet: petName })}</Text>
+          <Text style={text}>{t(copy.none, { pet: petName })}</Text>
         </View>
       );
     }
@@ -457,7 +474,7 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
         <>
           <Heading>{t(fixed ? "vetShare.providerTitle" : "vetShare.pickTitle")}</Heading>
           {fixed ? null : (
-            <Text style={[muted, { marginBottom: SPACING.sm }]}>{t("vetShare.pickHint", { pet: petName })}</Text>
+            <Text style={[muted, { marginBottom: SPACING.sm }]}>{t(copy.hint, { pet: petName })}</Text>
           )}
           {renderVetPicker()}
           {ready && !fixed ? (
@@ -467,6 +484,7 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
               onPick={chooseFound}
               excludeIds={vets.map((v) => v.providerId)}
               describe={searchStatus}
+              canLink={canLink}
             />
           ) : null}
           {accessNotes()}

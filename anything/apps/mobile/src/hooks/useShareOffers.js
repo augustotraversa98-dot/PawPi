@@ -49,11 +49,12 @@ function useSettled(value, delay) {
 
 // The businesses matching what the owner types, asked once typing pauses. With fewer than two characters the server
 // answers no businesses, but still says whether inviting is available. `term` is what the shown results are for.
-export function useVetSearch(text) {
+export function useVetSearch(text, { enabled = true } = {}) {
   const typed = text.trim().length >= 2 ? text.trim() : "";
   const term = useSettled(typed, SEARCH_DELAY_MS);
   const query = useQuery({
     queryKey: ["care-share-vets", term],
+    enabled,
     queryFn: () => readList(`/api/care-access/vets?q=${encodeURIComponent(term)}`, "vets"),
   });
   return { ...query, term, waiting: typed !== term };

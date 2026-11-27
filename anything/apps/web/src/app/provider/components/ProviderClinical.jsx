@@ -13,12 +13,11 @@ import ClinicalShareOffers from "./ClinicalShareOffers";
 
 // Pets whose owner shared the record with this business, with or without a booking
 // (for example after an invite link). Hidden while there are none.
-function SharedWithUs({ providerId }) {
-  const { data: pets } = useSharedPets(providerId);
+function SharedWithUs({ pets }) {
   const { lang } = useVisitorLang();
   const t = VET_INVITE_COPY[lang].shared;
 
-  if (!pets?.length) return null;
+  if (!pets.length) return null;
 
   return (
     <section aria-label={t.title} className="mb-5">
@@ -53,6 +52,8 @@ export default function ProviderClinical({ providerId }) {
   const { data: bookings, isLoading, isError, error } =
     useProviderBookings(providerId);
   const { t, lang } = useProviderCopy(clinicalCopy);
+  const shared = useSharedPets(providerId);
+  const sharedPets = shared.data ?? [];
 
   // Distinct pets, keeping the most recent booking id per pet for the deep link.
   const pets = useMemo(() => {
@@ -70,6 +71,10 @@ export default function ProviderClinical({ providerId }) {
     }
     return [...byPet.values()];
   }, [bookings]);
+  // "No pets yet" is true only when nothing was booked and nothing was shared.
+  const noneBooked = !isLoading && !isError && pets.length === 0;
+  const waiting = isLoading || (noneBooked && shared.isLoading);
+  const onlyShared = noneBooked && sharedPets.length > 0;
   // Worded when shown, so it follows the language switch.
   const nameOf = (p) => p.petName || fill(t.unnamedPet, { id: p.petId });
 
@@ -100,49 +105,51 @@ export default function ProviderClinical({ providerId }) {
       </div>
 
       <ClinicalShareOffers providerId={providerId} />
-      <SharedWithUs providerId={providerId} />
+      <SharedWithUs pets={sharedPets} />
 
-      <div className="overflow-hidden rounded-2xl border border-[#FFD9B3] bg-white">
-        {isLoading ? (
-          <div className="flex items-center justify-center gap-3 px-6 py-16 text-[#7A6254]">
-            <Loader2 className="h-5 w-5 animate-spin" style={{ color: COLORS.coral }} />
-            {t.loading}
-          </div>
-        ) : isError ? (
-          <div className="px-6 py-16 text-center">
-            <p className="font-semibold text-[#B23B30]">{t.loadErrorTitle}</p>
-            <p className="mt-1 text-sm text-[#7A6254]">
-              {serverErrorMessage(error, lang, t.tryAgain)}
-            </p>
-          </div>
-        ) : pets.length === 0 ? (
-          <div className="px-6 py-16 text-center">
-            <p className="text-base font-semibold text-[#3B241B]">{t.emptyTitle}</p>
-            <p className="mt-1 text-sm text-[#7A6254]">
-              {t.emptyBody}
-            </p>
-          </div>
-        ) : (
-          <ul>
-            {pets.map((p) => (
-              <li key={p.petId}>
-                <Link
-                  to={recordHref(p)}
-                  className="flex items-center justify-between border-b border-[#FFF7EF] px-5 py-4 last:border-0 hover:bg-[#FFFBF6]"
-                >
-                  <span className="font-semibold text-[#3B241B]">
-                    {nameOf(p)}
-                  </span>
-                  <span className="flex items-center gap-1 text-sm font-semibold text-[#B75D32]">
-                    {t.openRecord}
-                    <ChevronRight className="h-4 w-4" />
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      {onlyShared ? null : (
+        <div className="overflow-hidden rounded-2xl border border-[#FFD9B3] bg-white">
+          {waiting ? (
+            <div className="flex items-center justify-center gap-3 px-6 py-16 text-[#7A6254]">
+              <Loader2 className="h-5 w-5 animate-spin" style={{ color: COLORS.coral }} />
+              {t.loading}
+            </div>
+          ) : isError ? (
+            <div className="px-6 py-16 text-center">
+              <p className="font-semibold text-[#B23B30]">{t.loadErrorTitle}</p>
+              <p className="mt-1 text-sm text-[#7A6254]">
+                {serverErrorMessage(error, lang, t.tryAgain)}
+              </p>
+            </div>
+          ) : pets.length === 0 ? (
+            <div className="px-6 py-16 text-center">
+              <p className="text-base font-semibold text-[#3B241B]">{t.emptyTitle}</p>
+              <p className="mt-1 text-sm text-[#7A6254]">
+                {t.emptyBody}
+              </p>
+            </div>
+          ) : (
+            <ul>
+              {pets.map((p) => (
+                <li key={p.petId}>
+                  <Link
+                    to={recordHref(p)}
+                    className="flex items-center justify-between border-b border-[#FFF7EF] px-5 py-4 last:border-0 hover:bg-[#FFFBF6]"
+                  >
+                    <span className="font-semibold text-[#3B241B]">
+                      {nameOf(p)}
+                    </span>
+                    <span className="flex items-center gap-1 text-sm font-semibold text-[#B75D32]">
+                      {t.openRecord}
+                      <ChevronRight className="h-4 w-4" />
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }

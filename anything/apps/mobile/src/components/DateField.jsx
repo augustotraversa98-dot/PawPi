@@ -8,6 +8,7 @@ import {
   normalizePickerBound,
   pickedDateToCanonical,
 } from "../utils/canonicalDateTime";
+import { currentDateLocale } from "../utils/localeDateTime";
 import { COLORS, MATERIALS, RADIUS, SPACING, TYPE } from "@/constants/theme";
 import { useTranslation } from "react-i18next";
 
@@ -132,6 +133,8 @@ export default function DateField({
           testID={testID ? `${testID}-picker` : undefined}
           value={pickerValue}
           mode="date"
+          // Month and day names in the app's language, not the phone's (iOS).
+          locale={currentDateLocale()}
           display={Platform.OS === "ios" ? "inline" : "calendar"}
           onChange={handleChange}
           minimumDate={minDate}

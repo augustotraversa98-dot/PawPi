@@ -148,8 +148,11 @@ describe("onboarding age step", () => {
 
   test("without the exact date, an estimate completes the step and is shown as approximate", async () => {
     const screen = await goToAgeStep();
+    expect(screen.getByText("Birth date")).toBeTruthy();
     fireEvent.press(screen.getByTestId("birthday-unsure"));
     expect(screen.queryByTestId("birthday-field")).toBeNull();
+    // No heading is left over the field that went away.
+    expect(screen.queryByText("Birth date")).toBeNull();
     expect(nextIsDisabled(screen)).toBe(true);
     fireEvent.changeText(screen.getByTestId("estimated-age-years"), "2");
     fireEvent.press(screen.getByTestId("onboarding-next"));

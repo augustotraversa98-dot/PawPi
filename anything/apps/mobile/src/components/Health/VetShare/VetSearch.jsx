@@ -27,9 +27,9 @@ const input = [
  *
  * Props: picked ({ id, name, ... } or null: the last one picked here), selectedId (the business the sheet is about, which
  * may be one from the list above), onPick(vet), excludeIds (businesses already offered in that list), describe(vet) (a
- * status line for a result).
+ * status line for a result), canLink (a link can be created instead, so an empty result may suggest it).
  */
-export default function VetSearch({ picked, selectedId, onPick, excludeIds = [], describe }) {
+export default function VetSearch({ picked, selectedId, onPick, excludeIds = [], describe, canLink }) {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const { data, isError, refetch, term, waiting, isFetching } = useVetSearch(search);
@@ -82,7 +82,9 @@ export default function VetSearch({ picked, selectedId, onPick, excludeIds = [],
         />
       ))}
       {term && !waiting && !isFetching && !isError && found.length === 0 ? (
-        <Text testID="vet-search-empty" style={muted}>{t("shareOffer.searchEmpty")}</Text>
+        <Text testID="vet-search-empty" style={muted}>
+          {t(canLink ? "shareOffer.searchEmpty" : "shareOffer.searchEmptyNoLink")}
+        </Text>
       ) : null}
     </View>
   );

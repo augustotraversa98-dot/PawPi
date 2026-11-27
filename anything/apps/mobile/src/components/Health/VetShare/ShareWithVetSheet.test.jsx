@@ -49,9 +49,15 @@ jest.mock("./useRecordLinkSteps", () => ({ __esModule: true, default: () => ({ s
 // Searching and inviting have their own tests (VetInvitation.test.jsx).
 jest.mock("./VetSearch", () => ({ __esModule: true, default: () => null }));
 jest.mock("./ShareOffers", () => ({ __esModule: true, default: () => null }));
+// What the server says it offers besides booked vets; undefined while it has not answered.
+let mockCanSearch;
+let mockCanLink;
+const mockAnswer = (available) => ({ data: available === undefined ? undefined : { available } });
 jest.mock("@/hooks/useShareOffers", () => ({
   useSendShareOffer: () => ({ mutate: jest.fn(), isPending: false }),
+  useVetSearch: () => mockAnswer(mockCanSearch),
 }));
+jest.mock("@/hooks/useRecordLinks", () => ({ useRecordLinks: () => mockAnswer(mockCanLink) }));
 jest.mock("@/hooks/useProviders", () => ({ useMyBookings: () => mockBookings }));
 jest.mock("@/hooks/useCareAccessGrants", () => ({
   useCareAccessGrants: () => mockGrants,
@@ -94,6 +100,8 @@ const grant = (over) => ({
 let alertPress;
 beforeEach(() => {
   mockLangRef.current = "en";
+  mockCanSearch = true;
+  mockCanLink = true;
   mockShare.mockReset();
   mockRevoke.mockClear();
   mockPush.mockReset();
@@ -485,5 +493,42 @@ describe("a vet without PawPi, by link", () => {
   test("a booked business gets no such note", () => {
     const s = open({ provider: { providerId: 1, name: "Happy Paws" } });
     expect(s.queryByTestId("vet-share-check-name")).toBeNull();
+  });
+});
+
+describe("the vet picker only offers what this server can do", () => {
+  const cases = [
+    [true, true, /Search for any other vet on PawPi, or create a link/, /Search for your vet below, or create a link/],
+    [true, false, /Search for any other vet on PawPi\.$/, /Search for your vet below\.$/],
+    [false, true, /For any other vet, create a link/, /Create a link for your vet below\.$/],
+    [false, false, /sharing by link aren't available yet\./, /aren't available yet\. Once you book a vet for Luna/],
+    [undefined, true, /appear here\.$/, /vet booking for Luna yet\.$/],
+  ];
+
+  test.each(cases)("search %s, link %s", (search, link, hint, empty) => {
+    mockCanSearch = search;
+    mockCanLink = link;
+    expect(open().getByText(hint)).toBeTruthy();
+    mockBookings = query({ upcoming: [], past: [] });
+    expect(open().getByText(empty)).toBeTruthy();
+  });
+
+  test("with neither, a booked vet can still be picked and reviewed", () => {
+    mockCanSearch = false;
+    mockCanLink = false;
+    const s = open();
+    chooseAll(s);
+    press(s, "cta");
+    expect(s.getByTestId("vet-share-review")).toBeTruthy();
+  });
+
+  test("Spanish, with neither", () => {
+    mockLangRef.current = "es";
+    mockCanSearch = false;
+    mockCanLink = false;
+    mockBookings = query({ upcoming: [], past: [] });
+    const s = open();
+    expect(s.getByText(/todavía no se puede buscar veterinarias ni compartir con un enlace/)).toBeTruthy();
+    expect(s.queryByText(/creale un enlace|Buscá a tu veterinaria/)).toBeNull();
   });
 });

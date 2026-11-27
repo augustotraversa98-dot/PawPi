@@ -77,6 +77,30 @@ describe("ProviderClinical index", () => {
     expect(useSharedPets).toHaveBeenCalledWith(3);
   });
 
+  it("does not say there are no pets under a list of shared ones", () => {
+    setBookings([]);
+    useSharedPets.mockReturnValue({ data: [{ pet_id: 88, pet_name: "Nina", expires_at: null }] });
+    render(<ProviderClinical providerId={3} />);
+    expect(screen.getByRole("link", { name: /nina/i })).toBeInTheDocument();
+    expect(screen.queryByText("No pets yet")).not.toBeInTheDocument();
+  });
+
+  it("keeps booked pets listed beside shared ones", () => {
+    setBookings([{ id: 1, pet_id: 55, pet_name: "Rex" }]);
+    useSharedPets.mockReturnValue({ data: [{ pet_id: 88, pet_name: "Nina", expires_at: null }] });
+    render(<ProviderClinical providerId={3} />);
+    expect(screen.getByText("Rex")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /nina/i })).toBeInTheDocument();
+  });
+
+  it("waits for the shared pets before saying there are none", () => {
+    setBookings([]);
+    useSharedPets.mockReturnValue({ data: undefined, isLoading: true });
+    render(<ProviderClinical providerId={3} />);
+    expect(screen.getByText("Loading pets…")).toBeInTheDocument();
+    expect(screen.queryByText("No pets yet")).not.toBeInTheDocument();
+  });
+
   it("shows no shared section while nothing is shared", () => {
     setBookings([]);
     render(<ProviderClinical providerId={3} />);

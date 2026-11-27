@@ -19,7 +19,7 @@ import { useCurrentPet } from "@/hooks/usePetProfile";
 import { usePetVaccinations } from "@/hooks/usePetVaccinations";
 import { formatPetAge, getDisplayAgeParts } from "@/utils/petAge";
 import { resolvePrivateMediaUrl } from "@/utils/privateMedia";
-import { formatDisplayDate, formatDisplayTime } from "@/utils/canonicalDateTime";
+import { formatDisplayDate, formatDisplayTime, toValidDate } from "@/utils/canonicalDateTime";
 import { RefreshableScrollView } from "@/components/RefreshableScrollView";
 import {
   FileText,
@@ -85,6 +85,10 @@ const HISTORY_TABS = [
   { key: "documents", labelKey: "tabDocuments", icon: FileText },
   { key: "photos", labelKey: "tabPhotos", icon: Camera },
 ];
+
+// When a row was added is a moment: it reads as the date on this device, not the date inside the UTC timestamp.
+// (A date with no time, like a note's own date, is formatted as written.)
+const addedOn = (createdAt) => formatDisplayDate(toValidDate(createdAt) ?? createdAt);
 
 export default function HealthVetRecord() {
   const insets = useSafeAreaInsets();
@@ -157,7 +161,7 @@ export default function HealthVetRecord() {
     if (!row) return null;
     // A note added through a record link is never "added by" the owner or a family member.
     if (row.via_record_link) {
-      const date = row.created_at ? formatDisplayDate(row.created_at) : "";
+      const date = row.created_at ? addedOn(row.created_at) : "";
       return (
         <Text
           style={{
@@ -178,7 +182,7 @@ export default function HealthVetRecord() {
     const roleLabel = t(
       isEditor ? "health.vetRecord.roleEditor" : "health.vetRecord.roleOwner",
     );
-    const when = row.created_at ? formatDisplayDate(row.created_at) : null;
+    const when = row.created_at ? addedOn(row.created_at) : null;
     return (
       <Text
         style={{
@@ -1400,12 +1404,15 @@ export default function HealthVetRecord() {
                       flexDirection: "row",
                       justifyContent: "space-between",
                       alignItems: "center",
+                      gap: 10,
                       marginBottom: 8,
                     }}
                   >
                     {/* Author label: clinic/vet name, or "You" for owner entries */}
                     <Text
+                      testID="vet-note-author"
                       style={{
+                        flex: 1,
                         fontSize: 13,
                         fontWeight: "700",
                         color: COLORS.warmBrown,

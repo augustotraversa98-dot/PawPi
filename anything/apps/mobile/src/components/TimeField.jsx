@@ -7,6 +7,7 @@ import {
   initialPickerTime,
   toCanonicalTime,
 } from "../utils/canonicalDateTime";
+import { timePickerLocale } from "../utils/localeDateTime";
 import { COLORS, MATERIALS, RADIUS, SPACING, TYPE } from "@/constants/theme";
 import { useTranslation } from "react-i18next";
 
@@ -106,6 +107,8 @@ export default function TimeField({
           testID={testID ? `${testID}-picker` : undefined}
           value={initialPickerTime(value)}
           mode="time"
+          // The app's language with a 24-hour clock, not the phone's setting (iOS).
+          locale={timePickerLocale()}
           display="spinner"
           onChange={handleChange}
           themeVariant="light"

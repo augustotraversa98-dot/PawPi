@@ -27,6 +27,12 @@ export function currentDateLocale() {
   return String(lang).toLowerCase().startsWith("es") ? "es-AR" : "en-GB";
 }
 
+// Locale for a native time wheel. It follows the locale's own clock and es-AR's is 12-hour on iOS, so it gets a 24-hour
+// locale of the same language (the wheel shows numbers only).
+export function timePickerLocale() {
+  return currentDateLocale() === "es-AR" ? "es-ES" : "en-GB";
+}
+
 // hour12 in an options bag would override hourCycle, so it is dropped.
 function without12h(options) {
   // eslint-disable-next-line no-unused-vars
