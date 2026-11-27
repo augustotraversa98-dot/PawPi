@@ -137,6 +137,91 @@ describe('PATCH /api/emergency-card', () => {
     expect(sql).toHaveBeenCalledTimes(2);
   });
 
+  const NO_CHANNELS = {
+    contact_phone_enabled: null,
+    contact_email_enabled: null,
+    contact_message_enabled: null,
+    contact_phone: null,
+    contact_email: null,
+  };
+  const statements = () => sql.mock.calls.map(([strings]) => strings.join(' '));
+  const namesMode = (text) => /contact_mode = COALESCE|contact_value = COALESCE/.test(text);
+
+  it('saves the phone / email switches with their own owner-scoped statement, never naming the older columns', async () => {
+    auth.mockResolvedValue(SESSION);
+    const row = {
+      contact_mode: 'phone',
+      contact_value: '11 5555',
+      contact_phone_enabled: true,
+      contact_email_enabled: true,
+      contact_message_enabled: true,
+      contact_phone: '11 5555',
+      contact_email: 'a@example.test',
+    };
+    sql
+      .mockResolvedValueOnce([{ id: 1 }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: 9, contact_mode: 'phone', _row: row }]);
+    const res = await PATCH(patch({ petId: 5, contact_email_enabled: true }));
+    expect(res.status).toBe(200);
+    const { card } = await res.json();
+    expect(card).toMatchObject({ contact_email_enabled: true, contact_phone: '11 5555', contact_email: 'a@example.test' });
+    expect(card).not.toHaveProperty('_row');
+    const [, channels, rest] = statements();
+    expect(channels).toContain('contact_email_enabled = COALESCE');
+    expect(channels).toContain('owner_user_id =');
+    expect(namesMode(channels)).toBe(false);
+    expect(namesMode(rest)).toBe(false);
+    expect(sql.mock.calls[1].slice(1)).toEqual([null, true, null, null, null, 5, 1]);
+  });
+
+  it('names contact_mode / contact_value only when the request has them', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce([{ id: 1 }]).mockResolvedValueOnce([{ id: 9 }]);
+    await PATCH(patch({ petId: 5, show_medical_on_tag: false }));
+    expect(statements().some(namesMode)).toBe(false);
+
+    sql.mockClear();
+    sql.mockResolvedValueOnce([{ id: 1 }]).mockResolvedValueOnce([]).mockResolvedValueOnce([{ id: 9 }]);
+    await PATCH(patch({ petId: 5, contact_mode: 'none' }));
+    expect(statements().filter(namesMode)).toHaveLength(1);
+    expect(statements().join(' ')).not.toContain('contact_phone_enabled = COALESCE');
+  });
+
+  it.each([
+    [{ contact_phone_enabled: 'yes' }],
+    [{ contact_message_enabled: null }],
+    [{ contact_phone: 11 }],
+    [{ contact_email: null }],
+    [{ contact_phone_enabled: true, contact_mode: 'none' }],
+    [{ contact_email: 'a@example.test', contact_value: 'b@example.test' }],
+  ])('rejects %o before any query', async (body) => {
+    auth.mockResolvedValue(SESSION);
+    const res = await PATCH(patch({ petId: 5, ...body }));
+    expect(res.status).toBe(400);
+    expect(sql).not.toHaveBeenCalled();
+  });
+
+  it('answers 503 to the switches, changing nothing, on a database without 0152', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([{ id: 1 }])
+      .mockRejectedValueOnce(Object.assign(new Error('no column'), { code: '42703' }));
+    const res = await PATCH(patch({ petId: 5, contact_phone_enabled: true, show_medical_on_tag: true }));
+    expect(res.status).toBe(503);
+    expect((await res.json()).code).toBe('contact_channels_unavailable');
+    expect(sql).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports the switches as unavailable when the row has no such columns', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([{ id: 1 }])
+      .mockResolvedValueOnce([{ id: 9, contact_mode: 'relay', _row: { contact_mode: 'relay' } }]);
+    const res = await PATCH(patch({ petId: 5, active: true }));
+    expect((await res.json()).card).toMatchObject(NO_CHANNELS);
+  });
+
   it('404 when the owner has no such card', async () => {
     auth.mockResolvedValue(SESSION);
     sql.mockResolvedValueOnce([{ id: 1 }]).mockResolvedValueOnce([]);

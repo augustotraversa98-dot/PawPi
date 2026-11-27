@@ -205,6 +205,52 @@ describe("public tag page", () => {
     },
   );
 
+  // A card saved with the two switches sends `phone` and `email` next to the older mode / value.
+  const BOTH = {
+    mode: "phone",
+    value: "+54 9 11 5555-0101",
+    accepts_message: false,
+    phone: "+54 9 11 5555-0101",
+    email: "ana@example.test",
+  };
+
+  it("shows both the phone and the email when the family shows both", async () => {
+    mockFetch({ ...RELAY, contact: BOTH });
+    render(<PublicTagPage />);
+    expect(await screen.findByRole("link", { name: "Call the owner" })).toHaveAttribute("href", "tel:+5491155550101");
+    expect(screen.getByRole("link", { name: "Email the owner" })).toHaveAttribute("href", "mailto:ana@example.test");
+    expect(screen.getByRole("link", { name: BOTH.phone })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: BOTH.email })).toBeInTheDocument();
+    expect(screen.getAllByText("Owner contact")).toHaveLength(1);
+    expect(screen.queryByTestId("relay-message")).toBeNull();
+  });
+
+  it.each([
+    ["phone only", { phone: BOTH.phone, email: null }, "Call the owner", "Email the owner"],
+    [
+      "email only",
+      { mode: "email", value: BOTH.email, phone: null, email: BOTH.email },
+      "Email the owner",
+      "Call the owner",
+    ],
+  ])("shows just the channel that is on (%s)", async (_name, change, shown, hidden) => {
+    mockFetch({ ...RELAY, contact: { ...BOTH, ...change } });
+    render(<PublicTagPage />);
+    expect(await screen.findByRole("link", { name: shown })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: hidden })).toBeNull();
+  });
+
+  it.each([
+    ["relay", true],
+    ["none", false],
+  ])("with both switches off (%s) shows no contact", async (mode, accepts) => {
+    mockFetch({ ...RELAY, contact: { mode, value: null, accepts_message: accepts, phone: null, email: null } });
+    render(<PublicTagPage />);
+    await screen.findByText("Rex");
+    expect(screen.queryByTestId("owner-contact")).toBeNull();
+    expect(!!screen.queryByTestId("relay-message")).toBe(accepts);
+  });
+
   it("shows 'tag not active' when the API 404s", async () => {
     mockFetch(null, false);
     render(<PublicTagPage />);

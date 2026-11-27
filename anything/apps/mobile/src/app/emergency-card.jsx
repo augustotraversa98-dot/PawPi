@@ -59,17 +59,37 @@ const contactHint = (t, mode) =>
     none: t("emergencyCard.contactNoneHint"),
   })[mode];
 
-// Phone / email mode publishes the value only when it matches the mode (the server applies the same rule), so say
-// when a finder would not see it (they get the message form instead).
-const contactWarning = (t, mode, value) => {
-  if (mode !== "phone" && mode !== "email") return null;
+// One plain sentence for what the two switches show a finder right now.
+const channelsHint = (t, card) => {
+  const phone = !!card.contact_phone_enabled;
+  const email = !!card.contact_email_enabled;
+  if (phone && email) return t("emergencyCard.channelsBothHint");
+  if (phone) return t("emergencyCard.channelsPhoneHint");
+  if (email) return t("emergencyCard.channelsEmailHint");
+  return contactHint(t, card.contact_message_enabled ? "relay" : "none");
+};
+
+// A phone / email is shown only when it looks like one (the server applies the same rule).
+const isShown = (mode, value) => {
   const text = String(value || "").trim();
+  return !!text && text.includes("@") === (mode === "email");
+};
+
+// Say when a finder would not see the saved value. With nothing at all to show they get the message form instead;
+// `otherShown` = the other channel is on and showing, so there is no form.
+const contactWarning = (t, mode, value, otherShown = false) => {
+  if ((mode !== "phone" && mode !== "email") || isShown(mode, value)) return null;
+  const missing = !String(value || "").trim();
   if (mode === "phone") {
-    if (!text) return t("emergencyCard.contactPhoneMissing");
-    return text.includes("@") ? t("emergencyCard.contactPhoneMismatch") : null;
+    if (missing) {
+      return otherShown ? t("emergencyCard.contactPhoneMissingHidden") : t("emergencyCard.contactPhoneMissing");
+    }
+    return otherShown ? t("emergencyCard.contactPhoneMismatchHidden") : t("emergencyCard.contactPhoneMismatch");
   }
-  if (!text) return t("emergencyCard.contactEmailMissing");
-  return text.includes("@") ? null : t("emergencyCard.contactEmailMismatch");
+  if (missing) {
+    return otherShown ? t("emergencyCard.contactEmailMissingHidden") : t("emergencyCard.contactEmailMissing");
+  }
+  return otherShown ? t("emergencyCard.contactEmailMismatchHidden") : t("emergencyCard.contactEmailMismatch");
 };
 
 function speciesLabel(t, species) {
@@ -185,7 +205,7 @@ function SmallButton({ testID, icon: Icon, label, onPress, disabled }) {
 
 // The phone / email a finder may see. It saves from its own button (enabled only when the text changed), and
 // also when the field is left or the screen is closed, so a typed number is never lost.
-function ContactValueField({ mode, savedValue, onSave }) {
+function ContactValueField({ mode, savedValue, onSave, testID = "contact" }) {
   const { t } = useTranslation();
   const saved = savedValue || "";
   const [draft, setDraft] = useState(null); // null = untouched
@@ -211,7 +231,7 @@ function ContactValueField({ mode, savedValue, onSave }) {
   return (
     <View style={{ marginTop: 10 }}>
       <TextInput
-        testID="contact-value"
+        testID={`${testID}-value`}
         defaultValue={saved}
         onChangeText={(text) => {
           draftRef.current = text;
@@ -226,7 +246,7 @@ function ContactValueField({ mode, savedValue, onSave }) {
         style={{ backgroundColor: COLORS.sand, borderRadius: 12, padding: 10, color: COLORS.warmBrown }}
       />
       <TouchableOpacity
-        testID="contact-save"
+        testID={`${testID}-save`}
         accessibilityRole="button"
         disabled={!dirty}
         onPress={() => {
@@ -240,6 +260,87 @@ function ContactValueField({ mode, savedValue, onSave }) {
           {draft != null && !dirty ? t("emergencyCard.saved") : t("common.save")}
         </Text>
       </TouchableOpacity>
+    </View>
+  );
+}
+
+function ContactWarning({ testID, text }) {
+  if (!text) return null;
+  return (
+    <Text testID={testID} style={{ color: COLORS.warmBrown, fontSize: 12, fontWeight: "700", marginTop: 8 }}>
+      {text}
+    </Text>
+  );
+}
+
+function SwitchRow({ testID, label, value, onValueChange }) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 12 }}>
+      <Text style={{ color: COLORS.warmBrown, fontWeight: "700", flex: 1 }}>{label}</Text>
+      <Switch testID={testID} accessibilityLabel={label} value={value} onValueChange={onValueChange} />
+    </View>
+  );
+}
+
+// Phone and email are switched on separately, each with its own value. With both off, one more switch chooses
+// between the private message form and no way to get in touch.
+function FinderChannels({ card, onChange }) {
+  const { t } = useTranslation();
+  const phoneOn = !!card.contact_phone_enabled;
+  const emailOn = !!card.contact_email_enabled;
+  const phoneShown = phoneOn && isShown("phone", card.contact_phone);
+  const emailShown = emailOn && isShown("email", card.contact_email);
+  return (
+    <View>
+      <SwitchRow
+        testID="toggle-contact-phone"
+        label={t("emergencyCard.showPhoneToFinder")}
+        value={phoneOn}
+        onValueChange={(v) => onChange({ contact_phone_enabled: v })}
+      />
+      {phoneOn ? (
+        <View>
+          <ContactValueField
+            testID="contact-phone"
+            mode="phone"
+            savedValue={card.contact_phone}
+            onSave={(contact_phone) => onChange({ contact_phone })}
+          />
+          <ContactWarning
+            testID="contact-phone-warning"
+            text={contactWarning(t, "phone", card.contact_phone, emailShown)}
+          />
+        </View>
+      ) : null}
+      <SwitchRow
+        testID="toggle-contact-email"
+        label={t("emergencyCard.showEmailToFinder")}
+        value={emailOn}
+        onValueChange={(v) => onChange({ contact_email_enabled: v })}
+      />
+      {emailOn ? (
+        <View>
+          <ContactValueField
+            testID="contact-email"
+            mode="email"
+            savedValue={card.contact_email}
+            onSave={(contact_email) => onChange({ contact_email })}
+          />
+          <ContactWarning
+            testID="contact-email-warning"
+            text={contactWarning(t, "email", card.contact_email, phoneShown)}
+          />
+        </View>
+      ) : null}
+      {!phoneOn && !emailOn ? (
+        <SwitchRow
+          testID="toggle-contact-message"
+          label={t("emergencyCard.allowFinderMessage")}
+          value={!!card.contact_message_enabled}
+          onValueChange={(v) => onChange({ contact_message_enabled: v })}
+        />
+      ) : null}
+      <InfoRow testID="contact-hint" text={channelsHint(t, card)} />
     </View>
   );
 }
@@ -275,6 +376,8 @@ export default function EmergencyCardScreen() {
   const links = data?.links || [];
   // Null / absent = the server does not support the setting yet, so there is no switch to show.
   const tagKinSetting = card?.show_emergency_contact_on_tag;
+  // Null / absent = the server only knows the single choice, so the screen offers that.
+  const hasChannelSwitches = typeof card?.contact_phone_enabled === "boolean";
   const hasEmergencyContact = !!(
     String(medical?.emergency_contact_name || "").trim() || String(medical?.emergency_contact_phone || "").trim()
   );
@@ -503,31 +606,36 @@ export default function EmergencyCardScreen() {
               <Text style={{ color: COLORS.warmBrown, fontWeight: "700", marginTop: 14, marginBottom: 8 }}>
                 {t("emergencyCard.finderReach")}
               </Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                {contactModes(t).map((m) => (
-                  <Chip
-                    key={m.key}
-                    testID={`contact-${m.key}`}
-                    label={m.label}
-                    selected={(card?.contact_mode || "relay") === m.key}
-                    onPress={() => update.mutate({ contact_mode: m.key })}
+              {hasChannelSwitches ? (
+                <FinderChannels card={card} onChange={(patch) => update.mutate(patch)} />
+              ) : (
+                <>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                    {contactModes(t).map((m) => (
+                      <Chip
+                        key={m.key}
+                        testID={`contact-${m.key}`}
+                        label={m.label}
+                        selected={(card?.contact_mode || "relay") === m.key}
+                        onPress={() => update.mutate({ contact_mode: m.key })}
+                      />
+                    ))}
+                  </View>
+                  <InfoRow testID="contact-hint" text={contactHint(t, card?.contact_mode || "relay")} />
+                  {(card?.contact_mode === "phone" || card?.contact_mode === "email") && (
+                    <ContactValueField
+                      key={card.contact_mode}
+                      mode={card.contact_mode}
+                      savedValue={card?.contact_value}
+                      onSave={(contact_value) => update.mutate({ contact_value })}
+                    />
+                  )}
+                  <ContactWarning
+                    testID="contact-warning"
+                    text={contactWarning(t, card?.contact_mode, card?.contact_value)}
                   />
-                ))}
-              </View>
-              <InfoRow testID="contact-hint" text={contactHint(t, card?.contact_mode || "relay")} />
-              {(card?.contact_mode === "phone" || card?.contact_mode === "email") && (
-                <ContactValueField
-                  key={card.contact_mode}
-                  mode={card.contact_mode}
-                  savedValue={card?.contact_value}
-                  onSave={(contact_value) => update.mutate({ contact_value })}
-                />
+                </>
               )}
-              {contactWarning(t, card?.contact_mode, card?.contact_value) ? (
-                <Text testID="contact-warning" style={{ color: COLORS.warmBrown, fontSize: 12, fontWeight: "700", marginTop: 8 }}>
-                  {contactWarning(t, card?.contact_mode, card?.contact_value)}
-                </Text>
-              ) : null}
               <Text style={{ color: COLORS.mutedBrown, fontSize: 12, marginTop: 10 }}>{t("emergencyCard.autoSaveHint")}</Text>
             </View>
 
