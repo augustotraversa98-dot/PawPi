@@ -320,6 +320,7 @@ describe('the limit catalog', () => {
       'record_link_create',
       'record_link_file',
       'record_link_note',
+      'record_link_note_edit',
       'record_link_open',
       'report_create',
       'search_query',

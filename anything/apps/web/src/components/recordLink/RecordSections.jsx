@@ -3,12 +3,13 @@ import { PET_PAGE_BUTTON } from "@/components/publicPet/PetPageParts";
 import { BRAND } from "@/lib/brand/tokens";
 import { RECORD_LINK_COPY } from "@/lib/recordLink/copy";
 import { postRecordLink } from "@/lib/recordLink/request";
+import { keepReturnToken, newReturnId, signInHref } from "./signInReturn";
 import recordCopy from "@/app/provider/i18n/record";
 import { fill } from "@/app/provider/i18n/lib/format";
 import { formatRecordDate } from "@/app/provider/lib/record";
 
-// The parts of a record a link shares, and the one thing a link may allow: adding a vet note. Only the sections in
-// `record.sections` are drawn.
+// The parts of a record a link shares, and what a link may allow: adding a vet note and correcting the notes added
+// through it. Only the sections in `record.sections` are drawn, plus the link's own notes.
 
 // The record screen's section keys, in the order they are shown.
 const ORDER = [
@@ -113,7 +114,150 @@ function noteAuthor(note, lang) {
   return note.external_author_name || notes.anonymous;
 }
 
-function NoteForm({ lang, token, signedIn, onReload, onClosed }) {
+const textArea = {
+  width: "100%",
+  boxSizing: "border-box",
+  borderRadius: 12,
+  border: `1px solid ${BRAND.peach}`,
+  padding: 10,
+  fontSize: 16,
+  fontFamily: "inherit",
+};
+const plainButton = { ...button, background: "transparent", color: BRAND.brown, textDecoration: "underline" };
+
+// Leaves for the sign-in page and comes back to this same link.
+function SignInLink({ token, children }) {
+  const [id] = useState(newReturnId);
+  const keep = () => keepReturnToken(id, token);
+  return (
+    <a href={signInHref(id)} onClick={keep} onAuxClick={keep} style={link}>
+      {children}
+    </a>
+  );
+}
+
+// One note added through this link, with its correction form when the visitor may change it. `own` is the entry of
+// `record.link_notes`; without it the note is only shown.
+function NoteEntry({ lang, token, heading, body, editedAt, own, onReload, onClosed }) {
+  const t = RECORD_LINK_COPY[lang].notes;
+  const errors = RECORD_LINK_COPY[lang].errors;
+  const [draft, setDraft] = useState(null); // null = not editing
+  const [sending, setSending] = useState(false);
+  const [status, setStatus] = useState(null); // a key of `messages`
+  const inFlight = useRef(false);
+
+  const messages = {
+    saved: t.saved,
+    required: t.required,
+    notes_not_allowed: t.notAllowed,
+    not_author: t.notAuthor,
+    note_not_found: t.notFound,
+    note_edit_unavailable: t.editUnavailable,
+    session: t.sessionEnded,
+    tooMany: errors.tooMany,
+    failed: t.editFailed,
+  };
+
+  const save = async (event) => {
+    event.preventDefault();
+    if (inFlight.current) return;
+    if (!draft.trim()) {
+      setStatus("required");
+      return;
+    }
+    inFlight.current = true;
+    setSending(true);
+    setStatus(null);
+    const result = await postRecordLink(
+      "notes",
+      { token, noteId: own.id, note: draft.trim() },
+      { withSession: true, method: "PATCH" },
+    );
+    inFlight.current = false;
+    setSending(false);
+    const code = result.data?.code;
+    if (result.status === 200) {
+      setDraft(null);
+      setStatus("saved");
+      onReload();
+    } else if (code === "link_not_valid") {
+      onClosed();
+    } else if (["notes_not_allowed", "not_author", "note_not_found"].includes(code)) {
+      setStatus(code);
+      onReload();
+    } else if (code === "note_edit_unavailable") {
+      setStatus(code);
+    } else if (result.status === 401) {
+      setStatus("session");
+    } else if (result.status === 429) {
+      setStatus("tooMany");
+    } else {
+      setStatus("failed");
+    }
+  };
+
+  return (
+    <div style={item}>
+      <div style={muted}>
+        {join([heading, editedAt && fill(t.edited, { date: formatRecordDate(editedAt, lang) })])}
+      </div>
+      {draft === null ? (
+        <>
+          <p style={text}>{body}</p>
+          {own?.editable ? (
+            <button
+              type="button"
+              style={plainButton}
+              onClick={() => {
+                setStatus(null);
+                setDraft(own.note);
+              }}
+            >
+              {t.edit}
+            </button>
+          ) : null}
+          {own?.needs_sign_in ? (
+            <p style={{ ...muted, margin: "6px 0 0" }}>
+              {t.editSignIn} <SignInLink token={token}>{t.signInShort}</SignInLink>
+            </p>
+          ) : null}
+        </>
+      ) : (
+        <form onSubmit={save} noValidate style={{ marginTop: 6 }}>
+          <textarea
+            aria-label={t.editLabel}
+            rows={4}
+            maxLength={NOTE_MAX}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            style={textArea}
+          />
+          <button type="submit" disabled={sending} style={{ ...button, opacity: sending ? 0.6 : 1 }}>
+            {sending ? t.saving : t.save}
+          </button>{" "}
+          <button
+            type="button"
+            disabled={sending}
+            style={plainButton}
+            onClick={() => {
+              setStatus(null);
+              setDraft(null);
+            }}
+          >
+            {t.cancel}
+          </button>
+        </form>
+      )}
+      {status ? (
+        <p role="status" style={{ margin: "6px 0 0", fontWeight: 700 }}>
+          {messages[status]}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function NoteForm({ lang, token, signedIn, canEdit, onReload, onClosed }) {
   const t = RECORD_LINK_COPY[lang].notes;
   const errors = RECORD_LINK_COPY[lang].errors;
   const [note, setNote] = useState("");
@@ -169,14 +313,10 @@ function NoteForm({ lang, token, signedIn, onReload, onClosed }) {
   return (
     <section style={card} aria-label={t.addTitle}>
       <h3 style={{ fontSize: 17, margin: "0 0 4px" }}>{t.addTitle}</h3>
-      <p style={{ ...muted, margin: 0, lineHeight: 1.5 }}>{t.canOnlyAdd}</p>
+      <p style={{ ...muted, margin: 0, lineHeight: 1.5 }}>{canEdit ? t.canAddAndEdit : t.canOnlyAdd}</p>
       <p style={{ margin: "8px 0", fontSize: 14, lineHeight: 1.5 }} data-testid="note-author">
         {signedIn ? t.signedIn : t.signedOut}{" "}
-        {!signedIn || status === "session" ? (
-          <a href="/account/signin?callbackUrl=%2Fshared-record" style={link}>
-            {t.signIn}
-          </a>
-        ) : null}
+        {!signedIn || status === "session" ? <SignInLink token={token}>{t.signIn}</SignInLink> : null}
       </p>
       <form onSubmit={submit} noValidate>
         <label htmlFor="link-note" style={{ display: "block", fontWeight: 700, marginBottom: 4 }}>
@@ -189,15 +329,7 @@ function NoteForm({ lang, token, signedIn, onReload, onClosed }) {
           placeholder={t.placeholder}
           value={note}
           onChange={(event) => setNote(event.target.value)}
-          style={{
-            width: "100%",
-            boxSizing: "border-box",
-            borderRadius: 12,
-            border: `1px solid ${BRAND.peach}`,
-            padding: 10,
-            fontSize: 16,
-            fontFamily: "inherit",
-          }}
+          style={textArea}
         />
         <button type="submit" disabled={sending} style={{ ...button, opacity: sending ? 0.6 : 1 }}>
           {sending ? t.adding : t.add}
@@ -279,6 +411,10 @@ export default function RecordSections({ lang, record, token, signedIn, onReload
   const t = RECORD_LINK_COPY[lang];
   const shared = ORDER.filter((key) => record.sections?.includes(key));
   const files = { lang, token, onReload, onClosed };
+  // Absent on a database that cannot answer them (before migration 0157).
+  const linkNotes = record.link_notes ?? [];
+  // When the owner did not share the notes, the ones added through this link still show, so they can be reviewed.
+  const ownNotesOnly = !record.sections?.includes("vet_notes") && linkNotes.length > 0;
 
   const body = (key) => {
     if (FIELDS[key]) return <Fields section={key} values={record[key]} lang={lang} />;
@@ -286,12 +422,18 @@ export default function RecordSections({ lang, record, token, signedIn, onReload
     if (key === "vet_notes") {
       if (list.length === 0) return <Empty>{copy.notes.empty}</Empty>;
       return list.map((n, index) => (
-        <div key={index} style={item}>
-          <div style={muted}>
-            {join([formatRecordDate(n.note_date, lang), noteAuthor(n, lang), n.via_link && copy.notes.viaLink])}
-          </div>
-          <p style={text}>{n.note}</p>
-        </div>
+        <NoteEntry
+          {...files}
+          key={n.link_note_id ?? `other-${index}`}
+          heading={join([
+            formatRecordDate(n.note_date, lang),
+            noteAuthor(n, lang),
+            n.via_link && copy.notes.viaLink,
+          ])}
+          body={n.note}
+          editedAt={n.edited_at}
+          own={n.link_note_id ? linkNotes.find((own) => own.id === n.link_note_id) : undefined}
+        />
       ));
     }
     if (key === "vaccines") {
@@ -361,8 +503,32 @@ export default function RecordSections({ lang, record, token, signedIn, onReload
           {body(key)}
         </Section>
       ))}
+      {ownNotesOnly ? (
+        <Section title={t.notes.linkNotesTitle}>
+          {linkNotes.map((n) => (
+            <NoteEntry
+              {...files}
+              key={n.id}
+              heading={join([
+                formatRecordDate(n.note_date, lang),
+                noteAuthor({ ...n, via_link: true }, lang),
+              ])}
+              body={n.note}
+              editedAt={n.edited_at}
+              own={n}
+            />
+          ))}
+        </Section>
+      ) : null}
       {record.allow_notes ? (
-        <NoteForm lang={lang} token={token} signedIn={signedIn} onReload={onReload} onClosed={onClosed} />
+        <NoteForm
+          lang={lang}
+          token={token}
+          signedIn={signedIn}
+          canEdit={Array.isArray(record.link_notes)}
+          onReload={onReload}
+          onClosed={onClosed}
+        />
       ) : null}
     </>
   );

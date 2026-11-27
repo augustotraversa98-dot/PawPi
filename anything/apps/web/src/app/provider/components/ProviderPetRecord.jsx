@@ -722,6 +722,9 @@ function VetNotesCard({ t, lang, notes, addNote, onWriteError, readOnly }) {
                 ) : (
                   n.vet_name && <span>· {n.vet_name}</span>
                 )}
+                {n.vet_edited_at && (
+                  <span>· {fill(t.notes.edited, { date: formatRecordDate(n.vet_edited_at, lang) })}</span>
+                )}
                 {n.appointment_id != null && (
                   <span className="rounded-full bg-[#FFF1E2] px-2 py-0.5 font-semibold text-[#B75D32]">
                     {fill(t.notes.booking, { id: n.appointment_id })}

@@ -220,24 +220,35 @@ returned only then. At most 10 links in use per owner (409 `link_limit`); creati
 `PATCH /api/care-access/links/[linkId]` `{action: "revoke"}` removes one and is never limited. On a database without
 0153, `available` is false and creating answers 409 `share_links_unavailable`.
 
-**Whoever has the link** opens `/shared-record`, with no account. The page takes the token from after the `#`, keeps it
-in the tab's session storage, removes it from the address bar and sends it only in a request body. The page and the
-answers are `no-store`, `noindex` and `no-referrer`. Three public routes, each reading a small, size-capped body (413 beyond it), rate limited per sender address and
-checking the link on every call (not revoked, not expired, the pet still belongs to the link's owner):
+**Whoever has the link** opens `/shared-record#<token>`, with no account. The address alone says which record is shown:
+the token stays after the `#` (so it is never part of a request URL or a `Referer`), nothing is kept in the tab, and a
+bare `/shared-record` shows only "open your link". Several links open at once therefore never show each other's pet; the
+tab title carries the pet's name. Signing in leaves the page, so the sign-in link keeps the token in the tab under a
+one-off id and returns to `/shared-record?return=<id>`, which puts it back in the address. The token is only ever sent
+in a request body. The page and the answers are `no-store`, `noindex` and `no-referrer`. The public routes each read a
+small, size-capped body (413 beyond it), are rate limited per sender address and check the link on every call (not
+revoked, not expired, the pet still belongs to the link's owner):
 
 | Route | Answer |
 |---|---|
 | `POST /api/public/record-link/open` `{token}` | `{record}`: pet name, owner display name, end date, the sections and only their data |
 | `POST /api/public/record-link/file` `{token, kind, id}` | `{url}`: a signed address of about 60 s for a file of a granted document or photo check. 409 `file_not_available` for a file that is not a private file of that pet (older public web addresses are never handed out) |
 | `POST /api/public/record-link/notes` `{token, note}` | 201 `{note}`: adds one vet note, only when the link allows it; at most 2000 characters and 10 notes per link in 24 h (429 `note_limit`) |
+| `PATCH /api/public/record-link/notes` `{token, noteId, note}` | 200 `{note}`: corrects a note added through this link (migration 0157), only while the link allows notes. 404 `note_not_found`, 403 `not_author`, 409 `note_edit_unavailable` on a database without 0157 |
 
 An unusable link answers 403 `link_not_valid`, whatever the reason. The database is reached only through
-`app_record_link_view`, `app_record_link_file` and `app_record_link_add_note`.
+`app_record_link_view`, `app_record_link_file`, `app_record_link_add_note` and `app_record_link_update_note`.
 
 **What a section opens** is the table in section 2. The medical profile, emergency contact and insurance columns are
 returned separately. No user ids, storage keys or file addresses are in the record.
 
-**Notes added through a link** are only additions: nothing can be changed or deleted through a link. The author is the
+**Reading notes back** (0157): `link_notes` lists every note added through that link, newest first (the full history),
+whenever the link allows notes or shares them, so a note is visible and correctable even when the notes part is not
+shared. A note written signed in is corrected only by that person (the page sends the session when there is one); an
+anonymous one by whoever holds the link; one whose author deleted their account by nobody. A corrected note carries
+`vet_edited_at` and reads "Edited" to the owner. Nothing is deleted through a link.
+
+**Notes added through a link** never change the owner's notes. The author is the
 signed-in visitor's display name, read by the database from the request's identity, never from the request body;
 otherwise the note has no name and reads "Anonymous" / "Cambios de alguien externo". `vet_notes.via_record_link` marks
 them. `vet_name` holds that label in the owner's language followed by "(shared link)" / "(enlace compartido)", and the

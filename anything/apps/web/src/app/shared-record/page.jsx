@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PetPageHeader, PET_PAGE_BUTTON, PET_PAGE_WRAP } from "@/components/publicPet/PetPageParts";
 import RecordSections from "@/components/recordLink/RecordSections";
+import { RETURN_PARAM, takeReturnToken } from "@/components/recordLink/signInReturn";
 import { BRAND } from "@/lib/brand/tokens";
 import { useDocumentHead } from "@/lib/legal/head";
 import { useVisitorLang } from "@/lib/publicPet/useVisitorLang";
@@ -13,45 +14,27 @@ import useUser from "@/utils/useUser";
 // /shared-record#<token> — a pet owner's record link (migration 0153, docs/vet-sharing-design.md "Record links").
 // Opens with no account and shows only what the owner chose.
 //
-// The token stays after the '#', so it is never part of a request URL or a Referer. On arrival it is moved into this
-// tab's sessionStorage (so it survives a reload, or signing in and coming back) and removed from the address bar. It is
-// only ever sent in the body of the three record link requests. Never put it in a URL, a log or an analytics event.
-// The server sends this page with no-store, noindex and no-referrer (app/api/utils/sharedRecordHeaders.js).
+// WHICH record is shown comes from this page's own address and nothing else, so several links open at once (tabs,
+// bookmarks, a reload) never show each other's pet. The token stays after the '#', so it is never part of a request URL
+// or a Referer; it is only ever sent in the body of the record link requests. Never put it in a path, a query string, a
+// log or an analytics event. The server sends this page with no-store, noindex and no-referrer
+// (app/api/utils/sharedRecordHeaders.js).
+//
+// Signing in leaves this page, and a sign-in address cannot carry the token. So the "sign in" link keeps it in this tab
+// under a one-off id (components/recordLink/signInReturn.js) and comes back to /shared-record?return=<id>.
 
-export const RECORD_LINK_STORAGE_KEY = "pawpi.recordLink";
-
-// Storage can be unavailable (private windows, blocked site data): the page then works until it is left.
-const storage = {
-  read() {
-    try {
-      return window.sessionStorage.getItem(RECORD_LINK_STORAGE_KEY);
-    } catch {
-      return null;
-    }
-  },
-  write(value) {
-    try {
-      window.sessionStorage.setItem(RECORD_LINK_STORAGE_KEY, value);
-    } catch {
-      /* unavailable */
-    }
-  },
-  clear() {
-    try {
-      window.sessionStorage.removeItem(RECORD_LINK_STORAGE_KEY);
-    } catch {
-      /* unavailable */
-    }
-  },
-};
-
-function takeToken() {
-  const { hash, pathname, search } = window.location;
-  const fromLink = hash.replace(/^#/, "");
-  if (!fromLink) return storage.read();
-  storage.write(fromLink);
-  window.history.replaceState(window.history.state, "", `${pathname}${search}`);
-  return fromLink;
+// The token in this page's address. Coming back from signing in, it is first put back there.
+function readToken() {
+  const url = new URL(window.location.href);
+  const fromAddress = url.hash.replace(/^#/, "");
+  if (fromAddress) return fromAddress;
+  const id = url.searchParams.get(RETURN_PARAM);
+  if (!id) return null;
+  const kept = takeReturnToken(id);
+  url.searchParams.delete(RETURN_PARAM);
+  url.hash = kept ?? "";
+  window.history.replaceState(window.history.state, "", url);
+  return kept;
 }
 
 const card = {
@@ -85,55 +68,67 @@ function Message({ title, body, children }) {
 
 export default function SharedRecordPage() {
   const { user } = useUser();
+  const signedIn = !!user;
   const { lang, setLang } = useVisitorLang();
   const t = RECORD_LINK_COPY[lang];
   const record = recordCopy[lang];
-  useDocumentHead([{ title: t.documentTitle }, { name: "referrer", content: "no-referrer" }]);
 
   const [token, setToken] = useState(undefined); // undefined = not read yet, null = none
-  const [view, setView] = useState({ phase: "loading" });
+  const [view, setView] = useState({ phase: "loading", token: null });
   const latest = useRef(0); // only the answer to the newest request is shown
+  const shownToken = useRef(null); // the link whose record is on the screen
 
   useEffect(() => {
-    const read = () => {
-      const next = takeToken();
-      setToken((previous) => next ?? previous ?? null);
-    };
+    const read = () => setToken(readToken());
     read();
     window.addEventListener("hashchange", read);
     return () => window.removeEventListener("hashchange", read);
   }, []);
 
   // The link stopped working: nothing already shown stays on the screen.
-  const close = useCallback(() => {
+  const close = useCallback((current) => {
     latest.current += 1;
-    storage.clear();
-    setView({ phase: "unavailable" });
+    shownToken.current = null;
+    setView({ phase: "unavailable", token: current });
   }, []);
 
   // `quiet` keeps what is on screen while it is read again (after a note, or after a file was refused).
   const load = useCallback(
     async (current, { quiet = false } = {}) => {
       const request = (latest.current += 1);
-      if (!quiet) setView({ phase: "loading" });
-      const result = await postRecordLink("open", { token: current });
+      if (!quiet) setView({ phase: "loading", token: current });
+      // Signed in, the session is sent so the answer says which notes are the visitor's own. A session that stopped
+      // working never keeps the record from opening.
+      let result = await postRecordLink("open", { token: current }, { withSession: signedIn });
+      if (signedIn && result.status === 401) result = await postRecordLink("open", { token: current });
       if (request !== latest.current) return;
       if (result.status === 200 && result.data?.record) {
-        setView({ phase: "ok", record: result.data.record });
+        shownToken.current = current;
+        setView({ phase: "ok", token: current, record: result.data.record });
       } else if (result.status === 403) {
-        close();
+        close(current);
       } else if (!quiet) {
-        setView({ phase: result.status === 429 ? "tooMany" : "error" });
+        setView({ phase: result.status === 429 ? "tooMany" : "error", token: current });
       }
     },
-    [close],
+    [close, signedIn],
   );
 
   useEffect(() => {
-    if (token) load(token);
+    if (token) load(token, { quiet: shownToken.current === token });
   }, [token, load]);
 
-  const phase = token === undefined ? "loading" : token ? view.phase : "noLink";
+  // Nothing read for one link is ever drawn under another's address.
+  let phase = "noLink";
+  if (token === undefined) phase = "loading";
+  else if (token) phase = view.token === token ? view.phase : "loading";
+
+  // The pet's name tells the tabs apart when several links are open.
+  const petName = phase === "ok" ? view.record.pet_name : null;
+  useDocumentHead([
+    { title: petName ? `${petName} · ${t.documentTitle}` : t.documentTitle },
+    { name: "referrer", content: "no-referrer" },
+  ]);
 
   let content;
   if (phase === "loading") {
@@ -166,12 +161,13 @@ export default function SharedRecordPage() {
           </p>
         </section>
         <RecordSections
+          key={token}
           lang={lang}
           record={shared}
           token={token}
-          signedIn={!!user}
+          signedIn={signedIn}
           onReload={() => load(token, { quiet: true })}
-          onClosed={close}
+          onClosed={() => close(token)}
         />
         <p style={{ color: BRAND.muted, fontSize: 13, textAlign: "center" }}>{t.disclaimer}</p>
       </>

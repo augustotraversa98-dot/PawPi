@@ -817,6 +817,14 @@ describe("I. a database without 0153", () => {
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 describe("J. verify_0153.sql", () => {
+  // verify_0153 describes the database right after 0153: a later function that also reads the links (0157) is left out
+  // while it runs.
+  beforeAll(async () => {
+    await raw.unsafe("drop function if exists app_record_link_update_note(text, integer, text)");
+  });
+  afterAll(async () => {
+    await raw.unsafe(migration("0157_record_link_note_edit.sql"));
+  });
   const failing = async () =>
     ((await raw.unsafe(verify0153())) as any[]).filter((r) => r.status !== "PASS").map((r) => r.ord);
 
