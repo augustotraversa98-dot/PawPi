@@ -6,6 +6,7 @@ import { moderationResponse } from "@/app/api/utils/moderateText";
 import { bizNotifyBody } from "@/app/api/utils/notify";
 import { notifyProviderTeam } from "@/app/api/utils/providerNotify";
 import { isMessageThreadParticipant } from "@/app/api/utils/messagingAccess";
+import { isUnclaimedProvider, unclaimedProviderResponse } from "@/app/api/utils/providerClaim";
 
 // /api/threads/[id]/messages — the conversation view (Phase 2 ticket 2.5).
 //
@@ -116,6 +117,19 @@ async function POST(request, { params }) {
     const blockedText = moderationResponse(text);
     if (blockedText) return blockedText;
 
+    // Read before sending: a thread opened with a listing nobody has claimed takes no more messages. Someone who
+    // is not a participant reads no row here and is refused by the INSERT below.
+    const threadRows = await sql`
+      SELECT t.owner_user_id, t.provider_id, p.claim_status
+      FROM message_threads t
+      LEFT JOIN providers p ON p.id = t.provider_id
+      WHERE t.id = ${threadId}
+    `;
+    const thread = threadRows[0];
+    if (isUnclaimedProvider(thread)) {
+      return unclaimedProviderResponse(request, "message");
+    }
+
     // The INSERT is participant-gated by RLS (WITH CHECK: sender = caller AND caller is
     // a thread participant). A non-participant's insert raises an RLS error → 403. We
     // force sender_user_id = userId so a caller can only ever post AS themselves.
@@ -145,13 +159,9 @@ async function POST(request, { params }) {
 
     // PROVIDER NOTIFICATION (BN2 biz_message) — only when the CLIENT (thread owner) messages
     // the business: notify the provider's team. The reverse direction (staff → client) is an
-    // owner-facing concern outside BN2's business scope and is left unchanged. The sender can
-    // read their own thread row under RLS. actor = the sender so no one self-notifies.
+    // owner-facing concern outside BN2's business scope and is left unchanged. actor = the
+    // sender so no one self-notifies.
     try {
-      const threadRows = await sql`
-        SELECT owner_user_id, provider_id FROM message_threads WHERE id = ${threadId}
-      `;
-      const thread = threadRows[0];
       if (thread?.provider_id != null && thread.owner_user_id === userId) {
         await notifyProviderTeam({
           providerId: thread.provider_id,

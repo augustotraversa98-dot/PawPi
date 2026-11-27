@@ -4,6 +4,7 @@ import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { bizNotifyBody } from "@/app/api/utils/notify";
 import { notifyProviderTeam } from "@/app/api/utils/providerNotify";
+import { isUnclaimedProvider, unclaimedProviderResponse } from "@/app/api/utils/providerClaim";
 
 // /api/adoption/applications — the OWNER's adoption applications. Phase 2 ticket 2.12.
 //
@@ -72,12 +73,18 @@ async function POST(request) {
     // Resolve the listing — it must be an AVAILABLE listing of a PUBLISHED place (RLS lets an
     // authed owner read exactly those, so a draft/pending/adopted listing reads as NOT FOUND).
     const listingRows = await sql`
-      SELECT id, provider_id, status FROM adoptable_listings WHERE id = ${listing_id}
+      SELECT l.id, l.provider_id, l.status, p.claim_status
+      FROM adoptable_listings l
+      LEFT JOIN providers p ON p.id = l.provider_id
+      WHERE l.id = ${listing_id}
     `;
     if (listingRows.length === 0) {
       return Response.json({ error: "Listing not available" }, { status: 404 });
     }
     const listing = listingRows[0];
+    if (isUnclaimedProvider(listing)) {
+      return unclaimedProviderResponse(request, "request");
+    }
     if (listing.status !== "available") {
       return Response.json(
         { error: "This dog is no longer available to adopt" },

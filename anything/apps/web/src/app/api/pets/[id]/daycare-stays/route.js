@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { createCheckout } from "@/app/api/utils/payments";
+import { isUnclaimedProvider, unclaimedProviderResponse } from "@/app/api/utils/providerClaim";
 
 // /api/pets/[id]/daycare-stays — the OWNER books a daycare/boarding stay and reads
 // their pet's stays (with the daily REPORT CARDS + the VACCINE-REQUIREMENT status).
@@ -206,10 +207,13 @@ async function POST(request, { params }) {
     // Provider must exist, be published, AND HOLD the 'daycare' capability (you can only
     // book a service a provider offers — the module/capability gate, 2.1).
     const providerRows = await sql`
-      SELECT id, status FROM providers WHERE id = ${provider_id}
+      SELECT id, status, claim_status FROM providers WHERE id = ${provider_id}
     `;
     if (providerRows.length === 0 || providerRows[0].status !== "published") {
       return Response.json({ error: "Provider not found" }, { status: 404 });
+    }
+    if (isUnclaimedProvider(providerRows[0])) {
+      return unclaimedProviderResponse(request, "booking");
     }
     const capRows = await sql`
       SELECT 1 FROM provider_capabilities

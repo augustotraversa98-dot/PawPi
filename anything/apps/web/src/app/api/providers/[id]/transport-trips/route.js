@@ -8,6 +8,7 @@ import {
   ProviderAuthError,
 } from "@/app/api/utils/providerAuth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { isUnclaimedProvider, unclaimedProviderResponse } from "@/app/api/utils/providerClaim";
 
 // /api/providers/[id]/transport-trips — pet-taxi trips on the spine (ticket 2.52).
 //
@@ -79,12 +80,15 @@ async function POST(request, { params }) {
 
     // Provider must exist + be published.
     const providerRows = await sql`
-      SELECT id, name, status FROM providers WHERE id = ${providerId}
+      SELECT id, name, status, claim_status FROM providers WHERE id = ${providerId}
     `;
     if (providerRows.length === 0 || providerRows[0].status !== "published") {
       return Response.json({ error: "Provider not found" }, { status: 404 });
     }
     const provider = providerRows[0];
+    if (isUnclaimedProvider(provider)) {
+      return unclaimedProviderResponse(request, "booking");
+    }
 
     // Derive the booking date/time from scheduled_at (a transport trip IS a booking, 2.4).
     const when = new Date(scheduled_at);

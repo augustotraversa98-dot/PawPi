@@ -18,6 +18,14 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-27 — Directory: nothing can be sent to an unclaimed listing
+- **Shipped:** every route where a customer sends something to a business now refuses a listing whose `claim_status` is not `claimed` (409 `provider_unclaimed`, EN/ES): booking, message threads (new and existing), shop and walk-package checkout, payment checkout, auto-reorder, prescription fulfilment, daycare stay, training program and class, direct and broadcast walk request, pet transport, insurance quote, adoption application, record sharing. Vet record invitations already excluded them (`0154`).
+- **App:** an unclaimed storefront shows no Book, Message, Shop or walk packs, says why, and keeps "Claim it". Needs a new app build; installed builds get the server's sentence.
+- **No migration.** No web customer storefront exists, so there is no web booking button to hide.
+- **Found, not fixed:** `POST /api/providers/[id]/transport-trips` requires the caller to be the business's staff, so pet owners cannot book transport.
+
+---
+
 ## 2026-11-27 — Night run: TestFlight feedback on build 36, build 37 from `41423911`, uploaded for TestFlight
 Report: [`night-run/2026-11-26/REPORT-testflight-feedback.md`](night-run/2026-11-26/REPORT-testflight-feedback.md).
 - **Merged:** finder phone and email switches (#843); vet record shared by link with no account (#845), by in-app invitation (#851), screens updating at once (#852); Spanish by default (#844, #846–#849, #853); fewer Health subtitles (#840); friend streaks (#841); birthday posts (#842); birth date, growing age estimate and adoption date (#850); pre-build fixes (#854).

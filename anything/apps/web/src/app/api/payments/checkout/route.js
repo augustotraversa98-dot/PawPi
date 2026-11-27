@@ -13,6 +13,7 @@ import {
 } from "@/app/api/utils/payments/config";
 import { paymentAttempt } from "@/lib/metrics";
 import { recordBusinessEvent } from "@/lib/telemetry/business";
+import { providerIsUnclaimed, unclaimedProviderResponse } from "@/app/api/utils/providerClaim";
 
 // POST /api/payments/checkout — the OWNER starts a payment (ticket 2.3). Creates an
 // `orders` row for a (kind, provider, amount) plus, via the provider-agnostic payment
@@ -267,6 +268,11 @@ async function POST(request) {
     }
     if (!SUPPORTED_RAILS.includes(rail)) {
       return Response.json({ error: `Invalid rail: ${rail}` }, { status: 400 });
+    }
+
+    // Before anything is priced or written: no money goes to a listing nobody has claimed.
+    if (await providerIsUnclaimed(provider_id)) {
+      return unclaimedProviderResponse(request, "order");
     }
 
     // B1 FAIL-CLOSED PRICING — derive/verify the amount on the server. The client's amount_cents is

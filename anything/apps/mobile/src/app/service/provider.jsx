@@ -54,6 +54,8 @@ import WriteReviewModal from "@/components/Providers/WriteReviewModal";
 import StoreHeader from "@/components/Providers/StorefrontPanels/StoreHeader";
 import ProviderFollowButton from "@/components/Providers/ProviderFollowButton";
 import ClaimCTA from "@/components/Providers/ClaimCTA";
+import UnclaimedNotice from "@/components/Providers/UnclaimedNotice";
+import { isUnclaimedListing } from "@/utils/providerClaim";
 import BusinessStatRow from "@/components/Providers/StorefrontPanels/BusinessStatRow";
 import ServicesPanel from "@/components/Providers/StorefrontPanels/ServicesPanel";
 import StorefrontBrowse from "@/components/Providers/StorefrontPanels/StorefrontBrowse";
@@ -207,11 +209,14 @@ export default function ProviderScreen() {
   // Per-type primary action. A SHOP if it holds a shop/pharmacy capability OR lists any
   // products; BOOKable capabilities show Book. A pure shop hides Book; a provider with no
   // known capability still shows Book (the pre-P4a fallback, unchanged).
+  // A listing nobody has claimed offers no action that sends something to it (book, message,
+  // shop, walk packs): no one would receive it. ClaimCTA stays for the business's owner.
   const bookableCaps = capabilities.filter((c) => BOOKABLE_CAPS.includes(c));
   const isShop =
     capabilities.some((c) => SHOP_CAPS.includes(c)) || products.length > 0;
-  const showShop = isShop;
-  const showBook = bookableCaps.length > 0 || !isShop;
+  const unclaimed = isUnclaimedListing(provider);
+  const showShop = isShop && !unclaimed;
+  const showBook = !unclaimed && (bookableCaps.length > 0 || !isShop);
   // The pinned bottom bar only holds Shop/Book now (the trust strip was removed, ticket 2.93).
   // It renders ONLY when there's a CTA to show — a shop, or a bookable provider with zero services
   // (booking otherwise lives on each service card) — so a bookable-with-services provider (e.g.
@@ -371,7 +376,7 @@ export default function ProviderScreen() {
         return (
           <>
             {/* Walk packages (ticket B2) — walker storefronts only, above the bookable services. */}
-            {isWalkerProvider && walkPackages.length > 0 ? (
+            {isWalkerProvider && walkPackages.length > 0 && !unclaimed ? (
               <WalkPackagesSection
                 packages={walkPackages}
                 remaining={walkCredits?.remaining ?? 0}
@@ -386,7 +391,7 @@ export default function ProviderScreen() {
             <ServicesPanel
               services={services}
               t={t}
-              onPressService={openBookingForService}
+              onPressService={unclaimed ? undefined : openBookingForService}
             />
           </>
         );
@@ -604,6 +609,7 @@ export default function ProviderScreen() {
               fromPriceLabel={fromPriceLabel}
               t={t}
             />
+            {unclaimed ? <UnclaimedNotice /> : null}
             {/* "¿Es tu negocio? Reclamalo" — appears only when the listing is unclaimed
                 (seeded directory row from 0124). Renders nothing for claimed businesses,
                 so no existing storefront changes. */}
@@ -624,51 +630,53 @@ export default function ProviderScreen() {
                 }}
               >
                 <ProviderFollowButton providerId={provider.id} />
-                <PressableScale
-                  onPress={() => {
-                    if (startingThread) return;
-                    startThread(
-                      { providerId: provider.id },
-                      {
-                        onSuccess: (res) => {
-                          const thread = res?.thread;
-                          if (!thread) return;
-                          router.push({
-                            pathname: "/provider-chat",
-                            params: {
-                              threadId: String(thread.id),
-                              providerName: provider.name || t("servicesUi.shared.provider"),
-                              ownerUserId: String(thread.owner_user_id),
-                            },
-                          });
+                {unclaimed ? null : (
+                  <PressableScale
+                    onPress={() => {
+                      if (startingThread) return;
+                      startThread(
+                        { providerId: provider.id },
+                        {
+                          onSuccess: (res) => {
+                            const thread = res?.thread;
+                            if (!thread) return;
+                            router.push({
+                              pathname: "/provider-chat",
+                              params: {
+                                threadId: String(thread.id),
+                                providerName: provider.name || t("servicesUi.shared.provider"),
+                                ownerUserId: String(thread.owner_user_id),
+                              },
+                            });
+                          },
                         },
-                      },
-                    );
-                  }}
-                  testID="storefront-message-cta"
-                  accessibilityRole="button"
-                  accessibilityLabel={t("providers.messageA11y")}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 6,
-                    paddingHorizontal: SPACING.lg,
-                    paddingVertical: SPACING.sm + 2,
-                    borderRadius: RADIUS.chip,
-                    borderWidth: 1.5,
-                    borderColor: COLORS.peach,
-                    backgroundColor: COLORS.card,
-                  }}
-                >
-                  {startingThread ? (
-                    <ActivityIndicator size="small" color={COLORS.coral} />
-                  ) : (
-                    <MessageSquare size={16} color={COLORS.coral} />
-                  )}
-                  <Text style={[TYPE.footnote, { fontWeight: "800", color: COLORS.coral }]}>
-                    {t("providers.message")}
-                  </Text>
-                </PressableScale>
+                      );
+                    }}
+                    testID="storefront-message-cta"
+                    accessibilityRole="button"
+                    accessibilityLabel={t("providers.messageA11y")}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                      paddingHorizontal: SPACING.lg,
+                      paddingVertical: SPACING.sm + 2,
+                      borderRadius: RADIUS.chip,
+                      borderWidth: 1.5,
+                      borderColor: COLORS.peach,
+                      backgroundColor: COLORS.card,
+                    }}
+                  >
+                    {startingThread ? (
+                      <ActivityIndicator size="small" color={COLORS.coral} />
+                    ) : (
+                      <MessageSquare size={16} color={COLORS.coral} />
+                    )}
+                    <Text style={[TYPE.footnote, { fontWeight: "800", color: COLORS.coral }]}>
+                      {t("providers.message")}
+                    </Text>
+                  </PressableScale>
+                )}
               </View>
             ) : null}
           </View>

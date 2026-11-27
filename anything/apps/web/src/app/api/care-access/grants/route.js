@@ -17,6 +17,7 @@ import {
   parseEditSections,
   sameSections,
 } from "@/app/api/utils/editAccess";
+import { isUnclaimedProvider, unclaimedProviderResponse } from "@/app/api/utils/providerClaim";
 
 // GET /api/care-access/grants — the OWNER's trust view: who has (or requested)
 // access to which of my pets. Ticket 7 (docs/provider-design.md §2 + §4 item 7).
@@ -353,10 +354,13 @@ async function POST(request) {
 
     // The provider must exist and be published.
     const providerRows = await sql`
-      SELECT id FROM providers WHERE id = ${providerId} AND status = 'published'
+      SELECT id, claim_status FROM providers WHERE id = ${providerId} AND status = 'published'
     `;
     if (providerRows.length === 0) {
       return Response.json({ error: "Provider not found" }, { status: 404 });
+    }
+    if (isUnclaimedProvider(providerRows[0])) {
+      return unclaimedProviderResponse(request, "request");
     }
 
     // Asked before anything is written, so a refusal ends no access.
