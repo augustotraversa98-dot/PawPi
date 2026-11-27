@@ -130,6 +130,16 @@ describe("wellnessLog — validation", () => {
     expect(validateWellnessForm("weight", { value: "12.4", unit: "kg" })).toBeNull();
   });
 
+  it("reads a comma weight, and refuses one with no single reading", () => {
+    const reminder = { ...baseReminder, checkType: "weight" };
+    const form = { value: "12,5", unit: "kg", note: "" };
+    expect(validateWellnessForm("weight", form)).toBeNull();
+    expect(buildWellnessLogPayload(reminder, form).body.weight).toBe(12.5);
+    for (const value of ["12.500", "1.234", "12,", "455"]) {
+      expect(validateWellnessForm("weight", { value, unit: "kg" })).toBeTruthy();
+    }
+  });
+
   it("requires a selection for option-based checks", () => {
     expect(validateWellnessForm("mobility", { value: null })).toBeTruthy();
     expect(validateWellnessForm("mobility", { value: "stiff" })).toBeNull();
