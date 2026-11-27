@@ -8,7 +8,8 @@
 //                                   exists for that provider is skipped, so reruns add nothing
 //   • provider_locations.hours_json only when we have NO hours at all (Google's hours win otherwise)
 // It never writes logo_url or any image_urls column: photos are left for the business that claims.
-// No price is stored unless the site's own price text says exactly that peso amount.
+// Text is written only if the pull found it, word for word, on the business's own site (the *_on_site
+// marks from tinyfish_enrich.py); no price unless that on-site price text says exactly that peso amount.
 //
 // Usage (from the repo root; needs anything/apps/web/node_modules):
 //   node supabase/seed/directory/load_enrichment.mjs --export-universe    # eligible rows → enrich_universe.json
@@ -188,7 +189,8 @@ export function normalizeRecord(record) {
   const seen = new Set();
   const services = [];
   for (const s of record.data.services ?? []) {
-    const name = text(s?.name, 2, 100);
+    if (s?.name_on_site !== true) continue;
+    const name = text(s.name, 2, 100);
     const key = nameKey(name);
     if (!name || !key || seen.has(key)) continue;
     // A service read on some other website is not evidence about this business.
@@ -197,14 +199,15 @@ export function normalizeRecord(record) {
     seen.add(key);
     services.push({
       name,
-      description: text(s.description, 3, 500),
-      price_cents: readOn ? priceCents(s.price_ars, s.price_text) : null,
+      description: s.description_on_site === true ? text(s.description, 3, 500) : null,
+      price_cents:
+        readOn && s.price_text_on_site === true ? priceCents(s.price_ars, s.price_text) : null,
     });
     if (services.length === MAX_SERVICES) break;
   }
   const row = {
     external_id: record.external_id,
-    bio: text(record.data.bio, 20, 1000),
+    bio: record.data.bio_on_site === true ? text(record.data.bio, 20, 1000) : null,
     services,
     hours: cleanHours(record.data.hours),
   };

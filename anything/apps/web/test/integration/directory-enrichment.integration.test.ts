@@ -41,10 +41,15 @@ afterEach(async () => {
 });
 
 beforeEach(async () => {
-  const [au] = await raw`
-    insert into auth_users (name, email) values ('Directory', 'dir@example.com') returning id`;
-  const [owner] = await raw`
-    insert into user_profiles (auth_user_id, username) values (${au.id}, 'pawpi_directory') returning id`;
+  // 0124 creates the system directory profile at migration time, so it exists until the first reset.
+  let [owner] = await raw`select id from user_profiles where username = 'pawpi_directory'`;
+  if (!owner) {
+    const [au] = await raw`
+      insert into auth_users (name, email) values ('Directory', 'dir@example.com') returning id`;
+    [owner] = await raw`
+      insert into user_profiles (auth_user_id, username)
+      values (${au.id}, 'pawpi_directory') returning id`;
+  }
   for (const [ext, claim] of [
     ['open', 'unclaimed'],
     ['taken', 'claimed'],
@@ -62,15 +67,20 @@ beforeEach(async () => {
   }
 });
 
+// The marks tinyfish_enrich.py adds once it has found the text on the site.
+const onSite = { name_on_site: true, description_on_site: true, price_text_on_site: true };
+
 const record = (externalId: string, data: Record<string, unknown> = {}) => ({
   external_id: externalId,
   website_url: SITE,
   outcome: 'success',
   data: {
     bio: 'Clínica veterinaria de barrio con atención de lunes a sábado.',
+    bio_on_site: true,
     logo_url: 'https://www.vet.example.com/logo.png',
     services: [
       {
+        ...onSite,
         name: 'Consulta clínica',
         description: 'Atención general.',
         price_ars: 15000,
@@ -78,8 +88,8 @@ const record = (externalId: string, data: Record<string, unknown> = {}) => ({
         source_url: `${SITE}servicios`,
         image_urls: ['https://www.vet.example.com/a.jpg'],
       },
-      { name: 'consulta  CLINICA', source_url: SITE },
-      { name: 'Cirugía', price_ars: 90000, price_text: 'desde $90.000', source_url: SITE },
+      { ...onSite, name: 'consulta  CLINICA', source_url: SITE },
+      { ...onSite, name: 'Cirugía', price_ars: 90000, price_text: 'desde $90.000', source_url: SITE },
     ],
     hours: { mon: [{ open: '9:00', close: '18:00' }], sun: 'closed' },
     ...data,
@@ -157,7 +167,7 @@ describe('enrichment load', () => {
   it('the --sql script form treats hostile scraped text as plain data', async () => {
     const hostile = "x'); drop table provider_services; -- $$ $j$ \\ ; commit;";
     const row = normalizeRecord(
-      record('open', { services: [{ name: hostile, source_url: SITE }] }),
+      record('open', { services: [{ ...onSite, name: hostile, source_url: SITE }] }),
     );
     await raw.unsafe(toSqlScript(ENRICH_SQL, [row]));
     const [s] = await raw`select name from provider_services where provider_id = ${ids.open}`;
@@ -205,12 +215,35 @@ describe('validation', () => {
     const row = normalizeRecord(
       record('open', {
         services: [
-          { name: 'Vacunación', price_ars: 9000, price_text: '$9.000' },
-          { name: 'Ecografía', source_url: 'https://elsewhere.example.org/x' },
+          { ...onSite, name: 'Vacunación', price_ars: 9000, price_text: '$9.000' },
+          { ...onSite, name: 'Ecografía', source_url: 'https://elsewhere.example.org/x' },
         ],
       }),
     );
     expect(row.services).toEqual([{ name: 'Vacunación', description: null, price_cents: null }]);
+  });
+
+  it('writes no text that was not found on the site', () => {
+    const row = normalizeRecord(
+      record('open', {
+        bio_on_site: false,
+        services: [
+          { ...onSite, name: 'Invented', name_on_site: false, source_url: SITE },
+          {
+            ...onSite,
+            name: 'Baño',
+            description: 'A translated description.',
+            description_on_site: false,
+            price_ars: 9000,
+            price_text: '$9.000',
+            price_text_on_site: false,
+            source_url: SITE,
+          },
+        ],
+      }),
+    );
+    expect(row.bio).toBeNull();
+    expect(row.services).toEqual([{ name: 'Baño', description: null, price_cents: null }]);
   });
 
   it('ignores unsuccessful reads and half-read hours', () => {

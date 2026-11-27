@@ -12,6 +12,7 @@ database's unclaimed rows that have a website_url). Create that file with:
 
 Run (reads TINYFISH_API_KEY from ./.env, or from the environment):
     python3 tinyfish_enrich.py --dry-run          # who would be read; no API calls, no cost
+    python3 tinyfish_enrich.py --verify           # re-check saved results against the sites; no cost
     MAX_AGENT_RUNS=10 python3 tinyfish_enrich.py
 Resume: run it again — finished listings are skipped and in-flight runs are polled, not re-bought.
 
@@ -28,10 +29,11 @@ Env:
     OUT_DIR         where the universe, results and run-log files live (default: this folder)
     ENV_FILE        .env to read the key from (default: ./.env)
 """
-import csv, datetime, json, os, sys, time, urllib.error, urllib.parse, urllib.request
+import csv, datetime, html.parser, json, os, re, sys, time, unicodedata, urllib.error, urllib.parse, urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 API = "https://agent.tinyfish.ai"
+FETCH_API = "https://api.fetch.tinyfish.ai"  # renders JavaScript; free daily allowance
 FINAL = ("COMPLETED", "FAILED", "CANCELLED")
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 SOCIAL_HOSTS = ("instagram.com", "facebook.com", "fb.com", "wa.me", "wa.link", "whatsapp.com", "tiktok.com")
@@ -126,8 +128,13 @@ Rules:
 - Use only information explicitly written on this website. Never guess, infer, or fill gaps from general
   knowledge about what vets usually offer. When unsure, return null or leave the item out.
 - Keep all text in the website's own language.
-- bio: 1 to 3 sentences copied from the site's own description of this business. null if it has none.
-  Do not write your own summary or marketing text.
+- If the site covers several branches, this listing is ONLY the branch at the address above: include what the
+  site offers at that branch or at all branches, and leave out anything it places at another branch
+  (for example a 24-hour service available only elsewhere). Use only that branch's prices and hours.
+- bio: 1 to 3 consecutive sentences copied character for character from one page where the site describes
+  this business. null if it has none. Never summarize, translate or write your own text.
+- Service names and descriptions are copied exactly as written on the page, never translated. A service
+  with no description on the site gets null.
 - services: only services this business explicitly says it offers (for example consultations, vaccination,
   surgery, grooming). Do not list retail products, brands or articles.
 - If a price is not published, return null for it, do not estimate. price_ars is only for a fixed price in
@@ -222,6 +229,110 @@ def classify(run):
     if not (data["bio"] or data["services"] or data["hours"]):
         return "no_content", reason, None
     return "success", reason, data
+
+
+# ── is it really on the site? ────────────────────────────────────────────────
+# The agent sometimes summarizes or translates despite the instructions. Anything we cannot find, word
+# for word, in the page text is marked off-site and load_enrichment.mjs refuses to write it.
+class _PageText(html.parser.HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.parts, self.skip = [], 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ("script", "style"):
+            self.skip += 1
+
+    def handle_endtag(self, tag):
+        if tag in ("script", "style") and self.skip:
+            self.skip -= 1
+        self.parts.append(" ")
+
+    def handle_data(self, data):
+        if not self.skip:
+            self.parts.append(data)
+
+
+def fold(text):
+    """Lowercase words only: accents, case, punctuation and spacing do not count as differences."""
+    plain = unicodedata.normalize("NFD", text or "")
+    plain = "".join(c for c in plain if not unicodedata.combining(c)).lower()
+    return " ".join(re.findall(r"[a-z0-9]+", plain))
+
+
+def html_to_text(markup):
+    parser = _PageText()
+    parser.feed(markup)
+    return "".join(parser.parts)
+
+
+class _Redirects(urllib.request.HTTPRedirectHandler):
+    http_error_308 = urllib.request.HTTPRedirectHandler.http_error_301  # not followed before Python 3.11
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return super().redirect_request(req, fp, 301 if code == 308 else code, msg, headers, newurl)
+
+
+def fetch_page_text(url, key=None):
+    """The page's text: read directly, or through TinyFetch when the page only fills in with JavaScript."""
+    text = _direct_page_text(url)
+    if len(fold(text)) >= 500 or not key:
+        return text
+    try:
+        request = urllib.request.Request(
+            FETCH_API,
+            data=json.dumps({"urls": [url], "format": "markdown"}).encode("utf-8"),
+            headers={"X-API-Key": key, "Content-Type": "application/json", "User-Agent": "directory-enrich/1.0"},
+        )
+        with urllib.request.urlopen(request, timeout=150) as response:
+            results = json.loads(response.read().decode("utf-8")).get("results") or []
+        rendered = (results[0].get("text") or "") if results else ""
+        return rendered if len(rendered) > len(text) else text
+    except Exception as e:
+        print(f"    ! TinyFetch could not read {url}: {e}")
+        return text
+
+
+def _direct_page_text(url):
+    request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; directory-enrich/1.0)"})
+    try:
+        with urllib.request.build_opener(_Redirects).open(request, timeout=30) as response:
+            raw = response.read(3_000_000)
+            charset = response.headers.get_content_charset()
+        try:
+            markup = raw.decode(charset or "utf-8")
+        except (LookupError, UnicodeDecodeError):
+            markup = raw.decode("latin-1")
+        return html_to_text(markup)
+    except Exception as e:  # unreadable page = nothing on it can be confirmed
+        print(f"    ! could not read {url}: {e}")
+        return ""
+
+
+def verify(record, fetch=fetch_page_text):
+    """Mark each extracted field with whether the site's own text contains it."""
+    data = record.get("data")
+    if not data:
+        return record
+    home = record["website_url"]
+    urls = [home]
+    for s in data["services"]:
+        url = (s.get("source_url") or "").split("#")[0]
+        if url.startswith(("http://", "https://")) and host_of(url) == host_of(home) and url not in urls:
+            urls.append(url)
+    pages = [t for t in (fold(fetch(u)) for u in urls[:12]) if t]
+
+    def on_site(text):
+        needle = fold(text)
+        return bool(needle) and any(f" {needle} " in f" {page} " for page in pages)
+
+    data["pages_checked"] = len(pages)
+    data["bio_on_site"] = on_site(data.get("bio"))
+    for s in data["services"]:
+        s["name_on_site"] = on_site(s.get("name"))
+        s["description_on_site"] = on_site(s.get("description"))
+        s["price_text_on_site"] = on_site(s.get("price_text"))
+    return record
 
 
 # ── API ──────────────────────────────────────────────────────────────────────
@@ -357,6 +468,14 @@ def main(argv):
     readable = [u for u in universe if u not in social]
     print(f"[start] area={area} universe={len(universe)} readable={len(readable)} "
           f"social_skipped={len(social)} max_runs={max_runs} max_steps={max_steps}")
+    env_file = os.environ.get("ENV_FILE", os.path.join(HERE, ".env"))
+    if "--verify" in argv:
+        fetch_key = read_key(env_file)
+        for record_ in results.values():
+            verify(record_, fetch=lambda u: fetch_page_text(u, fetch_key))
+        write_json(results_path, list(results.values()))
+        verification_summary(list(results.values()))
+        return 0
     if dry_run:
         for u in readable:
             print(f"  read  {u['name'][:45]:45}  {u['website_url']}")
@@ -369,7 +488,7 @@ def main(argv):
             record(item, "skipped_social", "social/messaging link, not a website", None)
     save()
 
-    key = read_key(os.environ.get("ENV_FILE", os.path.join(HERE, ".env")))
+    key = read_key(env_file)
     if not key:
         sys.exit("ERROR: TINYFISH_API_KEY not set. Put TINYFISH_API_KEY=... in supabase/seed/directory/.env "
                  "(untracked) and run again.")
@@ -434,6 +553,7 @@ def main(argv):
             outcome, reason = "failed", f"cancelled by this script ({cancel_reason})"
         latency = seconds_between(run.get("started_at"), run.get("finished_at"))
         record(item, outcome, reason, data, run=run, latency=latency, price=price)
+        verify(results[ext], fetch=lambda u: fetch_page_text(u, key))
         entry["state"] = "done"
         save()
         print(f"    {outcome} steps={run.get('num_of_steps')} {latency}s "
@@ -441,6 +561,7 @@ def main(argv):
 
     save()
     summarize(universe, results, price, balance_before, wallet_balance(key), new_runs)
+    verification_summary([results[u["external_id"]] for u in universe if u["external_id"] in results])
     return 0
 
 
@@ -466,6 +587,19 @@ def summarize(universe, results, price, before, after, new_runs):
     if before is not None and after is not None:
         print(f"  wallet              US${before:.2f} -> US${after:.2f} (this invocation: US${before - after:.2f}, "
               f"{new_runs} new runs)")
+
+
+def verification_summary(records):
+    print("\n[found on the site, word for word]")
+    for r in records:
+        data = r.get("data")
+        if not data:
+            continue
+        services = data["services"]
+        print(f"  {r['name'][:40]:40} pages={data['pages_checked']} bio={'yes' if data['bio_on_site'] else 'NO'} "
+              f"services={sum(s['name_on_site'] for s in services)}/{len(services)} "
+              f"descriptions={sum(s['description_on_site'] for s in services)}/"
+              f"{sum(1 for s in services if s['description'])}")
 
 
 if __name__ == "__main__":
