@@ -367,6 +367,22 @@ test("opened for one provider: no vet list, still nothing selected, shares with 
   expect(mockShare.mock.calls[0][0]).toMatchObject({ providerId: 9, sections: ["insurance"], expiry: "30d" });
 });
 
+test("opened for one provider, it closes once that access is given, and only then", () => {
+  const onClose = jest.fn();
+  open({ provider: { providerId: 9, name: "Vet A" }, onClose });
+  answer({ outcome: "notApplied", grant: grant() }, sent);
+  expect(onClose).not.toHaveBeenCalled();
+  answer({ outcome: "shared", grant: grant({ provider_id: 9 }) }, sent);
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+
+test("opened to pick a vet, it stays open after sharing", () => {
+  const onClose = jest.fn();
+  open({ onClose });
+  answer({ outcome: "shared", grant: grant() }, sent);
+  expect(onClose).not.toHaveBeenCalled();
+});
+
 test("re-reads current access and bookings when it opens, not cached ones", () => {
   open();
   expect(mockGrants.refetch).toHaveBeenCalledTimes(1);

@@ -313,6 +313,7 @@ describe('POST /api/care-access/grants by section', () => {
       if (text.includes('FROM user_profiles')) return [PROFILE_ROW];
       if (text.includes('INSERT INTO care_access_grants')) return [{ id: 101 }];
       if (text.includes('UPDATE care_access_grants')) return []; // nothing active or pending
+      if (text.includes('sections @>')) return []; // not shared moments ago
       return [{ id: 5 }];
     });
 
@@ -324,6 +325,24 @@ describe('POST /api/care-access/grants by section', () => {
     expect(allBound()).toContainEqual(['record_sections']);
     expect(allBound()).toContainEqual(['profile', 'lab_results']);
     expect(allBound()).toContain('30 days');
+  });
+
+  it('200 deduped for the same choice sent again moments later: nothing ends, nothing is created', async () => {
+    auth.mockResolvedValue(SESSION);
+    const grant = { id: 101, status: 'active', sections: ['vaccines'] };
+    sql.mockImplementation(async (strings) => {
+      const text = strings.join(' ');
+      if (text.includes('FROM user_profiles')) return [PROFILE_ROW];
+      if (text.includes('sections @>')) return [grant];
+      return [{ id: 5 }];
+    });
+
+    const res = await POST(postReq(VALID));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ grant, deduped: true });
+    const texts = allQueryTexts();
+    expect(texts.some((t) => t.includes('INSERT INTO care_access_grants'))).toBe(false);
+    expect(texts.some((t) => t.includes('UPDATE care_access_grants'))).toBe(false);
   });
 });
 

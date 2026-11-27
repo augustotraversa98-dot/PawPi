@@ -1,6 +1,7 @@
 import { Share } from "react-native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { recordLinkMatchesChoice } from "@/utils/vetShare";
+import { showChange } from "@/utils/sharingRefresh";
 
 // The owner's record link routes (docs/vet-sharing-design.md "Record links"): whoever has such a link sees the chosen
 // parts of the record without signing in.
@@ -17,6 +18,7 @@ async function failure(response) {
   // A server from before record links answers "not_found" for the whole path.
   error.code = body.error === "not_found" ? LINKS_UNAVAILABLE : body.code;
   error.limit = body.limit;
+  error.linkId = body.linkId;
   return error;
 }
 
@@ -41,6 +43,12 @@ export function useRecordLinks({ enabled = true } = {}) {
   });
 }
 
+const showRemoved = (queryClient, linkId) =>
+  showChange(queryClient, LINKS_KEY, (data) => ({
+    ...data,
+    links: data.links.map((l) => (l.id === linkId ? { ...l, status: "revoked" } : l)),
+  }));
+
 async function revoke(linkId) {
   const response = await fetch(`/api/care-access/links/${linkId}`, {
     method: "PATCH",
@@ -55,24 +63,32 @@ async function revoke(linkId) {
 // inside this function. It is never returned, so it cannot end up in the query cache, state or navigation, and it must
 // never be logged.
 //
-// mutate({ petId, sections, expiry, allowNotes, message }) → { outcome, linkId }
+// mutate({ petId, petName, sections, expiry, allowNotes, message, requestKey }) → { outcome, linkId }
 //   "shared"        the link is exactly the choice and left through the share sheet
 //   "notShared"     the link exists, but its address did not leave the phone and cannot be shown again
 //   "mismatch"      the link did not match the choice; it was removed without being sent
 //   "mismatchKept"  the link did not match the choice and could not be removed; it was not sent
-// A refused request throws, with `status`, `code` and `limit`.
+// `requestKey` names this one request: a server that already created its link answers so instead of creating another,
+// and the outcome is "notShared". A refused request throws, with `status`, `code` and `limit`.
 export function useCreateRecordLink({ onSuccess, onError, onSettled } = {}) {
   const queryClient = useQueryClient();
 
   return useMutation({
     retry: false,
-    mutationFn: async ({ petId, sections, expiry, allowNotes, message }) => {
+    mutationFn: async ({ petId, petName, sections, expiry, allowNotes, message, requestKey }) => {
       const response = await fetch(`/api/care-access/links`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(requestKey ? { "Idempotency-Key": requestKey } : {}),
+        },
         body: JSON.stringify({ petId, sections, expiry, allowNotes }),
       });
-      if (!response.ok) throw await failure(response);
+      if (!response.ok) {
+        const error = await failure(response);
+        if (error.code === "link_already_created") return { outcome: "notShared", linkId: error.linkId ?? null };
+        throw error;
+      }
       const data = await response.json().catch(() => null);
       const link = data?.link ?? null;
       const linkId = link?.id ?? null;
@@ -84,6 +100,11 @@ export function useCreateRecordLink({ onSuccess, onError, onSettled } = {}) {
         );
         return { outcome: removed ? "mismatch" : "mismatchKept", linkId };
       }
+      // Listed before the share sheet opens over the screen.
+      await showChange(queryClient, LINKS_KEY, (list) => ({
+        ...list,
+        links: [{ pet_name: petName, ...link }, ...list.links.filter((l) => l.id !== linkId)],
+      }));
       if (typeof data.url !== "string" || !data.url) return { outcome: "notShared", linkId };
       const sent = await Share.share({ message: `${message}\n${data.url}` }).then(
         (result) => result?.action !== Share.dismissedAction,
@@ -104,7 +125,11 @@ export function useRevokeRecordLink({ onError } = {}) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: revoke,
+    mutationFn: async (linkId) => {
+      const data = await revoke(linkId);
+      await showRemoved(queryClient, linkId);
+      return data;
+    },
     onError,
     onSettled: () => queryClient.invalidateQueries({ queryKey: LINKS_KEY }),
   });

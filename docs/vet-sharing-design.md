@@ -41,6 +41,8 @@ denies a grant by section.
   (`medical_read` by default), no expiry. By section: the chosen sections and expiry. Scopes the provider asked for and
   the owner did not choose are dropped; the row keeps `requested_by = 'provider'`. A pending row past its date is marked
   `expired` and a new grant is created instead.
+- The same share by section (same parts and length) sent again within 2 minutes of the one that created the access
+  answers 200 `{grant, deduped: true}`: nothing ends, nothing is created and nobody is told again.
 - Shares for the same pet and provider run one at a time, and `PATCH approve` answers 409 if the request stopped being
   pending while it ran, so it never overwrites the owner's choice.
 
@@ -210,7 +212,10 @@ before, or by an app that predates links, never shows anything to anyone.
 **The owner** (not family members) creates one for one pet: `POST /api/care-access/links`
 `{petId, sections, expiry, allowNotes}`. Every field is required: one or more of the eight section keys, `7d`, `30d` or
 `1y` (there is no "until revoked"), and a boolean. 201 `{link, url}`; the address `<site>/shared-record#<token>` is
-returned only then. At most 10 links in use per owner (409 `link_limit`); creating is rate limited.
+returned only then. At most 10 links in use per owner (409 `link_limit`); creating is rate limited. With an
+`Idempotency-Key` header (the app sends one per choice), a repeat of a request that already created a link answers 409
+`link_already_created` `{linkId}` and creates nothing; the address is not repeated. Keys are kept in
+`request_idempotency_keys` (0138) and ignored without that table.
 `GET /api/care-access/links?petId=` answers `{available, links}` without any token;
 `PATCH /api/care-access/links/[linkId]` `{action: "revoke"}` removes one and is never limited. On a database without
 0153, `available` is false and creating answers 409 `share_links_unavailable`.
@@ -299,3 +304,18 @@ in the share sheet and in Data Access.
 On a database without 0154 the search and both lists answer `available: false`, sending and answering say it is not
 available, and every other sharing route behaves as before. Tests: `web/test/integration/vet-share-offers.integration.test.ts`,
 `web/src/app/provider/components/ClinicalShareOffers.test.jsx`, `mobile/src/components/Health/VetShare/VetInvitation.test.jsx`.
+
+## 7. Keeping the screens current
+
+A vet usually answers on another phone. In the app (`mobile/src/hooks/useSharingLive.js`,
+`mobile/src/utils/sharingRefresh.js`):
+
+- A change made on this phone is written into the lists already read as soon as the server confirms it, and the lists are
+  then read again. The button that sent it stays disabled until then.
+- Data access, the share sheet and the booking summary read the sharing lists again when the screen is returned to, when
+  the app comes back to the front, and every 5 seconds while the screen is in view with something waiting (a pending
+  request, an unanswered invitation or an open invite link).
+- A sharing notification received while the app is open refreshes them wherever the owner is.
+- A second tap sends nothing: each action holds a guard while it is on its way, and the server answers a repeated share,
+  invitation, answer or link request without creating a second one (sections 1, 5 and 6).
+

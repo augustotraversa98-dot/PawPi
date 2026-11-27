@@ -12,6 +12,7 @@ import {
   useUpdateGrant,
 } from "@/hooks/useCareAccessGrants";
 import { OFFERS_UNAVAILABLE, useSendShareOffer } from "@/hooks/useShareOffers";
+import { useSharingLive } from "@/hooks/useSharingLive";
 import { friendlyErrorMessage } from "@/utils/appAlert";
 import { formatLocalDate } from "@/utils/localeDateTime";
 import {
@@ -71,6 +72,8 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
   const fixed = provider?.providerId != null ? provider : null;
   const vetName = (name) => name || t("dataAccess.thisProvider");
 
+  // A vet answers on another phone: what this screen shows is read again while something is waiting.
+  useSharingLive();
   const bookings = useMyBookings();
   const grantsQuery = useCareAccessGrants(isOwner ? petId : null);
   const updateGrant = useUpdateGrant(petId);
@@ -125,6 +128,8 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
     ];
     reset();
     if (outcome === "shared") {
+      // Opened to share with one business: that is done, and the screen behind shows its access.
+      if (fixed) onClose();
       const list = sent.sections.map((key) => t(`vetShare.section.${key}.title`)).join(", ");
       Alert.alert(
         t("vetShare.doneTitle"),
