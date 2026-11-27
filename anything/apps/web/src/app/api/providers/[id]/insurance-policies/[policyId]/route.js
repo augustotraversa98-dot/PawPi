@@ -8,6 +8,7 @@ import {
   ProviderAuthError,
 } from "@/app/api/utils/providerAuth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { isPriceCents } from "@/lib/decimal";
 
 // PATCH /api/providers/[id]/insurance-policies/[policyId] — the INSURER issues/advances a policy
 // (Wave 7 ticket 2.72): set policy_number + premium + billing + effective, advance status, attach
@@ -55,7 +56,7 @@ async function PATCH(request, { params }) {
     if (
       premium_cents !== undefined &&
       premium_cents !== null &&
-      !(Number.isInteger(premium_cents) && premium_cents >= 0)
+      !isPriceCents(premium_cents)
     ) {
       return Response.json(
         { error: "premium_cents must be a non-negative integer" },

@@ -8,7 +8,7 @@ import {
 } from "@/app/api/utils/providerAuth";
 import { invalidImageUrls } from "@/app/api/utils/providerValidation";
 import { withRequestContext } from "@/app/api/utils/requestContext";
-import { readClientInteger } from "@/lib/decimal";
+import { isPriceCents, readClientInteger } from "@/lib/decimal";
 
 // /api/providers/[id]/shop-products — a shop's CATALOG + INVENTORY. Phase 2 ticket 2.11
 // (docs/phase2-tickets/2.11-shop-ecommerce.md).
@@ -103,7 +103,7 @@ async function POST(request, { params }) {
     if (!name || typeof name !== "string") {
       return Response.json({ error: "name is required" }, { status: 400 });
     }
-    if (!Number.isInteger(price_cents) || price_cents < 0) {
+    if (!isPriceCents(price_cents)) {
       return Response.json(
         { error: "price_cents must be a non-negative integer" },
         { status: 400 },

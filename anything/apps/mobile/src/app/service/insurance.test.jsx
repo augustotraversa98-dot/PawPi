@@ -10,6 +10,7 @@ let mockPlans;
 const mockDiscover = jest.fn(() => ({ data: mockInsurers, isLoading: false, isError: false, refetch: jest.fn() }));
 const mockSubmit = jest.fn(() => Promise.resolve({ lead: { id: 1 } }));
 
+jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock());
 jest.mock("expo-router", () => ({ useRouter: () => ({ back: jest.fn() }) }));
 jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
 jest.mock("react-native-safe-area-context", () => ({
@@ -49,8 +50,19 @@ test("selecting an insurer lists its published plans with price range + highligh
   fireEvent.press(getByTestId("insurer-10"));
   expect(getByTestId("plan-1")).toBeTruthy();
   expect(getByText(/Gold/)).toBeTruthy();
-  expect(getByText("20–40/mo")).toBeTruthy();
+  expect(getByText("$20–$40/mo")).toBeTruthy();
   expect(getByText("• Accidents")).toBeTruthy();
+});
+
+test("monthly prices are written the Argentine way, from the stored numbers", () => {
+  mockPlans = [
+    { id: 1, name: "Gold", monthly_price_min: "1000000.43", monthly_price_max: "25000000", coverage_highlights: [] },
+    { id: 2, name: "Silver", monthly_price_min: null, monthly_price_max: "1500.50", coverage_highlights: [] },
+  ];
+  const { getByTestId, getByText } = render(<InsuranceScreen />);
+  fireEvent.press(getByTestId("insurer-10"));
+  expect(getByText("$1.000.000,43–$25.000.000/mo")).toBeTruthy();
+  expect(getByText("$1.500,50/mo")).toBeTruthy();
 });
 
 test("comparing two plans renders the compare view", () => {

@@ -140,7 +140,7 @@ describe('rx_fulfillment_orders advance / read RLS', () => {
     await asApp(PH.profileId, async (tx) => {
       const r = await tx`update rx_fulfillment_orders set status = 'accepted', price_cents = 2500 where id = ${FUL_ID} returning status, price_cents`;
       expect(r[0].status).toBe('accepted');
-      expect(r[0].price_cents).toBe(2500);
+      expect(Number(r[0].price_cents)).toBe(2500); // this connection reads bigint as text; the app's own client reads it as a number (utils/sql.js)
     });
   });
 

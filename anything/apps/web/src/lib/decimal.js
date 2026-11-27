@@ -17,6 +17,11 @@ export const WEIGHT_MAX = { kg: 160, lbs: 350 };
 export const DISTANCE_MAX = 100;
 // Postgres int4.
 export const INT_MAX = 2147483647;
+// The most a price can be, in cents: $999.999.999.999,99. Cents columns are bigint (0163) and JavaScript counts exactly
+// well past this. The app's twin is MAX_CENTS in apps/mobile/src/utils/money.js.
+export const MAX_PRICE_CENTS = 99999999999999;
+// A whole number of cents within that limit.
+export const isPriceCents = (value) => Number.isInteger(value) && value >= 0 && value <= MAX_PRICE_CENTS;
 
 const isGrouped = (text, separator) =>
   new RegExp(`^[1-9]\\d{0,2}(\\${separator}\\d{3})+$`).test(text);

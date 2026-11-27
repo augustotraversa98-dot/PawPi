@@ -8,7 +8,7 @@ import {
   ProviderAuthError,
 } from "@/app/api/utils/providerAuth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
-import { readClientDecimal } from "@/lib/decimal";
+import { MAX_PRICE_CENTS, readClientDecimal } from "@/lib/decimal";
 
 // PATCH /api/providers/[id]/transport-trips/[tripId] — the provider STAFF acts on a trip
 // (ticket 2.52): confirm, assign a driver, advance status, set the fare. The capability gate is
@@ -50,7 +50,8 @@ async function PATCH(request, { params }) {
       return Response.json({ error: "Invalid status" }, { status: 400 });
     }
     // Text must have one reading: Number("1.500") would store a fare of 1.5.
-    const fare = readClientDecimal(fare_amount, { max: Number.MAX_SAFE_INTEGER });
+    // A fare is a plain amount; it is charged in cents, so it shares the price limit.
+    const fare = readClientDecimal(fare_amount, { max: MAX_PRICE_CENTS / 100 });
     if (fare_amount !== undefined && fare_amount !== null && (fare.invalid || fare.value === null)) {
       return Response.json({ error: "Invalid fare_amount" }, { status: 400 });
     }

@@ -130,6 +130,14 @@ test("a confirmed trip with a fare shows Pay; paying starts checkout (fare→cen
   );
 });
 
+test("a fare is written the Argentine way, from the stored number", () => {
+  mockTrips = [
+    { id: 7, provider_id: 100, provider_name: "X", pickup_address: "A", dropoff_address: "B", status: "confirmed", fare_amount: "1000000.43", paid: false },
+  ];
+  const { getByText } = render(<TransportScreen />);
+  expect(getByText(/\$1\.000\.000,43/)).toBeTruthy();
+});
+
 test("a paid trip shows Paid and no Pay button", () => {
   mockTrips = [
     { id: 7, provider_id: 100, provider_name: "X", pickup_address: "A", dropoff_address: "B", status: "confirmed", fare_amount: 15, paid: true },

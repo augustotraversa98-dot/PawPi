@@ -8,6 +8,7 @@ import {
 } from "@/app/api/utils/providerAuth";
 import { invalidImageUrls } from "@/app/api/utils/providerValidation";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { isPriceCents } from "@/lib/decimal";
 
 // /api/providers/[id]/shop-products/[productId] — update / soft-delete one catalog product.
 // Phase 2 ticket 2.11. Provider-ADMIN only (catalog/inventory management).
@@ -44,7 +45,7 @@ async function PATCH(request, { params }) {
     // Validate the numeric fields when present.
     if (
       body.price_cents !== undefined &&
-      (!Number.isInteger(body.price_cents) || body.price_cents < 0)
+      !isPriceCents(body.price_cents)
     ) {
       return Response.json(
         { error: "price_cents must be a non-negative integer" },
@@ -71,7 +72,7 @@ async function PATCH(request, { params }) {
     // the 0077 CHECK (compare_at_cents IS NULL OR compare_at_cents > price_cents) so a bad
     // value fails with a clean 422 instead of a DB error.
     if (body.compare_at_cents !== undefined && body.compare_at_cents !== null) {
-      if (!Number.isInteger(body.compare_at_cents) || body.compare_at_cents < 0) {
+      if (!isPriceCents(body.compare_at_cents)) {
         return Response.json(
           { error: "compare_at_cents must be a non-negative integer or null" },
           { status: 422 },

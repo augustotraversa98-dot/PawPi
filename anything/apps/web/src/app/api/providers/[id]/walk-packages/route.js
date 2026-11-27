@@ -8,6 +8,7 @@ import {
 } from "@/app/api/utils/providerAuth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { isPriceCents } from "@/lib/decimal";
 
 // Walk packages (offerings) — Ticket B2 (docs/phase2-tickets/B2-walk-packages-and-credits.md).
 // A walker sets prepaid walk packs (single / 10 / 20, each with a price). Mirrors the services
@@ -37,8 +38,7 @@ function invalidPackageFields(body) {
   if (
     price_cents === undefined ||
     price_cents === null ||
-    !Number.isInteger(price_cents) ||
-    price_cents < 0
+    !isPriceCents(price_cents)
   ) {
     return "price_cents must be a non-negative integer";
   }

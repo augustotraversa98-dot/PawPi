@@ -2807,6 +2807,7 @@
     "reimbursementLabel": "Reintegro: {{value}}",
     "compare": "Comparar",
     "compareRow": "{{price}} · Deducible {{deductible}} · Reint. {{reimb}}",
+    "perMonth": "{{price}} por mes",
     "getQuote": "Pedir cotización",
     "applyBuy": "Solicitar",
     "getQuoteFor": "Cotizar: {{name}}",

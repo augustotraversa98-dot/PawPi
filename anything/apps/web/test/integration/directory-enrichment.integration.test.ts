@@ -129,7 +129,8 @@ describe('enrichment load', () => {
     const services = await raw`
       select name, price_cents, source, image_urls, duration_min, deposit_cents
         from provider_services where provider_id = ${ids.open} order by id`;
-    expect([...services]).toEqual([
+    // this connection reads bigint as text; the app's own client reads it as a number (utils/sql.js)
+    expect(services.map((s) => ({ ...s, price_cents: s.price_cents === null ? null : Number(s.price_cents) }))).toEqual([
       { name: 'Consulta clínica', price_cents: 1500000, source: 'auto_enriched', image_urls: [], duration_min: null, deposit_cents: null },
       { name: 'Cirugía', price_cents: null, source: 'auto_enriched', image_urls: [], duration_min: null, deposit_cents: null },
     ]);
@@ -199,6 +200,7 @@ describe('website backfill', () => {
 describe('validation', () => {
   it('stores a price only when the quoted text is that exact peso amount', () => {
     expect(priceCents(15000, '$15.000')).toBe(1500000);
+    expect(priceCents(25000000, '$25.000.000')).toBe(2500000000); // above the old integer limit
     expect(priceCents(1500.5, 'ARS 1.500,50')).toBe(150050);
     expect(priceCents(8000, '8000 pesos')).toBe(800000);
     expect(priceCents(15000, null)).toBeNull();

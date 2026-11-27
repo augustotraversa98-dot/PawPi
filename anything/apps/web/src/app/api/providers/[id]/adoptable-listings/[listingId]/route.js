@@ -11,6 +11,7 @@ import {
   sanitizeQuestions,
   isMissingColumn,
 } from "@/app/api/utils/adoptionQuestions";
+import { isPriceCents } from "@/lib/decimal";
 
 // /api/providers/[id]/adoptable-listings/[listingId] — update / withdraw one adoptable dog.
 // Phase 2 ticket 2.12. Shelter-ADMIN only (listing management).
@@ -141,7 +142,7 @@ async function PATCH(request, { params }) {
 
     if (
       body.adoption_fee_cents !== undefined &&
-      (!Number.isInteger(body.adoption_fee_cents) || body.adoption_fee_cents < 0)
+      !isPriceCents(body.adoption_fee_cents)
     ) {
       return Response.json(
         { error: "adoption_fee_cents must be a non-negative integer" },

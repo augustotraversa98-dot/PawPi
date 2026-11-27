@@ -178,7 +178,7 @@ describe('compare_at_cents CHECK (0077)', () => {
       tx`UPDATE shop_products SET compare_at_cents = 6000 WHERE id = ${PA1} AND provider_id = ${A}`,
     );
     const ok = await raw`select compare_at_cents from shop_products where id = ${PA1}`;
-    expect(ok[0].compare_at_cents).toBe(6000);
+    expect(Number(ok[0].compare_at_cents)).toBe(6000); // this connection reads bigint as text; the app's own client reads it as a number (utils/sql.js)
 
     // Invalid: 5000 is not > the 5000 price → the table CHECK rejects it.
     await expect(

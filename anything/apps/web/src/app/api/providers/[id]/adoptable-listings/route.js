@@ -12,6 +12,7 @@ import {
   sanitizeQuestions,
   isMissingColumn,
 } from "@/app/api/utils/adoptionQuestions";
+import { isPriceCents } from "@/lib/decimal";
 
 // /api/providers/[id]/adoptable-listings — an adoption place's adoptable dogs, in the
 // existing DOG-PROFILE format. Phase 2 ticket 2.12 (docs/phase2-tickets/2.12-adoption.md).
@@ -157,7 +158,7 @@ async function POST(request, { params }) {
     // The fee is integer cents (as on PATCH). Anything else is refused, never saved as free.
     if (
       adoption_fee_cents != null &&
-      (!Number.isInteger(adoption_fee_cents) || adoption_fee_cents < 0)
+      !isPriceCents(adoption_fee_cents)
     ) {
       return Response.json(
         { error: "adoption_fee_cents must be a non-negative integer" },

@@ -20,11 +20,9 @@
 import shared from "../i18n/shared";
 import { formatNumber } from "../i18n/lib/format";
 // The separator rules above, shared with the panel's other numbers and the API.
-import { splitTypedNumber } from "../../../lib/decimal";
+import { MAX_PRICE_CENTS, splitTypedNumber } from "../../../lib/decimal";
 
 const THOUSANDS = { es: ".", en: "," };
-// provider money columns are Postgres int4.
-const MAX_CENTS = 2147483647;
 
 // Format integer cents as "$12.50" (en) or "$ 12,50" (es). null/undefined → em-dash.
 export function centsToCurrency(cents, lang = "en") {
@@ -64,7 +62,7 @@ export function dollarsToCents(raw, lang = "en") {
   const parts = splitTypedNumber(trimmed.replace(/^\$/, "").trim(), THOUSANDS[lang] ?? THOUSANDS.en);
   // Built from the digits, so there is no floating-point rounding.
   const cents = parts ? Number(parts[0]) * 100 + Number(parts[1].padEnd(2, "0")) : NaN;
-  if (!(cents <= MAX_CENTS)) {
+  if (!(cents <= MAX_PRICE_CENTS)) {
     return { error: shared[lang].inputs.invalidAmount };
   }
   return { cents };

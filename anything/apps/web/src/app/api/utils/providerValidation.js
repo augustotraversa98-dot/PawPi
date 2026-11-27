@@ -3,6 +3,8 @@
 // returns an error message string (the 400 body) or null when valid. Extracted
 // verbatim from the four route files (ticket 4 dedup); no logic change.
 
+import { isPriceCents } from "@/lib/decimal";
+
 // Validate optional geo coordinates. Returns an error message or null. Absent
 // (undefined/null) coordinates are allowed; present ones must be in range.
 export function invalidLocationFields(body) {
@@ -41,21 +43,21 @@ export function invalidServiceFields(body) {
   if (
     nightly_rate_cents !== undefined &&
     nightly_rate_cents !== null &&
-    (!Number.isInteger(nightly_rate_cents) || nightly_rate_cents < 0)
+    !isPriceCents(nightly_rate_cents)
   ) {
     return "nightly_rate_cents must be a non-negative integer";
   }
   if (
     price_cents !== undefined &&
     price_cents !== null &&
-    (!Number.isInteger(price_cents) || price_cents < 0)
+    !isPriceCents(price_cents)
   ) {
     return "price_cents must be a non-negative integer";
   }
   if (
     deposit_cents !== undefined &&
     deposit_cents !== null &&
-    (!Number.isInteger(deposit_cents) || deposit_cents < 0)
+    !isPriceCents(deposit_cents)
   ) {
     return "deposit_cents must be a non-negative integer";
   }
