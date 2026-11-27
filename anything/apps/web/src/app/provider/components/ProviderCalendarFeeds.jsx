@@ -15,12 +15,19 @@ import {
   useRemoveCalendarFeed,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
+import calendarFeedsCopy from "../i18n/calendarFeeds";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { fill, formatDateTime, plural } from "../i18n/lib/format";
+import { serverErrorMessage } from "../i18n/lib/serverError";
 
 // Calendar import (ticket 2.84). The provider pastes a private iCal/ICS feed URL (Google "secret
 // address in iCal format", Outlook published ICS, Apple shared ICS); PawPi fetches it, parses
 // VEVENTs into READ-ONLY busy blocks the booking availability subtracts. Add / Refresh now / Remove
 // + last-synced time. Loaded inside the shell, so providerId is resolved.
 export default function ProviderCalendarFeeds({ providerId }) {
+  const { t, lang } = useProviderCopy(calendarFeedsCopy);
+  const errorText = (err, fallback) =>
+    serverErrorMessage(err, lang, fallback, calendarFeedsCopy);
   const { data: feeds, isLoading, isError, error } =
     useProviderCalendarFeeds(providerId);
   const add = useAddCalendarFeed(providerId);
@@ -33,17 +40,17 @@ export default function ProviderCalendarFeeds({ providerId }) {
     e.preventDefault();
     const trimmed = url.trim();
     if (!/^https?:\/\//i.test(trimmed)) {
-      toast.error("Enter an http(s) iCal feed URL");
+      toast.error(t.invalidUrl);
       return;
     }
     add.mutate(trimmed, {
       onSuccess: (feed) => {
-        toast.success("Feed added — syncing…");
+        toast.success(t.added);
         setUrl("");
         // Pull busy blocks immediately so the provider sees the result.
         if (feed?.id != null) syncOne.mutate(feed.id);
       },
-      onError: (err) => toast.error(err?.message || "Couldn't add feed"),
+      onError: (err) => toast.error(errorText(err, t.addFailed)),
     });
   };
 
@@ -51,20 +58,16 @@ export default function ProviderCalendarFeeds({ providerId }) {
     syncOne.mutate(feed.id, {
       onSuccess: (res) =>
         res?.ok === false
-          ? toast.error("Couldn't reach that calendar feed")
-          : toast.success(`Synced ${res?.synced ?? 0} busy block(s)`),
-      onError: (err) => toast.error(err?.message || "Couldn't sync feed"),
+          ? toast.error(t.unreachable)
+          : toast.success(plural(t.synced, res?.synced ?? 0, lang)),
+      onError: (err) => toast.error(errorText(err, t.syncFailed)),
     });
 
   const onRemove = (feed) => {
-    if (
-      window.confirm(
-        "Remove this calendar feed? Its imported busy blocks will be cleared and those times become bookable again.",
-      )
-    ) {
+    if (window.confirm(t.confirmRemove)) {
       remove.mutate(feed.id, {
-        onSuccess: () => toast.success("Feed removed"),
-        onError: (err) => toast.error(err?.message || "Couldn't remove feed"),
+        onSuccess: () => toast.success(t.removed),
+        onError: (err) => toast.error(errorText(err, t.removeFailed)),
       });
     }
   };
@@ -81,11 +84,8 @@ export default function ProviderCalendarFeeds({ providerId }) {
           <CalendarClock className="h-5 w-5" style={{ color: COLORS.terracotta }} />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-[#3B241B]">Calendar import</h1>
-          <p className="text-sm text-[#7A6254]">
-            Block your PawPi availability from your existing calendar so you’re never
-            double-booked
-          </p>
+          <h1 className="text-2xl font-bold text-[#3B241B]">{t.title}</h1>
+          <p className="text-sm text-[#7A6254]">{t.subtitle}</p>
         </div>
       </div>
 
@@ -94,13 +94,9 @@ export default function ProviderCalendarFeeds({ providerId }) {
         className="mb-6 rounded-2xl border border-[#FFD9B3] bg-white p-5"
       >
         <label className="mb-1 block text-sm font-semibold text-[#3B241B]">
-          Private iCal / ICS feed URL
+          {t.urlLabel}
         </label>
-        <p className="mb-3 text-xs text-[#7A6254]">
-          Google Calendar → Settings → “Secret address in iCal format”. Outlook →
-          “Publish calendar” (ICS). Apple → a shared/public ICS link. We only read
-          busy times — no event details are stored.
-        </p>
+        <p className="mb-3 text-xs text-[#7A6254]">{t.urlHelp}</p>
         <div className="flex flex-wrap gap-3">
           <div className="flex flex-1 items-center gap-2 rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-3">
             <LinkIcon className="h-4 w-4 text-[#B8A99D]" />
@@ -109,7 +105,7 @@ export default function ProviderCalendarFeeds({ providerId }) {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://calendar.google.com/…/basic.ics"
-              aria-label="iCal feed URL"
+              aria-label={t.urlAria}
               className="w-full bg-transparent py-2.5 text-sm text-[#3B241B] outline-none"
             />
           </div>
@@ -124,7 +120,7 @@ export default function ProviderCalendarFeeds({ providerId }) {
             ) : (
               <Plus className="h-4 w-4" />
             )}
-            Add feed
+            {t.add}
           </button>
         </div>
       </form>
@@ -132,21 +128,19 @@ export default function ProviderCalendarFeeds({ providerId }) {
       {isLoading ? (
         <div className="flex items-center justify-center gap-3 rounded-2xl border border-[#FFD9B3] bg-white px-6 py-16 text-[#7A6254]">
           <Loader2 className="h-5 w-5 animate-spin" style={{ color: COLORS.coral }} />
-          Loading feeds…
+          {t.loading}
         </div>
       ) : isError ? (
         <div className="rounded-2xl border border-[#FFD9B3] bg-white px-6 py-16 text-center">
-          <p className="font-semibold text-[#B23B30]">Couldn’t load feeds</p>
+          <p className="font-semibold text-[#B23B30]">{t.loadError}</p>
           <p className="mt-1 text-sm text-[#7A6254]">
-            {error?.message || "Please try again."}
+            {errorText(error, t.tryAgain)}
           </p>
         </div>
       ) : list.length === 0 ? (
         <div className="rounded-2xl border border-[#FFD9B3] bg-white px-6 py-16 text-center">
-          <p className="text-base font-semibold text-[#3B241B]">No feeds yet</p>
-          <p className="mt-1 text-sm text-[#7A6254]">
-            Add an iCal feed above to block those times from being booked.
-          </p>
+          <p className="text-base font-semibold text-[#3B241B]">{t.emptyTitle}</p>
+          <p className="mt-1 text-sm text-[#7A6254]">{t.emptyBody}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -163,8 +157,10 @@ export default function ProviderCalendarFeeds({ providerId }) {
                   </p>
                   <p className="mt-0.5 text-xs text-[#7A6254]">
                     {feed.last_synced_at
-                      ? `Last synced ${new Date(feed.last_synced_at).toLocaleString()}`
-                      : "Not synced yet"}
+                      ? fill(t.lastSynced, {
+                          when: formatDateTime(feed.last_synced_at, lang),
+                        })
+                      : t.notSynced}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -177,7 +173,7 @@ export default function ProviderCalendarFeeds({ providerId }) {
                     <RefreshCw
                       className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`}
                     />
-                    Refresh now
+                    {t.refresh}
                   </button>
                   <button
                     type="button"
@@ -190,7 +186,7 @@ export default function ProviderCalendarFeeds({ providerId }) {
                     }}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    Remove
+                    {t.remove}
                   </button>
                 </div>
               </div>
