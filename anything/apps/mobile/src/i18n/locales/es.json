@@ -4973,7 +4973,9 @@
       "overallProgress": "{{done}} de {{total}} sesiones completadas en {{programs}} programas",
       "sessionMeta": "{{minutes}} min · {{difficulty}}",
       "completedTapToUndo": "✓ Completado — tocá para deshacer",
-      "markAsCompleted": "Marcar como completado"
+      "markAsCompleted": "Marcar como completado",
+      "loadingProgress": "Cargando tu progreso…",
+      "progressLoadFailed": "No pudimos cargar tu progreso de entrenamiento. Igual podés leer todas las lecciones."
     },
     "chat": {
       "sayHelloToStartThe": "Saludá para empezar la conversación.",

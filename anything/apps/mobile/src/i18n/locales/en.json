@@ -4973,7 +4973,9 @@
       "overallProgress": "{{done}} of {{total}} sessions completed across {{programs}} programs",
       "sessionMeta": "{{minutes}} min · {{difficulty}}",
       "completedTapToUndo": "✓ Completed — tap to undo",
-      "markAsCompleted": "Mark as completed"
+      "markAsCompleted": "Mark as completed",
+      "loadingProgress": "Loading your progress…",
+      "progressLoadFailed": "We couldn't load your training progress. You can still read every lesson."
     },
     "chat": {
       "sayHelloToStartThe": "Say hello to start the conversation.",

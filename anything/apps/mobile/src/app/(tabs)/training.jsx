@@ -1,5 +1,13 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Modal } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Modal,
+  ActivityIndicator,
+  StyleSheet,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -17,7 +25,7 @@ import {
 import { COLORS } from "@/constants/colors";
 import { FirstFocusGate } from "@/components/FirstFocusGate";
 import { TYPE, RADIUS, SPACING, MATERIALS, BLUR } from "@/constants/theme";
-import { PressableScale, GlassSurface } from "@/components/ui";
+import { PressableScale, GlassSurface, ErrorState } from "@/components/ui";
 import ServicesDiscovery from "@/components/Services/ServicesDiscovery";
 import { CARE_CATEGORIES } from "@/constants/servicesCategories";
 import { useCurrentPet } from "@/hooks/usePetProfile";
@@ -73,15 +81,67 @@ const DIFF_COLORS = {
   Advanced: { bg: "#FBE9E7", text: "#BF360C" },
 };
 
+// The only thing the curriculum loads is which sessions are done (the lessons ship with the app).
+// Until that answer is in, say so rather than showing "0 done" as if it were true.
+function ProgressNotice({ status, onRetry, style }) {
+  const { t } = useTranslation();
+  if (status === "loading") {
+    return (
+      <View
+        testID="progress-loading"
+        style={[
+          { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 12 },
+          style,
+        ]}
+      >
+        <ActivityIndicator size="small" color={C.coral} />
+        <Text style={{ fontSize: 13, color: C.mutedBrown }}>
+          {t("screensUi.training.loadingProgress")}
+        </Text>
+      </View>
+    );
+  }
+  if (status === "error") {
+    return (
+      <ErrorState
+        testID="progress-error"
+        message={t("screensUi.training.progressLoadFailed")}
+        onRetry={onRetry}
+        style={style}
+      />
+    );
+  }
+  return null;
+}
+
 function TrainingScreenContent() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { data: currentPet } = useCurrentPet();
+  const {
+    data: currentPet,
+    isLoading: petLoading,
+    isError: petFailed,
+    refetch: refetchPet,
+  } = useCurrentPet();
   const petId = currentPet?.id;
 
   const { t } = useTranslation();
-  const { completedSet } = useSelfTrainingProgress(petId);
+  const progress = useSelfTrainingProgress(petId);
+  const { completedSet } = progress;
   const toggle = useToggleSession(petId);
+
+  // "paused" = waiting for the network with nothing to show. Progress already on screen stays
+  // there if a later refresh fails.
+  const noProgressYet = progress.data === undefined;
+  const petMissing = !petId && petFailed;
+  const progressStatus =
+    petMissing || (noProgressYet && (progress.isError || progress.fetchStatus === "paused"))
+      ? "error"
+      : (!petId && petLoading) || progress.isLoading
+        ? "loading"
+        : "ready";
+  const progressReady = progressStatus === "ready";
+  const retryProgress = () => (petMissing ? refetchPet() : progress.refetch());
 
   // Segmented [Learn | Hire]. A deep link opens Hire when ?pane=hire or ?category is a care category
   // (D1 routes care deep-links here instead of Stores & Vets).
@@ -98,8 +158,18 @@ function TrainingScreenContent() {
     { key: "hire", label: t("care.segHire") },
   ];
 
+  // The program stays set after closing, so the modal keeps its content while it slides away.
   const [openProgram, setOpenProgram] = useState(null); // program object
+  const [programVisible, setProgramVisible] = useState(false);
   const [openSession, setOpenSession] = useState(null); // session object
+
+  const showProgram = (program) => {
+    setOpenProgram(program);
+    setOpenSession(null);
+    setProgramVisible(true);
+  };
+  const closeProgram = () => setProgramVisible(false);
+  const closeSession = () => setOpenSession(null);
 
   const totalDone = TRAINING_PROGRAMS.reduce(
     (sum, p) => sum + programDoneCount(p.key, completedSet),
@@ -129,7 +199,7 @@ function TrainingScreenContent() {
     return (
       <TouchableOpacity
         testID={`program-${program.key}`}
-        onPress={() => setOpenProgram(program)}
+        onPress={() => showProgram(program)}
         activeOpacity={0.92}
         style={{
           backgroundColor: C.card,
@@ -191,7 +261,7 @@ function TrainingScreenContent() {
           testID={`program-progress-${program.key}`}
           style={{ fontSize: 12, color: C.mutedBrown, marginTop: 6, fontWeight: "700" }}
         >
-          {t("screensUi.training.sessionsDone", { done, total })}
+          {progressReady ? t("screensUi.training.sessionsDone", { done, total }) : " "}
         </Text>
       </TouchableOpacity>
     );
@@ -352,17 +422,28 @@ function TrainingScreenContent() {
           <Text style={{ fontSize: 17, fontWeight: "800", color: C.warmBrown }}>
             {t("screensUi.training.yourTrainingJourney")}
           </Text>
-          <Text
-            testID="overall-progress"
-            style={{ fontSize: 13, color: C.terracotta, marginTop: 4, fontWeight: "700" }}
-          >
-            {t("screensUi.training.overallProgress", {
-              done: totalDone,
-              total: totalSessions,
-              programs: TRAINING_PROGRAMS.length,
-            })}
-          </Text>
+          {progressReady ? (
+            <Text
+              testID="overall-progress"
+              style={{ fontSize: 13, color: C.terracotta, marginTop: 4, fontWeight: "700" }}
+            >
+              {t("screensUi.training.overallProgress", {
+                done: totalDone,
+                total: totalSessions,
+                programs: TRAINING_PROGRAMS.length,
+              })}
+            </Text>
+          ) : progressStatus === "loading" ? (
+            <ProgressNotice
+              status="loading"
+              style={{ justifyContent: "flex-start", padding: 0, marginTop: 4 }}
+            />
+          ) : null}
         </View>
+
+        {progressStatus === "error" && (
+          <ProgressNotice status="error" onRetry={retryProgress} style={{ marginBottom: 20 }} />
+        )}
 
         <Text
           style={{
@@ -381,209 +462,225 @@ function TrainingScreenContent() {
       </ScrollView>
       )}
 
-      {/* Program → session list */}
+      {/* Program → session list → session detail, all inside ONE native modal. iOS will not present a
+          second sibling <Modal> while one is up: it ignored the tap on a session, then showed that
+          modal EMPTY once the list closed. So the session is a layer over the list instead (which
+          also keeps the list's scroll position). */}
       <Modal
-        visible={!!openProgram}
+        visible={programVisible}
         animationType="slide"
-        onRequestClose={() => setOpenProgram(null)}
+        backdropColor={C.cream}
+        onRequestClose={openSession ? closeSession : closeProgram}
       >
         <View style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}>
-          <View
-            style={{
-              padding: 18,
-              borderBottomWidth: 1,
-              borderBottomColor: C.peach,
-              flexDirection: "row",
-              alignItems: "center",
-              backgroundColor: C.card,
-            }}
-          >
-            <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              testID="program-back"
-              onPress={() => setOpenProgram(null)}
-              style={{ marginRight: 12 }}
-            >
-              <ArrowLeft size={22} color={C.warmBrown} />
-            </TouchableOpacity>
-            <Text style={{ fontSize: 19, fontWeight: "800", color: C.warmBrown, flex: 1 }}>
-              {openProgram?.emoji} {openProgram ? programTitle(t, openProgram) : ""}
-            </Text>
-          </View>
-
-          <ScrollView
-            contentInsetAdjustmentBehavior="automatic"
-            contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-          >
-            <Text style={{ fontSize: 14, color: C.mutedBrown, lineHeight: 21, marginBottom: 16 }}>
-              {openProgram ? programSummary(t, openProgram) : ""}
-            </Text>
-
-            {openProgram?.sessions.map((session, index) => {
-              const isDone = completedSet.has(
-                completionId(openProgram.key, session.key),
-              );
-              return (
-                <TouchableOpacity
-                  key={session.key}
-                  testID={`session-${session.key}`}
-                  onPress={() => setOpenSession(session)}
-                  activeOpacity={0.9}
+          {openProgram && (
+            <View key={openProgram.key} style={{ flex: 1 }}>
+              <View
+                style={{ flex: 1 }}
+                accessibilityElementsHidden={!!openSession}
+                importantForAccessibility={openSession ? "no-hide-descendants" : "auto"}
+              >
+                <View
                   style={{
-                    backgroundColor: C.card,
-                    borderRadius: 16,
-                    padding: 16,
-                    marginBottom: 10,
-                    borderWidth: 1,
-                    borderColor: isDone ? C.sage : C.peach,
+                    padding: 18,
+                    borderBottomWidth: 1,
+                    borderBottomColor: C.peach,
                     flexDirection: "row",
                     alignItems: "center",
-                    gap: 12,
+                    backgroundColor: C.card,
                   }}
                 >
-                  {isDone ? (
-                    <CheckCircle2 size={24} color="#2E7D32" />
-                  ) : (
-                    <Circle size={24} color={C.peach} />
+                  <TouchableOpacity accessibilityLabel={t("common.back")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    testID="program-back"
+                    onPress={closeProgram}
+                    style={{ marginRight: 12 }}
+                  >
+                    <ArrowLeft size={22} color={C.warmBrown} />
+                  </TouchableOpacity>
+                  <Text style={{ fontSize: 19, fontWeight: "800", color: C.warmBrown, flex: 1 }}>
+                    {openProgram.emoji} {programTitle(t, openProgram)}
+                  </Text>
+                </View>
+
+                <ScrollView
+                  contentInsetAdjustmentBehavior="automatic"
+                  contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+                >
+                  <Text style={{ fontSize: 14, color: C.mutedBrown, lineHeight: 21, marginBottom: 16 }}>
+                    {programSummary(t, openProgram)}
+                  </Text>
+
+                  {progressStatus === "error" && (
+                    <ProgressNotice status="error" onRetry={retryProgress} style={{ marginBottom: 12 }} />
                   )}
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 15, fontWeight: "700", color: C.warmBrown }}>
-                      {index + 1}. {sessionTitle(t, openProgram.key, session)}
-                    </Text>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 }}>
-                      <Clock size={12} color={C.mutedBrown} />
-                      <Text style={{ fontSize: 12, color: C.mutedBrown }}>
-                        {t("screensUi.training.sessionMeta", {
-                          minutes: session.durationMin,
-                          difficulty: difficultyLabel(t, session.difficulty),
-                        })}
-                      </Text>
-                    </View>
-                  </View>
-                  <ChevronRight size={18} color={C.mutedBrown} />
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-      </Modal>
 
-      {/* Session detail */}
-      <Modal
-        visible={!!openSession}
-        animationType="slide"
-        onRequestClose={() => setOpenSession(null)}
-      >
-        <View style={{ flex: 1, backgroundColor: C.cream, paddingTop: insets.top }}>
-          <View
-            style={{
-              padding: 18,
-              borderBottomWidth: 1,
-              borderBottomColor: C.peach,
-              flexDirection: "row",
-              alignItems: "center",
-              backgroundColor: C.card,
-            }}
-          >
-            <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              testID="session-close"
-              onPress={() => setOpenSession(null)}
-              style={{ marginRight: 12 }}
-            >
-              <X size={20} color={C.warmBrown} />
-            </TouchableOpacity>
-            <Text style={{ fontSize: 18, fontWeight: "800", color: C.warmBrown, flex: 1 }}>
-              {openSession && openProgram
-                ? sessionTitle(t, openProgram.key, openSession)
-                : ""}
-            </Text>
-          </View>
+                  {openProgram.sessions.map((session, index) => {
+                    const isDone = completedSet.has(
+                      completionId(openProgram.key, session.key),
+                    );
+                    return (
+                      <TouchableOpacity
+                        key={session.key}
+                        testID={`session-${session.key}`}
+                        onPress={() => setOpenSession(session)}
+                        activeOpacity={0.9}
+                        style={{
+                          backgroundColor: C.card,
+                          borderRadius: 16,
+                          padding: 16,
+                          marginBottom: 10,
+                          borderWidth: 1,
+                          borderColor: isDone ? C.sage : C.peach,
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 12,
+                        }}
+                      >
+                        {isDone ? (
+                          <CheckCircle2 size={24} color="#2E7D32" />
+                        ) : (
+                          <Circle size={24} color={C.peach} />
+                        )}
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 15, fontWeight: "700", color: C.warmBrown }}>
+                            {index + 1}. {sessionTitle(t, openProgram.key, session)}
+                          </Text>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 }}>
+                            <Clock size={12} color={C.mutedBrown} />
+                            <Text style={{ fontSize: 12, color: C.mutedBrown }}>
+                              {t("screensUi.training.sessionMeta", {
+                                minutes: session.durationMin,
+                                difficulty: difficultyLabel(t, session.difficulty),
+                              })}
+                            </Text>
+                          </View>
+                        </View>
+                        <ChevronRight size={18} color={C.mutedBrown} />
+                      </TouchableOpacity>
+                    );
+                  })}
 
-          <ScrollView
-            contentInsetAdjustmentBehavior="automatic"
-            contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
-          >
-            {openSession && openProgram && (
-              <>
-                <Text style={{ fontSize: 14, color: C.warmBrown, lineHeight: 22, marginBottom: 18 }}>
-                  🎯 {sessionObjective(t, openProgram.key, openSession)}
-                </Text>
+                  {/* Under the rows, so they never move under the finger when progress arrives. */}
+                  {progressStatus === "loading" && <ProgressNotice status="loading" />}
+                </ScrollView>
+              </View>
 
-                <Text style={{ fontSize: 17, fontWeight: "800", color: C.warmBrown, marginBottom: 14 }}>
-                  {t("screensUi.training.stepByStep")}
-                </Text>
-                {sessionSteps(t, openProgram.key, openSession).map((step, i) => (
-                  <View key={i} style={{ flexDirection: "row", marginBottom: 14, alignItems: "flex-start" }}>
-                    <View
-                      style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: 15,
-                        backgroundColor: C.coral,
-                        justifyContent: "center",
-                        alignItems: "center",
-                        marginRight: 12,
-                      }}
-                    >
-                      <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 13 }}>
-                        {i + 1}
-                      </Text>
-                    </View>
-                    <Text style={{ flex: 1, fontSize: 14, color: C.warmBrown, lineHeight: 21 }}>
-                      {step}
-                    </Text>
-                  </View>
-                ))}
-
-                {sessionTips(t, openProgram.key, openSession).length > 0 && (
+              {openSession && (
+                <View
+                  testID="session-detail"
+                  accessibilityViewIsModal
+                  style={[StyleSheet.absoluteFill, { backgroundColor: C.cream }]}
+                >
                   <View
                     style={{
-                      backgroundColor: C.sand,
-                      borderRadius: 14,
-                      padding: 14,
-                      marginTop: 8,
-                      marginBottom: 8,
+                      padding: 18,
+                      borderBottomWidth: 1,
+                      borderBottomColor: C.peach,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      backgroundColor: C.card,
                     }}
                   >
-                    {sessionTips(t, openProgram.key, openSession).map((tip, i) => (
-                      <View key={i} style={{ flexDirection: "row", gap: 8, marginBottom: 4 }}>
-                        <Lightbulb size={15} color={C.terracotta} />
-                        <Text style={{ flex: 1, fontSize: 13, color: C.mutedBrown, lineHeight: 19 }}>
-                          {tip}
+                    <TouchableOpacity accessibilityLabel={t("common.close")} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                      testID="session-close"
+                      onPress={closeSession}
+                      style={{ marginRight: 12 }}
+                    >
+                      <X size={20} color={C.warmBrown} />
+                    </TouchableOpacity>
+                    <Text style={{ fontSize: 18, fontWeight: "800", color: C.warmBrown, flex: 1 }}>
+                      {sessionTitle(t, openProgram.key, openSession)}
+                    </Text>
+                  </View>
+
+                  <ScrollView
+                    contentInsetAdjustmentBehavior="automatic"
+                    contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+                  >
+                    <Text style={{ fontSize: 14, color: C.warmBrown, lineHeight: 22, marginBottom: 18 }}>
+                      🎯 {sessionObjective(t, openProgram.key, openSession)}
+                    </Text>
+
+                    <Text style={{ fontSize: 17, fontWeight: "800", color: C.warmBrown, marginBottom: 14 }}>
+                      {t("screensUi.training.stepByStep")}
+                    </Text>
+                    {sessionSteps(t, openProgram.key, openSession).map((step, i) => (
+                      <View key={i} style={{ flexDirection: "row", marginBottom: 14, alignItems: "flex-start" }}>
+                        <View
+                          style={{
+                            width: 30,
+                            height: 30,
+                            borderRadius: 15,
+                            backgroundColor: C.coral,
+                            justifyContent: "center",
+                            alignItems: "center",
+                            marginRight: 12,
+                          }}
+                        >
+                          <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 13 }}>
+                            {i + 1}
+                          </Text>
+                        </View>
+                        <Text style={{ flex: 1, fontSize: 14, color: C.warmBrown, lineHeight: 21 }}>
+                          {step}
                         </Text>
                       </View>
                     ))}
-                  </View>
-                )}
 
-                {(() => {
-                  const isDone = completedSet.has(
-                    completionId(openProgram.key, openSession.key),
-                  );
-                  return (
-                    <TouchableOpacity
-                      testID="toggle-complete"
-                      onPress={() => handleToggle(openProgram, openSession)}
-                      disabled={toggle.isPending || !petId}
-                      style={{
-                        backgroundColor: isDone ? C.sageDark : C.coral,
-                        borderRadius: 16,
-                        padding: 18,
-                        alignItems: "center",
-                        marginTop: 16,
-                        opacity: !petId ? 0.5 : 1,
-                      }}
-                    >
-                      <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 16 }}>
-                        {isDone
-                          ? t("screensUi.training.completedTapToUndo")
-                          : t("screensUi.training.markAsCompleted")}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })()}
-              </>
-            )}
-          </ScrollView>
+                    {sessionTips(t, openProgram.key, openSession).length > 0 && (
+                      <View
+                        style={{
+                          backgroundColor: C.sand,
+                          borderRadius: 14,
+                          padding: 14,
+                          marginTop: 8,
+                          marginBottom: 8,
+                        }}
+                      >
+                        {sessionTips(t, openProgram.key, openSession).map((tip, i) => (
+                          <View key={i} style={{ flexDirection: "row", gap: 8, marginBottom: 4 }}>
+                            <Lightbulb size={15} color={C.terracotta} />
+                            <Text style={{ flex: 1, fontSize: 13, color: C.mutedBrown, lineHeight: 19 }}>
+                              {tip}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+
+                    {progressReady ? (() => {
+                      const isDone = completedSet.has(
+                        completionId(openProgram.key, openSession.key),
+                      );
+                      return (
+                        <TouchableOpacity
+                          testID="toggle-complete"
+                          onPress={() => handleToggle(openProgram, openSession)}
+                          disabled={toggle.isPending || !petId}
+                          style={{
+                            backgroundColor: isDone ? C.sageDark : C.coral,
+                            borderRadius: 16,
+                            padding: 18,
+                            alignItems: "center",
+                            marginTop: 16,
+                            opacity: !petId ? 0.5 : 1,
+                          }}
+                        >
+                          <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 16 }}>
+                            {isDone
+                              ? t("screensUi.training.completedTapToUndo")
+                              : t("screensUi.training.markAsCompleted")}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })() : (
+                      <ProgressNotice status={progressStatus} onRetry={retryProgress} style={{ marginTop: 16 }} />
+                    )}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+          )}
         </View>
       </Modal>
     </View>
