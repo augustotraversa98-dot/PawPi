@@ -18,10 +18,11 @@ import KeyboardSafeFormModal from "@/components/KeyboardSafeFormModal";
 import DateField from "@/components/DateField";
 import BirthdayOrAgeField from "@/components/Pets/BirthdayOrAgeField";
 import AdoptionDateField from "@/components/Pets/AdoptionDateField";
-import { ageFormFromPet, estimateToSave, petKeepsEstimates } from "@/utils/petAgeForm";
+import { ageFormFromPet, estimateToSave, hasInvalidAge, petKeepsEstimates } from "@/utils/petAgeForm";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
 import { defaultWeightUnit } from "@/utils/weightUnit";
+import { decimalToInput, parseWeight } from "@/utils/decimal";
 import { canonicalizeDateValue, parseDateValue } from "@/utils/canonicalDateTime";
 
 // The form pieces live at MODULE scope on purpose. Declared inside the modal they were a
@@ -323,7 +324,7 @@ export default function EditMedicalProfileModal({
     initialData?.pet?.gender?.toLowerCase() || "",
   );
   const [currentWeight, setCurrentWeight] = useState(
-    initialData?.currentWeight?.weight?.toString() || "",
+    decimalToInput(initialData?.currentWeight?.weight),
   );
   const [weightUnit, setWeightUnit] = useState(
     normalizeWeightUnit(initialData?.currentWeight?.weight_unit) ||
@@ -380,12 +381,6 @@ export default function EditMedicalProfileModal({
     return re.test(email);
   };
 
-  const validateWeight = (weight) => {
-    if (!weight) return true;
-    const num = parseFloat(weight);
-    return !isNaN(num) && num > 0;
-  };
-
   const validateDate = (dateStr) => {
     if (!dateStr) return true;
     return parseDateValue(dateStr) !== null;
@@ -398,8 +393,14 @@ export default function EditMedicalProfileModal({
       newErrors.vetEmail = t("healthDataUi.editMedicalProfileModal.validEmail");
     }
 
-    if (currentWeight && !validateWeight(currentWeight)) {
-      newErrors.currentWeight = t("healthDataUi.editMedicalProfileModal.validWeight");
+    const weight = parseWeight(currentWeight, weightUnit);
+    if (weight.invalid) {
+      newErrors.currentWeight = t("common.invalidWeight", { max: weight.max, unit: weight.unit });
+    }
+
+    // The field itself says what is wrong with an estimated age that is not a whole number.
+    if (hasInvalidAge({ birthdayUnknown, ageYears, ageMonths })) {
+      newErrors.ageEstimate = true;
     }
 
     if (birthday && !validateDate(birthday)) {
@@ -445,7 +446,7 @@ export default function EditMedicalProfileModal({
           ...ageFields,
           adoptionDate: adoptionDate || null,
           gender,
-          currentWeight: currentWeight || null,
+          currentWeight: weight.value ?? null,
           weightUnit,
           spayedNeuteredStatus,
           spayedNeuteredDate: spayedNeuteredDate || null,

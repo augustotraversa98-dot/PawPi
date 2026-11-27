@@ -15,6 +15,7 @@ import {
   useLogTrainingProgress,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
+import { parseWholeNumber } from "../../../lib/decimal";
 import trainingCopy from "../i18n/training";
 import { useProviderCopy } from "../i18n/lib/useProviderCopy";
 import { fill, plural } from "../i18n/lib/format";
@@ -104,14 +105,13 @@ function CreateSessionForm({ providerId }) {
       toast.error(copy.form.titleRequired);
       return;
     }
-    const cap =
-      kind === "group_class" && capacity ? parseInt(capacity, 10) : null;
-    if (cap != null && (!Number.isInteger(cap) || cap <= 0)) {
+    const cap = parseWholeNumber(kind === "group_class" ? capacity : "", { min: 1 });
+    if (cap.invalid) {
       toast.error(copy.form.capacityInvalid);
       return;
     }
     try {
-      await create.mutateAsync({ kind, title: name, capacity: cap });
+      await create.mutateAsync({ kind, title: name, capacity: cap.value ?? null });
       setTitle("");
       setCapacity("");
       toast.success(copy.form.created);

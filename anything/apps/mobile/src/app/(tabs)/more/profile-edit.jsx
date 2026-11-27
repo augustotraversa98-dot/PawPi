@@ -20,7 +20,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 import BirthdayOrAgeField from "@/components/Pets/BirthdayOrAgeField";
 import AdoptionDateField from "@/components/Pets/AdoptionDateField";
-import { ageFormFromPet, estimateToSave, petKeepsEstimates } from "@/utils/petAgeForm";
+import { ageFormFromPet, estimateToSave, hasInvalidAge, petKeepsEstimates } from "@/utils/petAgeForm";
+import { decimalToInput, parseWeight } from "@/utils/decimal";
 import BreedPicker from "@/components/BreedPicker";
 import { canonicalizeDateValue } from "@/utils/canonicalDateTime";
 import {
@@ -144,7 +145,7 @@ export default function ProfileEditScreen() {
         breed: currentPet.breed || "",
         ...seededAge.current,
         gender: currentPet.gender || "",
-        weight: currentPet.weight?.toString() || "",
+        weight: decimalToInput(currentPet.weight),
         weightUnit:
           normalizeWeightUnit(currentPet.weight_unit) ||
           (currentPet.weight ? "lbs" : defaultWeightUnit()),
@@ -167,6 +168,17 @@ export default function ProfileEditScreen() {
     }
 
     if (handleBlocksSave) return;
+
+    // Refused before anything is uploaded or sent: never save a weight or an age that was read by guessing.
+    const weight = parseWeight(formData.weight, formData.weightUnit);
+    if (weight.invalid) {
+      Alert.alert(t("common.error"), t("common.invalidWeight", { max: weight.max, unit: weight.unit }));
+      return;
+    }
+    if (hasInvalidAge(formData)) {
+      Alert.alert(t("common.error"), t("common.wholeNumber"));
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -212,7 +224,7 @@ export default function ProfileEditScreen() {
         avatar_url: uploadedAvatarUrl,
         breed: formData.breed || null,
         gender: formData.gender || null,
-        weight: formData.weight ? parseFloat(formData.weight) : null,
+        weight: weight.value ?? null,
         weight_unit: formData.weightUnit || "lbs",
         birthday: formData.birthdayUnknown ? null : formData.birthday || null,
         adoption_date: formData.adoptionDate || null,
@@ -501,12 +513,7 @@ export default function ProfileEditScreen() {
                 placeholder="0"
                 placeholderTextColor={COLORS.mutedBrown}
                 value={formData.weight}
-                onChangeText={(text) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    weight: text.replace(/[^0-9.]/g, ""),
-                  }))
-                }
+                onChangeText={(text) => setFormData((prev) => ({ ...prev, weight: text }))}
                 keyboardType="decimal-pad"
               />
             </View>

@@ -8,6 +8,7 @@ import {
 } from "@/app/api/utils/providerAuth";
 import { invalidImageUrls } from "@/app/api/utils/providerValidation";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { readClientInteger } from "@/lib/decimal";
 
 // /api/providers/[id]/shop-products — a shop's CATALOG + INVENTORY. Phase 2 ticket 2.11
 // (docs/phase2-tickets/2.11-shop-ecommerce.md).
@@ -112,8 +113,14 @@ async function POST(request, { params }) {
     if (imageError) {
       return Response.json({ error: imageError }, { status: 400 });
     }
-    const stock =
-      Number.isInteger(stock_qty) && stock_qty >= 0 ? stock_qty : 0;
+    // Blank means none in stock; anything else that is not a whole number is refused (as on PATCH), never saved as 0.
+    const stock = readClientInteger(stock_qty);
+    if (stock.invalid) {
+      return Response.json(
+        { error: "stock_qty must be a non-negative integer" },
+        { status: 400 },
+      );
+    }
     const images = Array.isArray(image_urls) ? image_urls : [];
 
     // Create the product. RLS scopes to admins of THIS provider (no admin → zero rows).
@@ -123,7 +130,7 @@ async function POST(request, { params }) {
         stock_qty, category, is_rx, active
       ) VALUES (
         ${providerId}, ${name}, ${description ?? null}, ${images}, ${price_cents},
-        ${currency ?? "ARS"}, ${stock}, ${category ?? null}, ${is_rx === true},
+        ${currency ?? "ARS"}, ${stock.value ?? 0}, ${category ?? null}, ${is_rx === true},
         ${active === false ? false : true}
       )
       RETURNING *

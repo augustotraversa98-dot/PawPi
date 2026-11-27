@@ -21,6 +21,7 @@ import {
 } from "@/hooks/useNutrition";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { friendlyErrorMessage } from "@/utils/appAlert";
+import { parseWholeNumber } from "@/utils/decimal";
 
 // Nutrition + food-recall alerts (ticket 2.75). Owner records a per-pet nutrition plan (brand/product/
 // portion/calories/notes) with a NON-DIAGNOSTIC disclaimer; food-recall alerts matching the pet's food
@@ -64,6 +65,11 @@ export default function NutritionScreen() {
 
   const submit = async () => {
     if (!petId || !brand.trim()) return;
+    const target = parseWholeNumber(calories);
+    if (target.invalid) {
+      Alert.alert(t("common.error"), t("common.wholeNumber"));
+      return;
+    }
     try {
       await save.mutateAsync({
         id: existing?.id,
@@ -72,7 +78,7 @@ export default function NutritionScreen() {
         food_product: product.trim() || null,
         food_form: form || null,
         daily_portion: portion.trim() || null,
-        target_calories: calories ? Number(calories) : null,
+        target_calories: target.value ?? null,
         notes: notes.trim() || null,
       });
       Alert.alert(t("nutrition.savedTitle"), t("nutrition.savedBody"));

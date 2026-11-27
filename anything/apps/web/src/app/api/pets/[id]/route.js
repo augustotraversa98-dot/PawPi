@@ -8,7 +8,9 @@ import {
   alternativesFor,
   isHandleUniqueViolation,
 } from "@/app/api/utils/petHandle";
-import { getCurrentWeight, logCurrentWeight } from "@/app/api/utils/petWeight";
+import { getCurrentWeight, isStoredWeight, logCurrentWeight } from "@/app/api/utils/petWeight";
+import { invalidWeightResponse } from "@/app/api/utils/invalidNumber";
+import { readClientWeight } from "@/lib/decimal";
 import { planAgeUpdate, presentPet } from "@/app/api/utils/petAge";
 
 // 409 for a taken handle: friendly copy plus up to 3 free alternatives (additive for old clients).
@@ -136,12 +138,18 @@ async function PATCH(request, { params }) {
     // pets.weight directly, so the two edit screens can't silently diverge
     // again. An explicit null (clearing the field) still falls through to
     // the plain column update below.
-    let numericWeight = null;
-    if (weight !== undefined && weight !== null && weight !== "") {
-      const parsed = typeof weight === "number" ? weight : parseFloat(weight);
-      if (!isNaN(parsed)) numericWeight = parsed;
+    // Builds already installed may send the typed text ("12,5"). An unreadable or implausible value is refused before
+    // anything is written, unless it is the stored value sent back unchanged: that never blocks the other fields.
+    const unitSent = weight_unit ?? existingPet[0].weight_unit;
+    const typedWeight = readClientWeight(weight, unitSent);
+    const keepStoredWeight = typedWeight.invalid === true;
+    if (keepStoredWeight && !(await isStoredWeight(existingPet[0], weight, unitSent))) {
+      return invalidWeightResponse(request, unitSent);
     }
+    const numericWeight = typedWeight.value ?? null;
     const loggingWeight = numericWeight !== null;
+    // Blank (null or "") clears the columns.
+    const writeWeightColumns = !loggingWeight && !keepStoredWeight;
 
     // Build update fields dynamically (only update provided fields)
     const updates = [];
@@ -174,11 +182,11 @@ async function PATCH(request, { params }) {
       updates.push(`gender = $${paramIndex++}`);
       values.push(gender);
     }
-    if (!loggingWeight && weight !== undefined) {
+    if (writeWeightColumns && weight !== undefined) {
       updates.push(`weight = $${paramIndex++}`);
-      values.push(weight);
+      values.push(null);
     }
-    if (!loggingWeight && weight_unit !== undefined) {
+    if (writeWeightColumns && weight_unit !== undefined) {
       updates.push(`weight_unit = $${paramIndex++}`);
       values.push(weight_unit);
     }

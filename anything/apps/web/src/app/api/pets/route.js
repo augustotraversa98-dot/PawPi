@@ -18,6 +18,8 @@ import {
   isHandleUniqueViolation,
 } from "@/app/api/utils/petHandle";
 import { moderationResponse } from "@/app/api/utils/moderateText";
+import { invalidWeightResponse } from "@/app/api/utils/invalidNumber";
+import { readClientWeight } from "@/lib/decimal";
 import { recordBusinessEvent } from "@/lib/telemetry/business";
 import { loadSharedPets, asOwnedPet } from "@/app/api/utils/sharedPets";
 import { accessVersion } from "@/app/api/utils/petShareAccess";
@@ -216,6 +218,11 @@ async function POST(request) {
     const blockedPet = moderationResponse(name, breed, notes);
     if (blockedPet) return blockedPet;
 
+    // Builds already installed may send the typed text. Refused before anything is written: Postgres rejects "12,5",
+    // and an implausible number (a dropped comma: 455) would be stored as the dog's weight.
+    const typedWeight = readClientWeight(weight, weight_unit);
+    if (typedWeight.invalid) return invalidWeightResponse(request, weight_unit);
+
     // DUPLICATE-PET GUARD (family-sharing audit B8). A retry / double tap / lost response must not create a second row for
     // the same dog, and builds 30-32 send no idempotency key — so this works without any client cooperation (utils/
     // petCreateGuard.js has the full rationale). It runs BEFORE the handle checks on purpose: a retry that carries an
@@ -305,7 +312,7 @@ async function POST(request) {
       VALUES (
         ${userId}, ${name}, ${finalHandle}, ${avatar_url || null}, ${species},
         ${breed || null}, ${ageYears}, ${ageMonths},
-        ${gender || null}, ${weight || null}, ${weight_unit},
+        ${gender || null}, ${typedWeight.value}, ${weight_unit},
         ${birthdayDate}, ${adoptionDateFormatted}, ${notes || null}
       )
       RETURNING *

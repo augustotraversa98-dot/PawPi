@@ -4,7 +4,15 @@
  * as typed (`ageYears`, `ageMonths`).
  */
 
+import { parseWholeNumber } from "./decimal";
+
 const toNumber = (text) => (text ? parseInt(text, 10) : null);
+
+/** An estimate typed as something other than whole numbers ("1,5"): the form refuses it instead of cutting it. */
+export function hasInvalidAge(form) {
+  if (!form.birthdayUnknown) return false;
+  return [form.ageYears, form.ageMonths].some((text) => parseWholeNumber(text).invalid);
+}
 
 /**
  * Seed the age part of an edit form from a pet. A pet with a birthday starts with an empty estimate; otherwise

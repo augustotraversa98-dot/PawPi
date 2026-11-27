@@ -24,6 +24,7 @@ import {
   buildWellnessLogPayload,
 } from "@/utils/wellnessLog";
 import { formatLocalDate } from "@/utils/localeDateTime";
+import { decimalToInput } from "@/utils/decimal";
 import LoggedByLine from "@/components/Health/LoggedByLine";
 
 const C = {
@@ -513,7 +514,7 @@ function HistoryList({ isWeight, schema, entries, isLoading, t }) {
     <View style={{ gap: 12 }}>
       {entries.map((entry) => {
         const headline = isWeight
-          ? `${entry.weight} ${normalizeWeightUnit(entry.weight_unit) || ""}`.trim()
+          ? `${decimalToInput(entry.weight)} ${normalizeWeightUnit(entry.weight_unit) || ""}`.trim()
           : describeWellnessEntry(schema, entry);
         return (
           <View

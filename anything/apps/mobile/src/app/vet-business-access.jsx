@@ -40,6 +40,7 @@ import {
   toServiceRows,
   rowToServiceBody,
   hasInvalidPrice,
+  hasInvalidDuration,
 } from "@/utils/enrichmentDraft";
 import { friendlyErrorMessage } from "@/utils/appAlert";
 import { withAppLanguage } from "@/utils/webLinks";
@@ -399,8 +400,8 @@ function ProviderOnboarding() {
   // Best-effort per service so one bad row doesn't abort the rest; the business already exists.
   const saveReviewed = async () => {
     if (!review?.provider?.id) return;
-    // An unreadable price is shown on its row; nothing is saved until it is fixed.
-    if (review.serviceRows.some((r) => hasInvalidPrice(r))) return;
+    // An unreadable price or duration is shown on its row; nothing is saved until it is fixed.
+    if (review.serviceRows.some((r) => hasInvalidPrice(r) || hasInvalidDuration(r))) return;
     setBuilding(true);
     try {
       const desc = (review.description || "").trim();
@@ -709,6 +710,7 @@ function ReviewStep({ review, setDescription, setRow, onSave, saving }) {
   const { t } = useTranslation();
   const { description, serviceRows, photos } = review;
   const priceBlocksSave = serviceRows.some((row) => hasInvalidPrice(row));
+  const durationBlocksSave = serviceRows.some((row) => hasInvalidDuration(row));
   return (
     <View>
       <Header
@@ -791,6 +793,11 @@ function ReviewStep({ review, setDescription, setRow, onSave, saving }) {
                     {t("common.invalidAmount")}
                   </Text>
                 )}
+                {hasInvalidDuration(row) && (
+                  <Text testID={`duration-error-${row.key}`} style={[priceErrorStyle, { marginTop: 8 }]}>
+                    {t("common.invalidMinutes")}
+                  </Text>
+                )}
               </View>
             ))}
           </View>
@@ -807,6 +814,11 @@ function ReviewStep({ review, setDescription, setRow, onSave, saving }) {
       {priceBlocksSave && (
         <Text accessibilityRole="alert" style={[priceErrorStyle, { marginBottom: 12 }]}>
           {t("common.invalidAmount")}
+        </Text>
+      )}
+      {durationBlocksSave && (
+        <Text accessibilityRole="alert" style={[priceErrorStyle, { marginBottom: 12 }]}>
+          {t("common.invalidMinutes")}
         </Text>
       )}
       <PrimaryButton

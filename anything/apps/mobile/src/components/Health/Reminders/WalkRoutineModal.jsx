@@ -18,6 +18,7 @@ import { DEFAULT_WALK, DEFAULT_WALKS } from "@/constants/walkRoutineDefaults";
 import { useWalkRoutineState } from "@/hooks/useWalkRoutineState";
 import WalkCountSelector from "./WalkCountSelector";
 import WalkItem from "./WalkItem";
+import { parseWholeNumber, WALK_MINUTES_MAX } from "@/utils/decimal";
 
 export default function WalkRoutineModal({
   visible,
@@ -232,6 +233,14 @@ export default function WalkRoutineModal({
   };
 
   const handleSave = () => {
+    const badMinutes = walks.some(
+      (w) => parseWholeNumber(w.durationMinutes, { max: WALK_MINUTES_MAX }).invalid,
+    );
+    if (badMinutes) {
+      Alert.alert(t("common.error"), t("common.invalidMinutes"));
+      return;
+    }
+
     const routine = {
       type: ROUTINE_TYPES.WALK,
       petId: editingRoutine?.petId ?? null,

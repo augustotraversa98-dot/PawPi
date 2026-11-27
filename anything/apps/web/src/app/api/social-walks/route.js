@@ -2,6 +2,8 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { moderationResponse } from "@/app/api/utils/moderateText";
+import { invalidNumberResponse } from "@/app/api/utils/invalidNumber";
+import { readClientInteger } from "@/lib/decimal";
 
 // Create a social walk
 async function POST(request) {
@@ -66,6 +68,10 @@ async function POST(request) {
       return Response.json({ error: "Invalid lat/lng" }, { status: 400 });
     }
 
+    // Minutes come from a walk routine, whose field older builds let be typed freely.
+    const minutes = readClientInteger(durationMinutes);
+    if (minutes.invalid) return invalidNumberResponse(request, "whole_number_invalid", "durationMinutes");
+
     // Verify pet ownership
     const pets = await sql`
       SELECT id FROM pets WHERE id = ${petId} AND owner_user_id = ${ownerUserId}
@@ -104,7 +110,7 @@ async function POST(request) {
         ${ownerUserId},
         ${walkName},
         ${scheduledAt},
-        ${durationMinutes || null},
+        ${minutes.value || null},
         ${pace || null},
         ${visibility},
         ${meetingArea || null},

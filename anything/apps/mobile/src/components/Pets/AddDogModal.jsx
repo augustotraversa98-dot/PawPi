@@ -24,6 +24,7 @@ import DateField from "@/components/DateField";
 import BreedPicker from "@/components/BreedPicker";
 import KeyboardSafeSheet from "@/components/KeyboardSafeSheet";
 import { defaultWeightUnit } from "@/utils/weightUnit";
+import { parseWeight } from "@/utils/decimal";
 import { trackFeature } from "@/telemetry/track";
 import { useFormTelemetry } from "@/telemetry/useFormTelemetry";
 
@@ -130,6 +131,11 @@ export function AddDogModal({ visible, onClose }) {
       Alert.alert(t("addDog.nameNeededTitle"), t("addDog.nameNeededBody"));
       return;
     }
+    const weight = parseWeight(form.weight, form.weightUnit);
+    if (weight.invalid) {
+      Alert.alert(t("common.error"), t("common.invalidWeight", { max: weight.max, unit: weight.unit }));
+      return;
+    }
     const same = findSamePet(knownPets, name);
     if (same) {
       Alert.alert(
@@ -169,7 +175,7 @@ export function AddDogModal({ visible, onClose }) {
         name: form.name.trim(),
         breed: form.breed.trim() || null,
         gender: form.gender || null,
-        weight: form.weight ? parseFloat(form.weight) : null,
+        weight: parseWeight(form.weight, form.weightUnit).value ?? null,
         weight_unit: form.weightUnit,
         birthday: form.birthday.trim() || null,
         notes: form.notes.trim() || null,
@@ -389,9 +395,7 @@ export function AddDogModal({ visible, onClose }) {
             placeholder="0"
             placeholderTextColor={COLORS.mutedBrown}
             value={form.weight}
-            onChangeText={(v) =>
-              setField("weight", v.replace(/[^0-9.]/g, ""))
-            }
+            onChangeText={(v) => setField("weight", v)}
             keyboardType="decimal-pad"
           />
         </View>

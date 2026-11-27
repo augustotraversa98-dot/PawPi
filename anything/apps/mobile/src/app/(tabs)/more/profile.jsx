@@ -1,4 +1,5 @@
 import { normalizeWeightUnit } from "@/utils/weightUnitAlias";
+import { decimalToInput } from "@/utils/decimal";
 import React, { useState } from "react";
 import {
   View,
@@ -66,7 +67,7 @@ export default function ProfileScreen() {
   // Helper to format weight
   const formatWeight = (weight, weightUnit) => {
     if (!weight) return null;
-    return `${weight} ${normalizeWeightUnit(weightUnit) || "lbs"}`;
+    return `${decimalToInput(weight)} ${normalizeWeightUnit(weightUnit) || "lbs"}`;
   };
 
   // Helper to format gender — localized for the two values the picker offers;

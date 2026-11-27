@@ -2,6 +2,8 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { invalidNumberResponse } from "@/app/api/utils/invalidNumber";
+import { readClientInteger } from "@/lib/decimal";
 
 // /api/events/[id] — one event (Wave 7 ticket 2.74).
 //   GET    — detail + attendee_count + the caller's my_rsvp (RLS events_read scopes it).
@@ -62,9 +64,10 @@ async function PATCH(request, { params }) {
       location_name,
       address,
       cover_image_url,
-      capacity,
       status,
     } = body;
+    const capacity = readClientInteger(body.capacity);
+    if (capacity.invalid) return invalidNumberResponse(request, "whole_number_invalid", "capacity");
     if (status !== undefined && !["published", "cancelled"].includes(status)) {
       return Response.json({ error: "Invalid status" }, { status: 400 });
     }
@@ -84,7 +87,7 @@ async function PATCH(request, { params }) {
         location_name = COALESCE(${location_name ?? null}, location_name),
         address = COALESCE(${address ?? null}, address),
         cover_image_url = COALESCE(${cover_image_url ?? null}, cover_image_url),
-        capacity = COALESCE(${capacity ?? null}, capacity),
+        capacity = COALESCE(${capacity.value}, capacity),
         status = COALESCE(${status ?? null}, status),
         updated_at = now()
       WHERE id = ${params.id} AND host_user_id = ${userId}

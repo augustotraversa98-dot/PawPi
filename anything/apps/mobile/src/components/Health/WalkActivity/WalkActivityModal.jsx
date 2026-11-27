@@ -7,6 +7,7 @@ import {
   Modal,
   TextInput,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { X, Check, Play, Edit3, Users, AlertCircle } from "lucide-react-native";
@@ -15,6 +16,13 @@ import { useLogWalk } from "@/hooks/useHealthTracking";
 import WalkTrackingSettings from "./WalkTrackingSettings";
 import { WALK_TRACKING_INTEGRATIONS_ENABLED } from "@/constants/featureFlags";
 import { useTranslation } from "react-i18next";
+import {
+  decimalToInput,
+  DISTANCE_MAX,
+  parseDistance,
+  parseWholeNumber,
+  WALK_MINUTES_MAX,
+} from "@/utils/decimal";
 
 const C = {
   cream: COLORS.cream,
@@ -42,8 +50,9 @@ export default function WalkActivityModal({
   const [confirmationMessage, setConfirmationMessage] = useState("");
 
   // Walk log state
-  const [duration, setDuration] = useState(20);
-  const [distance, setDistance] = useState(1.0);
+  // Both are the field's text, read on save: turning each keystroke into a number made "2,5" impossible to type.
+  const [duration, setDuration] = useState("20");
+  const [distance, setDistance] = useState(() => decimalToInput(1));
   const [pace, setPace] = useState("normal");
   const [energyAfter, setEnergyAfter] = useState("normal");
   const [pottyPoo, setPottyPoo] = useState(0);
@@ -56,8 +65,8 @@ export default function WalkActivityModal({
     setStep("quickChoice");
     setShowConfirmation(false);
     setConfirmationMessage("");
-    setDuration(20);
-    setDistance(1.0);
+    setDuration("20");
+    setDistance(decimalToInput(1));
     setPace("normal");
     setEnergyAfter("normal");
     setPottyPoo(0);
@@ -77,10 +86,20 @@ export default function WalkActivityModal({
   };
 
   const handleWalkLogSubmit = async () => {
+    const minutes = parseWholeNumber(duration, { max: WALK_MINUTES_MAX });
+    if (minutes.invalid) {
+      Alert.alert(t("common.error"), t("common.invalidMinutes"));
+      return;
+    }
+    const miles = parseDistance(distance);
+    if (miles.invalid) {
+      Alert.alert(t("common.error"), t("common.invalidDistance", { max: DISTANCE_MAX }));
+      return;
+    }
     try {
       await logWalkMutation.mutateAsync({
-        duration,
-        distance,
+        duration: minutes.value ?? 0,
+        distance: miles.value ?? 0,
         pace,
         energyAfter,
         pottyEvents: {
@@ -327,9 +346,9 @@ export default function WalkActivityModal({
                   {t("trackers.walk.durationLabel")}
                 </Text>
                 <TextInput
-                  value={duration.toString()}
-                  onChangeText={(text) => setDuration(parseInt(text) || 0)}
-                  keyboardType="numeric"
+                  value={duration}
+                  onChangeText={setDuration}
+                  keyboardType="number-pad"
                   style={{
                     backgroundColor: C.card,
                     borderRadius: 12,
@@ -355,8 +374,8 @@ export default function WalkActivityModal({
                   {t("trackers.walk.distanceLabel")}
                 </Text>
                 <TextInput
-                  value={distance.toString()}
-                  onChangeText={(text) => setDistance(parseFloat(text) || 0)}
+                  value={distance}
+                  onChangeText={setDistance}
                   keyboardType="decimal-pad"
                   style={{
                     backgroundColor: C.card,

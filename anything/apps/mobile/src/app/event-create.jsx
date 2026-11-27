@@ -25,6 +25,7 @@ import { useCreateEvent } from "@/hooks/useEvents";
 import KeyboardAwareScrollView from "@/components/KeyboardAwareScrollView";
 import { friendlyErrorMessage } from "@/utils/appAlert";
 import { combineDateTimeToISO } from "@/utils/canonicalDateTime";
+import { parseWholeNumber } from "@/utils/decimal";
 
 // Create an event / meetup (ticket 2.74). Title + description + date/time (canonical DateField/
 // TimeField) + location via the 2.68 LocationField (Apple map) + optional capacity. The host is the
@@ -48,6 +49,11 @@ export default function EventCreateScreen() {
     if (!canSubmit) return;
     const startsAt = combineDateTimeToISO(date, time);
     if (!startsAt) return; // never throw on an incomplete / invalid date-time
+    const seats = parseWholeNumber(capacity);
+    if (seats.invalid) {
+      Alert.alert(t("common.error"), t("common.wholeNumber"));
+      return;
+    }
     try {
       await create.mutateAsync({
         title: title.trim(),
@@ -57,7 +63,7 @@ export default function EventCreateScreen() {
         lng: location?.lng ?? null,
         location_name: location?.address ?? null,
         address: location?.address ?? null,
-        capacity: capacity ? Number(capacity) : null,
+        capacity: seats.value ?? null,
       });
       router.back();
     } catch (e) {

@@ -19,13 +19,23 @@ export function hasInvalidPrice(row, lang) {
   return !!parseMoneyToCents(row.price, lang).invalid;
 }
 
-// "60", "60 min", "1h" (best-effort: first integer) → 60. Blank/garbage → null.
+// A decimal ("1,5") or hours ("1h", "2 horas"): the first number in these is not the number of minutes.
+const NOT_MINUTES = /\d[.,]\d|\d\s*(h|hs|hr|hrs|hora|horas|hour|hours)(?![a-z])/i;
+
+// "60", "60 min" (best-effort: first integer) → 60. Blank, garbage, decimals and hours → null.
 export function durationToMin(raw) {
-  if (raw == null) return null;
+  if (raw == null || NOT_MINUTES.test(String(raw))) return null;
   const m = String(raw).match(/\d+/);
   if (!m) return null;
   const value = parseInt(m[0], 10);
   return Number.isInteger(value) && value > 0 ? value : null;
+}
+
+// A row that would be saved, with a number in its duration that cannot be read as whole minutes.
+export function hasInvalidDuration(row) {
+  if (!row.selected || !String(row.name || "").trim()) return false;
+  const text = String(row.duration ?? "");
+  return /\d/.test(text) && durationToMin(text) === null;
 }
 
 // Normalize the enrichment draft's services into editable review rows. Each row keeps the original

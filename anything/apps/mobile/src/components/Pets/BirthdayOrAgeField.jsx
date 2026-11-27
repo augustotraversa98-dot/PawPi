@@ -5,6 +5,7 @@ import DateField from "@/components/DateField";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
 import { useTranslation } from "react-i18next";
+import { hasInvalidAge } from "@/utils/petAgeForm";
 
 const inputStyle = {
   backgroundColor: MATERIALS.surfaceSunken,
@@ -29,9 +30,10 @@ function EstimateInput({ testID, label, value, onChange }) {
         placeholder="0"
         placeholderTextColor={COLORS.mutedBrown}
         value={value}
-        onChangeText={(text) => onChange(text.replace(/[^0-9]/g, ""))}
+        // Kept as typed: dropping the comma from "1,5" would save 15. An invalid entry is explained below.
+        onChangeText={onChange}
         keyboardType="number-pad"
-        maxLength={2}
+        maxLength={4}
       />
     </View>
   );
@@ -132,6 +134,11 @@ export default function BirthdayOrAgeField({
               onChange={onAgeMonthsChange}
             />
           </View>
+          {hasInvalidAge({ birthdayUnknown, ageYears, ageMonths }) ? (
+            <Text accessibilityRole="alert" style={[...captionStyle, { marginTop: SPACING.sm, color: COLORS.terracotta }]}>
+              {t("common.wholeNumber")}
+            </Text>
+          ) : null}
           <Text style={[...captionStyle, { marginTop: SPACING.sm }]}>
             {estimateGrows
               ? t("feedUi.birthdayOrAgeField.estimateGrows")

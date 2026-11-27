@@ -12,6 +12,7 @@ import { X, PawPrint } from "lucide-react-native";
 import { PressableScale } from "@/components/ui";
 import { COLORS, TYPE, SPACING, RADIUS, MATERIALS } from "@/constants/theme";
 import KeyboardSafeSheet from "@/components/KeyboardSafeSheet";
+import { parseWholeNumber, WALK_MINUTES_MAX } from "@/utils/decimal";
 
 // FF2 — a compact "Log a walk" sheet a FAMILY caregiver opens for a pet SHARED with them (from the
 // "Shared with me" tab). Posts to /api/health/walk-logs for the given petId; the server anchors the
@@ -35,7 +36,7 @@ export default function CaregiverLogWalkModal({ visible, petId, petName, onClose
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           petId,
-          durationMinutes: duration ? parseInt(duration, 10) : null,
+          durationMinutes: parseWholeNumber(duration).value ?? null,
           notes: notes || null,
         }),
       });
@@ -57,6 +58,14 @@ export default function CaregiverLogWalkModal({ visible, petId, petName, onClose
       Alert.alert(t("caregiverLog.saveError"));
     },
   });
+
+  const save = () => {
+    if (parseWholeNumber(duration, { max: WALK_MINUTES_MAX }).invalid) {
+      Alert.alert(t("common.error"), t("common.invalidMinutes"));
+      return;
+    }
+    logWalk.mutate();
+  };
 
   return (
     <KeyboardSafeSheet
@@ -95,7 +104,7 @@ export default function CaregiverLogWalkModal({ visible, petId, petName, onClose
       footer={(
         <View style={{ paddingHorizontal: SPACING.xl }}>
           <PressableScale
-            onPress={() => logWalk.mutate()}
+            onPress={save}
             disabled={logWalk.isPending}
             accessibilityRole="button"
             testID="caregiver-log-walk-save"

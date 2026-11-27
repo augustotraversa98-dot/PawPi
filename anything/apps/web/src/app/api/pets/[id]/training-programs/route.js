@@ -2,6 +2,8 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { invalidNumberResponse } from "@/app/api/utils/invalidNumber";
+import { readClientInteger } from "@/lib/decimal";
 
 // /api/pets/[id]/training-programs — the OWNER enrolls in a trainer PROGRAM / books a 1:1
 // course and reads their pet's enrollments (with per-session PROGRESS + VIDEO LESSONS).
@@ -131,10 +133,10 @@ async function POST(request, { params }) {
         { status: 400 },
       );
     }
-    const totalSessions =
-      Number.isInteger(total_sessions) && total_sessions > 0
-        ? total_sessions
-        : 1;
+    // Blank means one session; anything else that is not a whole number of 1 or more is refused, never replaced by 1.
+    const sessions = readClientInteger(total_sessions, { min: 1 });
+    if (sessions.invalid) return invalidNumberResponse(request, "whole_number_invalid", "total_sessions");
+    const totalSessions = sessions.value ?? 1;
 
     // Provider must exist, be published, AND HOLD the 'trainer' capability (you can only
     // book a service a provider offers — the module/capability gate, 2.1).

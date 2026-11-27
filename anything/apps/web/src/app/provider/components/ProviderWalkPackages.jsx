@@ -10,6 +10,7 @@ import {
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
 import { centsToCurrency, centsToInput, dollarsToCents } from "../lib/money";
+import { parseWholeNumber } from "../../../lib/decimal";
 import walkPackagesCopy from "../i18n/walkPackages";
 import sharedCopy from "../i18n/shared";
 import { useProviderCopy } from "../i18n/lib/useProviderCopy";
@@ -260,8 +261,8 @@ function PackageFormModal({ pkg, seedCount, onClose, onSubmit, saving }) {
   }, [pkg, seedCount, reset]);
 
   const submit = (values) => {
-    const walks = parseInt(values.walks_count, 10);
-    if (!Number.isInteger(walks) || walks <= 0) {
+    const walks = parseWholeNumber(values.walks_count, { min: 1 });
+    if (walks.value === undefined) {
       setError("walks_count", { type: "validate" });
       return;
     }
@@ -270,7 +271,7 @@ function PackageFormModal({ pkg, seedCount, onClose, onSubmit, saving }) {
       setError("price", { type: "validate" });
       return;
     }
-    onSubmit({ walks_count: walks, price_cents: price.cents ?? 0 });
+    onSubmit({ walks_count: walks.value, price_cents: price.cents ?? 0 });
   };
 
   return (
