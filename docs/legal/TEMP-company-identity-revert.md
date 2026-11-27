@@ -16,6 +16,7 @@
 |---|---|---|---|
 | Privacy Policy (web + `docs/legal` copy) | November 26, 2026 | 26 de noviembre de 2026 | 2026-11-27 |
 | Terms of Service (web + `docs/legal` copy) | November 25, 2026 | 25 de noviembre de 2026 | 2026-11-27 |
+| EULA (web only) | 2026-08-16 | 16-08-2026 | 2026-11-27 (ES: 27-11-2026) |
 | Support (web, `support.md`, `support.html`) | no date line | no date line | no date line |
 
 | Constant (`anything/apps/web/src/constants/legal.js`) | Old | New |
@@ -37,8 +38,8 @@ temporary text", so never reuse an old version string or `2026-11-27` for the re
 3. In a new branch off `origin/main`: `git revert <that sha>` (one parent, so no `-m`). This also removes this file;
    read it afterwards with `git show <that sha>:docs/legal/TEMP-company-identity-revert.md`.
 4. The revert restores the old dates and versions. Now set the "Last updated" line of Privacy and Terms (EN and ES, in
-   `anything/apps/web/src/content/legal/` **and** `docs/legal/`) to the day of the revert, and set `TERMS_VERSION` and
-   `PRIVACY_VERSION` to that same date.
+   `anything/apps/web/src/content/legal/` **and** `docs/legal/`) and of the EULA (EN and ES, web only) to the day of the
+   revert, and set `TERMS_VERSION` and `PRIVACY_VERSION` to that same date.
 5. Run `npm test` in `anything/apps/web`, open a PR, merge on green. Merging deploys to Railway.
 6. If step 3 conflicts because a later change edited the same files, use option 2.
 
@@ -48,7 +49,8 @@ temporary text", so never reuse an old version string or `2026-11-27` for the re
    The "Last updated" rows are covered by step 4, and the two version rows by step 5.
 2. Delete every added block `A1`–`A5` (full text below) from each listed file.
 3. Delete `anything/apps/web/src/app/legal-companyIdentity.test.jsx`.
-4. Set "Last updated" in Privacy and Terms (EN and ES, web and `docs/legal`) to the day of the revert.
+4. Set "Last updated" in Privacy and Terms (EN and ES, web and `docs/legal`) and in the EULA (EN and ES, web only) to
+   the day of the revert.
 5. Set `TERMS_VERSION` and `PRIVACY_VERSION` to that same date.
 6. Check nothing is left: `git grep -n -e 'Tanquetats' -e 'B10579803' -- anything docs/legal` should only match this file.
    Then check the old identity is back: `git grep -n 'Matacos' -- anything/apps/web/src/content/legal`.
@@ -56,7 +58,7 @@ temporary text", so never reuse an old version string or `2026-11-27` for the re
 
 ### After either option
 
-Open `/privacy`, `/terms` and `/support` (add `?lang=en` for English) and check the footer. Remove entry 4 from
+Open `/privacy`, `/terms`, `/eula` and `/support` (add `?lang=en` for English) and check the footer. Remove entry 4 from
 `docs/todo-future.md` if it is still there.
 
 ## Every changed file: old and new strings
@@ -105,6 +107,16 @@ Open `/privacy`, `/terms` and `/support` (add `?lang=en` for English) and check 
 | E21 | `anything/apps/web/src/constants/legal.js` | n/a | TERMS_VERSION | `export const TERMS_VERSION = process.env.NEXT_PUBLIC_TERMS_VERSION \|\| "2026-11-25";` | `export const TERMS_VERSION = process.env.NEXT_PUBLIC_TERMS_VERSION \|\| "2026-11-27";` |
 | E22 | `anything/apps/web/src/constants/legal.js` | n/a | PRIVACY_VERSION | `export const PRIVACY_VERSION = process.env.NEXT_PUBLIC_PRIVACY_VERSION \|\| "2026-11-25";` | `export const PRIVACY_VERSION = process.env.NEXT_PUBLIC_PRIVACY_VERSION \|\| "2026-11-27";` |
 | E23 | `anything/apps/web/src/app/publicPagesContent.test.jsx` | EN + ES (one assertion) | Existing footer test | `expect(footer.getByText(/© 2026 PawPi · Augusto Traversa/)).toBeInTheDocument();` | `expect(footer.getByText(/© 2026 PawPi · Tanquetats 2022/)).toBeInTheDocument();` |
+| E24 | `anything/apps/web/src/content/legal/eula.en.md` | EN | EULA last updated | `> Last updated: 2026-08-16. Contact: support@pawpi.info.` | `> Last updated: 2026-11-27. Contact: support@pawpi.info.` |
+| E25 | `anything/apps/web/src/content/legal/eula.en.md` | EN | EULA header governing law | `> Governing law: Argentina. This EULA supplements the PawPi Terms of Service and Privacy Policy.` | `> Governing law: Spain. This EULA supplements the PawPi Terms of Service and Privacy Policy.` |
+| E26 | `anything/apps/web/src/content/legal/eula.en.md` | EN | EULA §7 privacy rights timeframes | `(including access and deletion within the timeframes required by Argentine law), and how to contact us. You` | `(including access and deletion within the timeframes required by applicable law, including the GDPR and, if`<br>`you are in Argentina, Argentine law), and how to contact us. You` |
+| E27 | `anything/apps/web/src/content/legal/eula.en.md` | EN | EULA §9 liability that cannot be limited | `that cannot be limited under Argentine law.` | `that cannot be limited under Spanish law or under mandatory consumer-protection law that applies to you.` |
+| E28 | `anything/apps/web/src/content/legal/eula.en.md` | EN | EULA §10 governing law | `This EULA is governed by the laws of Argentina.` | `Unless mandatory consumer-protection law provides otherwise, this EULA is governed by Spanish law.` |
+| E29 | `anything/apps/web/src/content/legal/eula.es.md` | ES | EULA last updated | `> Última actualización: 16-08-2026. Contacto: support@pawpi.info.` | `> Última actualización: 27-11-2026. Contacto: support@pawpi.info.` |
+| E30 | `anything/apps/web/src/content/legal/eula.es.md` | ES | EULA header governing law | `> Ley aplicable: Argentina. Este EULA complementa los Términos del Servicio y la Política de Privacidad de` | `> Ley aplicable: España. Este EULA complementa los Términos del Servicio y la Política de Privacidad de` |
+| E31 | `anything/apps/web/src/content/legal/eula.es.md` | ES | EULA §7 privacy rights timeframes | `subencargados, tus derechos (incluidos el acceso y la eliminación dentro de los plazos exigidos por la ley`<br>`argentina) y cómo contactarnos.` | `subencargados, tus derechos (incluidos el acceso y la eliminación dentro de los plazos exigidos por la ley`<br>`aplicable, incluidos el RGPD y, si estás en Argentina, la ley argentina) y cómo contactarnos.` |
+| E32 | `anything/apps/web/src/content/legal/eula.es.md` | ES | EULA §9 liability that cannot be limited | `limita la responsabilidad que no pueda limitarse conforme a la ley argentina.` | `limita la responsabilidad que no pueda limitarse conforme a la ley española o a la normativa imperativa de`<br>`protección de las personas consumidoras que se te aplique.` |
+| E33 | `anything/apps/web/src/content/legal/eula.es.md` | ES | EULA §10 governing law | `Este EULA se rige por las leyes de Argentina.` | `Salvo que la normativa imperativa de protección de las personas consumidoras disponga lo contrario, este EULA se rige por la ley española.` |
 | A1 | `anything/apps/web/src/content/legal/privacy.en.md` | EN | Privacy §10 subsection: EU/Spain rights, AEPD, transfers (added) | (nothing) | full text under A1 below |
 | A1 | `docs/legal/privacy-policy.md` | EN | Privacy §10 subsection: EU/Spain rights, AEPD, transfers (added) | (nothing) | full text under A1 below |
 | A2 | `anything/apps/web/src/content/legal/privacy.es.md` | ES | Privacy §10 subsection: EU/Spain rights, AEPD, transfers (added) | (nothing) | full text under A2 below |
@@ -507,6 +519,170 @@ Replaced with:
 expect(footer.getByText(/© 2026 PawPi · Tanquetats 2022/)).toBeInTheDocument();
 ```
 
+### E24 — EULA last updated (EN)
+
+Files: `anything/apps/web/src/content/legal/eula.en.md`
+
+Original:
+
+```text
+> Last updated: 2026-08-16. Contact: support@pawpi.info.
+```
+
+Replaced with:
+
+```text
+> Last updated: 2026-11-27. Contact: support@pawpi.info.
+```
+
+### E25 — EULA header governing law (EN)
+
+Files: `anything/apps/web/src/content/legal/eula.en.md`
+
+Original:
+
+```text
+> Governing law: Argentina. This EULA supplements the PawPi Terms of Service and Privacy Policy.
+```
+
+Replaced with:
+
+```text
+> Governing law: Spain. This EULA supplements the PawPi Terms of Service and Privacy Policy.
+```
+
+### E26 — EULA §7 privacy rights timeframes (EN)
+
+Files: `anything/apps/web/src/content/legal/eula.en.md`
+
+Original:
+
+```text
+(including access and deletion within the timeframes required by Argentine law), and how to contact us. You
+```
+
+Replaced with:
+
+```text
+(including access and deletion within the timeframes required by applicable law, including the GDPR and, if
+you are in Argentina, Argentine law), and how to contact us. You
+```
+
+### E27 — EULA §9 liability that cannot be limited (EN)
+
+Files: `anything/apps/web/src/content/legal/eula.en.md`
+
+Original:
+
+```text
+that cannot be limited under Argentine law.
+```
+
+Replaced with:
+
+```text
+that cannot be limited under Spanish law or under mandatory consumer-protection law that applies to you.
+```
+
+### E28 — EULA §10 governing law (EN)
+
+Files: `anything/apps/web/src/content/legal/eula.en.md`
+
+Original:
+
+```text
+This EULA is governed by the laws of Argentina.
+```
+
+Replaced with:
+
+```text
+Unless mandatory consumer-protection law provides otherwise, this EULA is governed by Spanish law.
+```
+
+### E29 — EULA last updated (ES)
+
+Files: `anything/apps/web/src/content/legal/eula.es.md`
+
+Original:
+
+```text
+> Última actualización: 16-08-2026. Contacto: support@pawpi.info.
+```
+
+Replaced with:
+
+```text
+> Última actualización: 27-11-2026. Contacto: support@pawpi.info.
+```
+
+### E30 — EULA header governing law (ES)
+
+Files: `anything/apps/web/src/content/legal/eula.es.md`
+
+Original:
+
+```text
+> Ley aplicable: Argentina. Este EULA complementa los Términos del Servicio y la Política de Privacidad de
+```
+
+Replaced with:
+
+```text
+> Ley aplicable: España. Este EULA complementa los Términos del Servicio y la Política de Privacidad de
+```
+
+### E31 — EULA §7 privacy rights timeframes (ES)
+
+Files: `anything/apps/web/src/content/legal/eula.es.md`
+
+Original:
+
+```text
+subencargados, tus derechos (incluidos el acceso y la eliminación dentro de los plazos exigidos por la ley
+argentina) y cómo contactarnos.
+```
+
+Replaced with:
+
+```text
+subencargados, tus derechos (incluidos el acceso y la eliminación dentro de los plazos exigidos por la ley
+aplicable, incluidos el RGPD y, si estás en Argentina, la ley argentina) y cómo contactarnos.
+```
+
+### E32 — EULA §9 liability that cannot be limited (ES)
+
+Files: `anything/apps/web/src/content/legal/eula.es.md`
+
+Original:
+
+```text
+limita la responsabilidad que no pueda limitarse conforme a la ley argentina.
+```
+
+Replaced with:
+
+```text
+limita la responsabilidad que no pueda limitarse conforme a la ley española o a la normativa imperativa de
+protección de las personas consumidoras que se te aplique.
+```
+
+### E33 — EULA §10 governing law (ES)
+
+Files: `anything/apps/web/src/content/legal/eula.es.md`
+
+Original:
+
+```text
+Este EULA se rige por las leyes de Argentina.
+```
+
+Replaced with:
+
+```text
+Salvo que la normativa imperativa de protección de las personas consumidoras disponga lo contrario, este EULA se rige por la ley española.
+```
+
 ## Full text of everything added
 
 ### A1 — Privacy §10 subsection: EU/Spain rights, AEPD, transfers (EN)
@@ -599,7 +775,8 @@ Position: end of the file. Delete the block below plus the one blank line that s
 ## 4. TEMPORARY legal identity (Tanquetats 2022) — revert after the ElevenLabs grant answer
 
 - **What it is:** the legal pages (privacy, terms, support, EN + ES), the `docs/legal` copies and the site footer name
-  Tanquetats 2022 as controller/provider, and the Terms use Spanish law and the courts of Valencia. This is temporary.
+  Tanquetats 2022 as controller/provider, the Terms use Spanish law and the courts of Valencia, and the EULA uses
+  Spanish law. This is temporary.
 - **To change it back:** follow [`docs/legal/TEMP-company-identity-revert.md`](legal/TEMP-company-identity-revert.md)
   (old and new strings, added sections, previous dates and consent versions).
 ````

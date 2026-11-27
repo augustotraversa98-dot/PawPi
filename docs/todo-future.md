@@ -48,6 +48,7 @@ review (build 33) unless it says so. When one is picked up, move it to `docs/roa
 ## 4. TEMPORARY legal identity (Tanquetats 2022) — revert after the ElevenLabs grant answer
 
 - **What it is:** the legal pages (privacy, terms, support, EN + ES), the `docs/legal` copies and the site footer name
-  Tanquetats 2022 as controller/provider, and the Terms use Spanish law and the courts of Valencia. This is temporary.
+  Tanquetats 2022 as controller/provider, the Terms use Spanish law and the courts of Valencia, and the EULA uses
+  Spanish law. This is temporary.
 - **To change it back:** follow [`docs/legal/TEMP-company-identity-revert.md`](legal/TEMP-company-identity-revert.md)
   (old and new strings, added sections, previous dates and consent versions).

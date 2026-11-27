@@ -1,5 +1,5 @@
-> Última actualización: 16-08-2026. Contacto: support@pawpi.info.
-> Ley aplicable: Argentina. Este EULA complementa los Términos del Servicio y la Política de Privacidad de
+> Última actualización: 27-11-2026. Contacto: support@pawpi.info.
+> Ley aplicable: España. Este EULA complementa los Términos del Servicio y la Política de Privacidad de
 > PawPi. Nota de Apple: si no se lo reemplaza, también aplica el "Licensed Application End User License
 > Agreement" estándar de Apple; donde este EULA guarde silencio, rige el EULA estándar de Apple.
 
@@ -56,7 +56,7 @@ vinculante para usar PawPi.
 Tu uso de la App está sujeto a la **Política de Privacidad** de PawPi, que explica qué datos recopilamos
 (incluida la información de salud de tu mascota y la ubicación), cómo los usamos y compartimos, nuestros
 subencargados, tus derechos (incluidos el acceso y la eliminación dentro de los plazos exigidos por la ley
-argentina) y cómo contactarnos. Prestás tu consentimiento a esas prácticas, incluido el consentimiento
+aplicable, incluidos el RGPD y, si estás en Argentina, la ley argentina) y cómo contactarnos. Prestás tu consentimiento a esas prácticas, incluido el consentimiento
 explícito requerido para datos sensibles, según se describe allí.
 
 ## 8. Terminación
@@ -70,11 +70,12 @@ las Secciones 2, 3, 5, 9 y 10 subsisten.
 La App se provee "tal cual" y "según disponibilidad", sin garantías de ningún tipo en la medida permitida por
 la ley. En la máxima medida permitida por la ley aplicable, PawPi no es responsable por daños indirectos,
 incidentales o consecuentes, ni por los actos de proveedores u otras personas usuarias. Nada en este EULA
-limita la responsabilidad que no pueda limitarse conforme a la ley argentina.
+limita la responsabilidad que no pueda limitarse conforme a la ley española o a la normativa imperativa de
+protección de las personas consumidoras que se te aplique.
 
 ## 10. Disposiciones generales
 
-Este EULA se rige por las leyes de Argentina. Si alguna cláusula resultara inaplicable, el resto continúa
+Salvo que la normativa imperativa de protección de las personas consumidoras disponga lo contrario, este EULA se rige por la ley española. Si alguna cláusula resultara inaplicable, el resto continúa
 vigente. Podemos actualizar este EULA; los cambios sustanciales se notificarán en la App o por correo
 electrónico, y el uso continuado tras una actualización implica su aceptación. Consultas o reportes:
 **support@pawpi.info**.

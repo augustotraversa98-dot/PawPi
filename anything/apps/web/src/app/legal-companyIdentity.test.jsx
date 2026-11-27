@@ -48,6 +48,21 @@ describe("terms §17 legal notice identifies the company", () => {
   });
 });
 
+describe("Terms and EULA agree on Spanish law", () => {
+  it.each([
+    WEB + "terms.en.md",
+    WEB + "terms.es.md",
+    DOCS + "terms-of-service.md",
+    DOCS + "terms-of-service.es.md",
+    WEB + "eula.en.md",
+    WEB + "eula.es.md",
+  ])("%s", (file) => {
+    const text = read(file).replace(/\s+/g, " ");
+    expect(text).toMatch(/Spanish law|ley española/);
+    expect(text).not.toMatch(/laws of Argentina|leyes de (la República )?Argentina|(Governing law|Ley aplicable): Argentina|Buenos Aires/);
+  });
+});
+
 describe("served pages", () => {
   const PAGES = [
     ["/privacy", PrivacyPage],

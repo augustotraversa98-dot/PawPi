@@ -1,5 +1,5 @@
-> Last updated: 2026-08-16. Contact: support@pawpi.info.
-> Governing law: Argentina. This EULA supplements the PawPi Terms of Service and Privacy Policy.
+> Last updated: 2026-11-27. Contact: support@pawpi.info.
+> Governing law: Spain. This EULA supplements the PawPi Terms of Service and Privacy Policy.
 > Apple note: if not superseded, Apple's standard Licensed Application End User License Agreement also
 > applies; where this EULA is silent, Apple's standard EULA governs the Apple-specific terms.
 
@@ -52,7 +52,8 @@ information. You must be of legal age to form a binding contract to use PawPi.
 
 Your use of the App is subject to the PawPi **Privacy Policy**, which explains what data we collect
 (including pet health information and location), how we use and share it, our subprocessors, your rights
-(including access and deletion within the timeframes required by Argentine law), and how to contact us. You
+(including access and deletion within the timeframes required by applicable law, including the GDPR and, if
+you are in Argentina, Argentine law), and how to contact us. You
 consent to those practices, including the explicit consent required for sensitive data, as described there.
 
 ## 8. Termination
@@ -66,10 +67,10 @@ Sections 2, 3, 5, 9, and 10 survive.
 The App is provided "as is" and "as available," without warranties of any kind to the extent permitted by
 law. To the maximum extent permitted by applicable law, PawPi is not liable for indirect, incidental, or
 consequential damages, or for the acts of providers or other users. Nothing in this EULA limits liability
-that cannot be limited under Argentine law.
+that cannot be limited under Spanish law or under mandatory consumer-protection law that applies to you.
 
 ## 10. General
 
-This EULA is governed by the laws of Argentina. If any provision is unenforceable, the rest remains in
+Unless mandatory consumer-protection law provides otherwise, this EULA is governed by Spanish law. If any provision is unenforceable, the rest remains in
 effect. We may update this EULA; material changes will be notified in-app or by email, and continued use
 after an update constitutes acceptance. Questions or reports: **support@pawpi.info**.
