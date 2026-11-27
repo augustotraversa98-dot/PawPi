@@ -1,4 +1,4 @@
-// Prices above the old integer limit ($21.474.836,47): migration 0162 widens every cents column to bigint, and utils/sql.js reads
+// Prices above the old integer limit ($21.474.836,47): migration 0163 widens every cents column to bigint, and utils/sql.js reads
 // bigint as a number (without that, a price would arrive as text and "price + deposit" would glue digits together). Proven through the
 // REAL Hono router on real Postgres as pawpi_app, up to the new limit and just above it.
 
@@ -16,7 +16,7 @@ vi.mock("@/auth", () => ({ auth: async () => authState.session }));
 
 const SELLER = { authUserId: 1, profileId: 1, username: "seller", petId: 1, petName: "Rex" };
 const P = 10;
-const HUGE = 2_500_000_000; // $25.000.000,00 — refused before 0162
+const HUGE = 2_500_000_000; // $25.000.000,00 — refused before 0163
 const TOO_BIG = MAX_PRICE_CENTS + 1;
 
 let raw: Sql;
@@ -35,7 +35,7 @@ const ok = async (res: Response) => {
   return body;
 };
 const refused = async (res: Response) => expect([400, 422], `status ${res.status}`).toContain(res.status);
-const migration = () => readFileSync(join(MIGRATIONS_DIR, "0162_money_bigint.sql"), "utf8");
+const migration = () => readFileSync(join(MIGRATIONS_DIR, "0163_money_bigint.sql"), "utf8");
 
 beforeAll(async () => {
   raw = makeTestSql();
@@ -123,10 +123,10 @@ describe("prices above the old limit, through the router", () => {
   });
 });
 
-describe("migration 0162", () => {
-  it("verify_0162 passes, and the migration is safe to run again", async () => {
+describe("migration 0163", () => {
+  it("verify_0163 passes, and the migration is safe to run again", async () => {
     await raw.unsafe(migration());
-    const rows = (await raw.unsafe(readFileSync(join(MIGRATIONS_DIR, "..", "verify_0162.sql"), "utf8"))) as any[];
+    const rows = (await raw.unsafe(readFileSync(join(MIGRATIONS_DIR, "..", "verify_0163.sql"), "utf8"))) as any[];
     expect(rows.length).toBeGreaterThan(0);
     expect(rows.filter((r) => r.status !== "PASS")).toEqual([]);
   });

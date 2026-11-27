@@ -1,11 +1,11 @@
--- 0162_money_bigint.sql
+-- 0163_money_bigint.sql
 --
 -- Prices are stored in cents. As integer columns they stopped at $21.474.836,47; in pesos a real price can pass that
 -- (owner decision 2026-11-27). Every cents column becomes bigint. The app's own limit is $999.999.999.999,99
 -- (apps/web/src/lib/decimal.js MAX_PRICE_CENTS).
 --
 -- ⚠️ DEPLOY THE SERVER FIRST. utils/sql.js must already read bigint as a number: an older server would receive these
--- prices as text. Hand-applied; run supabase/verify_0162.sql afterwards (every row PASS). Safe to run again.
+-- prices as text. Hand-applied; run supabase/verify_0163.sql afterwards (every row PASS). Safe to run again.
 --
 -- The two insurance_policies owner rules name premium_cents, so Postgres requires dropping them around the change; they
 -- are recreated exactly as in 0058, in the same transaction. app_payment_for_webhook returns the amount, so it is

@@ -1,4 +1,4 @@
--- Verification for migration 0162 (prices as bigint). Run in the Supabase SQL editor AFTER applying 0162.
+-- Verification for migration 0163 (prices as bigint). Run in the Supabase SQL editor AFTER applying 0163.
 -- EVERY row should read PASS (5 rows). Read-only (catalog queries only).
 with
 cols as (
