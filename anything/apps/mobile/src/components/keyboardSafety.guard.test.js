@@ -43,6 +43,7 @@ const FIELD_ONLY = {
   "components/BreedPicker.jsx": "searchable breed list; hosted in onboarding / profile-edit / AddDogModal (all KeyboardAwareScrollView or KeyboardSafeSheet)",
   "components/Pets/RedeemInviteCard.jsx": "invite-code field hosted in pet-sharing (KeyboardAwareScrollView)",
   "components/Pets/BirthdayOrAgeField.jsx": "field component hosted in profile-edit and EditMedicalProfileModal (KeyboardAwareScrollView)",
+  "components/Health/VetShare/VetSearch.jsx": "vet search field hosted in ShareWithVetSheet (KeyboardSafeFormModal)",
   "components/Health/PackFriendPicker.jsx": "field hosted in PackStreaksCard inside HealthToday (RefreshableScrollView)",
   "components/Health/LeaderboardCard.jsx": "field hosted inside HealthToday (RefreshableScrollView)",
   "components/Health/Reminders/SocialWalkSettings.jsx": "field hosted in WalkItem inside WalkRoutineModal (KeyboardAwareScrollView)",

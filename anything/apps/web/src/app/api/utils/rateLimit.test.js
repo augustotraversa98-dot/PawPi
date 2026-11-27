@@ -323,6 +323,7 @@ describe('the limit catalog', () => {
       'record_link_open',
       'report_create',
       'search_query',
+      'share_offer_create',
       'upload_create',
       'vet_invite_accept',
       'vet_invite_create',

@@ -17,6 +17,11 @@ vi.mock("../hooks/useProviders", () => ({
   useSharedPets: vi.fn(),
 }));
 
+// The invitations block has its own tests (ClinicalShareOffers.test.jsx); here only that it is on the screen.
+vi.mock("./ClinicalShareOffers", () => ({
+  default: ({ providerId }) => <div data-testid="share-offers">{providerId}</div>,
+}));
+
 import { useProviderBookings, useSharedPets } from "../hooks/useProviders";
 import ProviderClinical from "./ProviderClinical";
 
@@ -51,6 +56,12 @@ describe("ProviderClinical index", () => {
     expect(links).toHaveLength(2);
     expect(links[0].getAttribute("href")).toContain("/provider/pets/55/record");
     expect(links[0].getAttribute("href")).toContain("petName=Rex");
+  });
+
+  it("shows this business's invitations", () => {
+    setBookings([]);
+    render(<ProviderClinical providerId={3} />);
+    expect(screen.getByTestId("share-offers")).toHaveTextContent("3");
   });
 
   it("lists pets shared without a booking, linking into the gated record", () => {

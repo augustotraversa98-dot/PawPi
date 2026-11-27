@@ -261,6 +261,28 @@ lab results. Approving everything a business asked for can also let its team add
 prescriptions or vaccinations to your dog's record and, if it asked for this, record care sessions
 such as walks or grooming.
 
+**Inviting a vet who is on PawPi.** In app versions that offer it, as the dog's owner you can look up
+a vet business published on PawPi, by its name or handle, or by typing in full the username of the
+account that owns it, and
+send it an invitation inside PawPi, with no link. The search shows only the business's name, handle,
+logo and location. You choose the parts and the length as under "Sharing by parts" and confirm. The
+invitation shares nothing from the Vet Record: until it is answered, active members of that
+business's team can see your dog's name, your display name (left out if it contains an email
+address), the parts you chose, the length, when you sent it and the date by which it must be
+answered.
+
+If a team member accepts, the team gets the read-only access by parts described above, to exactly
+those parts, from that moment and for the length you chose; it replaces any earlier access that
+business had to that dog's record. If they decline, or nobody answers within 7 days, nothing is
+shared. You can withdraw it while it is unanswered. It is also withdrawn if meanwhile you share
+that dog's record with the same business another way, approve or deny a request from it, or revoke
+its access, and it cannot be accepted if the dog changes owner or after a block between you and the
+business's owner or the person answering. We notify the business's team when you send it, and you
+when it is accepted or declined. For each invitation we store the dog, your account, the business,
+the parts, the length, when it was sent and until when it could be answered, what became of it and
+when, which team member answered it and the access it created, and we keep that record until the
+dog, your account or the business is deleted.
+
 **Inviting a vet by link.** Some app versions let you, as the dog's owner, create an invite link
 for that dog and send it to your vet yourself; PawPi sends no email. It is not the same as the
 public vet link mentioned above, or as a shared record link (below). The invite link expires after 7 days, works once, and you can

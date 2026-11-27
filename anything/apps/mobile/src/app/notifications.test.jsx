@@ -14,6 +14,7 @@ const mockPush = jest.fn();
 const mockBack = jest.fn();
 const mockMarkRead = jest.fn();
 const mockHandleTap = jest.fn();
+const mockSetActiveProvider = jest.fn();
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ back: mockBack, push: mockPush }),
@@ -42,6 +43,10 @@ jest.mock("lucide-react-native", () =>
 );
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+jest.mock("@/store/activeProviderStore", () => ({
+  __esModule: true,
+  default: (selector) => selector({ setActiveProviderId: mockSetActiveProvider }),
 }));
 jest.mock("@/store/socialPetStore", () => ({
   __esModule: true,
@@ -108,6 +113,7 @@ const dbFollow = {
 };
 
 beforeEach(() => {
+  mockSetActiveProvider.mockReset();
   mockPush.mockReset();
   mockBack.mockReset();
   mockMarkRead.mockReset();
@@ -536,3 +542,44 @@ describe("record access request notification", () => {
     expect(es.care_access_requestedFallback).toContain("No se comparte nada si no lo aprobás");
   });
 });
+
+// ── Invitations to a vet on PawPi (care_share_*) ─────────────────────────────
+describe("record invitation notifications", () => {
+  const notif = (type, body) => ({
+    id: 92,
+    type,
+    subject_ref: "3",
+    body,
+    read_at: null,
+    created_at: "2026-11-26T12:00:00.000Z",
+    actor_username: "Ana",
+    actor_avatar: null,
+  });
+
+  test("an invitation to my business: a proper title, and a tap opens that business's invitations", () => {
+    const sentence = "Olivia wants to share Rex's vet record with your team.";
+    mockDbNotifications = [notif("care_share_offered", sentence)];
+    const { getByText, queryByText } = render(<NotificationsScreen />);
+    expect(getByText("A record to share with your business")).toBeTruthy();
+    expect(queryByText(/Ana|Pet parent/)).toBeNull();
+    fireEvent.press(getByText(sentence));
+    expect(mockMarkRead).toHaveBeenCalledWith({ ids: [92] });
+    expect(mockSetActiveProvider).toHaveBeenCalledWith("3");
+    expect(mockPush).toHaveBeenCalledWith("/business/share-offers");
+  });
+
+  test.each([
+    ["care_share_accepted", "Your invitation was accepted"],
+    ["care_share_declined", "Your invitation was declined"],
+  ])("%s: a tap opens Data access", (type, title) => {
+    const sentence = "North Clinic answered about Rex.";
+    mockDbNotifications = [notif(type, sentence)];
+    const { getByText } = render(<NotificationsScreen />);
+    expect(getByText(title)).toBeTruthy();
+    fireEvent.press(getByText(sentence));
+    expect(mockPush).toHaveBeenCalledWith("/(tabs)/more/data-access");
+    expect(mockSetActiveProvider).not.toHaveBeenCalled();
+    expect(mockBack).not.toHaveBeenCalled();
+  });
+});
+

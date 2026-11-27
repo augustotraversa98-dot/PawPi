@@ -324,10 +324,14 @@ const PUSH_COPY = {
     en: { title: "Record access ended", body: "A client ended your team's access to a dog's records." },
     es: { title: "Terminó el acceso a una ficha", body: "Un cliente revocó el acceso de tu equipo a la ficha de un perro." },
   },
+  care_share_offered: {
+    en: { title: "A record to share with you", body: "A client invited your team to see a dog's vet record." },
+    es: { title: "Quieren compartirte una ficha", body: "Un cliente invitó a tu equipo a ver la ficha de un perro." },
+  },
 };
 
 // Types whose stored body is already a sentence in the recipient's language: the banner shows it, so it names the dog.
-const BODY_IS_MESSAGE = new Set(["care_access_granted", "care_access_revoked"]);
+const BODY_IS_MESSAGE = new Set(["care_access_granted", "care_access_revoked", "care_share_offered"]);
 
 const GENERIC_COPY = {
   en: { title: "PawPi", body: "You have a new notification." },

@@ -26,7 +26,9 @@ import { goBackOr } from "@/utils/navigationBack";
 import ShareWithVetSheet from "@/components/Health/VetShare/ShareWithVetSheet";
 import GrantAccess from "@/components/Health/VetShare/GrantAccess";
 import RecordLinks from "@/components/Health/VetShare/RecordLinks";
+import ShareOffers from "@/components/Health/VetShare/ShareOffers";
 import { useRecordLinks } from "@/hooks/useRecordLinks";
+import { useShareOffers } from "@/hooks/useShareOffers";
 import {
   asksForRecord,
   grantAccessLines,
@@ -59,13 +61,15 @@ export default function DataAccessScreen() {
     refetch();
     refetchBookings();
   }, [petId, refetch, refetchBookings]);
-  // Only the owner has record links (RecordLinks below reads the same list).
-  const links = useRecordLinks({ enabled: !!petId && !currentPet?.is_shared });
+  // Only the owner has record links and invitations (RecordLinks and ShareOffers below read the same lists).
+  const isOwner = !!petId && !currentPet?.is_shared;
+  const links = useRecordLinks({ enabled: isOwner });
+  const offers = useShareOffers({ enabled: isOwner });
   const refreshAll = () =>
     Promise.all([
       refetch(),
       refetchBookings(),
-      ...(currentPet?.is_shared ? [] : [links.refetch()]),
+      ...(currentPet?.is_shared ? [] : [links.refetch(), offers.refetch()]),
     ]);
   // null = closed. { provider } shares with that one only (answering its request); {} lets the owner pick.
   const [shareSheet, setShareSheet] = useState(null);
@@ -365,6 +369,9 @@ export default function DataAccessScreen() {
               </GrantCard>
             ))
           )}
+
+          {/* Invitations to a vet that are waiting for its answer. */}
+          {!currentPet.is_shared ? <ShareOffers pet={currentPet} /> : null}
 
           {/* Who has access */}
           <View style={{ height: 8 }} />

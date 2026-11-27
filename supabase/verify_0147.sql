@@ -210,7 +210,8 @@ checks as (
          case when not exists (select 1 from fn
                                where prosrc ~* 'care_access_grants'
                                  and proname not in ('app_provider_has_grant', 'app_pet_has_vet_relationship', 'app_provider_can_rx',
-                                                     'app_provider_has_section', 'app_shared_medical_profile', 'app_expire_care_grants'))
+                                                     'app_provider_has_section', 'app_shared_medical_profile', 'app_expire_care_grants',
+                                                     'app_respond_share_offer')) -- 0154: an accepted invitation becomes a grant
                 and not exists (select 1 from pg_views where schemaname = 'public' and definition ~* 'care_access_grants')
                 and not exists (select 1 from pg_matviews where schemaname = 'public' and definition ~* 'care_access_grants')
               then 'PASS' else 'FAIL' end

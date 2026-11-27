@@ -23,6 +23,11 @@ const INBOX_ROUTE = "/notifications";
 const REMINDERS_ROUTE = "/(tabs)/more/reminders";
 // Where an owner answers a business that asks to see a record.
 const DATA_ACCESS_ROUTE = "/(tabs)/more/data-access";
+const OWNER_ACCESS_TYPES = new Set([
+  "care_access_requested",
+  "care_share_accepted",
+  "care_share_declined",
+]);
 
 // Reminder types whose home is the Vet Record section; everything else lands on Today,
 // where the reminder itself is listed with its action button.
@@ -51,7 +56,8 @@ export function pushTapRoute(data) {
   // The "set up your first reminder" nudge opens the screen where a reminder is created.
   if (data.nudge === "reminder_setup") return { pathname: REMINDERS_ROUTE };
   if (data.reminderId != null) return reminderTapRoute(data);
-  if (data.type === "care_access_requested") return { pathname: DATA_ACCESS_ROUTE };
+  // A request to see a record, or a business's answer to the owner's invitation.
+  if (OWNER_ACCESS_TYPES.has(data.type)) return { pathname: DATA_ACCESS_ROUTE };
   return { pathname: INBOX_ROUTE };
 }
 

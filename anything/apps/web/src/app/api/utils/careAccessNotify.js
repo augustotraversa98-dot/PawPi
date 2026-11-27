@@ -6,6 +6,10 @@
 // nor which parts of it were shared. App builds that do not know the type print `body` as the message.
 //
 // NEVER throws, and every statement runs in a savepoint, so it can never fail the share or the revoke it follows.
+//
+// Invitations to a vet on PawPi (0154): notifyShareOffered tells the invited team (`subject_ref` is the PROVIDER id),
+// notifyShareAnswered tells the owner that a business accepted or declined. Same rules: a sentence in the recipient's
+// language with names and, once accepted, how long access lasts.
 
 import sql from "./sql";
 import { withSavepoint } from "./requestContext";
@@ -89,3 +93,108 @@ export async function notifyCareAccess({ type, grant, actor }) {
     console.error("[notifyCareAccess] non-fatal:", e?.message);
   }
 }
+
+const OFFER_COPY = {
+  care_share_offered: {
+    en: ({ who, pet }) =>
+      `${who} wants to share ${pet}'s vet record with your team. Nothing is visible until you accept: answer under Clinical in the provider area.`,
+    es: ({ who, pet }) =>
+      `${who} quiere compartir la ficha veterinaria de ${pet} con tu equipo. No se ve nada hasta que aceptes: respondé en Historias clínicas, en el área de proveedores.`,
+  },
+  care_share_accepted: {
+    en: ({ vet, pet, until }) =>
+      until
+        ? `${vet} accepted your invitation and can see the parts you chose of ${pet}'s record until ${until}.`
+        : `${vet} accepted your invitation and can see the parts you chose of ${pet}'s record until you revoke it.`,
+    es: ({ vet, pet, until }) =>
+      until
+        ? `${vet} aceptó tu invitación y ya puede ver las partes que elegiste de la ficha de ${pet} hasta el ${until}.`
+        : `${vet} aceptó tu invitación y ya puede ver las partes que elegiste de la ficha de ${pet} hasta que lo revoques.`,
+  },
+  care_share_declined: {
+    en: ({ vet, pet }) => `${vet} declined your invitation to see ${pet}'s record. Nothing was shared.`,
+    es: ({ vet, pet }) => `${vet} rechazó tu invitación para ver la ficha de ${pet}. No se compartió nada.`,
+  },
+};
+
+/** Pure: the sentence of an invitation notification in `locale` ('en' | anything else = es-AR). */
+export function shareOfferBody(type, locale, { ownerName, vetName, petName, expiresAt = null, timezone = null } = {}) {
+  const lang = locale === "en" ? "en" : "es";
+  const who = (ownerName && String(ownerName).trim()) || (lang === "en" ? "A pet owner" : "Un dueño");
+  const vet = (vetName && String(vetName).trim()) || (lang === "en" ? "The vet" : "La veterinaria");
+  const pet = (petName && String(petName).trim()) || (lang === "en" ? "a dog" : "un perro");
+  const until = expiresAt ? localDate(expiresAt, timezone) : null;
+  return OFFER_COPY[type]?.[lang]({ who, vet, pet, until }) ?? null;
+}
+
+// An invitation has not been accepted yet: a display name holding an address is left out, as in the invitation list.
+function invitedBy(row) {
+  const name = publicOwnerName(row);
+  return name?.includes("@") ? null : name;
+}
+
+/** Tells the invited business's team about a new invitation. Runs in the owner's request. Never throws. */
+export async function notifyShareOffered({ providerId, petId, actor }) {
+  try {
+    let team = [];
+    await withSavepoint(async () => {
+      team = await sql`
+        SELECT
+          s.id AS recipient,
+          app_recipient_locale(s.id) AS locale,
+          (SELECT full_name FROM user_profiles WHERE id = ${actor}) AS full_name,
+          (SELECT name FROM pets WHERE id = ${petId}) AS pet_name
+        FROM app_provider_active_staff_ids(${[providerId]}::int[]) AS s(id)
+        WHERE s.id <> ${actor}
+          AND NOT app_user_is_blocked(s.id, ${actor})
+        ORDER BY s.id
+      `;
+    });
+    for (const member of team) {
+      await safeNotifyIsolated({
+        recipient: member.recipient,
+        actor,
+        type: "care_share_offered",
+        subjectRef: String(providerId),
+        body: shareOfferBody("care_share_offered", member.locale, {
+          ownerName: invitedBy(member),
+          petName: member.pet_name,
+        }),
+      });
+    }
+  } catch (e) {
+    console.error("[notifyShareOffered] non-fatal:", e?.message);
+  }
+}
+
+/** Tells the owner that a business accepted or declined their invitation. Runs in the staff member's request. */
+export async function notifyShareAnswered({ accepted, ownerUserId, providerId, petName, expiresAt = null, actor }) {
+  try {
+    let row = {};
+    await withSavepoint(async () => {
+      const rows = await sql`
+        SELECT
+          app_recipient_locale(${ownerUserId}) AS locale,
+          (SELECT timezone FROM user_profiles WHERE id = ${ownerUserId}) AS timezone,
+          (SELECT name FROM providers WHERE id = ${providerId}) AS vet_name
+      `;
+      row = rows?.[0] ?? {};
+    });
+    const type = accepted ? "care_share_accepted" : "care_share_declined";
+    await safeNotifyIsolated({
+      recipient: ownerUserId,
+      actor,
+      type,
+      subjectRef: String(providerId),
+      body: shareOfferBody(type, row.locale, {
+        vetName: row.vet_name,
+        petName,
+        expiresAt: accepted ? expiresAt : null,
+        timezone: row.timezone,
+      }),
+    });
+  } catch (e) {
+    console.error("[notifyShareAnswered] non-fatal:", e?.message);
+  }
+}
+

@@ -145,6 +145,13 @@ export function activeRecordLinks(links, now = Date.now()) {
   );
 }
 
+// Invitations still waiting for the business's answer.
+export function waitingOffers(offers, now = Date.now()) {
+  return (offers ?? []).filter(
+    (o) => o?.status === "open" && new Date(o.lapses_at).getTime() > now,
+  );
+}
+
 // What the older read grant opens (supabase/migrations/0023, the record and media routes). Keep true to the server.
 const OLDER_READ_LINES = ["medical", "notes", "vaccines", "files"];
 

@@ -11,6 +11,7 @@ import {
   useShareRecord,
   useUpdateGrant,
 } from "@/hooks/useCareAccessGrants";
+import { OFFERS_UNAVAILABLE, useSendShareOffer } from "@/hooks/useShareOffers";
 import { friendlyErrorMessage } from "@/utils/appAlert";
 import { formatLocalDate } from "@/utils/localeDateTime";
 import {
@@ -27,6 +28,8 @@ import GrantAccess, { Bullets } from "./GrantAccess";
 import InviteVet from "./InviteVet";
 import RecordLinks from "./RecordLinks";
 import SecondaryButton from "./SecondaryButton";
+import ShareOffers from "./ShareOffers";
+import VetSearch from "./VetSearch";
 import { Choice, Heading, Note, bold, card, muted, picked, row, text } from "./parts";
 import useRecordLinkSteps from "./useRecordLinkSteps";
 
@@ -38,14 +41,26 @@ const ERROR_KEYS = {
   429: "vetShare.error.tooMany",
 };
 
+function offerErrorKey(error) {
+  if (error?.code === OFFERS_UNAVAILABLE) return "unavailable";
+  if (error?.code === "offer_limit") return "limit";
+  // Replacing an invitation that was accepted meanwhile.
+  if (error?.code === "offer_accepted") return "alreadyAccepted";
+  if (error?.status === 429) return "tooMany";
+  if (error?.status === 404) return "gone";
+  if (error?.status === 400) return "rejected";
+  return "send";
+}
+
 /**
  * Sharing the vet record: the owner picks a vet, the parts and how long, reviews who can see what, and consents.
  * Also lists who has access, with revoke. Mount it only while open (each opening starts with nothing selected).
  *
  * Props: pet ({ id, name, is_shared }), onClose, onOpenRequests (show the pending access requests), and optionally
  * provider ({ providerId, name, checkName }) to share with that one only (a booking, or a request being answered;
- * checkName asks the owner to make sure that business is their vet). Without a provider the owner can also create a
- * link for a vet without PawPi (useRecordLinkSteps).
+ * checkName asks the owner to make sure that business is their vet). Without a provider the owner can also search for
+ * any vet on PawPi and send an invitation it has to accept (VetSearch), or create a link for a vet without PawPi
+ * (useRecordLinkSteps).
  */
 export default function ShareWithVetSheet({ pet, provider, onClose, onOpenRequests }) {
   const { t } = useTranslation();
@@ -63,14 +78,19 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
   const scrollRef = useRef(null);
   const [step, setStep] = useState("choose");
   const [pickedId, setPickedId] = useState(null);
+  // A business picked in the search, which is not in the list of booked vets.
+  const [found, setFound] = useState(null);
   const [sections, setSections] = useState([]);
   const [expiry, setExpiry] = useState(null);
   const [consent, setConsent] = useState(false);
   const links = useRecordLinkSteps({ pet });
+  // State changes too late to stop a second tap in the same frame.
+  const sending = useRef(false);
 
   const reset = () => {
     setStep("choose");
     setPickedId(null);
+    setFound(null);
     setSections([]);
     setExpiry(null);
     setConsent(false);
@@ -97,6 +117,7 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
       );
 
   const reportOutcome = ({ outcome, grant }, sent) => {
+    sending.current = false;
     const names = { provider: sent.providerName, pet: petName };
     const revokeButtons = (keepKey) => [
       { text: t(keepKey), style: "cancel" },
@@ -135,6 +156,7 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
   const share = useShareRecord({
     onSuccess: reportOutcome,
     onError: (error) => {
+      sending.current = false;
       refetchGrants(); // the usual cause is a request or grant this screen had not seen yet
       setStep("choose");
       setConsent(false);
@@ -145,6 +167,56 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
     },
   });
 
+  const reportOffer = ({ outcome }, sent) => {
+    reset();
+    const names = { provider: sent.providerName, pet: petName };
+    if (outcome === "sent") {
+      Alert.alert(t("shareOffer.sentTitle"), t("shareOffer.sentBody", names));
+    } else if (outcome === "alreadySent") {
+      Alert.alert(t("shareOffer.alreadyTitle"), t("shareOffer.alreadyBody", names));
+    } else {
+      Alert.alert(t("shareOffer.error.sendTitle"), t("shareOffer.error.send"));
+    }
+  };
+
+  const offer = useSendShareOffer({
+    onSuccess: reportOffer,
+    onError: (error, sent) => {
+      refetchGrants();
+      setStep("choose");
+      setConsent(false);
+      // An unanswered invitation with another choice: nothing is replaced unless the owner says so.
+      if (error?.code === "offer_open" && error.offer?.id != null) {
+        Alert.alert(
+          t("shareOffer.replaceTitle"),
+          t("shareOffer.replaceBody", { provider: sent.providerName }),
+          [
+            { text: t("shareOffer.keep"), style: "cancel" },
+            {
+              text: t("shareOffer.replace"),
+              onPress: () => sendOffer({ ...sent, replaceOfferId: error.offer.id }),
+            },
+          ],
+        );
+        return;
+      }
+      const key = offerErrorKey(error);
+      Alert.alert(
+        t(`shareOffer.error.${key}Title`),
+        t(`shareOffer.error.${key}`, { limit: error?.limit ?? 20 }),
+      );
+    },
+    onSettled: () => {
+      sending.current = false;
+    },
+  });
+
+  function sendOffer(choice) {
+    if (sending.current) return;
+    sending.current = true;
+    offer.mutate(choice);
+  }
+
   const grants = grantsQuery.data;
   const vets = fixed ? [] : bookedVetsForPet(bookings.data, petId);
   // Nothing can be picked until we know who already has access.
@@ -152,9 +224,14 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
     !!grants && !grantsQuery.isError && (!!fixed || (!!bookings.data && !bookings.isError));
   const loadFailed = grantsQuery.isError || (!fixed && bookings.isError);
   const supported = sectionsSupported(grants);
-  const canChoose = ready && supported && (!!fixed || vets.length > 0);
+  const canChoose = ready && supported && (!!fixed || vets.length > 0 || !!found);
+  const searched = found
+    ? { providerId: found.id, name: found.name, searched: true }
+    : null;
   const selected = ready
-    ? (fixed ?? vets.find((v) => String(v.providerId) === pickedId) ?? null)
+    ? (fixed ??
+      vets.find((v) => String(v.providerId) === pickedId) ??
+      (searched && String(searched.providerId) === pickedId ? searched : null))
     : null;
   const accessOf = (providerId) => {
     const mine = providerGrants(grants, providerId);
@@ -164,13 +241,30 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
     };
   };
   const access = selected ? accessOf(selected.providerId) : null;
+  // A business found by search that has no access and has not asked for it is invited, and has to accept. One the owner
+  // already deals with (booked, asking, or with access) gets the access directly.
+  const invites = !!selected?.searched && !access.active && !access.pending;
+  // Consent is given for one action: it is cleared when what the button would do changes, for example because a
+  // request or an access for this business appears or ends while the screen is open.
+  const action = selected ? [selected.providerId, invites, access.pending, access.active].join(":") : "";
+  const [consentedAction, setConsentedAction] = useState(action);
+  if (consentedAction !== action) {
+    setConsentedAction(action);
+    setConsent(false);
+  }
   const canReview = isOwner && canChoose && !!selected && sections.length > 0 && !!expiry;
   const reviewing = step === "review" && canReview;
-  const canSubmit = reviewing && consent && !share.isPending;
+  const busy = share.isPending || offer.isPending;
+  const canSubmit = reviewing && consent && !busy;
 
   const active = (grants ?? []).filter((g) => isGrantActive(g));
   const ended = (grants ?? []).filter((g) => isGrantEnded(g));
   const pendingCount = (grants ?? []).filter((g) => g.status === "pending").length;
+
+  const chooseFound = (vet) => {
+    setFound(vet);
+    chooseVet(vet.id);
+  };
 
   const chooseVet = (providerId) => {
     const next = String(providerId);
@@ -200,13 +294,20 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
 
   const submit = () => {
     if (!canSubmit) return;
-    share.mutate({
+    const choice = {
       petId,
       providerId: selected.providerId,
       providerName: vetName(selected.name),
       sections,
       expiry,
-    });
+    };
+    if (invites) {
+      sendOffer(choice);
+      return;
+    }
+    if (sending.current) return;
+    sending.current = true;
+    share.mutate(choice);
   };
 
   const confirmRevoke = (grant) =>
@@ -291,8 +392,19 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
     });
   };
 
+  const searchStatus = (vet) => {
+    const has = accessOf(vet.id);
+    if (has.pending) return t("vetShare.askedAccess");
+    return has.active ? t("vetShare.hasAccess") : null;
+  };
+
   const accessNotes = () => (
     <>
+      {selected?.searched ? (
+        <Note testID="vet-share-check-found">
+          <Text style={text}>{t("shareOffer.checkName", { provider: vetName(selected.name) })}</Text>
+        </Note>
+      ) : null}
       {fixed?.checkName && !access?.active ? (
         <Note testID="vet-share-check-name">
           <Text style={text}>{t("vetShare.checkName", { provider: vetName(fixed.name) })}</Text>
@@ -343,6 +455,15 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
             <Text style={[muted, { marginBottom: SPACING.sm }]}>{t("vetShare.pickHint", { pet: petName })}</Text>
           )}
           {renderVetPicker()}
+          {ready && !fixed ? (
+            <VetSearch
+              picked={found}
+              selectedId={pickedId}
+              onPick={chooseFound}
+              excludeIds={vets.map((v) => v.providerId)}
+              describe={searchStatus}
+            />
+          ) : null}
           {accessNotes()}
         </>
       ) : null}
@@ -381,6 +502,8 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
         </>
       ) : null}
 
+      {fixed ? null : <ShareOffers pet={pet} />}
+
       <Heading>{t("vetShare.sharedTitle")}</Heading>
       {pendingCount > 0 ? (
         <View style={card}>
@@ -413,13 +536,27 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
     const name = vetName(selected.name);
     const end = expiryDate(expiry);
     const date = end ? formatLocalDate(end) : null;
+    // An invitation's time starts when it is accepted, so it has a length and no end date yet.
+    const length = t(`vetShare.expiry.${expiry}`);
+    let until = date ? t("vetShare.reviewUntilDate", { date }) : t("vetShare.reviewUntilRevoked");
+    let consentText = date
+      ? t("vetShare.consentDate", { provider: name, pet: petName, date })
+      : t("vetShare.consentRevoke", { provider: name, pet: petName });
+    if (invites) {
+      until = date ? t("shareOffer.reviewLength", { length }) : t("shareOffer.reviewUntilRevoked");
+      consentText = date
+        ? t("shareOffer.consent", { provider: name, pet: petName, length })
+        : t("shareOffer.consentRevoke", { provider: name, pet: petName });
+    }
     const left = SHARE_SECTIONS.filter((k) => !sections.includes(k));
     return (
       <View testID="vet-share-review">
         <Heading>{t("vetShare.reviewTitle")}</Heading>
         <View style={card}>
           <Text style={bold}>{name}</Text>
-          <Text style={muted}>{t("vetShare.reviewWho", { provider: name })}</Text>
+          <Text style={muted}>
+            {t(invites ? "shareOffer.reviewWho" : "vetShare.reviewWho", { provider: name })}
+          </Text>
         </View>
         <View testID="vet-share-review-sections" style={card}>
           <Text style={[bold, { marginBottom: 6 }]}>{t("vetShare.reviewCan", { pet: petName })}</Text>
@@ -434,11 +571,14 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
           ))}
         </View>
         <View testID="vet-share-review-until" style={card}>
-          <Text style={bold}>
-            {date ? t("vetShare.reviewUntilDate", { date }) : t("vetShare.reviewUntilRevoked")}
-          </Text>
+          <Text style={bold}>{until}</Text>
           <Text style={muted}>{t("vetShare.reviewLater")}</Text>
         </View>
+        {invites ? (
+          <Note testID="vet-share-review-invitation">
+            <Text style={text}>{t("shareOffer.reviewHow", { pet: petName })}</Text>
+          </Note>
+        ) : null}
         <Note testID="vet-share-review-ending">
           <Text style={muted}>{t("vetShare.endingLimit")}</Text>
         </Note>
@@ -464,17 +604,13 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
           ) : (
             <Square size={22} color={COLORS.mutedBrown} />
           )}
-          <Text style={[text, { flex: 1, fontWeight: "600" }]}>
-            {date
-              ? t("vetShare.consentDate", { provider: name, pet: petName, date })
-              : t("vetShare.consentRevoke", { provider: name, pet: petName })}
-          </Text>
+          <Text style={[text, { flex: 1, fontWeight: "600" }]}>{consentText}</Text>
         </TouchableOpacity>
         <SecondaryButton
           testID="vet-share-back"
           label={t("vetShare.back")}
           onPress={backToChoices}
-          disabled={share.isPending}
+          disabled={busy}
         />
       </View>
     );
@@ -484,7 +620,8 @@ export default function ShareWithVetSheet({ pet, provider, onClose, onOpenReques
   let ctaDisabled = false;
   let onCtaPress = onClose;
   if (isOwner && reviewing) {
-    ctaLabel = share.isPending ? t("vetShare.sharing") : t("vetShare.cta");
+    if (invites) ctaLabel = offer.isPending ? t("shareOffer.sending") : t("shareOffer.cta");
+    else ctaLabel = share.isPending ? t("vetShare.sharing") : t("vetShare.cta");
     ctaDisabled = !canSubmit;
     onCtaPress = submit;
   } else if (isOwner) {

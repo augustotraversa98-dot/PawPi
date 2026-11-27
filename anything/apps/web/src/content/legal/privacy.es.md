@@ -268,6 +268,27 @@ laboratorio. Aprobar todo lo que pidió un negocio también puede permitir que s
 veterinarias, recetas o vacunas a la historia de tu perro y, si lo pidió, que registre sesiones de
 cuidado, como paseos o peluquería.
 
+**Invitar a una veterinaria que está en PawPi.** En las versiones de la app que lo ofrecen, si sos la
+persona dueña del perro podés buscar una veterinaria publicada en PawPi, por el nombre o el usuario
+del negocio, o escribiendo completo el usuario de la cuenta propietaria, y mandarle una invitación dentro de PawPi, sin enlace. La búsqueda
+muestra solo el nombre, el usuario del negocio, el logo y la ubicación. Elegís las partes y la
+duración como en "Compartir por partes" y confirmás. La invitación no comparte nada de la historia
+clínica: hasta que se responda, las personas activas del equipo de ese negocio pueden ver el nombre
+de tu perro, tu nombre visible (no se muestra si contiene una dirección de correo), las partes que
+elegiste, la duración, cuándo la enviaste y la fecha límite para responderla.
+
+Si alguien del equipo la acepta, el equipo obtiene el acceso por partes de solo lectura descrito
+arriba, exactamente a esas partes, desde ese momento y por el plazo que elegiste; reemplaza cualquier
+acceso anterior que ese negocio tuviera a la historia de ese perro. Si la rechazan, o nadie responde
+en 7 días, no se comparte nada. Podés retirarla mientras no tenga respuesta. También queda retirada
+si mientras tanto compartís la historia de ese perro con el mismo negocio de otra manera, aprobás o
+rechazás un pedido suyo o revocás su acceso, y no se puede aceptar si el perro cambia de dueño o
+después de un bloqueo entre vos y quien es dueño del negocio o la persona que responde. Avisamos al
+equipo del negocio cuando la enviás, y a vos cuando la aceptan o la rechazan. De cada invitación
+guardamos el perro, tu cuenta, el negocio, las partes, la duración, cuándo se envió y hasta cuándo
+se podía responder, qué pasó con ella y cuándo, qué integrante del equipo la respondió y el acceso
+que creó, y conservamos ese registro hasta que se borre el perro, tu cuenta o el negocio.
+
 **Invitar a una veterinaria con un enlace.** Algunas versiones de la app te permiten, si sos la
 persona dueña del perro, crear un enlace de invitación para ese perro y mandárselo vos a tu
 veterinaria; PawPi no envía ningún correo. No es lo mismo que el enlace para veterinarias público que

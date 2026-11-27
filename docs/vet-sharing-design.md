@@ -4,7 +4,8 @@ Status: 2026-11-26. Sections and expiry are built on the server and the web prov
 hand before the server is deployed; then `supabase/verify_0147.sql`), and so are sharing while a provider's request is
 pending, telling the provider when access is given or revoked, and inviting a vet by link (migration 0148, then
 `supabase/verify_0148.sql`; server and web). Record links, which open with no account (migration 0153, applied by hand
-after the merge; then `supabase/verify_0153.sql`), are section 5. Part 4 is not built.
+after the merge; then `supabase/verify_0153.sql`), are section 5. Invitations to a vet that is on PawPi (migration
+0154, applied by hand after the merge; then `supabase/verify_0154.sql`) are section 6. Part 4 is not built.
 
 ## 1. Grants (`care_access_grants`)
 
@@ -152,9 +153,9 @@ The `pets` row (name, photo, breed...) is already readable by any signed-in user
 
 Vet Record > **Share** (and Data Access > **Share with your vet**) opens
 `anything/apps/mobile/src/components/Health/VetShare/ShareWithVetSheet.jsx`. From there it offers providers the owner
-has a vet or telehealth booking with, for that pet (a vet without one is invited by link, section 1). The same sheet
-opens for one given provider from a booking that
-is not completed (any kind of provider) and from Data Access > **Choose what to share** on a pending request.
+has a vet or telehealth booking with, for that pet; any other vet is found by search and invited (section 6) or, without
+PawPi, sent a link (section 5). The same sheet opens for one given provider from a booking that is not completed (any
+kind of provider) and from Data Access > **Choose what to share** on a pending request.
 
 - It sends only the by-section body. Nothing is selected beforehand, a review step states who can see what, until when
   and what ending access does not take back, and consent is explicit.
@@ -198,9 +199,7 @@ Each needs its own change with owner review.
 
 1. **Send an invite by email or phone.** PawPi sends nothing to an invited vet: the owner shares the link ("Invite by
    link", section 1). Needs working email delivery first.
-2. **Offer a vet without a booking in the picker.** After a vet from an invite is approved, the owner sees and revokes
-   that access in Data Access and the share sheet's list, but changes it only through a new request.
-3. **More sections** (allergies, conditions, medications, surgeries): each needs a read policy, a branch in the record
+2. **More sections** (allergies, conditions, medications, surgeries): each needs a read policy, a branch in the record
    route and a record screen section.
 
 ## 5. Record links (no account)
@@ -246,3 +245,57 @@ link columns are written only by the database, never by the application role. Li
 Tests: `web/test/integration/vet-record-links.integration.test.ts`, `web/src/app/shared-record/page.test.jsx`,
 `mobile/src/components/Health/VetShare/RecordLinks.test.jsx`.
 
+## 6. Invitations to a vet on PawPi
+
+Migration 0154. The owner finds a vet business that is on PawPi and invites it to parts of the record; no link changes
+hands. An invitation is an offer: it opens nothing, and access starts only when the business accepts, as an ordinary
+grant by section (section 1).
+
+**Who can be found and invited** (`app_vet_can_receive_share`): a published, non-demo business with the `vet`
+capability that is not an unclaimed directory listing and has an active team member with an account, where neither the
+owner nor the business's owner has blocked the other. `GET /api/care-access/vets?q=` (2 to 60 characters, at most 20
+results, rate limited with the other searches) matches part of the business name or handle, or the owning account's
+username typed in full (ignoring case), and answers public business fields only: name, handle, logo and first location.
+
+**The owner** (not family members):
+
+| Route | Result |
+|---|---|
+| `POST /api/care-access/offers` `{petId, providerId, sections, expiry}` | 201 `{offer}`. The same choice already waiting: 200 `{offer, deduped: true}`. A different one waiting: 409 `offer_open` with it. At most 20 waiting per owner (409 `offer_limit`); rate limited |
+| `GET /api/care-access/offers?petId=` | `{available, offers}` with `status` `open`, `accepted`, `declined`, `withdrawn` or `lapsed` |
+| `PATCH /api/care-access/offers/[offerId]` `{action: "withdraw"}` | Withdraws an unanswered one; never limited. 409 `offer_accepted` / `offer_closed` |
+
+**The business** (any active staff member):
+
+| Route | Result |
+|---|---|
+| `GET /api/providers/[id]/share-offers` | `{available, offers}`: the unanswered ones, each with pet name, owner display name, sections, length and dates. Nothing from the record |
+| `POST /api/providers/[id]/share-offers/[offerId]` `{action: "accept" \| "decline"}` | `{status}`; the same answer again adds `already: true` and changes nothing. 409 `offer_not_open`, `not_eligible` (accepting needs a published vet business) |
+
+Rules, held in the database (`app_respond_share_offer`, forced RLS on `care_share_offers`):
+
+- At most one unanswered invitation per business and pet (unique index). It lapses after 7 days, and also when the pet
+  changes owner.
+- Accepting gives exactly the offered sections for the chosen length, counted from the acceptance. It answers a pending
+  request of that business, or replaces access in place, under the same lock as the owner's own share. Two answers at
+  once make one grant.
+- The owner's later decision wins: when access for that pet and business starts, is approved, is denied or is revoked,
+  an unanswered invitation is withdrawn (trigger on `care_access_grants`). A repeated share that finds the access
+  already in place changes no row there, so `POST /api/care-access/grants` withdraws it itself.
+- Only the database marks an invitation accepted or declined: the owner's own update rights end at withdrawing it.
+
+**Notifications** (in-app and push, recipient's language): `care_share_offered` to the business's team, leaving out a
+member with a block between them and the owner (push follows the New bookings switch; `subject_ref` is the **provider
+id**), `care_share_accepted` and `care_share_declined` to the
+owner (category `owner_sharing`; `subject_ref` is the provider id). Released app builds show the sentence.
+
+**Where the business answers:** the web provider area, Clinical, and in the app's business mode (a card on the business
+home that opens **Record invitations**). Reading the record stays on the web.
+
+**Where the owner sends:** the share sheet's search. A business found there that already has access or a pending request
+is shared with directly (section 1); any other is invited. Waiting invitations, with **Withdraw invitation**, are listed
+in the share sheet and in Data Access.
+
+On a database without 0154 the search and both lists answer `available: false`, sending and answering say it is not
+available, and every other sharing route behaves as before. Tests: `web/test/integration/vet-share-offers.integration.test.ts`,
+`web/src/app/provider/components/ClinicalShareOffers.test.jsx`, `mobile/src/components/Health/VetShare/VetInvitation.test.jsx`.

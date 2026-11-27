@@ -10,6 +10,7 @@ import {
   RECORD_SECTIONS_SCOPE,
   SHARE_EXPIRY_INTERVALS,
 } from "@/app/api/utils/careAccess";
+import { isMissingSchema } from "@/app/api/utils/shareOffers";
 
 // GET /api/care-access/grants — the OWNER's trust view: who has (or requested)
 // access to which of my pets. Ticket 7 (docs/provider-design.md §2 + §4 item 7).
@@ -154,6 +155,25 @@ async function approvePendingRequest({ userId, petId, providerId, scopes, sectio
   }
   await notifyCareAccess({ type: "care_access_granted", grant: approved[0], actor: userId });
   return Response.json({ grant: approved[0], approvedRequest: true });
+}
+
+// A repeated share changes no access row, so an unanswered invitation to this provider (0154) is withdrawn here, as
+// any other share withdraws it. Does nothing on a database without invitations.
+async function withdrawOpenOffer({ userId, petId, providerId }) {
+  try {
+    await withSavepoint(async () => {
+      await sql`
+        UPDATE care_share_offers
+        SET status = 'withdrawn', responded_at = NOW()
+        WHERE owner_user_id = ${userId}
+          AND pet_id = ${petId}
+          AND provider_id = ${providerId}
+          AND status = 'open'
+      `;
+    });
+  } catch (error) {
+    if (!isMissingSchema(error)) throw error;
+  }
 }
 
 // End the active grant for this pet and provider, if any, then approve the vet's pending request or
@@ -324,20 +344,23 @@ async function POST(request) {
       ORDER BY (sections IS NOT NULL) DESC, id DESC
       LIMIT 1
     `;
-    const answerWith = (grant) =>
-      grant.sections
-        ? Response.json(
-            {
-              error: "This vet already has selected sections of the record shared",
-              code: "sectioned_grant_exists",
-            },
-            { status: 409 },
-          )
-        : Response.json({ grant, deduped: true });
+    const answerWith = async (grant) => {
+      if (grant.sections) {
+        return Response.json(
+          {
+            error: "This vet already has selected sections of the record shared",
+            code: "sectioned_grant_exists",
+          },
+          { status: 409 },
+        );
+      }
+      await withdrawOpenOffer({ userId, petId, providerId });
+      return Response.json({ grant, deduped: true });
+    };
 
     const existing = await findActive();
     if (existing.length > 0) {
-      return answerWith(existing[0]);
+      return await answerWith(existing[0]);
     }
 
     const choice = {
@@ -385,7 +408,7 @@ async function POST(request) {
       if (e?.code === "23505") {
         const winner = await findActive();
         if (winner.length > 0) {
-          return answerWith(winner[0]);
+          return await answerWith(winner[0]);
         }
         const late = await approvePendingRequest(choice);
         if (late) {

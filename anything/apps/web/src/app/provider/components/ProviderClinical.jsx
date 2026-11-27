@@ -5,6 +5,7 @@ import { useProviderBookings, useSharedPets } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
 import { VET_INVITE_COPY } from "../../../lib/vetInvite/copy";
 import { useVisitorLang } from "../../../lib/publicPet/useVisitorLang";
+import ClinicalShareOffers from "./ClinicalShareOffers";
 
 // Pets whose owner shared the record with this business, with or without a booking
 // (for example after an invite link). Hidden while there are none.
@@ -91,6 +92,7 @@ export default function ProviderClinical({ providerId }) {
         </div>
       </div>
 
+      <ClinicalShareOffers providerId={providerId} />
       <SharedWithUs providerId={providerId} />
 
       <div className="overflow-hidden rounded-2xl border border-[#FFD9B3] bg-white">
