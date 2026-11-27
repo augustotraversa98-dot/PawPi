@@ -181,6 +181,22 @@ describe("EditMedicalProfileModal — birthday vs. estimated age", () => {
     expect(api.getByTestId("birthday-unsure").props.accessibilityState.checked).toBe(false);
   });
 
+  it("shows the birth date heading only while the date field is shown", () => {
+    const api = renderWithClient(
+      <EditMedicalProfileModal
+        visible
+        petId={1}
+        initialData={{ pet: { birthday: "2020-01-01" } }}
+        onClose={jest.fn()}
+      />,
+    );
+    expect(api.getByText("editMedicalProfile.fieldBirthday")).toBeTruthy();
+    fireEvent.press(api.getByTestId("birthday-unsure"));
+    expect(api.queryByText("editMedicalProfile.fieldBirthday")).toBeNull();
+    fireEvent.press(api.getByTestId("birthday-unsure"));
+    expect(api.getByText("editMedicalProfile.fieldBirthday")).toBeTruthy();
+  });
+
   it("leaves an untouched estimate out of the save, so it keeps the date it was given", async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
     jest.spyOn(require("react-native").Alert, "alert").mockImplementation(() => {});

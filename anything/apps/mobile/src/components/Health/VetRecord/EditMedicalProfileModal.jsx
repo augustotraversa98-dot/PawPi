@@ -509,16 +509,19 @@ export default function EditMedicalProfileModal({
           placeholder={t("editMedicalProfile.breedPlaceholder")}
         />
         <View style={{ marginBottom: 16 }}>
-          <Text
-            style={{
-              fontSize: 13,
-              fontWeight: "600",
-              color: COLORS.warmBrown,
-              marginBottom: 6,
-            }}
-          >
-            {t("editMedicalProfile.fieldBirthday")}
-          </Text>
+          {/* The heading names the date field, which an estimate replaces. */}
+          {birthdayUnknown ? null : (
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: "600",
+                color: COLORS.warmBrown,
+                marginBottom: 6,
+              }}
+            >
+              {t("editMedicalProfile.fieldBirthday")}
+            </Text>
+          )}
           <BirthdayOrAgeField
             birthdayUnknown={birthdayUnknown}
             onToggleUnknown={setBirthdayUnknown}
