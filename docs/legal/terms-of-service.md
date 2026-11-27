@@ -5,10 +5,10 @@
 > (especially liability, governing-law, and arbitration/disputes) before relying on it publicly.
 
 _Mirror of the version served at https://www.pawpi.info/terms (source: `anything/apps/web/src/content/legal/terms.en.md`) - edit the web file first, then copy it here._
-**Last updated:** November 25, 2026
+**Last updated:** November 27, 2026
 
 These Terms of Service ("Terms") govern your use of the PawPi mobile app and related services (the
-"Service"), provided by Augusto Traversa ("PawPi," "we," "us"). By creating an account or using
+"Service"), provided by Tanquetats 2022 ("PawPi," "we," "us"). By creating an account or using
 the Service, you agree to these Terms and to our [Privacy Policy](/privacy).
 
 ## 1. Eligibility and accounts
@@ -160,9 +160,19 @@ accept the updated Terms.
 
 ## 15. Governing law and disputes
 
-These Terms are governed by the laws of Argentina, without regard to conflict-of-laws rules.
-Disputes will be resolved in the courts of the City of Buenos Aires, Argentina, unless mandatory local law provides otherwise.
+Unless mandatory consumer-protection law provides otherwise, these Terms are governed by Spanish
+law, and disputes will be resolved in the courts of Valencia, Spain.
 
 ## 16. Contact
 
-Questions about these Terms: **support@pawpi.info**, Augusto Traversa, Matacos y Alborada S/N.
+Questions about these Terms: **support@pawpi.info**, Tanquetats 2022, Calle Torrente 18 26, 46014 Valencia, Spain.
+
+## 17. Legal notice
+
+Information provided under Spain's Law 34/2002 on Information Society Services and Electronic
+Commerce (LSSI-CE). The PawPi app and the pawpi.info website are provided by:
+
+- **Legal name:** Tanquetats 2022
+- **NIF/CIF:** B10579803
+- **Address:** Calle Torrente 18 26, 46014 Valencia, Spain
+- **Email:** **support@pawpi.info**
