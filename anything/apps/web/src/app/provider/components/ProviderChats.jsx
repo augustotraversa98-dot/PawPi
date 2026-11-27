@@ -9,6 +9,10 @@ import {
   useMarkThreadRead,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
+import chatsCopy from "../i18n/chats";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { fill, formatDate, formatTime } from "../i18n/lib/format";
+import { serverErrorMessage } from "../i18n/lib/serverError";
 
 // Provider dashboard "Chats" section (Phase 2 ticket 2.5) — replaces the old
 // coming-soon stub. A two-pane view: the thread list (owners who messaged this
@@ -17,17 +21,17 @@ import { COLORS } from "../lib/colors";
 // REALTIME: the hooks POLL (threads 15s, messages 8s) — the documented lightweight
 // choice over a Supabase Realtime websocket. Sufficient for an owner↔provider channel.
 
-function formatTime(ts) {
+// The time for a message of today, else its date.
+function formatWhen(ts, lang) {
   if (!ts) return "";
   const then = new Date(ts);
   const now = new Date();
   const sameDay = then.toDateString() === now.toDateString();
-  return sameDay
-    ? then.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    : then.toLocaleDateString();
+  return sameDay ? formatTime(then) : formatDate(then, lang);
 }
 
 function ThreadRow({ thread, active, onClick }) {
+  const { t, lang } = useProviderCopy(chatsCopy);
   return (
     <button
       type="button"
@@ -44,16 +48,16 @@ function ThreadRow({ thread, active, onClick }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
           <span className="truncate text-sm font-bold text-[#3B241B]">
-            {thread.owner_name || "Pet owner"}
+            {thread.owner_name || t.petOwner}
           </span>
           <span className="flex-shrink-0 text-[11px] text-[#B8A99D]">
-            {formatTime(thread.last_message_at)}
+            {formatWhen(thread.last_message_at, lang)}
           </span>
         </div>
         <div className="flex items-center justify-between gap-2">
           <span className="truncate text-xs text-[#7A6254]">
             {thread.last_message_body ||
-              (thread.last_message_attachment_url ? "Photo" : "No messages yet")}
+              (thread.last_message_attachment_url ? t.photo : t.noMessagesYet)}
           </span>
           {thread.unread_count > 0 && (
             <span
@@ -70,6 +74,7 @@ function ThreadRow({ thread, active, onClick }) {
 }
 
 function Conversation({ providerId, thread }) {
+  const { t, lang } = useProviderCopy(chatsCopy);
   const { data: messages, isLoading } = useThreadMessages(thread.id);
   const { mutate: send, isPending } = useSendMessage(providerId, thread.id);
   const { mutate: markRead } = useMarkThreadRead(providerId);
@@ -98,7 +103,8 @@ function Conversation({ providerId, thread }) {
       { body: text },
       {
         onSuccess: () => setDraft(""),
-        onError: (err) => toast.error(err?.message || "Failed to send"),
+        onError: (err) =>
+          toast.error(serverErrorMessage(err, lang, t.sendFailed, chatsCopy)),
       },
     );
   };
@@ -107,11 +113,11 @@ function Conversation({ providerId, thread }) {
     <div className="flex h-full flex-col">
       <div className="border-b border-[#FFD9B3] px-5 py-4">
         <p className="text-base font-bold text-[#3B241B]">
-          {thread.owner_name || "Pet owner"}
+          {thread.owner_name || t.petOwner}
         </p>
         {thread.booking_id && (
           <p className="text-xs text-[#7A6254]">
-            About booking #{thread.booking_id}
+            {fill(t.aboutBooking, { id: thread.booking_id })}
           </p>
         )}
       </div>
@@ -120,12 +126,10 @@ function Conversation({ providerId, thread }) {
         {isLoading ? (
           <div className="flex items-center justify-center gap-2 py-10 text-[#7A6254]">
             <Loader2 className="h-5 w-5 animate-spin" style={{ color: COLORS.coral }} />
-            Loading messages…
+            {t.loadingMessages}
           </div>
         ) : ordered.length === 0 ? (
-          <p className="py-10 text-center text-sm text-[#7A6254]">
-            No messages yet. Say hello.
-          </p>
+          <p className="py-10 text-center text-sm text-[#7A6254]">{t.sayHello}</p>
         ) : (
           ordered.map((m) => {
             const fromProvider = String(m.sender_user_id) !== String(thread.owner_user_id);
@@ -145,7 +149,7 @@ function Conversation({ providerId, thread }) {
                   {m.attachment_url && (
                     <img
                       src={m.attachment_url}
-                      alt="attachment"
+                      alt={t.attachmentAlt}
                       className="mb-1 max-h-48 rounded-lg"
                     />
                   )}
@@ -154,7 +158,7 @@ function Conversation({ providerId, thread }) {
                     className="mt-1 text-[10px]"
                     style={{ color: fromProvider ? "rgba(255,255,255,0.8)" : "#B8A99D" }}
                   >
-                    {formatTime(m.created_at)}
+                    {formatWhen(m.created_at, lang)}
                   </p>
                 </div>
               </div>
@@ -174,15 +178,15 @@ function Conversation({ providerId, thread }) {
               onSend();
             }
           }}
-          placeholder="Type a message…"
-          aria-label="Message"
+          placeholder={t.placeholder}
+          aria-label={t.messageAria}
           className="flex-1 rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-3 py-2 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
         />
         <button
           type="button"
           onClick={onSend}
           disabled={isPending || !draft.trim()}
-          aria-label="Send"
+          aria-label={t.send}
           className="flex h-10 w-10 items-center justify-center rounded-xl text-white disabled:opacity-50"
           style={{ backgroundColor: COLORS.coral }}
         >
@@ -198,6 +202,7 @@ function Conversation({ providerId, thread }) {
 }
 
 export default function ProviderChats({ providerId }) {
+  const { t, lang } = useProviderCopy(chatsCopy);
   const { data: threads, isLoading, isError, error } = useProviderThreads(providerId);
   // Deep-link (ticket A4): /provider/chats?thread=<id> pre-selects that conversation — the hand-off
   // target for the adoption "Message" button. We seed activeId from the param and re-apply it when it
@@ -212,7 +217,8 @@ export default function ProviderChats({ providerId }) {
   }, [threadParam]);
 
   const list = threads ?? [];
-  const active = list.find((t) => String(t.id) === String(activeId)) || null;
+  const active =
+    list.find((thread) => String(thread.id) === String(activeId)) || null;
 
   return (
     <div className="px-8 py-7">
@@ -224,10 +230,8 @@ export default function ProviderChats({ providerId }) {
           <MessageSquare className="h-5 w-5" style={{ color: COLORS.terracotta }} />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-[#3B241B]">Chats</h1>
-          <p className="text-sm text-[#7A6254]">
-            Messages from pet owners
-          </p>
+          <h1 className="text-2xl font-bold text-[#3B241B]">{t.title}</h1>
+          <p className="text-sm text-[#7A6254]">{t.subtitle}</p>
         </div>
       </div>
 
@@ -237,29 +241,27 @@ export default function ProviderChats({ providerId }) {
           {isLoading ? (
             <div className="flex items-center justify-center gap-2 px-4 py-16 text-[#7A6254]">
               <Loader2 className="h-5 w-5 animate-spin" style={{ color: COLORS.coral }} />
-              Loading…
+              {t.loading}
             </div>
           ) : isError ? (
             <div className="px-4 py-16 text-center">
-              <p className="font-semibold text-[#B23B30]">Couldn't load chats</p>
+              <p className="font-semibold text-[#B23B30]">{t.loadError}</p>
               <p className="mt-1 text-sm text-[#7A6254]">
-                {error?.message || "Please try again."}
+                {serverErrorMessage(error, lang, t.tryAgain, chatsCopy)}
               </p>
             </div>
           ) : list.length === 0 ? (
             <div className="px-4 py-16 text-center">
-              <p className="text-base font-semibold text-[#3B241B]">No chats yet</p>
-              <p className="mt-1 text-sm text-[#7A6254]">
-                When a pet owner messages you, it appears here.
-              </p>
+              <p className="text-base font-semibold text-[#3B241B]">{t.emptyTitle}</p>
+              <p className="mt-1 text-sm text-[#7A6254]">{t.emptyBody}</p>
             </div>
           ) : (
-            list.map((t) => (
+            list.map((thread) => (
               <ThreadRow
-                key={t.id}
-                thread={t}
-                active={String(t.id) === String(activeId)}
-                onClick={() => setActiveId(t.id)}
+                key={thread.id}
+                thread={thread}
+                active={String(thread.id) === String(activeId)}
+                onClick={() => setActiveId(thread.id)}
               />
             ))
           )}
@@ -272,7 +274,7 @@ export default function ProviderChats({ providerId }) {
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-[#7A6254]">
               <ImageIcon className="h-8 w-8" style={{ color: COLORS.peach }} />
-              <p className="text-sm">Select a conversation to start chatting</p>
+              <p className="text-sm">{t.select}</p>
             </div>
           )}
         </div>

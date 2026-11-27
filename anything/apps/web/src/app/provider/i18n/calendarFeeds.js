@@ -1,0 +1,76 @@
+// Calendar import (/provider/calendar-import).
+
+export default {
+  en: {
+    title: "Calendar import",
+    subtitle: "Block your PawPi availability from your existing calendar so you’re never double-booked",
+    urlLabel: "Private iCal / ICS feed URL",
+    urlHelp:
+      "Google Calendar → Settings → “Secret address in iCal format”. Outlook → “Publish calendar” (ICS). Apple → a shared/public ICS link. We only read busy times — no event details are stored.",
+    urlAria: "iCal feed URL",
+    add: "Add feed",
+    loading: "Loading feeds…",
+    loadError: "Couldn’t load feeds",
+    tryAgain: "Please try again.",
+    emptyTitle: "No feeds yet",
+    emptyBody: "Add an iCal feed above to block those times from being booked.",
+    lastSynced: "Last synced {when}",
+    notSynced: "Not synced yet",
+    refresh: "Refresh now",
+    remove: "Remove",
+    confirmRemove:
+      "Remove this calendar feed? Its imported busy blocks will be cleared and those times become bookable again.",
+    invalidUrl: "Enter an http(s) iCal feed URL",
+    added: "Feed added — syncing…",
+    addFailed: "Couldn't add feed",
+    unreachable: "Couldn't reach that calendar feed",
+    synced: {
+      one: "Synced {count} busy block(s)",
+      other: "Synced {count} busy block(s)",
+    },
+    syncFailed: "Couldn't sync feed",
+    removed: "Feed removed",
+    removeFailed: "Couldn't remove feed",
+    server: {
+      invalidUrl: "ics_url must be an http(s) iCal feed URL",
+      notFound: "Feed not found",
+      unreachable: "Couldn't reach that calendar feed",
+    },
+  },
+  es: {
+    title: "Importar calendario",
+    subtitle: "Bloqueá tu disponibilidad en PawPi con el calendario que ya usás y evitá reservas superpuestas",
+    urlLabel: "Dirección privada del calendario (iCal / ICS)",
+    urlHelp:
+      "Google Calendar → Configuración → «Dirección secreta en formato iCal». Outlook → «Publicar calendario» (ICS). Apple → un enlace ICS compartido o público. Solo leemos los horarios ocupados: no guardamos detalles de los eventos.",
+    urlAria: "Dirección del calendario iCal",
+    add: "Agregar calendario",
+    loading: "Cargando calendarios…",
+    loadError: "No pudimos cargar los calendarios",
+    tryAgain: "Probá de nuevo.",
+    emptyTitle: "Todavía no agregaste calendarios",
+    emptyBody: "Agregá arriba un calendario iCal para que esos horarios no se puedan reservar.",
+    lastSynced: "Última sincronización: {when}",
+    notSynced: "Todavía no se sincronizó",
+    refresh: "Actualizar ahora",
+    remove: "Quitar",
+    confirmRemove:
+      "¿Querés quitar este calendario? Se borran los horarios ocupados que importamos y vuelven a estar disponibles para reservar.",
+    invalidUrl: "Ingresá una dirección de calendario iCal que empiece con http o https",
+    added: "Calendario agregado. Sincronizando…",
+    addFailed: "No pudimos agregar el calendario.",
+    unreachable: "No pudimos acceder a ese calendario.",
+    synced: {
+      one: "Sincronizamos {count} horario ocupado",
+      other: "Sincronizamos {count} horarios ocupados",
+    },
+    syncFailed: "No pudimos sincronizar el calendario.",
+    removed: "Calendario quitado",
+    removeFailed: "No pudimos quitar el calendario.",
+    server: {
+      invalidUrl: "La dirección tiene que ser un calendario iCal que empiece con http o https.",
+      notFound: "No encontramos ese calendario.",
+      unreachable: "No pudimos acceder a ese calendario.",
+    },
+  },
+};
