@@ -41,8 +41,9 @@ const CARD = {
   blood_type: null,
   active: true,
 };
+let extraCardFields = {};
 const payload = () => ({
-  card: { ...CARD },
+  card: { ...CARD, ...extraCardFields },
   pet: { id: 5, name: "Rex", species: "dog", breed: "Beagle", avatar_url: "" },
   medical: null,
   allergies: [],
@@ -57,6 +58,7 @@ let held;
 const respond = (body, ok = true) => ({ ok, status: ok ? 200 : 500, json: async () => body });
 
 beforeEach(() => {
+  extraCardFields = {};
   mockQrRenders = 0;
   requests = [];
   held = [];
@@ -134,6 +136,59 @@ test("quick taps are sent one at a time, in order, and an older answer never und
   await act(async () => held.shift().resolve(respond({ card: { ...CARD, contact_mode: "email" } })));
   await tick();
   expect(chipSelected(api, "contact-email")).toBe(true);
+});
+
+test("the phone and email switches show at once, cost one request each and are sent in order", async () => {
+  const channels = {
+    contact_phone_enabled: false,
+    contact_email_enabled: false,
+    contact_message_enabled: true,
+    contact_phone: "11 5555",
+    contact_email: "ana@example.test",
+  };
+  extraCardFields = channels;
+  const { api } = await open();
+  const rendersAfterLoad = mockQrRenders;
+  const isOn = (id) => api.getByTestId(id).props.value;
+
+  fireEvent(api.getByTestId("toggle-contact-phone"), "valueChange", true);
+  await tick();
+  fireEvent(api.getByTestId("toggle-contact-email"), "valueChange", true);
+  await tick();
+  expect([isOn("toggle-contact-phone"), isOn("toggle-contact-email")]).toEqual([true, true]);
+
+  const phoneOnly = { ...CARD, ...channels, contact_phone_enabled: true };
+  await act(async () => held.shift().resolve(respond({ card: phoneOnly })));
+  await tick();
+  expect(isOn("toggle-contact-email")).toBe(true); // the older answer does not undo the newer tap
+  await act(async () => held.shift().resolve(respond({ card: { ...phoneOnly, contact_email_enabled: true } })));
+  await tick();
+
+  expect(requests.map((r) => r.body)).toEqual([
+    null,
+    { petId: "5", contact_phone_enabled: true },
+    { petId: "5", contact_email_enabled: true },
+  ]);
+  expect(mockQrRenders - rendersAfterLoad).toBe(0);
+});
+
+test("a server that ignores the switches counts as a failed save, and the screen shows what it really has", async () => {
+  const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+  extraCardFields = { contact_phone_enabled: false, contact_email_enabled: false, contact_message_enabled: true };
+  const { api } = await open();
+
+  fireEvent(api.getByTestId("toggle-contact-phone"), "valueChange", true);
+  await tick();
+  await act(async () => held.shift().resolve(respond({ card: { ...CARD } }))); // 200, no channel fields
+  await tick();
+
+  expect(alert).toHaveBeenCalledWith("Could not save. Please try again.");
+  expect(api.getByTestId("toggle-contact-phone").props.value).toBe(false);
+  await act(async () => held.shift().resolve(respond({ ...payload(), card: { ...CARD } }))); // the re-read
+  await tick();
+  expect(api.queryByTestId("toggle-contact-phone")).toBeNull();
+  expect(api.getByTestId("contact-relay")).toBeTruthy();
+  alert.mockRestore();
 });
 
 test("a failed save rolls the control back and says so", async () => {

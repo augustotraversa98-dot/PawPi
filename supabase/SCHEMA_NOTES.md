@@ -344,6 +344,15 @@ ACTION 1).
 > Verify: `supabase/verify_0132.sql` (all PASS). Proven in `notifications-v2-owner-push.integration.test.ts`
 > (idempotent re-apply, RLS, and the acceptance matrix: category off / quiet hours / cap / invalid token ⇒ no push).
 
+> **0152** lets the emergency card show a finder a phone number AND an email — five optional columns on
+> `pet_emergency_cards` (`contact_phone_enabled`, `contact_email_enabled`, `contact_message_enabled`,
+> `contact_phone`, `contact_email`; all NULL until the owner uses the switches, no row rewritten), two triggers and
+> a replaced `app_emergency_card_json` (adds `contact.phone` / `contact.email`; keep that addition when replacing it
+> again). A statement that NAMES `contact_mode` / `contact_value` clears the new columns, so only name them when the
+> choice itself is being changed that way; a statement that names the new columns rewrites `contact_mode` /
+> `contact_value`. The finder-message function, its limits and the retention job are unchanged. Verify:
+> `supabase/verify_0152.sql`. Hand-applied after merge; the web app works without it (switches reported unavailable).
+
 > **0153_vet_record_links (2026-11-26) — sharing parts of the vet record by link, with no account. HAND-APPLIED after
 > merge.** New table `care_record_links` (one row per owner-created link for one pet: hashed token, chosen sections,
 > `allow_notes`, an end date of at most a year, `revoked_at`), ENABLE+FORCE RLS with owner select / insert / revoke-only

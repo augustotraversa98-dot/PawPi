@@ -17,8 +17,8 @@ import { useVisitorLang } from "@/lib/publicPet/useVisitorLang";
 // PUBLIC pet tag page (ticket 2.51) — the permanent printed QR lands here. NO login, NO
 // app-install wall. Renders ONLY the basic fields the DEFINER fn whitelisted (+ medical iff the
 // owner enabled it, + the emergency contact iff the owner enabled that). A stranger can tap the
-// owner's phone/email when the owner chose to expose it; otherwise (relay mode, or phone/email
-// with nothing saved) they can send a message with a phone or email so the family can answer.
+// owner's phone and / or email when the owner chose to show them; otherwise (private message, or
+// nothing publishable saved) they can send a message with a phone or email so the family can answer.
 // Non-diagnostic by design. EN + ES (lib/publicPet).
 
 const LOST_RED = "#C2410C";
