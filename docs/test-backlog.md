@@ -11,7 +11,31 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ---
 
-## 📦 EAS build 36 (v1.0.5) — built 2026-11-26, test this one
+## 📦 EAS build 37 (v1.0.5) — built 2026-11-27, test this one
+
+| Item | Value |
+|---|---|
+| Version / EAS iOS build number | 1.0.5 (**37**) |
+| EAS build | https://expo.dev/accounts/augusto-firulais/projects/pawpi/builds/0b3363d7-20b5-44f4-892f-3105a1f92fe0 (FINISHED) |
+| Built from commit | `41423911` (`main`, through #854) |
+| App Store Connect upload | **Uploaded 2026-11-27** ([submission](https://expo.dev/accounts/augusto-firulais/projects/pawpi/submissions/f4d19d44-0650-483b-a74b-79712f9124cb)); Apple processing not checked. |
+| App Review | **Not submitted.** The earlier submission was not touched. |
+
+- [ ] **First:** apply migrations `0152` → `0156` in order, running each `verify_NNNN.sql` right after (every row PASS). Until
+  then items 1, 2, 3, 7 and the growing age estimate are hidden or unavailable.
+- [ ] Run the phone checklist (English and Spanish) in
+  [the run report](night-run/2026-11-26/REPORT-testflight-feedback.md), section 8. Most important on a real phone: sharing by
+  link (2), inviting a vet (3), the screen updating by itself (4), Spanish by default (5), birth date and age (9).
+- [ ] The build 36 checklist below still applies where this run did not replace it (sharing screens changed).
+
+## ⏰ Apple deadline: iOS 27 SDK (ITMS-90725, logged 2026-11-26)
+
+- [ ] Apple warned that build 36 was built with the iOS 26.0 SDK and that from **April 2027** apps must use the iOS 27 SDK
+  (Xcode 27+). Nothing to build against yet; needs attention **well before April 2027**.
+
+---
+
+## 📦 EAS build 36 (v1.0.5) — built 2026-11-26
 
 | Item | Value |
 |---|---|

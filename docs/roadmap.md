@@ -18,6 +18,17 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-27 — Night run: TestFlight feedback on build 36, build 37 from `41423911`, uploaded for TestFlight
+Report: [`night-run/2026-11-26/REPORT-testflight-feedback.md`](night-run/2026-11-26/REPORT-testflight-feedback.md).
+- **Merged:** finder phone and email switches (#843); vet record shared by link with no account (#845), by in-app invitation (#851), screens updating at once (#852); Spanish by default (#844, #846–#849, #853); fewer Health subtitles (#840); friend streaks (#841); birthday posts (#842); birth date, growing age estimate and adoption date (#850); pre-build fixes (#854).
+- **Database:** `0152`–`0156` written and **not applied**; apply in order with their verify files. After them, `verify_0147.sql` row 24 and `verify_0148.sql` row 15 read FAIL, expected.
+- **Build:** iOS 1.0.5 (37) uploaded to App Store Connect for TestFlight (processing not verified); not submitted to App Review.
+- **Not tested:** a physical phone, push, camera, Android, VoiceOver.
+- **Suggested next:** accept comma decimals in business-panel price fields (some forms silently drop the cents).
+- **Apple deadline:** iOS 27 SDK required from April 2027 (ITMS-90725); see `test-backlog.md`.
+
+---
+
 ## 2026-11-26 — Night run: finder flow, vet sharing by parts and by invite, build 36 from `103d79b6`, uploaded for TestFlight
 Report: [`night-run/2026-11-26/REPORT-build34-vet-sharing.md`](night-run/2026-11-26/REPORT-build34-vet-sharing.md).
 - **Merged:** finder flow (#804, #807); vet sharing by parts with an end date (#811, #814, #816, #817, #815, #810); vet invite by link (#818, #821, #822, #823, #820); keeping access changes consistent (#819); maintenance (#809, #808, #813, #824). #802 and #812 stay drafts until the new build is live.
