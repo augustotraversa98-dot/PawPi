@@ -29,6 +29,12 @@ Report: [`night-run/2026-11-26/REPORT-testflight-feedback.md`](night-run/2026-11
 
 ---
 
+## 2026-11-27 — Directory loader no longer overwrites claimed businesses
+- `load_master.mjs` refreshes only listings still `claim_status='unclaimed'`; claimed and pending ones get no write at all (providers row and location). No field is exempt: once claimed, the owner's data wins over Google's.
+- The loader now starts (its `postgres` / `papaparse` imports could not resolve from its folder). Run it from the repo root. No migration; nothing runs on merge.
+
+---
+
 ## 2026-11-26 — Night run: finder flow, vet sharing by parts and by invite, build 36 from `103d79b6`, uploaded for TestFlight
 Report: [`night-run/2026-11-26/REPORT-build34-vet-sharing.md`](night-run/2026-11-26/REPORT-build34-vet-sharing.md).
 - **Merged:** finder flow (#804, #807); vet sharing by parts with an end date (#811, #814, #816, #817, #815, #810); vet invite by link (#818, #821, #822, #823, #820); keeping access changes consistent (#819); maintenance (#809, #808, #813, #824). #802 and #812 stay drafts until the new build is live.

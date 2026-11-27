@@ -10,6 +10,10 @@
 //     app publicly discovers it and can render the "¿Es tu negocio?" claim CTA.
 //   - Dedup / re-sync key is (external_source, external_id) — a partial UNIQUE
 //     index from 0124. Re-running this loader is a no-op on unchanged rows.
+//   - A re-run refreshes ONLY listings that are still claim_status='unclaimed'. Once a
+//     business has claimed its listing (or the claim is pending), the loader writes
+//     nothing for it, neither the providers row nor its location: the owner's data is
+//     the source of truth from then on, not Google's. No field is exempt.
 //
 // Provider-type mapping (drop the CSV `provider_type` value in verbatim):
 //   'vet' | 'shop' | 'groomer' | 'pet_friendly'.
@@ -21,9 +25,9 @@
 // (or DATABASE_URL) at Supabase's direct-connection `postgres` superuser URL, NOT
 // at the pgbouncer `pawpi_app` pooler URL.
 //
-// Run from anything/apps/web (so `postgres` resolves from web/node_modules):
+// Run from the repo root (needs anything/apps/web/node_modules):
 //   DIRECTORY_DATABASE_URL=postgres://postgres:...@... \
-//     node ../../../supabase/seed/directory/load_master.mjs
+//     node supabase/seed/directory/load_master.mjs
 //
 // Env:
 //   DIRECTORY_DATABASE_URL — preferred; a BYPASSRLS URL (e.g. Supabase direct-connection).
@@ -31,54 +35,16 @@
 //   DIRECTORY_CSV_PATH     — override CSV location (default: this file's sibling).
 //   DATABASE_SSL=disable   — turn off SSL (dev/staging only).
 
-import { readFileSync, existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
-import Papa from "papaparse";
-import postgres from "postgres";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { cleanWebsite } from "./backfill_website_url.mjs";
+import { CSV_PATH, SEED_DIR, loadEnv, readCsv, webRequire } from "./lib.mjs";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-// ── env ──────────────────────────────────────────────────────────────────────
-// Minimal .env parser — mirrors scripts/demo-seed/lib.mjs so operators can drop a
-// DIRECTORY_DATABASE_URL into anything/apps/web/.env and this just picks it up.
-function loadEnv(envPath) {
-  const fromFile = {};
-  if (existsSync(envPath)) {
-    for (const rawLine of readFileSync(envPath, "utf8").split("\n")) {
-      const line = rawLine.trim();
-      if (!line || line.startsWith("#")) continue;
-      const eq = line.indexOf("=");
-      if (eq === -1) continue;
-      const key = line.slice(0, eq).trim();
-      let val = line.slice(eq + 1).trim();
-      if (
-        (val.startsWith('"') && val.endsWith('"')) ||
-        (val.startsWith("'") && val.endsWith("'"))
-      ) {
-        val = val.slice(1, -1);
-      }
-      fromFile[key] = val;
-    }
-  }
-  return { ...fromFile, ...process.env };
-}
-
-const WEB_DIR = join(__dirname, "..", "..", "..", "anything", "apps", "web");
-const env = loadEnv(join(WEB_DIR, ".env"));
-const CONN = env.DIRECTORY_DATABASE_URL || env.DATABASE_URL;
-if (!CONN) {
-  console.error(
-    "Missing DIRECTORY_DATABASE_URL (or DATABASE_URL). Point at Supabase direct-connection.",
-  );
-  process.exit(1);
-}
-const CSV_PATH =
-  env.DIRECTORY_CSV_PATH || join(__dirname, "pawpi_directory_master.csv");
+const WEB_DIR = join(SEED_DIR, "..", "..", "..", "anything", "apps", "web");
 
 // ── db ───────────────────────────────────────────────────────────────────────
-function createSql(connectionString) {
+function createSql(connectionString, env) {
+  const postgres = webRequire("postgres");
   const u = new URL(connectionString);
   return postgres({
     host: u.hostname,
@@ -133,9 +99,83 @@ function parseHoursJson(v) {
   }
 }
 
-// ── main ─────────────────────────────────────────────────────────────────────
-async function main() {
-  const sql = createSql(CONN);
+// ── load ─────────────────────────────────────────────────────────────────────
+/**
+ * Insert or refresh one listing and its primary location, in one transaction.
+ * Returns "inserted", "updated" or "skipped_claimed". The upsert locks an existing
+ * row whether or not it updates it, so a claim approved meanwhile waits for this
+ * transaction; a listing that is not unclaimed gets no write at all.
+ */
+async function upsertListing(sql, listing, directoryProfileId) {
+  const { providerType, name, externalSource, externalId, slug, website } = listing;
+  const { address, lat, lng, phone, hoursJson, petPolicy } = listing;
+  return sql.begin(async (tx) => {
+    // Upsert the provider row on the external key. ON CONFLICT preserves the
+    // owner and never re-flips claim_status (a claimed row must never revert).
+    // website_url is set on INSERT only; existing rows are filled by
+    // backfill_website_url.mjs, which re-checks claim_status.
+    const [prov] = await tx`
+      INSERT INTO providers (
+        owner_user_profile_id, provider_type, name, slug, status,
+        source, external_source, external_id, claim_status, website_url
+      )
+      VALUES (
+        ${directoryProfileId}, ${providerType}, ${name}, ${slug}, 'published',
+        ${externalSource}, ${externalSource}, ${externalId}, 'unclaimed',
+        ${website}
+      )
+      ON CONFLICT (external_source, external_id)
+        WHERE external_source IS NOT NULL AND external_id IS NOT NULL
+      DO UPDATE SET
+        name = EXCLUDED.name,
+        provider_type = EXCLUDED.provider_type,
+        updated_at = now()
+      WHERE providers.claim_status = 'unclaimed'
+      RETURNING id, (xmax = 0) AS inserted
+    `;
+    // No row back: the listing exists and is no longer unclaimed.
+    if (!prov) return "skipped_claimed";
+
+    // provider_locations has no external key of its own — we keep exactly one
+    // "primary" location per seeded provider by upserting via a lookup + branch.
+    const [existingLoc] = await tx`
+      SELECT id FROM provider_locations
+      WHERE provider_id = ${prov.id}
+      ORDER BY id ASC LIMIT 1
+    `;
+    if (existingLoc) {
+      await tx`
+        UPDATE provider_locations l SET
+          address = ${address},
+          lat = ${lat},
+          lng = ${lng},
+          phone = ${phone},
+          hours_json = ${hoursJson},
+          pet_policy = ${petPolicy},
+          updated_at = now()
+        WHERE l.id = ${existingLoc.id}
+          AND EXISTS (
+            SELECT 1 FROM providers p
+            WHERE p.id = l.provider_id AND p.claim_status = 'unclaimed'
+          )
+      `;
+    } else {
+      await tx`
+        INSERT INTO provider_locations (
+          provider_id, name, address, lat, lng, phone, hours_json, pet_policy
+        )
+        VALUES (
+          ${prov.id}, ${name}, ${address}, ${lat}, ${lng},
+          ${phone}, ${hoursJson}, ${petPolicy}
+        )
+      `;
+    }
+    return prov.inserted ? "inserted" : "updated";
+  });
+}
+
+/** Load CSV rows (as papaparse reads them) and report what happened to each. */
+export async function loadRows(sql, rows) {
   const stats = {
     read: 0,
     skipped_bad_row: 0,
@@ -143,128 +183,88 @@ async function main() {
     skipped_bad_source: 0,
     inserted: 0,
     updated: 0,
-    locations_upserted: 0,
+    skipped_claimed: 0,
     errors: 0,
   };
 
-  try {
-    // Locate the system directory profile (created by 0124).
-    const [dir] = await sql`
-      SELECT id FROM user_profiles WHERE username = 'pawpi_directory' LIMIT 1
-    `;
-    if (!dir) {
-      throw new Error(
-        "System 'pawpi_directory' profile not found — apply migration 0124 first.",
+  // Locate the system directory profile (created by 0124).
+  const [dir] = await sql`
+    SELECT id FROM user_profiles WHERE username = 'pawpi_directory' LIMIT 1
+  `;
+  if (!dir) {
+    throw new Error(
+      "System 'pawpi_directory' profile not found — apply migration 0124 first.",
+    );
+  }
+
+  for (const row of rows) {
+    stats.read += 1;
+
+    const providerType = String(row.provider_type || "").trim();
+    const externalSource = String(row.external_source || "").trim();
+    const externalId = String(row.external_id || "").trim();
+    const name = String(row.name || "").trim();
+
+    if (!name || !externalSource || !externalId) {
+      stats.skipped_bad_row += 1;
+      continue;
+    }
+    if (!ALLOWED_TYPES.has(providerType)) {
+      stats.skipped_bad_type += 1;
+      continue;
+    }
+    if (!ALLOWED_SOURCES.has(externalSource)) {
+      stats.skipped_bad_source += 1;
+      continue;
+    }
+
+    try {
+      const outcome = await upsertListing(
+        sql,
+        {
+          providerType,
+          name,
+          externalSource,
+          externalId,
+          slug: slugFor(name, externalId, row.area),
+          website: cleanWebsite(row.website),
+          address: row.address || null,
+          lat: parseNumericOrNull(row.lat),
+          lng: parseNumericOrNull(row.lng),
+          phone: row.phone || null,
+          hoursJson: parseHoursJson(row.hours_json),
+          petPolicy: row.pet_policy || null,
+        },
+        dir.id,
+      );
+      stats[outcome] += 1;
+    } catch (err) {
+      stats.errors += 1;
+      console.error(
+        `[loader] ${externalSource}/${externalId} — ${name}: ${err.message}`,
       );
     }
-    const directoryProfileId = dir.id;
-    console.log(`[loader] directory profile id=${directoryProfileId}`);
+  }
+  return stats;
+}
 
-    const csvText = readFileSync(CSV_PATH, "utf8");
-    const { data, errors: parseErrors } = Papa.parse(csvText, {
-      header: true,
-      skipEmptyLines: true,
-    });
-    if (parseErrors.length) {
-      console.warn(`[loader] papaparse: ${parseErrors.length} parse warnings`);
-    }
-    console.log(`[loader] read ${data.length} rows from ${CSV_PATH}`);
+// ── main ─────────────────────────────────────────────────────────────────────
+async function main() {
+  // Operators can drop a DIRECTORY_DATABASE_URL into anything/apps/web/.env.
+  const env = loadEnv(join(WEB_DIR, ".env"));
+  const conn = env.DIRECTORY_DATABASE_URL || env.DATABASE_URL;
+  if (!conn) {
+    throw new Error(
+      "Missing DIRECTORY_DATABASE_URL (or DATABASE_URL). Point at Supabase direct-connection.",
+    );
+  }
+  const rows = readCsv();
+  console.log(`[loader] read ${rows.length} rows from ${CSV_PATH}`);
 
-    for (const row of data) {
-      stats.read += 1;
-
-      const providerType = String(row.provider_type || "").trim();
-      const externalSource = String(row.external_source || "").trim();
-      const externalId = String(row.external_id || "").trim();
-      const name = String(row.name || "").trim();
-
-      if (!name || !externalSource || !externalId) {
-        stats.skipped_bad_row += 1;
-        continue;
-      }
-      if (!ALLOWED_TYPES.has(providerType)) {
-        stats.skipped_bad_type += 1;
-        continue;
-      }
-      if (!ALLOWED_SOURCES.has(externalSource)) {
-        stats.skipped_bad_source += 1;
-        continue;
-      }
-
-      const slug = slugFor(name, externalId, row.area);
-      const source = externalSource; // 'osm' | 'serpapi_gmaps'
-
-      try {
-        // Upsert the provider row on the external key. ON CONFLICT preserves the
-        // owner and never re-flips claim_status (a claimed row must never revert).
-        // website_url is set on INSERT only; existing rows are filled by
-        // backfill_website_url.mjs, which re-checks claim_status.
-        const [prov] = await sql`
-          INSERT INTO providers (
-            owner_user_profile_id, provider_type, name, slug, status,
-            source, external_source, external_id, claim_status, website_url
-          )
-          VALUES (
-            ${directoryProfileId}, ${providerType}, ${name}, ${slug}, 'published',
-            ${source}, ${externalSource}, ${externalId}, 'unclaimed',
-            ${cleanWebsite(row.website)}
-          )
-          ON CONFLICT (external_source, external_id)
-            WHERE external_source IS NOT NULL AND external_id IS NOT NULL
-          DO UPDATE SET
-            name = EXCLUDED.name,
-            provider_type = EXCLUDED.provider_type,
-            updated_at = now()
-          RETURNING id, (xmax = 0) AS inserted
-        `;
-        if (prov.inserted) stats.inserted += 1;
-        else stats.updated += 1;
-
-        // provider_locations has no external key of its own — we keep exactly one
-        // "primary" location per seeded provider by upserting via a lookup + branch.
-        const lat = parseNumericOrNull(row.lat);
-        const lng = parseNumericOrNull(row.lng);
-        const address = row.address || null;
-        const phone = row.phone || null;
-        const hoursJson = parseHoursJson(row.hours_json);
-        const petPolicy = row.pet_policy || null;
-
-        const [existingLoc] = await sql`
-          SELECT id FROM provider_locations
-          WHERE provider_id = ${prov.id}
-          ORDER BY id ASC LIMIT 1
-        `;
-        if (existingLoc) {
-          await sql`
-            UPDATE provider_locations SET
-              address = ${address},
-              lat = ${lat},
-              lng = ${lng},
-              phone = ${phone},
-              hours_json = ${hoursJson},
-              pet_policy = ${petPolicy},
-              updated_at = now()
-            WHERE id = ${existingLoc.id}
-          `;
-        } else {
-          await sql`
-            INSERT INTO provider_locations (
-              provider_id, name, address, lat, lng, phone, hours_json, pet_policy
-            )
-            VALUES (
-              ${prov.id}, ${name}, ${address}, ${lat}, ${lng},
-              ${phone}, ${hoursJson}, ${petPolicy}
-            )
-          `;
-        }
-        stats.locations_upserted += 1;
-      } catch (err) {
-        stats.errors += 1;
-        console.error(
-          `[loader] ${externalSource}/${externalId} — ${name}: ${err.message}`,
-        );
-      }
-    }
+  const sql = createSql(conn, env);
+  let stats;
+  try {
+    stats = await loadRows(sql, rows);
   } finally {
     await sql.end({ timeout: 5 });
   }
@@ -273,7 +273,9 @@ async function main() {
   if (stats.errors > 0) process.exit(2);
 }
 
-main().catch((err) => {
-  console.error("[loader] fatal", err);
-  process.exit(1);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((err) => {
+    console.error("[loader] fatal", err.message);
+    process.exit(1);
+  });
+}
