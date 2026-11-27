@@ -36,6 +36,16 @@ describe("rowsToCatalog", () => {
   });
 });
 
+describe("rowsToCatalog prices", () => {
+  it("keeps a spreadsheet number as a number and file text as written (no comma is lost)", () => {
+    const { products } = rowsToCatalog([
+      { Name: "Shampoo", Price: 49.9 },
+      { Name: "Brush", Price: " 1.234,56 " },
+    ]);
+    expect(products.map((p) => p.price)).toEqual([49.9, "1.234,56"]);
+  });
+});
+
 describe("fetchDocumentCatalog", () => {
   it("XLSX rows yield a proposed catalog (no LLM key needed)", async () => {
     const draft = await fetchDocumentCatalog(

@@ -32,6 +32,7 @@ import {
   useAdoptionCheckout,
 } from "@/hooks/useProviders";
 import { isValidCoord } from "@/utils/walkBuddies";
+import { formatMoney, parseMoneyToCents } from "@/utils/money";
 import { friendlyErrorMessage } from "@/utils/appAlert";
 
 // SHARED adoption listing views (ticket 2.97). The adoptable-dog card + the full detail/apply
@@ -42,7 +43,7 @@ import { friendlyErrorMessage } from "@/utils/appAlert";
 export function money(cents, currency = "ARS", t) {
   if (cents == null) return "";
   if (cents === 0) return t ? t("adoption.listing.free") : "Free";
-  return `${currency} ${(cents / 100).toFixed(2)}`;
+  return formatMoney(cents, currency);
 }
 
 export function ageLabel(years, months, t) {
@@ -459,12 +460,13 @@ export function ListingDetailModal({ data, onClose, router }) {
                         t("adoption.listing.donateTitle"),
                         t("adoption.listing.donateBody"),
                         (val) => {
-                          const cents = Math.round(parseFloat(val) * 100);
-                          if (Number.isFinite(cents) && cents > 0) doPay("donation", cents);
+                          const { cents } = parseMoneyToCents(val);
+                          if (cents > 0) doPay("donation", cents);
+                          else Alert.alert(t("adoption.listing.donateTitle"), t("common.invalidAmount"));
                         },
                         "plain-text",
                         "",
-                        "numeric",
+                        "decimal-pad",
                       )
                     : doPay("donation", 1000)
                 }

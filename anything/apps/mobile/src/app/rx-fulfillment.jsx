@@ -20,6 +20,7 @@ import {
   useRequestFulfillment,
 } from "@/hooks/useRxFulfillment";
 import { friendlyErrorMessage } from "@/utils/appAlert";
+import { formatMoney as money } from "@/utils/money";
 
 // Rx fulfillment request (ticket 2.71). From an active prescription, the owner picks a
 // `pharmacy`-capable provider, chooses delivery (address on the 2.68 map) or pickup, requests
@@ -35,11 +36,6 @@ const STATUS_KEY = {
   fulfilled: "leftoverUi.rxFulfillment.status.fulfilled",
   cancelled: "leftoverUi.rxFulfillment.status.cancelled",
 };
-
-function money(cents) {
-  if (cents == null) return null;
-  return `$${(cents / 100).toFixed(2)}`;
-}
 
 export default function RxFulfillmentScreen() {
   const insets = useSafeAreaInsets();

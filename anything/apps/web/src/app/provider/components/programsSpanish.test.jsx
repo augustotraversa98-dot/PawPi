@@ -291,9 +291,9 @@ describe("walk packages in Spanish", () => {
     act(() => setVisitorLang("es"));
 
     fireEvent.change(screen.getByPlaceholderText("10"), { target: { value: "10" } });
-    fireEvent.change(screen.getByPlaceholderText("90.00"), { target: { value: "abc" } });
+    fireEvent.change(screen.getByPlaceholderText("90,00"), { target: { value: "abc" } });
     submit();
-    expect(await screen.findByText("Ingresá un importe válido (por ejemplo, 12.50)")).toBeInTheDocument();
+    expect(await screen.findByText("Ingresá un importe válido (por ejemplo, 12,50 o 1.250,00)")).toBeInTheDocument();
   });
 });
 

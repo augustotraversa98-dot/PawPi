@@ -154,6 +154,17 @@ async function POST(request, { params }) {
       );
     }
 
+    // The fee is integer cents (as on PATCH). Anything else is refused, never saved as free.
+    if (
+      adoption_fee_cents != null &&
+      (!Number.isInteger(adoption_fee_cents) || adoption_fee_cents < 0)
+    ) {
+      return Response.json(
+        { error: "adoption_fee_cents must be a non-negative integer" },
+        { status: 400 },
+      );
+    }
+
     // Content filter (T7): reject objectionable listing name / breed / story text before insert.
     const blockedListing = moderationResponse(name, breed, story);
     if (blockedListing) return blockedListing;
@@ -161,10 +172,7 @@ async function POST(request, { params }) {
     const placementType = ["adopt", "foster", "both"].includes(body.placement_type)
       ? body.placement_type
       : "adopt";
-    const fee =
-      Number.isInteger(adoption_fee_cents) && adoption_fee_cents >= 0
-        ? adoption_fee_cents
-        : 0;
+    const fee = adoption_fee_cents ?? 0;
     const photos = Array.isArray(photo_urls) ? photo_urls : [];
     // Per-listing application questions (0086) — an ordered array of clean strings. Absent → [].
     const questions = sanitizeQuestions(body.application_questions) ?? [];

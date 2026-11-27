@@ -6,7 +6,7 @@ import {
   useRxFulfillmentAction,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
-import { centsToCurrency, dollarsToCents } from "../lib/money";
+import { centsToCurrency, centsToInput, dollarsToCents } from "../lib/money";
 import pharmacyCopy from "../i18n/pharmacy";
 import { useProviderCopy } from "../i18n/lib/useProviderCopy";
 import { plural } from "../i18n/lib/format";
@@ -27,16 +27,15 @@ const NEXT_STATUS = {
 };
 function PriceEditor({ order, onSave, disabled }) {
   const { t, lang } = useProviderCopy(pharmacyCopy);
-  const [raw, setRaw] = useState(
-    order.price_cents != null ? (order.price_cents / 100).toFixed(2) : "",
-  );
+  const [raw, setRaw] = useState(centsToInput(order.price_cents, lang));
   return (
     <div className="flex items-center gap-2">
       <span className="text-sm text-[#7A6254]">$</span>
       <input
         value={raw}
         onChange={(e) => setRaw(e.target.value)}
-        placeholder="0.00"
+        placeholder={centsToInput(0, lang)}
+        inputMode="decimal"
         className="w-24 rounded-lg border border-[#FFD9B3] px-2 py-1 text-sm"
       />
       <button

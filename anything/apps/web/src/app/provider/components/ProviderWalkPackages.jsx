@@ -253,8 +253,10 @@ function PackageFormModal({ pkg, seedCount, onClose, onSubmit, saving }) {
           : seedCount != null
             ? String(seedCount)
             : "",
-      price: centsToInput(pkg?.price_cents),
+      price: centsToInput(pkg?.price_cents, lang),
     });
+    // Seeded once per package: a language switch must not wipe what is being typed (either format parses).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pkg, seedCount, reset]);
 
   const submit = (values) => {
@@ -263,7 +265,7 @@ function PackageFormModal({ pkg, seedCount, onClose, onSubmit, saving }) {
       setError("walks_count", { type: "validate" });
       return;
     }
-    const price = dollarsToCents(values.price);
+    const price = dollarsToCents(values.price, lang);
     if (price.error) {
       setError("price", { type: "validate" });
       return;
@@ -317,7 +319,7 @@ function PackageFormModal({ pkg, seedCount, onClose, onSubmit, saving }) {
             <input
               type="text"
               inputMode="decimal"
-              placeholder="90.00"
+              placeholder={centsToInput(9000, lang)}
               {...register("price")}
               className={inputCls}
             />

@@ -283,7 +283,7 @@ const inputCls =
 // converted to integer cents on submit; numeric validation mirrors
 // invalidServiceFields and blocks the mutation before any POST/PATCH fires.
 function ServiceFormModal({ service, onClose, onSubmit, saving }) {
-  const { t } = useProviderCopy(servicesCopy);
+  const { t, lang } = useProviderCopy(servicesCopy);
   // Amount and duration errors are worded in the shared dictionary, looked up at render.
   const { t: shared } = useProviderCopy(sharedCopy);
   const isEdit = service != null;
@@ -314,12 +314,14 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
       name: service?.name ?? "",
       description: service?.description ?? "",
       duration_min: service?.duration_min != null ? String(service.duration_min) : "",
-      price: centsToInput(service?.price_cents),
-      deposit: centsToInput(service?.deposit_cents),
+      price: centsToInput(service?.price_cents, lang),
+      deposit: centsToInput(service?.deposit_cents, lang),
       payment_policy: service?.payment_policy ?? "none",
-      nightly_rate: centsToInput(service?.nightly_rate_cents),
+      nightly_rate: centsToInput(service?.nightly_rate_cents, lang),
     });
     setImages(Array.isArray(service?.image_urls) ? service.image_urls : []);
+    // Seeded once per service: a language switch must not wipe what is being typed (either format parses).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [service, reset]);
 
   const submit = (values) => {
@@ -330,17 +332,17 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
       setError("duration_min", { type: "validate" });
       return;
     }
-    const price = dollarsToCents(values.price);
+    const price = dollarsToCents(values.price, lang);
     if (price.error) {
       setError("price", { type: "validate" });
       return;
     }
-    const deposit = dollarsToCents(values.deposit);
+    const deposit = dollarsToCents(values.deposit, lang);
     if (deposit.error) {
       setError("deposit", { type: "validate" });
       return;
     }
-    const nightly = dollarsToCents(values.nightly_rate);
+    const nightly = dollarsToCents(values.nightly_rate, lang);
     if (nightly.error) {
       setError("nightly_rate", { type: "validate" });
       return;
@@ -417,7 +419,7 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
             <input
               type="text"
               inputMode="decimal"
-              placeholder="50.00"
+              placeholder={centsToInput(5000, lang)}
               {...register("price")}
               className={inputCls}
             />
@@ -441,7 +443,7 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
               <input
                 type="text"
                 inputMode="decimal"
-                placeholder="0.00"
+                placeholder={centsToInput(0, lang)}
                 {...register("deposit")}
                 className={inputCls}
               />
@@ -464,7 +466,7 @@ function ServiceFormModal({ service, onClose, onSubmit, saving }) {
               <input
                 type="text"
                 inputMode="decimal"
-                placeholder="40.00"
+                placeholder={centsToInput(4000, lang)}
                 {...register("nightly_rate")}
                 className={inputCls}
               />

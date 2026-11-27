@@ -89,6 +89,37 @@ it("POST rejects a negative age_years before any insert", async () => {
   expect(sql.mock.calls.length).toBe(1);
 });
 
+// A fee that is not integer cents is refused (it used to be saved silently as 0 = free).
+it.each([49.9, "4990", "49,90", -1])("POST rejects adoption_fee_cents=%j before any insert", async (fee) => {
+  auth.mockResolvedValue(SESSION);
+  sql.mockResolvedValueOnce(PROFILE);
+  const res = await POST(
+    new Request("http://localhost/api/providers/10/adoptable-listings", {
+      method: "POST",
+      body: JSON.stringify({ name: "Pongo", adoption_fee_cents: fee }),
+    }), PARAMS,
+  );
+  expect(res.status).toBe(400);
+  expect((await res.json()).error).toBe("adoption_fee_cents must be a non-negative integer");
+  expect(sql.mock.calls.length).toBe(1);
+});
+
+it("POST stores adoption_fee_cents=4990 as sent, and 0 when absent", async () => {
+  for (const [body, stored] of [[{ adoption_fee_cents: 4990 }, 4990], [{}, 0]]) {
+    sql.mockClear();
+    auth.mockResolvedValue(SESSION);
+    sql.mockResolvedValueOnce(PROFILE).mockResolvedValueOnce([{ id: 1 }]);
+    const res = await POST(
+      new Request("http://localhost/api/providers/10/adoptable-listings", {
+        method: "POST",
+        body: JSON.stringify({ name: "Pongo", ...body }),
+      }), PARAMS,
+    );
+    expect(res.status).toBe(201);
+    expect(sql.mock.calls[1].slice(1)).toContain(stored);
+  }
+});
+
 it("GET orders featured listings first + returns the new columns", async () => {
   auth.mockResolvedValue(SESSION);
   sql.mockResolvedValueOnce(PROFILE).mockResolvedValueOnce([{ id: 1, is_featured: true }]);

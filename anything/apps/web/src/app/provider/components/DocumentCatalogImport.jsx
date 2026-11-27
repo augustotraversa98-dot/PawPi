@@ -8,7 +8,11 @@ import {
 } from "../hooks/useProviders";
 import useUpload from "@/utils/useUpload";
 import { COLORS } from "../lib/colors";
-import { dollarsToCents, parseDurationMin } from "../lib/money";
+import {
+  dollarsToCents,
+  importedPriceToInput,
+  parseDurationMin,
+} from "../lib/money";
 import catalogImportCopy from "../i18n/catalogImport";
 import { useProviderCopy } from "../i18n/lib/useProviderCopy";
 import { fill } from "../i18n/lib/format";
@@ -51,7 +55,7 @@ export default function DocumentCatalogImport({ providerId }) {
             key: `s${i}`,
             kind: "service",
             name: s.name ?? "",
-            price: s.price ?? "",
+            price: importedPriceToInput(s.price, lang),
             duration: s.duration ?? "",
             description: s.description ?? "",
             status: "pending",
@@ -60,7 +64,7 @@ export default function DocumentCatalogImport({ providerId }) {
             key: `p${i}`,
             kind: "product",
             name: p.name ?? "",
-            price: p.price ?? "",
+            price: importedPriceToInput(p.price, lang),
             description: p.description ?? "",
             status: "pending",
           }));

@@ -100,6 +100,7 @@
     "pleaseTryAgain": "Please try again."
   },
   "common": {
+    "invalidAmount": "Enter a valid amount (e.g. 12.50 or 1,250.00)",
     "offlineBanner": "No internet connection — showing saved data",
     "petParent": "Pet parent",
     "save": "Save",

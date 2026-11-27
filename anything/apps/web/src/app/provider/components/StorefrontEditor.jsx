@@ -140,7 +140,7 @@ export default function StorefrontEditor({ providerId, onDone }) {
       services: baseline.services.map((s) => ({ ...s })),
     });
     const seed = {};
-    for (const p of baseline.products) seed[p.id] = centsToInput(p.compare_at_cents ?? null);
+    for (const p of baseline.products) seed[p.id] = centsToInput(p.compare_at_cents ?? null, lang);
     setSaleText(seed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baselineSig]);
@@ -149,8 +149,10 @@ export default function StorefrontEditor({ providerId, onDone }) {
   const actions = useMemo(() => computeSaveActions(baseline, pending), [baseline, pending]);
   // Client-side guard: a compare-at price must beat the current price (server enforces the 0077
   // CHECK too). Any invalid row blocks Save so we never fire a request the server will 422.
+  // An amount that cannot be read blocks Save too: otherwise the last readable part ("49" of "49,905") is saved.
+  const saleInputError = (id) => dollarsToCents(saleText[id], lang).error;
   const hasSaleError = pending.products.some(
-    (p) => validateCompareAt(p.compare_at_cents ?? null, p.price_cents) != null,
+    (p) => saleInputError(p.id) || validateCompareAt(p.compare_at_cents ?? null, p.price_cents) != null,
   );
   const canSave = actions.hasChanges && !hasSaleError && !saving;
 
@@ -199,9 +201,9 @@ export default function StorefrontEditor({ providerId, onDone }) {
     }));
   const changeSale = (id, raw) => {
     setSaleText((prev) => ({ ...prev, [id]: raw }));
-    const { cents } = dollarsToCents(raw); // undefined when blank/invalid → treat blank as clear
-    const next = raw.trim() === "" ? null : cents ?? undefined;
-    if (next === undefined) return; // keep the current value while an invalid amount is typed
+    const { cents, error } = dollarsToCents(raw, lang);
+    if (error) return; // keep the current value; the row shows the error and Save stays blocked
+    const next = cents ?? null; // blank → clear the compare-at price
     setPending((prev) => ({
       ...prev,
       products: prev.products.map((p) => (p.id === id ? { ...p, compare_at_cents: next } : p)),
@@ -253,7 +255,7 @@ export default function StorefrontEditor({ providerId, onDone }) {
       services: baseline.services.map((s) => ({ ...s })),
     });
     const seed = {};
-    for (const p of baseline.products) seed[p.id] = centsToInput(p.compare_at_cents ?? null);
+    for (const p of baseline.products) seed[p.id] = centsToInput(p.compare_at_cents ?? null, lang);
     setSaleText(seed);
   };
 
@@ -418,7 +420,9 @@ function SortableProductRow({ product, saleRaw, onToggleFeatured, onChangeSale }
     attributes: { roleDescription: t.drag.role },
   });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
-  const saleError = validateCompareAt(product.compare_at_cents ?? null, product.price_cents, lang);
+  const saleError =
+    dollarsToCents(saleRaw, lang).error ??
+    validateCompareAt(product.compare_at_cents ?? null, product.price_cents, lang);
   const pct = discountPct(product.price_cents, product.compare_at_cents);
   return (
     <div
