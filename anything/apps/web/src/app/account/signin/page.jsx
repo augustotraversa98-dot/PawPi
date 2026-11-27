@@ -3,10 +3,15 @@ import useAuth from "@/utils/useAuth";
 import SocialSignInButtons from "@/components/auth/SocialSignInButtons";
 import { ACCOUNT_COPY, keepLang } from "@/lib/account/copy";
 import { isMobileAuthWebview } from "@/utils/resolveCallbackUrl";
-import { BusinessEyebrow, PetOwnerNote } from "@/components/auth/BusinessNotes";
+import {
+  BusinessEyebrow,
+  BusinessLanguageSwitch,
+  PetOwnerNote,
+} from "@/components/auth/BusinessNotes";
 import { useVisitorLang } from "@/lib/publicPet/useVisitorLang";
 
 export default function SignInPage() {
+  // { say(copy) } rather than a sentence, so a shown message follows the ES / EN switch.
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -15,7 +20,7 @@ export default function SignInPage() {
   });
 
   const { signInWithCredentials } = useAuth();
-  const { lang } = useVisitorLang();
+  const { lang, setLang } = useVisitorLang();
   const copy = ACCOUNT_COPY[lang];
   const search = typeof window !== "undefined" ? window.location.search : "";
   // On the website this is the business sign-in; the app opens the same page for pet owners.
@@ -23,7 +28,8 @@ export default function SignInPage() {
   // A sign-in that failed away from this page (a provider, or a wrong password) comes back as ?error=.
   const returnedError = new URLSearchParams(search).get("error");
   const shownError =
-    error || (returnedError ? copy.signin.errors[returnedError] || copy.genericError : null);
+    error?.say(copy) ||
+    (returnedError ? copy.signin.errors[returnedError] || copy.genericError : null);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -31,7 +37,7 @@ export default function SignInPage() {
     setError(null);
 
     if (!formData.email || !formData.password) {
-      setError(copy.signin.missingFields);
+      setError({ say: (c) => c.signin.missingFields });
       setLoading(false);
       return;
     }
@@ -47,7 +53,7 @@ export default function SignInPage() {
         redirect: true,
       });
     } catch (err) {
-      setError(copy.signin.errors[err.message] || copy.genericError);
+      setError({ say: (c) => c.signin.errors[err.message] || c.genericError });
       setLoading(false);
     }
   };
@@ -59,6 +65,10 @@ export default function SignInPage() {
         onSubmit={onSubmit}
         className="w-full max-w-md rounded-3xl bg-white p-8 shadow-lg"
       >
+        {forBusiness && (
+          <BusinessLanguageSwitch copy={copy} lang={lang} setLang={setLang} />
+        )}
+
         {/* Header */}
         <div className="mb-8 text-center">
           {forBusiness && <BusinessEyebrow copy={copy} />}

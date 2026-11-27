@@ -1,5 +1,15 @@
-// What marks the website's sign-in and sign-up pages as the business ones, and sends pet owners to the app.
+// What marks the website's sign-in and sign-up pages as the business ones: the ES / EN switch, the label saying who
+// they are for, and the way to the app for pet owners.
+import { LanguageSwitch } from "@/components/publicPet/PetPageParts";
 import { appStoreUrl } from "@/lib/brand/tokens";
+
+export function BusinessLanguageSwitch({ copy, lang, setLang }) {
+  return (
+    <div className="mb-4 flex justify-end">
+      <LanguageSwitch lang={lang} setLang={setLang} label={copy.languageLabel} />
+    </div>
+  );
+}
 
 export function BusinessEyebrow({ copy }) {
   return (

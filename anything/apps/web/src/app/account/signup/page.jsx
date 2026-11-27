@@ -10,7 +10,11 @@ import SocialSignInButtons from "@/components/auth/SocialSignInButtons";
 import { TERMS_OF_SERVICE_URL, PRIVACY_POLICY_URL } from "@/constants/legal";
 import { ACCOUNT_COPY, legalUrlFor, serverMessage } from "@/lib/account/copy";
 import { useVisitorLang } from "@/lib/publicPet/useVisitorLang";
-import { BusinessEyebrow, PetOwnerNote } from "@/components/auth/BusinessNotes";
+import {
+  BusinessEyebrow,
+  BusinessLanguageSwitch,
+  PetOwnerNote,
+} from "@/components/auth/BusinessNotes";
 
 const METER_COLORS = ["#E2E0DE", "#E25C4B", "#E89B3C", "#3FB07A", "#2E8F62"];
 
@@ -53,6 +57,7 @@ function LegalLink({ href, children }) {
 }
 
 export default function SignUpPage() {
+  // { say(copy, lang) } rather than a sentence, so a shown message follows the ES / EN switch.
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -64,11 +69,8 @@ export default function SignUpPage() {
   });
 
   const { signUpWithCredentials } = useAuth();
-  const { lang } = useVisitorLang();
+  const { lang, setLang } = useVisitorLang();
   const copy = ACCOUNT_COPY[lang];
-  // Auth.js error codes → friendly copy (with redirect:false, signIn RETURNS these in
-  // result.error instead of throwing).
-  const errorFor = (code) => copy.signup.errors[code];
   // On the website this is the business sign-up; the app opens the same page for pet owners.
   const forBusiness = !isMobileAuthWebview(typeof window !== "undefined" ? window.location.search : "");
 
@@ -90,32 +92,34 @@ export default function SignUpPage() {
 
     // Validation
     if (!formData.name.trim()) {
-      setError(copy.signup.missingName);
+      setError({ say: (c) => c.signup.missingName });
       setLoading(false);
       return;
     }
 
     if (!formData.email || !formData.password) {
-      setError(copy.signup.missingFields);
+      setError({ say: (c) => c.signup.missingFields });
       setLoading(false);
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError(copy.signup.mismatch);
+      setError({ say: (c) => c.signup.mismatch });
       setLoading(false);
       return;
     }
 
     if (!agreedToTerms) {
-      setError(copy.signup.mustAccept);
+      setError({ say: (c) => c.signup.mustAccept });
       setLoading(false);
       return;
     }
 
     const { valid, errors } = validatePassword(formData.password);
     if (!valid) {
-      setError(errors[0] ? serverMessage(lang, { error: errors[0] }) : copy.password.chooseStronger);
+      setError({
+        say: (c, l) => (errors[0] ? serverMessage(l, { error: errors[0] }) : c.password.chooseStronger),
+      });
       setLoading(false);
       return;
     }
@@ -134,8 +138,10 @@ export default function SignUpPage() {
         redirect: false,
       });
 
+      // Auth.js error codes → friendly copy (with redirect:false, signIn RETURNS these in
+      // result.error instead of throwing).
       if (!result || result.error) {
-        setError(errorFor(result?.error) || copy.genericError);
+        setError({ say: (c) => c.signup.errors[result?.error] || c.genericError });
         setLoading(false);
         return;
       }
@@ -151,7 +157,9 @@ export default function SignUpPage() {
       // Perform the redirect manually to the resolved callback url.
       window.location.href = result.url || "/provider";
     } catch (err) {
-      setError(errorFor(err?.code) || errorFor(err?.message) || copy.genericError);
+      setError({
+        say: (c) => c.signup.errors[err?.code] || c.signup.errors[err?.message] || c.genericError,
+      });
       setLoading(false);
     }
   };
@@ -163,6 +171,10 @@ export default function SignUpPage() {
         onSubmit={onSubmit}
         className="w-full max-w-md rounded-3xl bg-white p-8 shadow-lg"
       >
+        {forBusiness && (
+          <BusinessLanguageSwitch copy={copy} lang={lang} setLang={setLang} />
+        )}
+
         {/* Header */}
         <div className="mb-8 text-center">
           {forBusiness && <BusinessEyebrow copy={copy} />}
@@ -292,7 +304,7 @@ export default function SignUpPage() {
           {/* Error Message */}
           {error && (
             <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
-              {error}
+              {error.say(copy, lang)}
             </div>
           )}
 

@@ -18,6 +18,12 @@ describe("serverErrorMessage", () => {
     expect(serverErrorMessage(new TypeError("Failed to fetch"), "es", FALLBACK)).toBe(serverErrors.es.network);
   });
 
+  it("translates an expired session on any screen, such as business creation or an invitation", () => {
+    expect(
+      serverErrorMessage(new Error("Your session has expired. Please sign in again."), "es", FALLBACK),
+    ).toBe("Tu sesión venció. Iniciá sesión de nuevo.");
+  });
+
   it("carries a value inside the message across", () => {
     expect(serverErrorMessage(new Error("Invalid capability: x, y"), "es", FALLBACK)).toBe(
       "Una de las opciones elegidas no es válida (x, y).",
