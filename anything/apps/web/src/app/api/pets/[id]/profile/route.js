@@ -3,6 +3,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { getViewerDailyStatus } from "@/app/api/utils/dailyMomentsGate";
+import { estimateColumnsOf, presentPublicPet } from "@/app/api/utils/petAge";
 
 // Public-within-the-app pet profile: any authed user may read any pet's
 // profile (it's social — no owner restriction), EXCEPT the Daily moments grid:
@@ -42,14 +43,16 @@ async function GET(request, { params }) {
     const petRows = isNumericId
       ? await sql`
           SELECT id, name, handle, avatar_url, species, breed,
-                 age_years, age_months, birthday, adoption_date, gender, owner_user_id
+                 age_years, age_months, birthday, adoption_date, gender, owner_user_id,
+                 to_jsonb(pets) AS _row
           FROM pets
           WHERE id = ${idParam}
           LIMIT 1
         `
       : await sql`
           SELECT id, name, handle, avatar_url, species, breed,
-                 age_years, age_months, birthday, adoption_date, gender, owner_user_id
+                 age_years, age_months, birthday, adoption_date, gender, owner_user_id,
+                 to_jsonb(pets) AS _row
           FROM pets
           WHERE handle = ${handle}
           LIMIT 1
@@ -59,7 +62,10 @@ async function GET(request, { params }) {
       return Response.json({ error: "Pet not found" }, { status: 404 });
     }
 
-    const { owner_user_id, ...pet } = petRows[0];
+    // `_row` only supplies the age estimate columns; it holds private columns and never leaves this function.
+    const { owner_user_id, _row, ...columns } = petRows[0];
+    // Everyone gets the computed age only, never the date an estimate was given.
+    const pet = presentPublicPet({ ...columns, ...estimateColumnsOf(_row) });
     const petId = pet.id;
 
     // Moderation (T3): a banned owner's, or a blocked user's (either direction), pet

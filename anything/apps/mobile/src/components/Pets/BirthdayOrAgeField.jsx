@@ -1,5 +1,6 @@
-import React from "react";
-import { View, Text, TextInput } from "react-native";
+import React, { useState } from "react";
+import { View, Text, TextInput, Keyboard } from "react-native";
+import { Check } from "lucide-react-native";
 import DateField from "@/components/DateField";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
 import { PressableScale } from "@/components/ui";
@@ -15,14 +16,32 @@ const inputStyle = {
   borderColor: MATERIALS.hairline,
 };
 
+const captionStyle = [TYPE.footnote, { color: COLORS.mutedBrown }];
+
+function EstimateInput({ testID, label, value, onChange }) {
+  return (
+    <View style={{ flex: 1 }}>
+      <Text style={[...captionStyle, { marginBottom: SPACING.xs + 2 }]}>{label}</Text>
+      <TextInput
+        testID={testID}
+        accessibilityLabel={label}
+        style={inputStyle}
+        placeholder="0"
+        placeholderTextColor={COLORS.mutedBrown}
+        value={value}
+        onChangeText={(text) => onChange(text.replace(/[^0-9]/g, ""))}
+        keyboardType="number-pad"
+        maxLength={2}
+      />
+    </View>
+  );
+}
+
 /**
- * Birthday vs. estimated-age input, shared by profile-edit.jsx and
- * EditMedicalProfileModal.jsx (the onboarding version of this toggle is
- * StepBirthday, which additionally folds in adoption day). Model
- * (docs/roadmap.md): a known birthday always wins and the age shown
- * elsewhere is calculated live from it; an estimated age (years/months) is
- * only used when the owner has explicitly said the birthday isn't known —
- * `birthdayUnknown` is that explicit choice, not just "birthday is blank".
+ * Birth date, or an estimated age when the owner doesn't know it. Shared by onboarding, Edit Pet Profile and the
+ * medical profile. The birth date comes first; "I don't know the exact date" (`birthdayUnknown`, an explicit
+ * choice, not just a blank date) swaps it for the estimate. Only one of the two is saved.
+ * `estimateGrows`: the server keeps the date an estimate is given, so the age counts up from it.
  */
 export default function BirthdayOrAgeField({
   birthdayUnknown,
@@ -33,108 +52,19 @@ export default function BirthdayOrAgeField({
   onAgeYearsChange,
   ageMonths,
   onAgeMonthsChange,
+  estimateGrows = false,
 }) {
   const { t } = useTranslation();
-  const options = [
-    { value: false, label: t("feedUi.birthdayOrAgeField.iKnowTheBirthday") },
-    { value: true, label: t("feedUi.birthdayOrAgeField.iMNotSure") },
-  ];
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   return (
     <View>
-      <View
-        style={{
-          flexDirection: "row",
-          gap: SPACING.sm,
-          marginBottom: SPACING.sm + 2,
-        }}
-      >
-        {options.map((opt) => (
-          <PressableScale
-            key={String(opt.value)}
-            testID={opt.value ? "birthday-unsure" : "birthday-known"}
-            onPress={() => onToggleUnknown(opt.value)}
-            accessibilityRole="button"
-            style={{
-              flex: 1,
-              paddingVertical: SPACING.sm + 2,
-              paddingHorizontal: SPACING.md,
-              borderRadius: RADIUS.control,
-              backgroundColor:
-                birthdayUnknown === opt.value
-                  ? COLORS.coral
-                  : MATERIALS.surfaceSunken,
-              borderWidth: 1,
-              borderColor:
-                birthdayUnknown === opt.value ? COLORS.coral : MATERIALS.hairline,
-              alignItems: "center",
-            }}
-          >
-            <Text
-              style={[
-                TYPE.footnote,
-                {
-                  fontWeight: "700",
-                  color: birthdayUnknown === opt.value ? "#FFF" : COLORS.warmBrown,
-                },
-              ]}
-            >
-              {opt.label}
-            </Text>
-          </PressableScale>
-        ))}
-      </View>
-
-      {birthdayUnknown ? (
-        <View style={{ flexDirection: "row", gap: SPACING.md }}>
-          <View style={{ flex: 1 }}>
-            <Text
-              style={[
-                TYPE.footnote,
-                { color: COLORS.mutedBrown, marginBottom: SPACING.xs + 2 },
-              ]}
-            >
-              {t("feedUi.birthdayOrAgeField.estimatedYears")}
-            </Text>
-            <TextInput
-              testID="estimated-age-years"
-              style={inputStyle}
-              placeholder="0"
-              placeholderTextColor={COLORS.mutedBrown}
-              value={ageYears}
-              onChangeText={(text) =>
-                onAgeYearsChange(text.replace(/[^0-9]/g, ""))
-              }
-              keyboardType="number-pad"
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text
-              style={[
-                TYPE.footnote,
-                { color: COLORS.mutedBrown, marginBottom: SPACING.xs + 2 },
-              ]}
-            >
-              {t("feedUi.birthdayOrAgeField.estimatedMonths")}
-            </Text>
-            <TextInput
-              testID="estimated-age-months"
-              style={inputStyle}
-              placeholder="0"
-              placeholderTextColor={COLORS.mutedBrown}
-              value={ageMonths}
-              onChangeText={(text) =>
-                onAgeMonthsChange(text.replace(/[^0-9]/g, ""))
-              }
-              keyboardType="number-pad"
-            />
-          </View>
-        </View>
-      ) : (
+      {birthdayUnknown ? null : (
         <DateField
           testID="birthday-field"
           value={birthday}
           onChange={onBirthdayChange}
+          placeholder={t("feedUi.birthdayOrAgeField.pickBirthDate")}
           maximumDate={new Date()}
           fieldStyle={{
             backgroundColor: MATERIALS.surfaceSunken,
@@ -142,8 +72,73 @@ export default function BirthdayOrAgeField({
             borderColor: MATERIALS.hairline,
           }}
           textStyle={{ ...TYPE.body }}
+          open={calendarOpen}
+          onToggle={(next) => {
+            // The inline calendar must not open behind the keyboard.
+            if (next) Keyboard.dismiss();
+            setCalendarOpen(next);
+          }}
         />
       )}
+
+      <PressableScale
+        testID="birthday-unsure"
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: !!birthdayUnknown }}
+        onPress={() => {
+          Keyboard.dismiss();
+          setCalendarOpen(false);
+          onToggleUnknown(!birthdayUnknown);
+        }}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: SPACING.sm,
+          paddingVertical: SPACING.md,
+        }}
+      >
+        <View
+          style={{
+            width: 22,
+            height: 22,
+            borderRadius: 6,
+            borderWidth: 2,
+            borderColor: COLORS.coral,
+            backgroundColor: birthdayUnknown ? COLORS.coral : "transparent",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {birthdayUnknown ? <Check size={14} color="#FFF" /> : null}
+        </View>
+        <Text style={[TYPE.callout, { flex: 1, fontWeight: "700", color: COLORS.warmBrown }]}>
+          {t("feedUi.birthdayOrAgeField.unknownDate")}
+        </Text>
+      </PressableScale>
+
+      {birthdayUnknown ? (
+        <View>
+          <View style={{ flexDirection: "row", gap: SPACING.md }}>
+            <EstimateInput
+              testID="estimated-age-years"
+              label={t("feedUi.birthdayOrAgeField.estimatedYears")}
+              value={ageYears}
+              onChange={onAgeYearsChange}
+            />
+            <EstimateInput
+              testID="estimated-age-months"
+              label={t("feedUi.birthdayOrAgeField.estimatedMonths")}
+              value={ageMonths}
+              onChange={onAgeMonthsChange}
+            />
+          </View>
+          <Text style={[...captionStyle, { marginTop: SPACING.sm }]}>
+            {estimateGrows
+              ? t("feedUi.birthdayOrAgeField.estimateGrows")
+              : t("feedUi.birthdayOrAgeField.estimateHint")}
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 }

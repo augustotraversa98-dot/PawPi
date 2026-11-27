@@ -1521,7 +1521,8 @@
       "trainer": "Entrenamiento",
       "transport": "Transporte",
       "insurance": "Seguro",
-      "adoption": "Adopción"
+      "adoption": "Adopción",
+      "pet_friendly": "Lugar pet friendly"
     }
   },
   "activity": {
@@ -2198,7 +2199,6 @@
     "streakStarted": "🔥 Día 1 — el anillo de cuidado de {{name}} comenzó",
     "welcomePaw": "🐾 PawPi Welcome le dio a {{name}} su primera patita",
     "ringPrompt": "Sacá la primera foto de {{name}} para cerrar el anillo de hoy 🐾",
-    "ageApprox": "Una edad aproximada alcanza — podés actualizarla después.",
     "stepOf": "Paso {{current}} de {{total}}",
     "back": "Atrás",
     "next": "Siguiente",
@@ -2233,21 +2233,17 @@
     "breedNotSure": "No estoy seguro",
     "breedPlaceholder": "ej. Golden Retriever",
     "ageTitle": "¿Qué edad tiene {{name}}?",
-    "ageSubtitle": "La edad nos ayuda a sugerir las actividades y los controles de salud adecuados",
-    "ageYearsLabel": "Años",
-    "ageMonthsLabel": "Meses",
+    "ageSubtitle": "Elegí la fecha de nacimiento. Si no la sabés, poné una edad estimada.",
+    "birthDateLabel": "Fecha de nacimiento",
     "genderTitle": "¿Cuál es el sexo de {{name}}?",
     "genderSubtitle": "Elegí una opción",
     "genderFemale": "Hembra",
     "genderMale": "Macho",
     "weightTitle": "¿Cuánto pesa {{name}}?",
     "weightSubtitle": "Esto ayuda a seguir su salud con el tiempo",
-    "birthdayTitle": "¿Cuáles son los días especiales de {{name}}?",
-    "birthdaySubtitle": "Te ayudamos a celebrar: agregá uno, ambos, o omití por ahora.",
-    "birthdayLabel": "🎂 Cumpleaños (opcional)",
-    "birthdayPlaceholder": "Agregar un cumpleaños",
-    "gotchaLabel": "💝 Día de adopción (opcional)",
-    "gotchaPlaceholder": "Agregar un día de adopción",
+    "adoptionTitle": "¿Cuándo llegó {{name}} a tu familia?",
+    "adoptionSubtitle": "Es opcional. Agregá la fecha de adopción u omití por ahora.",
+    "adoptionLabel": "Fecha de adopción (opcional)",
     "notesTitle": "¿Algo importante que debamos recordar sobre {{name}}?",
     "notesSubtitle": "Puede incluir alergias, preferencias de comida, condiciones médicas, notas de comportamiento o cualquier cosa útil",
     "notesPlaceholder": "ej. Alérgico al pollo, ama los paseos largos, se pone nervioso con ruidos fuertes...",
@@ -2259,14 +2255,12 @@
     "reviewAge": "Edad",
     "reviewGender": "Sexo",
     "reviewWeight": "Peso",
-    "reviewSpecialDays": "Días especiales",
+    "reviewAdoption": "Fecha de adopción",
     "reviewNotes": "Notas",
     "reviewEdit": "Editar",
     "reviewNotSet": "Sin definir",
     "reviewNotSpecified": "Sin especificar",
     "reviewNone": "Ninguna",
-    "reviewYearsUnit": "años",
-    "reviewMonthsUnit": "meses",
     "successReady": "¡{{name}} está listo!",
     "successSubtitle": "Ahora podés empezar a registrar cuidados, compartir momentos y conocer amigos.",
     "successSetRoutine": "Configurar rutina de cuidado",
@@ -2309,7 +2303,7 @@
     "validation": {
       "name": "Agregá el nombre de tu perro para continuar",
       "breed": "Agregá una raza para continuar",
-      "age": "Agregá una edad (años o meses) para continuar",
+      "age": "Elegí la fecha de nacimiento o ingresá una edad estimada para continuar",
       "gender": "Elegí macho o hembra para continuar",
       "weight": "Agregá un peso para continuar"
     }
@@ -3639,7 +3633,7 @@
     "fieldBreed": "Raza",
     "fieldGender": "Género",
     "fieldWeight": "Peso",
-    "fieldBirthday": "Cumpleaños",
+    "fieldBirthday": "Fecha de nacimiento",
     "fieldAdoption": "Fecha de adopción",
     "fieldNotes": "Notas",
     "namePlaceholder": "Ej. Buddy",
@@ -3839,7 +3833,7 @@
     "sectionNotes": "Notas",
     "fieldBreed": "Raza",
     "breedPlaceholder": "ej., Golden Retriever",
-    "fieldBirthday": "Cumpleaños",
+    "fieldBirthday": "Fecha de nacimiento",
     "fieldAdoptionDate": "Fecha de adopción (opcional)",
     "fieldGender": "Sexo / Género",
     "fieldWeight": "Peso actual",
@@ -4845,11 +4839,17 @@
     "keyboardSafeFormModal": {
       "close": "Cerrar"
     },
+    "adoptionDateField": {
+      "placeholder": "Agregar la fecha de adopción",
+      "remove": "Quitar fecha"
+    },
     "birthdayOrAgeField": {
-      "iKnowTheBirthday": "Sé el cumpleaños",
-      "iMNotSure": "No estoy seguro",
+      "pickBirthDate": "Elegí la fecha de nacimiento",
+      "unknownDate": "No sé la fecha exacta",
       "estimatedYears": "Años estimados",
-      "estimatedMonths": "Meses estimados"
+      "estimatedMonths": "Meses estimados",
+      "estimateHint": "Con una estimación alcanza. La vamos a marcar como aproximada.",
+      "estimateGrows": "La vamos a mostrar como aproximada y sigue sumando desde el día que la guardes."
     },
     "shared": {
       "dayStreak": "Racha de {{count}} días"

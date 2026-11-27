@@ -582,8 +582,8 @@ describe("I. approving as asked needs a booking", () => {
       (await (await decide(grantId, "approve", {}, headers)).json()).error as string;
     const en = "First choose what this business can see. If you don't have “Choose what to share”, update PawPi. You can also deny the request.";
     const es = "Primero elegí qué puede ver este negocio. Si no te aparece “Elegir qué compartir”, actualizá PawPi. También podés rechazar el pedido.";
-    expect(await sentence()).toBe(en);
-    expect(await sentence({ "accept-language": "es-AR" })).toBe(es);
+    expect(await sentence()).toBe(es);
+    expect(await sentence({ "accept-language": "en-US" })).toBe(en);
     await raw`update user_profiles set preferred_locale = 'es' where id = ${OWNER.profileId}`;
     expect(await sentence({ "accept-language": "en-US" })).toBe(es);
     await raw`update user_profiles set preferred_locale = 'en' where id = ${OWNER.profileId}`;

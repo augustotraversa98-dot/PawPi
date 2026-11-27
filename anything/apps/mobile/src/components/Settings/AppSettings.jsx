@@ -66,6 +66,7 @@ import {
   TERMS_OF_SERVICE_URL,
   EULA_URL,
 } from "@/constants/legal";
+import { withAppLanguage } from "@/utils/webLinks";
 import { readTelemetryEnabled, setTelemetryEnabled } from "@/telemetry/telemetryControl";
 import { markExpectedNavigation } from "@/telemetry/navExpect";
 import { clearAccountStorage } from "@/utils/accountStorage";
@@ -191,7 +192,7 @@ function TelemetryToggle() {
           <TouchableOpacity
             testID="telemetry-learn-more"
             accessibilityRole="link"
-            onPress={() => Linking.openURL(PRIVACY_POLICY_URL).catch(() => {})}
+            onPress={() => Linking.openURL(withAppLanguage(PRIVACY_POLICY_URL)).catch(() => {})}
             style={{ alignSelf: "flex-start", paddingVertical: 4 }}
           >
             <Text style={{ fontSize: 12, color: C.coral, fontWeight: "700" }}>
@@ -279,7 +280,7 @@ function AiDocReadingToggle() {
           <TouchableOpacity
             testID="ai-docs-privacy"
             accessibilityRole="link"
-            onPress={() => Linking.openURL(PRIVACY_POLICY_URL).catch(() => {})}
+            onPress={() => Linking.openURL(withAppLanguage(PRIVACY_POLICY_URL)).catch(() => {})}
             style={{ alignSelf: "flex-start", paddingVertical: 4 }}
           >
             <Text style={{ fontSize: 12, color: C.coral, fontWeight: "700" }}>
@@ -791,7 +792,7 @@ export default function AppSettings({ mode = "petOwner" }) {
   // Help Center → the hosted help/contact page when configured, otherwise falls back to email.
   const openHelpCenter = () => {
     if (HELP_CENTER_URL) {
-      Linking.openURL(HELP_CENTER_URL).catch(() => openContactUs());
+      Linking.openURL(withAppLanguage(HELP_CENTER_URL)).catch(() => openContactUs());
     } else {
       openContactUs();
     }
@@ -800,7 +801,7 @@ export default function AppSettings({ mode = "petOwner" }) {
   // Privacy Policy / Terms / EULA → the hosted pages on www.pawpi.info (constants/legal.js). A row only
   // renders when its URL is configured, so there is never a dead link.
   const openLegalUrl = (url) => {
-    Linking.openURL(url).catch(() =>
+    Linking.openURL(withAppLanguage(url)).catch(() =>
       Alert.alert(t("settings.privacyPolicy"), t("common.pleaseTryAgain")),
     );
   };

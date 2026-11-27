@@ -5,9 +5,7 @@ import { render } from "@testing-library/react-native";
 // when there are none. Hooks/router mocked so this isolates the screen.
 
 let mockFollowedData = [];
-jest.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (k) => k }),
-}));
+jest.mock("react-i18next", () => require("@/i18n/testMock").makeReactI18nextMock("es"));
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
 }));
@@ -30,6 +28,8 @@ describe("FollowingBusinessesScreen (2.92)", () => {
     expect(getByText("Happy Paws")).toBeTruthy();
     expect(getByText("Corner Pet Shop")).toBeTruthy();
     expect(getAllByTestId("following-row")).toHaveLength(2);
+    expect(getByText("Veterinaria")).toBeTruthy();
+    expect(getByText("Tienda")).toBeTruthy();
     expect(queryByTestId("following-empty")).toBeNull();
   });
 

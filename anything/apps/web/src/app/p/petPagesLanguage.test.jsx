@@ -172,6 +172,29 @@ describe("tag page language", () => {
   });
 });
 
+describe("breed on the pet pages", () => {
+  const poodle = { ...TAG, pet: { ...TAG.pet, breed: "Poodle" } };
+
+  it.each([
+    ["tag", PublicTagPage],
+    ["vet card", PublicVetCardPage],
+  ])("is named in the viewer's language on the %s page", async (_, Page) => {
+    browserSpeaks("es-AR");
+    respond(poodle);
+    render(<Page />);
+    expect(await screen.findByText("Caniche")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "EN" }));
+    expect(screen.getByText("Poodle")).toBeInTheDocument();
+  });
+
+  it("is shown as stored when it is not a listed breed", async () => {
+    browserSpeaks("es-AR");
+    respond({ ...TAG, pet: { ...TAG.pet, breed: "Perro de la cuadra" } });
+    render(<PublicTagPage />);
+    expect(await screen.findByText("Perro de la cuadra")).toBeInTheDocument();
+  });
+});
+
 describe("vet card page language", () => {
   it("renders the full card in Spanish", async () => {
     browserSpeaks("es-AR");

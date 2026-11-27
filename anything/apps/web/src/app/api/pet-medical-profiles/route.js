@@ -3,6 +3,7 @@ import sql from "@/app/api/utils/sql";
 import { resolvePetLogOwner } from "@/app/api/utils/petLogAccess";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { getCurrentWeight, logCurrentWeight } from "@/app/api/utils/petWeight";
+import { estimateColumnsOf, planAgeUpdate, presentPet } from "@/app/api/utils/petAge";
 
 async function GET(request) {
   try {
@@ -46,7 +47,8 @@ async function GET(request) {
         p.adoption_date,
         p.avatar_url,
         p.notes,
-        p.owner_user_id AS _pet_owner
+        p.owner_user_id AS _pet_owner,
+        to_jsonb(p) AS _row
       FROM pets p
       WHERE p.id = ${petId}
         AND (p.owner_user_id = ${ownerUserId} OR app_user_has_pet_access(p.id))
@@ -60,6 +62,9 @@ async function GET(request) {
     // the helper column is stripped so the response shape is unchanged.
     const petOwnerId = pet[0]._pet_owner;
     delete pet[0]._pet_owner;
+    // `_row` only supplies the age estimate columns (absent on a database without them).
+    const petRow = { ...pet[0], ...estimateColumnsOf(pet[0]._row) };
+    delete petRow._row;
 
     // Get medical profile
     const medicalProfile = await sql`
@@ -89,7 +94,7 @@ async function GET(request) {
     );
 
     return Response.json({
-      pet: pet[0],
+      pet: presentPet(petRow),
       currentWeight,
       medicalProfile: medicalProfile.length > 0 ? medicalProfile[0] : null,
     });
@@ -175,26 +180,19 @@ async function POST(request) {
       updateFields.push(`breed = $${paramIndex++}`);
       updateValues.push(breed);
     }
-    if (birthday !== undefined) {
-      updateFields.push(`birthday = $${paramIndex++}`);
-      updateValues.push(birthday || null);
-    }
     if (adoptionDate !== undefined) {
       updateFields.push(`adoption_date = $${paramIndex++}`);
       updateValues.push(adoptionDate || null);
     }
-    // Age model (docs/roadmap.md): the client only sends ageYears/ageMonths
-    // when the owner has marked the birthday unknown. When birthday IS known,
-    // these keys are omitted (not sent as null) so a previously-stored
-    // estimate is left untouched rather than wiped — it's harmless once a
-    // birthday exists since display always prefers the calculated age.
-    if (ageYears !== undefined) {
-      updateFields.push(`age_years = $${paramIndex++}`);
-      updateValues.push(ageYears);
-    }
-    if (ageMonths !== undefined) {
-      updateFields.push(`age_months = $${paramIndex++}`);
-      updateValues.push(ageMonths);
+    // Birthday and age together: utils/petAge.js decides what an edit means, and the column names come from there.
+    // The client only sends ageYears/ageMonths for an estimate.
+    if (birthday !== undefined || ageYears !== undefined || ageMonths !== undefined) {
+      const [stored] = await sql`SELECT * FROM pets WHERE id = ${petId} AND owner_user_id = ${anchorOwnerId}`;
+      const ageWrites = planAgeUpdate(stored, { birthday, age_years: ageYears, age_months: ageMonths });
+      for (const [column, value] of Object.entries(ageWrites)) {
+        updateFields.push(`${column} = $${paramIndex++}`);
+        updateValues.push(value);
+      }
     }
     if (gender !== undefined) {
       updateFields.push(`gender = $${paramIndex++}`);

@@ -50,9 +50,10 @@ a pending or active row past its date reads `expired`, and `?status=` filters on
 
 `PATCH /api/care-access/grants/[grantId]` `{action: "approve"}` answers 409 `code: "choose_sections"` when the pending
 request was filed by accepting an invite link **and** the business has no booking for that pet. Nothing changes and
-nobody is notified. `error` is a sentence in the owner's language (stored language, else `Accept-Language`, else
-English) that says to choose what to share, to update PawPi if that option is missing, or to deny. `deny`, `revoke`,
-approving any other request and sharing by section are not affected.
+nobody is notified. `error` is a sentence in the owner's language (stored language; without one, English only when
+`Accept-Language` prefers English over Spanish, else Spanish) that says to choose what to share, to update PawPi if
+that option is missing, or to deny. `deny`, `revoke`, approving any other request and sharing by section are not
+affected.
 
 - **From an invite:** `care_access_invites` has a used invite of the same owner and pet, `used_by_provider_id` equal to
   the request's provider and `used_at` equal to the request's `created_at`. The accept writes both in one transaction,

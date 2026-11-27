@@ -375,6 +375,18 @@ ACTION 1).
 > `GET /api/posts/friend-streaks`, which answers `available: false` while the function is absent. **Hand-applied after
 > merge.** Verify: `supabase/verify_0155.sql` (all PASS). Proven in `friend-streaks.integration.test.ts`.
 
+> **0156** gives a pet's age a birth date or a growing estimate. Two additive columns on `pets`
+> (`age_estimate_months`, `age_estimated_on`; both nullable and set together; no row rewritten; existing `pets` row
+> policies cover them), the pure `app_pet_age(birthday, estimate_months, estimated_on, age_years, age_months,
+> today)`, and replaced `app_emergency_card_json` (0152 + computed age) and `app_activity_cohort` (0099 + computed
+> ages). **Precedence everywhere:** `birthday` > estimate that still equals `age_years*12 + age_months` > stored
+> age, unchanged. The same rule lives in `web/src/app/api/utils/petAge.js` and `mobile/src/utils/petAge.js`; all
+> three run `web/test/fixtures/petAgeVectors.json`. `pets.birthday` stays an exact date (never write an estimate
+> into it); `pets.adoption_date` is the separate adoption date. Read pet ages through `presentPet` /
+> `app_pet_age`, not the raw columns. If 0099, 0146 or 0152 is re-run, re-run 0156. Verify:
+> `supabase/verify_0156.sql`. Hand-applied after merge; the web app works without it (an estimate is saved as a
+> plain age). Proven in `pet-age-estimate.integration.test.ts`.
+
 Still deferred: **no seed data.**
 
 ---

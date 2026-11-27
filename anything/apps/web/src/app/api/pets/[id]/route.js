@@ -9,6 +9,7 @@ import {
   isHandleUniqueViolation,
 } from "@/app/api/utils/petHandle";
 import { getCurrentWeight, logCurrentWeight } from "@/app/api/utils/petWeight";
+import { planAgeUpdate, presentPet } from "@/app/api/utils/petAge";
 
 // 409 for a taken handle: friendly copy plus up to 3 free alternatives (additive for old clients).
 async function handleTakenResponse(handle) {
@@ -163,13 +164,11 @@ async function PATCH(request, { params }) {
       updates.push(`breed = $${paramIndex++}`);
       values.push(breed);
     }
-    if (age_years !== undefined) {
-      updates.push(`age_years = $${paramIndex++}`);
-      values.push(age_years);
-    }
-    if (age_months !== undefined) {
-      updates.push(`age_months = $${paramIndex++}`);
-      values.push(age_months);
+    // Birthday and age together: utils/petAge.js decides what an edit means, and the column names come from there.
+    const ageWrites = planAgeUpdate(existingPet[0], { birthday, age_years, age_months });
+    for (const [column, value] of Object.entries(ageWrites)) {
+      updates.push(`${column} = $${paramIndex++}`);
+      values.push(value);
     }
     if (gender !== undefined) {
       updates.push(`gender = $${paramIndex++}`);
@@ -182,10 +181,6 @@ async function PATCH(request, { params }) {
     if (!loggingWeight && weight_unit !== undefined) {
       updates.push(`weight_unit = $${paramIndex++}`);
       values.push(weight_unit);
-    }
-    if (birthday !== undefined) {
-      updates.push(`birthday = $${paramIndex++}`);
-      values.push(birthday);
     }
     if (adoption_date !== undefined) {
       updates.push(`adoption_date = $${paramIndex++}`);
@@ -238,7 +233,7 @@ async function PATCH(request, { params }) {
       updatedPet = { ...updatedPet, weight: numericWeight, weight_unit: unitForWeight };
     }
 
-    return Response.json({ pet: updatedPet });
+    return Response.json({ pet: presentPet(updatedPet) });
   } catch (error) {
     console.error(
       "[PATCH /api/pets/[id]] ========================================",
@@ -303,7 +298,7 @@ async function GET(request, { params }) {
       pet[0].weight_unit,
     );
 
-    return Response.json({ pet: { ...pet[0], ...currentWeight } });
+    return Response.json({ pet: { ...presentPet(pet[0]), ...currentWeight } });
   } catch (error) {
     console.error("[GET /api/pets/[id]] ERROR:", error);
     return Response.json({ error: "Failed to fetch pet" }, { status: 500 });

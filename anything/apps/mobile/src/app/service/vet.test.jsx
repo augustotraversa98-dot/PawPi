@@ -47,10 +47,11 @@ test("renders a card per provider from the discovery hook", () => {
     isError: false,
     refetch: jest.fn(),
   };
-  const { getByText } = render(<VetScreen />);
+  const { getByText, getAllByText } = render(<VetScreen />);
   expect(getByText("Happy Paws Clinic")).toBeTruthy();
   expect(getByText("City Vet")).toBeTruthy();
   expect(getByText("Friendly vets")).toBeTruthy();
+  expect(getAllByText("Vet")).toHaveLength(2);
 });
 
 test("shows the empty state when no providers exist (no fakes)", () => {

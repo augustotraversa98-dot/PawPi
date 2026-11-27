@@ -27,6 +27,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import { COLORS, TYPE, RADIUS, SPACING, MATERIALS } from "@/constants/theme";
 import { PRIVACY_POLICY_URL } from "@/constants/legal";
+import { withAppLanguage } from "@/utils/webLinks";
 import { useUpload } from "@/utils/useUpload";
 import {
   DOCUMENT_UPLOAD_OPTIONS,
@@ -650,7 +651,7 @@ export function AddDocumentModal({ visible, onClose, petId, onSaved }) {
             accessibilityRole={PRIVACY_POLICY_URL ? "link" : undefined}
             onPress={
               PRIVACY_POLICY_URL
-                ? () => Linking.openURL(PRIVACY_POLICY_URL).catch(() => {})
+                ? () => Linking.openURL(withAppLanguage(PRIVACY_POLICY_URL)).catch(() => {})
                 : undefined
             }
             style={

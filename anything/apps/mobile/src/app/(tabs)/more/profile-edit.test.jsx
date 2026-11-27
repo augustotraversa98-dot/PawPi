@@ -2,8 +2,9 @@
 // birthday and raw age_years/age_months used to be edited as separate,
 // unlinked inputs shown together at all times. BirthdayOrAgeField (shared
 // with EditMedicalProfileModal.jsx) replaces that with an explicit "I know
-// the birthday" / "I'm not sure" toggle, and the save payload must leave a
-// previously-stored estimate untouched when the birthday is known.
+// date plus "I don't know the exact date", and the save payload must leave a
+// previously-stored estimate untouched when the birthday is known. A save only
+// carries an estimate the owner entered or changed.
 
 import React from "react";
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
@@ -71,19 +72,19 @@ afterEach(() => {
 });
 
 describe("Dog Profile edit — birthday vs. estimated age", () => {
-  it("defaults to 'I'm not sure' when the pet has no birthday yet", () => {
+  it("opens on the estimate when the pet has no birthday yet", () => {
     mockCurrentPet = { id: 1, name: "Rex" };
     const api = renderScreen();
     expect(api.getByTestId("estimated-age-years")).toBeTruthy();
   });
 
-  it("defaults to 'I know the birthday' when the pet already has one", () => {
+  it("opens on the birth date when the pet already has one", () => {
     mockCurrentPet = { id: 1, name: "Rex", birthday: "2020-01-01" };
     const api = renderScreen();
     expect(api.queryByTestId("estimated-age-years")).toBeNull();
   });
 
-  it("sends the typed estimate and clears birthday when saving in 'I'm not sure' mode", async () => {
+  it("sends the typed estimate and clears birthday when saving the estimate", async () => {
     mockCurrentPet = { id: 1, name: "Rex", birthday: "2020-01-01" };
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
@@ -111,13 +112,86 @@ describe("Dog Profile edit — birthday vs. estimated age", () => {
     });
 
     const api = renderScreen();
-    fireEvent.press(api.getByTestId("birthday-known"));
+    fireEvent.press(api.getByTestId("birthday-unsure")); // unticks "I don't know"
     fireEvent.press(api.getByText("Save Changes"));
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     const body = requestBody();
     expect(body).not.toHaveProperty("age_years");
     expect(body).not.toHaveProperty("age_months");
+  });
+});
+
+describe("Dog Profile edit — a save never restarts an estimate", () => {
+  const estimated = {
+    id: 1,
+    name: "Rex",
+    age_years: 3,
+    age_months: 0,
+    age_estimate_months: 24,
+    age_estimated_on: "2025-11-15",
+  };
+
+  const save = async (api) => {
+    fireEvent.press(api.getByText("Save Changes"));
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    return requestBody();
+  };
+
+  beforeEach(() => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ pet: { id: 1 } }) });
+  });
+
+  it("leaves the age out when the estimate was not touched, with the shown age prefilled", async () => {
+    mockCurrentPet = estimated;
+    const api = renderScreen();
+    expect(api.getByTestId("estimated-age-years").props.value).toBe("3");
+    expect(api.getByText(/keep counting from the day you save it/)).toBeTruthy();
+    const body = await save(api);
+    expect(body.birthday).toBeNull();
+    expect(body).not.toHaveProperty("age_years");
+    expect(body).not.toHaveProperty("age_months");
+  });
+
+  it("sends both numbers when one of them changed", async () => {
+    mockCurrentPet = estimated;
+    const api = renderScreen();
+    fireEvent.changeText(api.getByTestId("estimated-age-months"), "6");
+    const body = await save(api);
+    expect([body.age_years, body.age_months]).toEqual([3, 6]);
+  });
+
+  it("sends empty values when the estimate was erased", async () => {
+    mockCurrentPet = estimated;
+    const api = renderScreen();
+    fireEvent.changeText(api.getByTestId("estimated-age-years"), "");
+    fireEvent.changeText(api.getByTestId("estimated-age-months"), "");
+    const body = await save(api);
+    expect([body.age_years, body.age_months]).toEqual([null, null]);
+  });
+
+  it("starts the estimate empty when switching from a birth date", async () => {
+    mockCurrentPet = { id: 1, name: "Rex", birthday: "2020-01-01", age_years: 6, age_months: 10 };
+    const api = renderScreen();
+    fireEvent.press(api.getByTestId("birthday-unsure"));
+    expect(api.getByTestId("estimated-age-years").props.value).toBe("");
+    const body = await save(api);
+    expect([body.birthday, body.age_years, body.age_months]).toEqual([null, null, null]);
+  });
+
+  it("promises no growth when the server does not keep estimates", () => {
+    mockCurrentPet = { id: 1, name: "Rex", age_years: 3, age_months: 0 };
+    const api = renderScreen();
+    expect(api.queryByText(/keep counting from the day you save it/)).toBeNull();
+    expect(api.getByText(/mark it as approximate/)).toBeTruthy();
+  });
+
+  it("removes the adoption date", async () => {
+    mockCurrentPet = { ...estimated, adoption_date: "2024-05-01" };
+    const api = renderScreen();
+    fireEvent.press(api.getByTestId("adoption-date-remove"));
+    const body = await save(api);
+    expect(body.adoption_date).toBeNull();
   });
 });
 

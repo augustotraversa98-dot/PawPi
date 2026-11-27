@@ -142,6 +142,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // 0156 replaced the card assembler again: put it back after this file's re-applies of 0146 and 0152.
+  await raw.unsafe(readMigration('0156_pet_age_estimate.sql'));
   await app.end();
   await raw.end();
 });

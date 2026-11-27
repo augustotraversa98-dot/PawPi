@@ -164,7 +164,8 @@ describe('POST /api/pet-medical-profiles — owner with 2+ pets', () => {
     expect(petB.age_months).toBe(9);
   });
 
-  it('omitting ageYears/ageMonths from the body leaves a previously-stored estimate untouched', async () => {
+  // 0156: a birth date and an estimate replace each other, so a newly added birthday clears the stored age.
+  it('adding a birthday (no ageYears/ageMonths in the body) clears the previously-stored age', async () => {
     await seedOwnerWithPet(raw, OWNER);
     await raw`update pets set age_years = 3, age_months = 6 where id = ${OWNER.petId}`;
 
@@ -177,7 +178,22 @@ describe('POST /api/pet-medical-profiles — owner with 2+ pets', () => {
 
     const [petA] = await raw`select birthday, age_years, age_months from pets where id = ${OWNER.petId}`;
     expect(new Date(petA.birthday).toISOString().slice(0, 10)).toBe('2021-03-15');
-    // The old estimate is left in place, harmless (display always prefers birthday).
+    expect(petA.age_years).toBeNull();
+    expect(petA.age_months).toBeNull();
+  });
+
+  it('saving the same birthday again, or no birthday at all, leaves the stored age alone', async () => {
+    await seedOwnerWithPet(raw, OWNER);
+    await raw`update pets set birthday = '2021-03-15', age_years = 3, age_months = 6 where id = ${OWNER.petId}`;
+
+    authState.session = { user: { id: OWNER.authUserId, email: 'owner@example.com', name: 'Owner' } };
+
+    for (const body of [{ birthday: '2021-03-15' }, { breed: 'Beagle' }]) {
+      const res = await POST(medicalProfileRequest({ petId: OWNER.petId, ...body }));
+      expect(res.status).toBe(200);
+    }
+
+    const [petA] = await raw`select age_years, age_months from pets where id = ${OWNER.petId}`;
     expect(petA.age_years).toBe(3);
     expect(petA.age_months).toBe(6);
   });

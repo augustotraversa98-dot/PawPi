@@ -1,6 +1,7 @@
 // Copy for the private-link pet pages (/p/tag/[token] and /p/card/[token]), both languages: the ONE source for
-// every word those two pages show. Spanish is es-AR (voseo). Pet data (name, breed, allergies…) is shown as
-// the family typed it; only fixed values the app stores (species, spay/neuter status) are translated here.
+// every word those two pages show. Spanish is es-AR (voseo). Pet data (name, allergies…) is shown as the family
+// typed it; only fixed values the app stores are translated: species and spay/neuter status here, listed breeds
+// in breeds.js.
 // Leaf module: no React, no router. copy.test.js keeps the two languages in step.
 
 export const PET_PAGE_COPY = {

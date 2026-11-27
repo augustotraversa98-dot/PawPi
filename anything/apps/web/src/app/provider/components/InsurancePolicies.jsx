@@ -7,6 +7,10 @@ import {
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
 import { centsToCurrency, dollarsToCents } from "../lib/money";
+import insuranceCopy from "../i18n/insurance";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { fill } from "../i18n/lib/format";
+import { serverErrorMessage } from "../i18n/lib/serverError";
 
 // Provider INSURANCE POLICIES (Wave 7 ticket 2.72). A `insurance`-capable insurer sees applications +
 // bound policies (pet/owner, premium, status, payment state), issues a policy_number + premium, and
@@ -14,15 +18,8 @@ import { centsToCurrency, dollarsToCents } from "../lib/money";
 // plain status='active'), so this view never activates without payment. Empty → empty state; a
 // non-insurer provider gets a clean capability message (403).
 
-const STATUS_LABEL = {
-  application: "Application",
-  payment_pending: "Awaiting payment",
-  active: "Active",
-  lapsed: "Lapsed",
-  cancelled: "Cancelled",
-};
-
 function IssueRow({ policy, onIssue, disabled }) {
+  const { t, lang } = useProviderCopy(insuranceCopy);
   const [number, setNumber] = useState(policy.policy_number || "");
   const [price, setPrice] = useState(
     policy.premium_cents != null ? (policy.premium_cents / 100).toFixed(2) : "",
@@ -33,7 +30,7 @@ function IssueRow({ policy, onIssue, disabled }) {
       <input
         value={number}
         onChange={(e) => setNumber(e.target.value)}
-        placeholder="Policy no."
+        placeholder={t.numberPlaceholder}
         className="w-32 rounded-lg border border-[#FFD9B3] px-2 py-1 text-sm"
       />
       <span className="text-sm text-[#7A6254]">$</span>
@@ -48,14 +45,14 @@ function IssueRow({ policy, onIssue, disabled }) {
         onChange={(e) => setPeriod(e.target.value)}
         className="rounded-lg border border-[#FFD9B3] px-2 py-1 text-sm"
       >
-        <option value="monthly">monthly</option>
-        <option value="annual">annual</option>
+        <option value="monthly">{t.billing.monthly}</option>
+        <option value="annual">{t.billing.annual}</option>
       </select>
       <button
         type="button"
         disabled={disabled}
         onClick={() => {
-          const { cents, error } = dollarsToCents(price);
+          const { cents, error } = dollarsToCents(price, lang);
           if (error) return toast.error(error);
           onIssue({
             policy_number: number.trim() || null,
@@ -66,7 +63,7 @@ function IssueRow({ policy, onIssue, disabled }) {
         }}
         className="rounded-lg bg-[#FF6F61] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
       >
-        Issue / update
+        {t.issue}
       </button>
     </div>
   );
@@ -76,13 +73,14 @@ export default function InsurancePolicies({ providerId }) {
   const { data, isLoading, isError, error } =
     useProviderInsurancePolicies(providerId);
   const action = useInsurancePolicyAction(providerId);
+  const { t, lang } = useProviderCopy(insuranceCopy);
 
   const run = (policyId, patch, verb) =>
     action.mutate(
       { policyId, ...patch },
       {
         onSuccess: () => toast.success(verb),
-        onError: (e) => toast.error(e?.message || "Action failed"),
+        onError: (e) => toast.error(serverErrorMessage(e, lang, t.actionFailed, insuranceCopy)),
       },
     );
 
@@ -99,8 +97,8 @@ export default function InsurancePolicies({ providerId }) {
         <div className="rounded-2xl border border-[#FFD9B3] bg-white p-8 text-center">
           <p className="text-sm text-[#7A6254]">
             {error?.status === 403
-              ? "This business doesn't offer insurance (the 'insurance' capability)."
-              : error?.message || "Couldn't load policies."}
+              ? t.noCapability
+              : serverErrorMessage(error, lang, t.loadFailed, insuranceCopy)}
           </p>
         </div>
       </div>
@@ -114,16 +112,14 @@ export default function InsurancePolicies({ providerId }) {
       <header className="mb-6 flex items-center gap-2">
         <Shield className="h-6 w-6" style={{ color: COLORS.coral }} />
         <div>
-          <h1 className="text-2xl font-bold text-[#3B241B]">Policies</h1>
-          <p className="text-sm text-[#7A6254]">
-            Applications and bound policies — only this insurer's.
-          </p>
+          <h1 className="text-2xl font-bold text-[#3B241B]">{t.title}</h1>
+          <p className="text-sm text-[#7A6254]">{t.subtitle}</p>
         </div>
       </header>
 
       {policies.length === 0 ? (
         <div className="rounded-2xl border border-[#FFD9B3] bg-white p-10 text-center text-sm text-[#B8A99D]">
-          No policies yet.
+          {t.empty}
         </div>
       ) : (
         <ul className="space-y-3">
@@ -137,23 +133,25 @@ export default function InsurancePolicies({ providerId }) {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-bold text-[#3B241B]">
-                      {p.plan_name || "Plan"}
+                      {p.plan_name || t.planFallback}
                       {p.policy_number ? ` · ${p.policy_number}` : ""}
                     </p>
                     <p className="text-sm text-[#7A6254]">
-                      {p.pet_name || "Pet"}
+                      {p.pet_name || t.petFallback}
                       {p.owner_name ? ` · ${p.owner_name}` : ""}
                       {p.premium_cents != null
-                        ? ` · ${centsToCurrency(p.premium_cents)}${p.billing_period ? `/${p.billing_period}` : ""}`
+                        ? ` · ${centsToCurrency(p.premium_cents, lang)}${p.billing_period ? `/${t.perPeriod[p.billing_period] ?? p.billing_period}` : ""}`
                         : ""}
                     </p>
                     <p className="mt-1 text-xs text-[#7A6254]">
-                      {p.terms_accepted_at ? "Terms accepted" : "Terms pending"}
-                      {p.payment_status ? ` · payment ${p.payment_status}` : ""}
+                      {p.terms_accepted_at ? t.termsAccepted : t.termsPending}
+                      {p.payment_status
+                        ? ` · ${t.paymentStatus[p.payment_status] ?? fill(t.paymentOther, { status: p.payment_status })}`
+                        : ""}
                     </p>
                   </div>
                   <span className="rounded-full bg-[#FFF1E2] px-2.5 py-1 text-xs font-semibold text-[#B75D32]">
-                    {STATUS_LABEL[p.status] || p.status}
+                    {t.status[p.status] ?? p.status}
                   </span>
                 </div>
 
@@ -162,15 +160,15 @@ export default function InsurancePolicies({ providerId }) {
                     <IssueRow
                       policy={p}
                       disabled={action.isPending}
-                      onIssue={(patch) => run(p.id, patch, "Policy updated")}
+                      onIssue={(patch) => run(p.id, patch, t.updated)}
                     />
                     <button
                       type="button"
                       disabled={action.isPending}
-                      onClick={() => run(p.id, { status: "cancelled" }, "Cancelled")}
+                      onClick={() => run(p.id, { status: "cancelled" }, t.cancelled)}
                       className="mt-2 rounded-lg px-3 py-1.5 text-sm font-semibold text-[#B23A2E] disabled:opacity-50"
                     >
-                      Cancel
+                      {t.cancel}
                     </button>
                   </>
                 )}

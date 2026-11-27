@@ -38,6 +38,7 @@ import useUpload from "@/utils/useUpload";
 import { isValidCoord } from "@/utils/walkBuddies";
 import { toServiceRows, rowToServiceBody } from "@/utils/enrichmentDraft";
 import { friendlyErrorMessage } from "@/utils/appAlert";
+import { withAppLanguage } from "@/utils/webLinks";
 
 // The capabilities (services) a business can offer. A provider has MANY capabilities
 // (the CORE MODEL — see docs/phase2-tickets/00-README.md), so onboarding is MULTI-select:
@@ -845,7 +846,7 @@ function SuccessState({ heading, body, providerName }) {
       </Text>
 
       <TouchableOpacity
-        onPress={() => WEB_DASHBOARD_URL && Linking.openURL(WEB_DASHBOARD_URL)}
+        onPress={() => WEB_DASHBOARD_URL && Linking.openURL(withAppLanguage(WEB_DASHBOARD_URL))}
         disabled={!WEB_DASHBOARD_URL}
         style={{
           flexDirection: "row",

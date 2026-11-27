@@ -10,18 +10,26 @@ import {
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
 import { centsToCurrency, centsToInput, dollarsToCents } from "../lib/money";
+import walkPackagesCopy from "../i18n/walkPackages";
+import sharedCopy from "../i18n/shared";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { fill, plural } from "../i18n/lib/format";
+import { serverErrorMessage } from "../i18n/lib/serverError";
 
 // Walk packages editor (ticket B2). Only rendered for walker-capable providers (gated by the
 // caller). Lists the walker's prepaid packs (active + inactive), and offers the THREE DEFAULT
 // pack sizes (single / 10 / 20) as SUGGESTIONS the walker prices + activates — never auto-created
 // rows (real data only). An owner buys these on mobile; a paid order grants a credit balance.
 const DEFAULT_SUGGESTIONS = [1, 10, 20];
+const COLUMNS = ["package", "price", "perWalk", "status", "actions"];
 
 export default function ProviderWalkPackages({ providerId }) {
   const { data: packages, isLoading, isError, error } = useWalkPackages(providerId);
   const create = useCreateWalkPackage(providerId);
   const update = useUpdateWalkPackage(providerId);
   const deactivate = useDeactivateWalkPackage(providerId);
+  const { t, lang } = useProviderCopy(walkPackagesCopy);
+  const failed = (err, fallback) => serverErrorMessage(err, lang, fallback, walkPackagesCopy);
 
   // null = closed; { walks_count } = add (optionally pre-seeded); { ...pkg } = edit.
   const [editing, setEditing] = useState(null);
@@ -39,32 +47,28 @@ export default function ProviderWalkPackages({ providerId }) {
         { packageId: editing.id, ...body },
         {
           onSuccess: () => {
-            toast.success("Package updated");
+            toast.success(t.toasts.updated);
             setEditing(null);
           },
-          onError: (err) => toast.error(err?.message || "Couldn't save package"),
+          onError: (err) => toast.error(failed(err, t.toasts.saveFailed)),
         },
       );
     } else {
       create.mutate(body, {
         onSuccess: () => {
-          toast.success("Package added");
+          toast.success(t.toasts.added);
           setEditing(null);
         },
-        onError: (err) => toast.error(err?.message || "Couldn't add package"),
+        onError: (err) => toast.error(failed(err, t.toasts.addFailed)),
       });
     }
   };
 
   const onDeactivate = (p) => {
-    if (
-      window.confirm(
-        `Deactivate the ${p.walks_count}-walk pack? It stops appearing for owners to buy. Already-purchased balances keep working, and you can reactivate it later.`,
-      )
-    ) {
+    if (window.confirm(plural(t.confirmDeactivate, p.walks_count, lang))) {
       deactivate.mutate(p.id, {
-        onSuccess: () => toast.success("Package deactivated"),
-        onError: (err) => toast.error(err?.message || "Couldn't deactivate package"),
+        onSuccess: () => toast.success(t.toasts.deactivated),
+        onError: (err) => toast.error(failed(err, t.toasts.deactivateFailed)),
       });
     }
   };
@@ -73,8 +77,8 @@ export default function ProviderWalkPackages({ providerId }) {
     update.mutate(
       { packageId: p.id, active: true },
       {
-        onSuccess: () => toast.success("Package reactivated"),
-        onError: (err) => toast.error(err?.message || "Couldn't reactivate package"),
+        onSuccess: () => toast.success(t.toasts.reactivated),
+        onError: (err) => toast.error(failed(err, t.toasts.reactivateFailed)),
       },
     );
   };
@@ -90,10 +94,8 @@ export default function ProviderWalkPackages({ providerId }) {
             <Footprints className="h-5 w-5" style={{ color: COLORS.terracotta }} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-[#3B241B]">Walk packages</h1>
-            <p className="text-sm text-[#7A6254]">
-              Prepaid walk bundles owners buy — the discount is baked into each price
-            </p>
+            <h1 className="text-2xl font-bold text-[#3B241B]">{t.title}</h1>
+            <p className="text-sm text-[#7A6254]">{t.subtitle}</p>
           </div>
         </div>
 
@@ -104,7 +106,7 @@ export default function ProviderWalkPackages({ providerId }) {
           style={{ backgroundColor: COLORS.coral }}
         >
           <Plus className="h-4 w-4" />
-          Add package
+          {t.addPackage}
         </button>
       </div>
 
@@ -112,7 +114,7 @@ export default function ProviderWalkPackages({ providerId }) {
       {suggestions.length > 0 && (
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-[#7A6254]">
-            Quick add
+            {t.quickAdd}
           </span>
           {suggestions.map((n) => (
             <button
@@ -122,7 +124,7 @@ export default function ProviderWalkPackages({ providerId }) {
               className="rounded-full border-2 px-3 py-1 text-sm font-semibold"
               style={{ borderColor: COLORS.peach, color: COLORS.terracotta, backgroundColor: "#FFF7EF" }}
             >
-              + {n === 1 ? "Single walk" : `${n}-pack`}
+              + {n === 1 ? t.singleWalk : fill(t.packOf, { count: n })}
             </button>
           ))}
         </div>
@@ -132,30 +134,28 @@ export default function ProviderWalkPackages({ providerId }) {
         {isLoading ? (
           <div className="flex items-center justify-center gap-3 px-6 py-16 text-[#7A6254]">
             <Loader2 className="h-5 w-5 animate-spin" style={{ color: COLORS.coral }} />
-            Loading packages…
+            {t.loading}
           </div>
         ) : isError ? (
           <div className="px-6 py-16 text-center">
-            <p className="font-semibold text-[#B23B30]">Couldn't load packages</p>
-            <p className="mt-1 text-sm text-[#7A6254]">{error?.message || "Please try again."}</p>
+            <p className="font-semibold text-[#B23B30]">{t.loadFailedTitle}</p>
+            <p className="mt-1 text-sm text-[#7A6254]">{failed(error, t.loadFailedBody)}</p>
           </div>
         ) : list.length === 0 ? (
           <div className="px-6 py-16 text-center">
-            <p className="text-base font-semibold text-[#3B241B]">No packages yet</p>
-            <p className="mt-1 text-sm text-[#7A6254]">
-              Add a pack (or use a quick-add above) so owners can prepay for walks.
-            </p>
+            <p className="text-base font-semibold text-[#3B241B]">{t.emptyTitle}</p>
+            <p className="mt-1 text-sm text-[#7A6254]">{t.emptyBody}</p>
           </div>
         ) : (
           <table className="w-full border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-[#FFF1E2] bg-[#FFFBF6]">
-                {["Package", "Price", "Per walk", "Status", "Actions"].map((h) => (
+                {COLUMNS.map((column) => (
                   <th
-                    key={h}
+                    key={column}
                     className="px-4 py-3 text-xs font-bold uppercase tracking-wide text-[#7A6254]"
                   >
-                    {h}
+                    {t.columns[column]}
                   </th>
                 ))}
               </tr>
@@ -175,13 +175,13 @@ export default function ProviderWalkPackages({ providerId }) {
                     }`}
                   >
                     <td className="px-4 py-3 align-top font-semibold text-[#3B241B]">
-                      {p.walks_count === 1 ? "Single walk" : `${p.walks_count} walks`}
+                      {p.walks_count === 1 ? t.singleWalk : fill(t.walks, { count: p.walks_count })}
                     </td>
                     <td className="px-4 py-3 align-top text-[#3B241B]">
-                      {centsToCurrency(p.price_cents)}
+                      {centsToCurrency(p.price_cents, lang)}
                     </td>
                     <td className="px-4 py-3 align-top text-[#7A6254]">
-                      {centsToCurrency(perWalk)}
+                      {centsToCurrency(perWalk, lang)}
                     </td>
                     <td className="px-4 py-3 align-top">
                       {inactive ? (
@@ -189,24 +189,24 @@ export default function ProviderWalkPackages({ providerId }) {
                           className="inline-block rounded-full px-2.5 py-1 text-xs font-semibold"
                           style={{ backgroundColor: "#EFEAE6", color: "#7A6254" }}
                         >
-                          Inactive
+                          {t.inactive}
                         </span>
                       ) : (
                         <span
                           className="inline-block rounded-full px-2.5 py-1 text-xs font-semibold"
                           style={{ backgroundColor: "#E5F4EC", color: "#1F7A4D" }}
                         >
-                          Active
+                          {t.active}
                         </span>
                       )}
                     </td>
                     <td className="px-4 py-3 align-top">
                       <div className="flex flex-wrap items-center gap-2">
-                        <RowButton label="Edit" Icon={Pencil} onClick={() => setEditing(p)} disabled={busy} variant="muted" />
+                        <RowButton label={t.edit} Icon={Pencil} onClick={() => setEditing(p)} disabled={busy} variant="muted" />
                         {inactive ? (
-                          <RowButton label="Reactivate" Icon={Power} onClick={() => onReactivate(p)} disabled={busy} variant="primary" />
+                          <RowButton label={t.reactivate} Icon={Power} onClick={() => onReactivate(p)} disabled={busy} variant="primary" />
                         ) : (
-                          <RowButton label="Deactivate" Icon={Ban} onClick={() => onDeactivate(p)} disabled={busy} variant="danger" />
+                          <RowButton label={t.deactivate} Icon={Ban} onClick={() => onDeactivate(p)} disabled={busy} variant="danger" />
                         )}
                       </div>
                     </td>
@@ -236,6 +236,7 @@ const inputCls =
 
 function PackageFormModal({ pkg, seedCount, onClose, onSubmit, saving }) {
   const isEdit = pkg != null;
+  const { t, lang } = useProviderCopy(walkPackagesCopy);
   const {
     register,
     handleSubmit,
@@ -259,12 +260,12 @@ function PackageFormModal({ pkg, seedCount, onClose, onSubmit, saving }) {
   const submit = (values) => {
     const walks = parseInt(values.walks_count, 10);
     if (!Number.isInteger(walks) || walks <= 0) {
-      setError("walks_count", { type: "validate", message: "Walks must be a positive whole number" });
+      setError("walks_count", { type: "validate" });
       return;
     }
     const price = dollarsToCents(values.price);
     if (price.error) {
-      setError("price", { type: "validate", message: price.error });
+      setError("price", { type: "validate" });
       return;
     }
     onSubmit({ walks_count: walks, price_cents: price.cents ?? 0 });
@@ -275,17 +276,17 @@ function PackageFormModal({ pkg, seedCount, onClose, onSubmit, saving }) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
       role="dialog"
       aria-modal="true"
-      aria-label={isEdit ? "Edit package" : "Add package"}
+      aria-label={isEdit ? t.editPackage : t.addPackage}
     >
       <div className="w-full max-w-md rounded-3xl bg-white p-7 shadow-xl">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-xl font-bold text-[#3B241B]">
-            {isEdit ? "Edit package" : "Add package"}
+            {isEdit ? t.editPackage : t.addPackage}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t.form.close}
             className="rounded-lg p-1.5 text-[#7A6254] hover:bg-[#FFF7EF]"
           >
             <X className="h-5 w-5" />
@@ -293,7 +294,11 @@ function PackageFormModal({ pkg, seedCount, onClose, onSubmit, saving }) {
         </div>
 
         <form onSubmit={handleSubmit(submit)} className="space-y-4">
-          <Field label="Number of walks" error={errors.walks_count?.message} required>
+          <Field
+            label={t.form.walksLabel}
+            error={errors.walks_count ? t.form.walksInvalid : null}
+            required
+          >
             <input
               type="text"
               inputMode="numeric"
@@ -303,7 +308,12 @@ function PackageFormModal({ pkg, seedCount, onClose, onSubmit, saving }) {
             />
           </Field>
 
-          <Field label="Price for the pack" hint="$" error={errors.price?.message} required>
+          <Field
+            label={t.form.priceLabel}
+            hint="$"
+            error={errors.price ? sharedCopy[lang].inputs.invalidAmount : null}
+            required
+          >
             <input
               type="text"
               inputMode="decimal"
@@ -311,10 +321,7 @@ function PackageFormModal({ pkg, seedCount, onClose, onSubmit, saving }) {
               {...register("price")}
               className={inputCls}
             />
-            <p className="mt-1 text-xs text-[#7A6254]">
-              Owners pay this once and get that many walks. Price it below the single-walk rate to
-              give a bundle discount.
-            </p>
+            <p className="mt-1 text-xs text-[#7A6254]">{t.form.priceHelp}</p>
           </Field>
 
           <div className="flex justify-end gap-3 pt-2">
@@ -323,7 +330,7 @@ function PackageFormModal({ pkg, seedCount, onClose, onSubmit, saving }) {
               onClick={onClose}
               className="rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-4 py-2.5 text-sm font-bold text-[#7A6254]"
             >
-              Cancel
+              {t.form.cancel}
             </button>
             <button
               type="submit"
@@ -332,7 +339,7 @@ function PackageFormModal({ pkg, seedCount, onClose, onSubmit, saving }) {
               style={{ backgroundColor: COLORS.coral }}
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isEdit ? "Save changes" : "Add package"}
+              {isEdit ? t.form.save : t.addPackage}
             </button>
           </div>
         </form>

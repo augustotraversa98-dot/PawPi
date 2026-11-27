@@ -35,23 +35,29 @@ import {
 } from "../lib/storefrontEditor";
 import { centsToInput, dollarsToCents } from "../lib/money";
 import { COLORS } from "../lib/colors";
+import storefrontCopy from "../i18n/storefront";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { fill } from "../i18n/lib/format";
+import { serverErrorMessage } from "../i18n/lib/serverError";
 
 // /provider/storefront → "View as customer" → "Edit storefront" (Storefront Phase 2c-ii). The
 // editable twin of the read-only 2b preview: drag sections + items into order and set
 // promote/discount, then Save (optimistic + rollback) via the 2c-i endpoints. Only the
 // archetype-allowed sections (from the MIRRORED getStorefrontTabs) are shown/draggable; a shop
-// edits PRODUCTS, a bookable provider its SERVICES, a mixed provider both. Hardcoded English
-// (extranet has no i18n). The non-edit view is StorefrontPreview — this is a distinct edit UI,
-// not a fork of that render.
+// edits PRODUCTS, a bookable provider its SERVICES, a mixed provider both. The non-edit view is
+// StorefrontPreview — this is a distinct edit UI, not a fork of that render.
 const MUTED = "#7A6254";
-const TAB_LABELS = {
-  services: "Services",
-  items: "Products",
-  posts: "Posts",
-  reviews: "Reviews",
-  locations: "Locations",
-  about: "About",
-};
+
+// Screen-reader words for the drag library. English keeps the library's defaults.
+const dragAccessibility = (drag) => ({
+  screenReaderInstructions: { draggable: drag.instructions },
+  announcements: {
+    onDragStart: () => drag.start,
+    onDragOver: () => drag.over,
+    onDragEnd: () => drag.end,
+    onDragCancel: () => drag.cancel,
+  },
+});
 
 const money = (cents, currency = "ARS") => {
   if (cents == null || Number.isNaN(cents)) return "";
@@ -74,6 +80,8 @@ const byMerchandising = (a, b) => {
 };
 
 export default function StorefrontEditor({ providerId, onDone }) {
+  const { t, lang } = useProviderCopy(storefrontCopy);
+  const accessibility = lang === "es" ? dragAccessibility(t.drag) : undefined;
   const queryClient = useQueryClient();
   const { data: providerData, isLoading } = useProvider(providerId);
   const { data: services = [] } = useProviderServices(providerId);
@@ -151,12 +159,12 @@ export default function StorefrontEditor({ providerId, onDone }) {
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 py-16 text-[#7A6254]">
-        <Loader2 className="h-5 w-5 animate-spin" style={{ color: COLORS.coral }} /> Loading…
+        <Loader2 className="h-5 w-5 animate-spin" style={{ color: COLORS.coral }} /> {t.loading}
       </div>
     );
   }
   if (!provider) {
-    return <p className="py-16 text-center text-sm text-[#7A6254]">No provider to edit.</p>;
+    return <p className="py-16 text-center text-sm text-[#7A6254]">{t.editor.none}</p>;
   }
 
   // --- reorder handlers (tested via the pure moveById; jsdom can't do real drags) ----------
@@ -228,13 +236,13 @@ export default function StorefrontEditor({ providerId, onDone }) {
     const result = await applyOptimisticSave({ queryClient, entries, calls });
     setSaving(false);
     if (result.ok) {
-      toast.success("Storefront updated");
+      toast.success(t.editor.saved);
       queryClient.invalidateQueries({ queryKey: providerKey(providerId) });
       queryClient.invalidateQueries({ queryKey: shopProductsKey(providerId) });
       queryClient.invalidateQueries({ queryKey: servicesKey(providerId) });
       onDone?.();
     } else {
-      toast.error(result.error?.message || "Couldn't save changes");
+      toast.error(serverErrorMessage(result.error, lang, t.editor.saveFailed, storefrontCopy));
     }
   };
 
@@ -253,7 +261,7 @@ export default function StorefrontEditor({ providerId, onDone }) {
     <div className="mx-auto w-full max-w-[440px] px-3 py-6" data-testid="storefront-editor">
       {/* Save bar */}
       <div className="mb-4 flex items-center justify-between gap-2">
-        <span className="text-sm font-bold" style={{ color: COLORS.brown }}>Editing storefront</span>
+        <span className="text-sm font-bold" style={{ color: COLORS.brown }}>{t.editor.title}</span>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -262,7 +270,7 @@ export default function StorefrontEditor({ providerId, onDone }) {
             className="rounded-lg px-3 py-1.5 text-sm font-semibold disabled:opacity-40"
             style={{ color: MUTED, border: `1px solid ${COLORS.peach}` }}
           >
-            Discard
+            {t.editor.discard}
           </button>
           <button
             type="button"
@@ -273,23 +281,28 @@ export default function StorefrontEditor({ providerId, onDone }) {
             style={{ backgroundColor: COLORS.coral }}
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Save
+            {t.editor.save}
           </button>
         </div>
       </div>
 
       {/* Section reorder */}
       <p className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: MUTED }}>
-        Sections — drag to reorder
+        {t.editor.sections}
       </p>
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onSectionDragEnd}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={onSectionDragEnd}
+        accessibility={accessibility}
+      >
         <SortableContext items={pending.sections} strategy={horizontalListSortingStrategy}>
           <div className="mb-5 flex flex-wrap gap-2">
             {pending.sections.map((key) => (
               <SortableSection
                 key={key}
                 id={key}
-                label={TAB_LABELS[key] ?? key}
+                label={t.tabs[key] ?? key}
                 selected={key === activeKey}
                 onSelect={() => setActive(key)}
               />
@@ -307,6 +320,7 @@ export default function StorefrontEditor({ providerId, onDone }) {
           onDragEnd={onProductDragEnd}
           onToggleFeatured={toggleProductFeatured}
           onChangeSale={changeSale}
+          accessibility={accessibility}
         />
       ) : activeKey === "services" ? (
         <ServiceEditor
@@ -314,11 +328,11 @@ export default function StorefrontEditor({ providerId, onDone }) {
           sensors={sensors}
           onDragEnd={onServiceDragEnd}
           onToggleFeatured={toggleServiceFeatured}
+          accessibility={accessibility}
         />
       ) : (
         <p className="rounded-xl border p-6 text-center text-sm" style={{ borderColor: COLORS.peach, color: MUTED }}>
-          Use the section chips above to move “{TAB_LABELS[activeKey] ?? activeKey}”. Items in this
-          section aren’t individually reorderable.
+          {fill(t.editor.fixedSection, { section: t.tabs[activeKey] ?? activeKey })}
         </p>
       )}
     </div>
@@ -326,7 +340,11 @@ export default function StorefrontEditor({ providerId, onDone }) {
 }
 
 function SortableSection({ id, label, selected, onSelect }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const { t } = useProviderCopy(storefrontCopy);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+    attributes: { roleDescription: t.drag.role },
+  });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
   return (
     <div
@@ -336,7 +354,7 @@ function SortableSection({ id, label, selected, onSelect }) {
     >
       <button
         type="button"
-        aria-label={`Drag ${label}`}
+        aria-label={fill(t.editor.dragSection, { section: label })}
         data-testid={`section-grip-${id}`}
         className="cursor-grab touch-none"
         {...attributes}
@@ -356,12 +374,26 @@ function SortableSection({ id, label, selected, onSelect }) {
   );
 }
 
-function ProductEditor({ products, saleText, sensors, onDragEnd, onToggleFeatured, onChangeSale }) {
+function ProductEditor({
+  products,
+  saleText,
+  sensors,
+  onDragEnd,
+  onToggleFeatured,
+  onChangeSale,
+  accessibility,
+}) {
+  const { t } = useProviderCopy(storefrontCopy);
   if (products.length === 0) {
-    return <p className="text-sm" style={{ color: MUTED }}>No products to arrange yet.</p>;
+    return <p className="text-sm" style={{ color: MUTED }}>{t.editor.noProducts}</p>;
   }
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={onDragEnd}
+      accessibility={accessibility}
+    >
       <SortableContext items={products.map((p) => p.id)} strategy={verticalListSortingStrategy}>
         <div className="space-y-2">
           {products.map((p) => (
@@ -380,9 +412,13 @@ function ProductEditor({ products, saleText, sensors, onDragEnd, onToggleFeature
 }
 
 function SortableProductRow({ product, saleRaw, onToggleFeatured, onChangeSale }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: product.id });
+  const { t, lang } = useProviderCopy(storefrontCopy);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: product.id,
+    attributes: { roleDescription: t.drag.role },
+  });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
-  const saleError = validateCompareAt(product.compare_at_cents ?? null, product.price_cents);
+  const saleError = validateCompareAt(product.compare_at_cents ?? null, product.price_cents, lang);
   const pct = discountPct(product.price_cents, product.compare_at_cents);
   return (
     <div
@@ -394,7 +430,7 @@ function SortableProductRow({ product, saleRaw, onToggleFeatured, onChangeSale }
       <div className="flex items-center gap-2">
         <button
           type="button"
-          aria-label="Drag product"
+          aria-label={t.editor.dragProduct}
           data-testid={`product-grip-${product.id}`}
           className="cursor-grab touch-none"
           {...attributes}
@@ -417,7 +453,7 @@ function SortableProductRow({ product, saleRaw, onToggleFeatured, onChangeSale }
           type="button"
           onClick={onToggleFeatured}
           aria-pressed={!!product.is_featured}
-          aria-label="Promote product"
+          aria-label={t.editor.promoteProduct}
           data-testid={`product-feature-${product.id}`}
           className="rounded-full p-1"
           style={{ backgroundColor: product.is_featured ? "#FFF0EC" : "transparent" }}
@@ -426,7 +462,7 @@ function SortableProductRow({ product, saleRaw, onToggleFeatured, onChangeSale }
         </button>
       </div>
       <div className="mt-2 flex items-center gap-2 pl-6">
-        <label className="text-xs font-semibold" style={{ color: MUTED }}>Compare-at (was)</label>
+        <label className="text-xs font-semibold" style={{ color: MUTED }}>{t.editor.compareAt}</label>
         <input
           type="text"
           inputMode="decimal"
@@ -450,12 +486,18 @@ function SortableProductRow({ product, saleRaw, onToggleFeatured, onChangeSale }
   );
 }
 
-function ServiceEditor({ services, sensors, onDragEnd, onToggleFeatured }) {
+function ServiceEditor({ services, sensors, onDragEnd, onToggleFeatured, accessibility }) {
+  const { t } = useProviderCopy(storefrontCopy);
   if (services.length === 0) {
-    return <p className="text-sm" style={{ color: MUTED }}>No services to arrange yet.</p>;
+    return <p className="text-sm" style={{ color: MUTED }}>{t.editor.noServices}</p>;
   }
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={onDragEnd}
+      accessibility={accessibility}
+    >
       <SortableContext items={services.map((s) => s.id)} strategy={verticalListSortingStrategy}>
         <div className="space-y-2">
           {services.map((s) => (
@@ -468,7 +510,11 @@ function ServiceEditor({ services, sensors, onDragEnd, onToggleFeatured }) {
 }
 
 function SortableServiceRow({ service, onToggleFeatured }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: service.id });
+  const { t } = useProviderCopy(storefrontCopy);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: service.id,
+    attributes: { roleDescription: t.drag.role },
+  });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
   return (
     <div
@@ -479,7 +525,7 @@ function SortableServiceRow({ service, onToggleFeatured }) {
     >
       <button
         type="button"
-        aria-label="Drag service"
+        aria-label={t.editor.dragService}
         data-testid={`service-grip-${service.id}`}
         className="cursor-grab touch-none"
         {...attributes}
@@ -495,7 +541,7 @@ function SortableServiceRow({ service, onToggleFeatured }) {
         type="button"
         onClick={onToggleFeatured}
         aria-pressed={!!service.is_featured}
-        aria-label="Promote service"
+        aria-label={t.editor.promoteService}
         data-testid={`service-feature-${service.id}`}
         className="rounded-full p-1"
         style={{ backgroundColor: service.is_featured ? "#FFF0EC" : "transparent" }}

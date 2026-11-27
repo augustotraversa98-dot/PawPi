@@ -25,6 +25,7 @@ import {
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { ownerDisplayName } from "@/utils/ownerDisplayName";
+import { providerTypeLabel } from "@/utils/providerTypeLabel";
 import { COLORS } from "@/constants/colors";
 import { PawMark } from "@/components/ui";
 import { useDiscover } from "@/hooks/useDiscover";
@@ -363,7 +364,7 @@ function SearchResults({ t, data, isLoading, onOpenPet, onOpenProvider }) {
               avatar={pr.logo_url}
               fallbackIcon={Store}
               title={pr.name}
-              subtitle={pr.provider_type}
+              subtitle={providerTypeLabel(t, pr.provider_type)}
               onPress={() => onOpenProvider(pr.slug)}
             />
           ))}

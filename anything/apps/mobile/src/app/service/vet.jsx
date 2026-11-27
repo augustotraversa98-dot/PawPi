@@ -27,6 +27,7 @@ import {
 import { Card, PressableScale, GlassSurface } from "@/components/ui";
 import { useRefresh } from "@/hooks/useRefresh";
 import { useDiscoverProviders } from "@/hooks/useProviders";
+import { providerTypeLabel } from "@/utils/providerTypeLabel";
 import RatingBadge from "@/components/Providers/RatingBadge";
 import ProviderListControls, {
   useProviderListFilter,
@@ -159,6 +160,7 @@ export default function VetScreen() {
 }
 
 function ProviderCard({ provider, onPress }) {
+  const { t } = useTranslation();
   return (
     <PressableScale onPress={onPress} style={{ marginBottom: SPACING.md + 2 }}>
       <Card
@@ -210,10 +212,10 @@ function ProviderCard({ provider, onPress }) {
               <Text
                 style={[
                   TYPE.footnote,
-                  { fontWeight: "700", color: COLORS.coral, textTransform: "capitalize" },
+                  { fontWeight: "700", color: COLORS.coral },
                 ]}
               >
-                {provider.provider_type}
+                {providerTypeLabel(t, provider.provider_type)}
               </Text>
             ) : null}
             <RatingBadge

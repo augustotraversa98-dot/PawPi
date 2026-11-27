@@ -147,11 +147,45 @@ test("onboarding.* has full key + placeholder parity across en/es (localized wiz
   }
 });
 
-test("deviceLanguage maps a Spanish phone to es, anything else to en", () => {
-  mockGetLocales.mockReturnValueOnce([{ languageCode: "es" }]);
-  expect(deviceLanguage()).toBe("es");
-  mockGetLocales.mockReturnValueOnce([{ languageCode: "fr" }]);
-  expect(deviceLanguage()).toBe("en");
-  mockGetLocales.mockReturnValueOnce([]);
-  expect(deviceLanguage()).toBe("en");
+describe("deviceLanguage: the first supported language on the phone, else Spanish", () => {
+  const phone = (...codes) =>
+    mockGetLocales.mockReturnValueOnce(codes.map((languageCode) => ({ languageCode })));
+
+  test.each([
+    [["es"], "es"],
+    [["en"], "en"],
+    [["en", "es"], "en"],
+    [["es", "en"], "es"],
+    [["pt", "en", "es"], "en"],
+    [["it", "es", "en"], "es"],
+    [["fr"], "es"],
+    [["pt", "de"], "es"],
+    [[null], "es"],
+    [[], "es"],
+  ])("%j → %s", (codes, expected) => {
+    phone(...codes);
+    expect(deviceLanguage()).toBe(expected);
+  });
+
+  test("no list at all, or a lookup that throws, is Spanish", () => {
+    mockGetLocales.mockReturnValueOnce(undefined);
+    expect(deviceLanguage()).toBe("es");
+    mockGetLocales.mockImplementationOnce(() => {
+      throw new Error("unavailable");
+    });
+    expect(deviceLanguage()).toBe("es");
+  });
+
+  test.each([
+    [["fr"], "es"],
+    [["en"], "en"],
+  ])("a fresh start on a %j phone opens in %s", (codes, expected) => {
+    phone(...codes);
+    let fresh;
+    jest.isolateModules(() => {
+      fresh = require("./index").default;
+    });
+    expect(fresh.language).toBe(expected);
+    expect(fresh.t("tabs.feed")).toBe(expected === "es" ? "Inicio" : "Feed");
+  });
 });
