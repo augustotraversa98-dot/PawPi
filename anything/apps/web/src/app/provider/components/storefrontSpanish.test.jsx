@@ -121,7 +121,7 @@ describe("storefront in Spanish", () => {
     fireEvent.click(screen.getByRole("button", { name: "Servicios" }));
     expect(screen.getByText("Oculto")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Reseñas" }));
-    expect(screen.getByText("Dueño de mascota")).toBeInTheDocument();
+    expect(await screen.findByText("Dueño de mascota")).toBeInTheDocument();
     expect(screen.getByText("con Mango")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Editar la vidriera" }));
@@ -163,6 +163,8 @@ describe("profile in Spanish", () => {
     show(<ProviderProfile providerId={1} />);
 
     expect(await screen.findByRole("heading", { name: "Perfil" })).toBeInTheDocument();
+    // The offerings arrive with their own request.
+    expect(await screen.findByRole("button", { name: "Paseo de perros" })).toBeInTheDocument();
     for (const text of [
       "Borrador",
       "Confirmar automáticamente las reservas nuevas",
@@ -175,7 +177,6 @@ describe("profile in Spanish", () => {
     for (const name of ["Publicar", "Activar", "Horario de atención", "Enlaces públicos", "Guardar cambios"]) {
       expect(screen.getByRole("button", { name })).toBeInTheDocument();
     }
-    expect(await screen.findByRole("button", { name: "Paseo de perros" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Clínica veterinaria" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Importar desde la web" }));
