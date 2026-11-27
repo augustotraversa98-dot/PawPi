@@ -14,6 +14,7 @@ import { PetAvatar } from "@/components/Pets/PetAvatar";
 import { useCurrentPet } from "@/hooks/usePetProfile";
 import { useFollowList } from "@/hooks/usePetSocialProfile";
 import { useTranslation } from "react-i18next";
+import { alertFollowFailure, followFailure } from "@/utils/followError";
 
 const C = {
   coral: COLORS.coral,
@@ -76,10 +77,11 @@ export default function FollowsScreen() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ followerPetId: viewerPetId }),
       });
-      if (!res.ok) throw new Error("toggle failed");
+      if (!res.ok) throw await followFailure(res);
     } catch (e) {
-      // Revert the optimistic flip on failure.
+      // Revert the optimistic flip on failure, and say why.
       setFollowState((s) => ({ ...s, [row.id]: wasFollowing }));
+      alertFollowFailure(t, e, currentPet?.name);
     }
   };
 

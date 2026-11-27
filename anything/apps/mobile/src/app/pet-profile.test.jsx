@@ -78,6 +78,7 @@ jest.mock("@/hooks/usePetProfile", () => ({
   usePetProfile: () => ({ data: mockViewer ? [mockViewer] : [] }),
 }));
 let mockProfileError = false;
+const mockFollowMutate = jest.fn();
 const mockProfileRefetch = jest.fn();
 jest.mock("@/hooks/usePetSocialProfile", () => ({
   usePetSocialProfile: () => ({
@@ -86,7 +87,7 @@ jest.mock("@/hooks/usePetSocialProfile", () => ({
     isError: mockProfileError,
     refetch: mockProfileRefetch,
   }),
-  useToggleFollow: () => ({ mutate: jest.fn() }),
+  useToggleFollow: () => ({ mutate: mockFollowMutate }),
 }));
 jest.mock("@/hooks/useDMs", () => ({
   useStartDM: () => ({ mutateAsync: jest.fn(), isPending: false }),
@@ -180,6 +181,20 @@ test("shows the Follow button on another pet's profile", () => {
   mockViewer = { id: 4 }; // viewer 4 ≠ profile pet 7
   const { getByText } = render(<PetProfileScreen />);
   expect(getByText("Follow +")).toBeTruthy();
+});
+
+test("a refused follow says why instead of only switching back", () => {
+  const alert = jest.spyOn(require("react-native").Alert, "alert").mockImplementation(() => {});
+  const { getByText } = render(<PetProfileScreen />);
+  fireEvent.press(getByText("Follow +"));
+  const [variables, options] = mockFollowMutate.mock.calls.at(-1);
+  expect(variables).toEqual(expect.objectContaining({ isFollowing: false }));
+  options.onError(Object.assign(new Error("x"), { code: "follow_not_allowed" }));
+  expect(alert).toHaveBeenCalledWith(
+    "Couldn't update follow",
+    expect.stringContaining("owner or family"),
+  );
+  alert.mockRestore();
 });
 
 test("hides the Follow button on your own pet's profile", () => {
