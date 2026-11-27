@@ -104,7 +104,8 @@ Cuando aplica la normativa de protección de datos (como el RGPD), nos basamos e
 
 - **Ejecución de un contrato** — para crear tu cuenta y brindar las funciones que solicitás.
 - **Consentimiento** — para permisos opcionales del dispositivo (ubicación, cámara/fotos,
-  notificaciones), para compartir datos de salud con un negocio de servicios (por ejemplo, una
+  notificaciones), para enviar documentos de la historia clínica a Anthropic y así sugerir
+  registros, para compartir datos de salud con un negocio de servicios (por ejemplo, una
   veterinaria) y para la participación en tablas de posiciones. Podés retirar el consentimiento en
   cualquier momento (ver Sección 10).
 - **Intereses legítimos** — para proteger el Servicio, prevenir abusos y fraudes, y operar y mejorar
@@ -119,9 +120,9 @@ Usamos la información para:
 - crear y administrar tu cuenta y los perfiles de tus mascotas;
 - brindar las funciones que usás (feed, salud, recordatorios, historia clínica, entrenamiento,
   comunidad, adopción y el mercado de servicios);
-- leer los documentos y las fotos de documentos que subís a la historia clínica de tu perro, con un
-  servicio de inteligencia artificial (Claude, de Anthropic), para sugerir registros que podés revisar
-  antes de que se agregue algo (ver Sección 8);
+- si lo permitís, leer los documentos y las fotos de documentos que subís a la historia clínica de tu
+  perro, con un servicio de inteligencia artificial (Claude, de Anthropic), para sugerir registros que
+  podés revisar antes de que se agregue algo (ver Sección 8);
 - habilitar reservas, pagos, mensajería, reseñas y el acceso de cuidadores;
 - enviarte los recordatorios y notificaciones que configuraste o activaste (incluido push);
 - mostrar contenido basado en ubicación cuando otorgás el permiso;
@@ -202,10 +203,10 @@ cualquier momento, y la app dejará de enviar.
 
 PawPi te ayuda a **registrar cambios y preparar mejores conversaciones con tu veterinario/a. No
 diagnostica, no receta ni reemplaza la atención veterinaria profesional.** El contenido de salud que
-ingresás se guarda para ayudarte a organizar registros y notar patrones. Los documentos que subís a
-la historia clínica también se envían a Anthropic (Claude) para leerlos y sugerir registros, que
-revisás antes de que se agregue algo (ver Sección 8). Cualquier "insight" es informativo y de
-comportamiento, nunca diagnóstico. Las recetas aparecen en la app solo como registros emitidos por un
+ingresás se guarda para ayudarte a organizar registros y notar patrones. Si lo permitís, los
+documentos que subís a la historia clínica también se envían a Anthropic (Claude) para leerlos y
+sugerir registros, que revisás antes de que se agregue algo (ver Sección 8). Cualquier "insight" es
+informativo y de comportamiento, nunca diagnóstico. Las recetas aparecen en la app solo como registros emitidos por un
 proveedor veterinario matriculado a través del Servicio.
 
 ## 7. Cómo se comparte la información
@@ -381,7 +382,7 @@ nombre bajo contrato, solo según sea necesario:
 - **Expo** (servicio push) — Finalidad: Envío de notificaciones push (Expo las pasa al servicio push de Apple o de Google); Datos involucrados: Token push del dispositivo, contenido de la notificación
 - **MercadoPago** — Finalidad: Procesamiento de pagos; Datos involucrados: Monto/estado/referencia; los datos de pago los aportás directamente a ellos
 - **Resend** — Finalidad: Correos transaccionales (p. ej. restablecer contraseña, resúmenes); Datos involucrados: Tu correo, contenido del mensaje
-- **Anthropic** (Claude, un modelo de inteligencia artificial) — Finalidad: Leer los documentos y las fotos de documentos que subís a la historia clínica de tu perro y sugerir registros que podés revisar antes de que se agregue algo; Datos involucrados: Esto pasa automáticamente después de que se guarda un documento, lo subas vos o un familiar que invitaste. Enviamos el archivo subido (las fotos grandes se achican antes), con todo lo que tiene escrito, a la vista o incrustado; el tipo de archivo; y una instrucción fija de PawPi que pide extraer solo los registros presentes en el documento, junto con la lista de campos a completar. PawPi no agrega a ese pedido tu nombre, tu correo, los datos de tu cuenta, el nombre de tu perro ni el nombre del archivo, aunque el documento en sí puede contener esos datos. [Política de privacidad de Anthropic](https://www.anthropic.com/legal/privacy) · [Condiciones comerciales de Anthropic](https://www.anthropic.com/legal/commercial-terms)
+- **Anthropic** (Claude, un modelo de inteligencia artificial) — Finalidad: Leer los documentos y las fotos de documentos que subís a la historia clínica de tu perro, solo para sugerir registros que podés revisar antes de que se agregue algo; Datos involucrados: Esto pasa solo si la persona que sube el documento lo permitió en la app (una pregunta la primera vez y el ajuste “Dejar que PawPi lea mis documentos”, que se puede desactivar en cualquier momento). Vale tanto si lo subís vos como un familiar que invitaste. El documento se guarda en cualquier caso. La elección queda en ese dispositivo y se vuelve a preguntar después de cerrar sesión. Desactivar el ajuste hace que desde ese dispositivo no se envíen más documentos; no recupera los que ya se enviaron. Enviamos el archivo subido (las fotos grandes se achican antes), con todo lo que tiene escrito, a la vista o incrustado; el tipo de archivo; y una instrucción fija de PawPi que pide extraer solo los registros presentes en el documento, junto con la lista de campos a completar. PawPi no agrega a ese pedido tu nombre, tu correo, los datos de tu cuenta, el nombre de tu perro ni el nombre del archivo, aunque el documento en sí puede contener esos datos. [Política de privacidad de Anthropic](https://www.anthropic.com/legal/privacy) · [Condiciones comerciales de Anthropic](https://www.anthropic.com/legal/commercial-terms)
 - **Apple** — Finalidad: Iniciar sesión con Apple, si lo elegís; y, en iPhone, los mapas y la búsqueda de direcciones integrados en iOS (Apple Maps); Datos involucrados: Para iniciar sesión, el perfil básico que Apple nos comparte (nombre y correo, según tus elecciones, incluido el correo de retransmisión privada de Apple). Para los mapas, la zona que ves y las coordenadas que pedís convertir en una dirección las procesan los servicios del sistema de Apple. [Política de privacidad de Apple](https://www.apple.com/legal/privacy/)
 - **Google** — Finalidad: Iniciar sesión con Google, si lo elegís; Datos involucrados: El perfil básico que Google nos comparte (nombre y correo, según tus elecciones). [Política de privacidad de Google](https://policies.google.com/privacy)
 - **Grafana Cloud** (Grafana Labs) — Finalidad: Alojamiento y monitoreo de los datos anónimos de uso y diagnóstico descritos en la Sección 5; Datos involucrados: Eventos y estadísticas anónimos de uso y diagnóstico, asociados solo a identificadores aleatorios — sin nombre, correo, cuenta, mascotas, contenido ni ubicación
@@ -392,7 +393,15 @@ nombre bajo contrato, solo según sea necesario:
 OpenStreetMap Nominatim es un servicio público al que la app consulta directamente desde tu dispositivo. Apple y Google
 son los servicios de inicio de sesión y de mapas integrados en tu dispositivo o elegidos por vos. Cada uno trata tus datos
 según su propia política de privacidad, enlazada arriba. Mantenemos esta lista actualizada a medida que cambian nuestros
-proveedores. No permitimos que los proveedores que contratamos usen tus datos para sus propios fines.
+proveedores.
+
+Compartimos datos con los proveedores que contratamos solo para que puedan prestar sus servicios. Las
+condiciones de cada proveedor también establecen qué puede hacer con esos datos, por ejemplo
+conservarlos o usarlos para cumplir obligaciones legales o para proteger su servicio contra usos
+indebidos. Según las Condiciones comerciales de Anthropic, Anthropic no puede entrenar sus modelos
+con el contenido que PawPi envía a través de su API. Anthropic trata ese contenido para prestar su
+servicio, y puede conservarlo por más tiempo cuando la ley lo exige, o para hacer cumplir sus
+políticas de uso y actuar ante usos dañinos.
 
 ## 9. Conservación de datos
 
@@ -409,8 +418,8 @@ de pagos conserva sus propios registros de pago según su propia política. Los 
 cuando desactivás las notificaciones o eliminás tu cuenta. Las copias de seguridad se rotan de forma
 periódica.
 
-Anthropic, que lee los documentos que subís a la historia clínica (ver Sección 8), conserva el
-contenido que recibe a través de su API por un período limitado según
+Anthropic, que lee los documentos de la historia clínica que se le envían con permiso (ver Sección
+8), conserva el contenido que recibe a través de su API por un período limitado según
 [su propia política de conservación](https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data),
 y por más tiempo cuando la ley lo exige o para hacer cumplir sus políticas de uso.
 
@@ -441,6 +450,8 @@ También podés:
 - controlar los permisos de cámara, fotos, ubicación y notificaciones en la configuración de tu
   dispositivo;
 - desactivar los datos anónimos de uso y diagnóstico en **Ajustes → Ayudar a mejorar PawPi (anónimo)**;
+- permitir o frenar la lectura de tus documentos de la historia clínica en **Ajustes → Dejar que
+  PawPi lea mis documentos**;
 - editar o eliminar mascotas, publicaciones, comentarios, registros y otro contenido dentro de la app;
 - revocar el acceso de un cuidador o proveedor en cualquier momento;
 - eliminar tu cuenta en la app (Ajustes → Eliminar cuenta).

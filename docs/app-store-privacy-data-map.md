@@ -102,7 +102,7 @@ Section 8 (EN + ES) lists exactly the **Live** rows. Full evidence and the open 
 | **OpenStreetMap Nominatim** | **Live.** Services Discover "search a location", from the device on explicit submit. | Typed place text, IP, a PawPi User-Agent | Yes |
 | GitHub (`GITHUB_DISPATCH_TOKEN`) | **Live, internal ops only.** Observability alert-to-autofix loop. | Alert payloads (route/metric text), no user data. The workflow it starts (`claude-autofix.yml`) runs Claude Code, so Anthropic receives the allow-listed alert fields and the repository files the model reads; no production data or logs are given to it. | No (not user data) |
 | **RevenueCat** (`react-native-purchases`) | **Inactive.** `Purchases.configure` is only reachable from an unused hook; no RevenueCat keys in the EAS `production` profile; no webhook route. | Nothing today | No |
-| **Anthropic (Claude)** AI document reading | **Live** (updated 2026-11-25): `ANTHROPIC_API_KEY` is set on production (owner's statement; not re-read from Railway). `POST /api/vet-record/documents/extract` runs automatically after the app saves a Vet Record document. | The uploaded file (base64) with its media type, a fixed extraction prompt and a fixed field schema (`utils/enrichment/petRecords.js`). No name, email, account id, pet name or file name is added; the document itself may contain any of them. | Yes (added) |
+| **Anthropic (Claude)** AI document reading | **Live** (updated 2026-11-26): `ANTHROPIC_API_KEY` is set on production (owner's statement; not re-read from Railway). The app calls `POST /api/vet-record/documents/extract` after it saves a Vet Record document **only if the person uploading has allowed it** (a first-time question, or Settings → "Let PawPi read my documents"; the choice is kept on the device and cleared on sign-out). The server refuses a request that does not state that permission. Reading needs an app build with the permission screen. | The uploaded file (base64) with its media type, a fixed extraction prompt and a fixed field schema (`utils/enrichment/petRecords.js`). No name, email, account id, pet name or file name is added; the document itself may contain any of them. | Yes (added) |
 | **Google Maps Platform** (Places enrichment, browser map picker) | **Inactive.** `GOOGLE_PLACES_API_KEY` is not set on production; `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY` is not set, so the provider-dashboard map picker renders nothing. Android shows a "coming soon" map placeholder (no Google key). | Nothing today | **Removed** |
 | **Binance Pay** | **Inactive.** Adapter exists; `BINANCE_PAY_API_*` not set on production, routes answer 503 "not configured". | Nothing today | **Removed** |
 | **Stripe** | **Not used.** Only a platform scaffold (`src/__create/stripe.ts`) that nothing imports; no Stripe key. | Nothing | **Removed** |
@@ -123,8 +123,9 @@ policy §2/§8 (EN + ES) and the App Store label first.
 - **Nominatim:** a typed place name is not the user's location. Borderline **Search History** (Not linked,
   App Functionality); conservative option is to declare it.
 - **Anthropic (live):** uploaded vet documents map to the already-declared **Photos or Videos / Other User Content**
-  (Linked, App Functionality), so no new data type. A document can show phone numbers; see the optional
-  **Contact Info → Phone Number** row below.
+  (Linked, App Functionality), so no new data type. Asking permission before reading does not change the label:
+  PawPi stores the document either way, and every document that is read follows that permission. A document can show
+  phone numbers; see the optional **Contact Info → Phone Number** row below.
 - **RevenueCat:** none today. If it goes live: **Purchases → Purchase History** and
   **Identifiers → User ID / Device ID**.
 
