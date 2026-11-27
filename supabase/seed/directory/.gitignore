@@ -6,3 +6,9 @@ serpapi_run_log.json
 pawpi_directory_master.json
 pawpi_directory_seed_caba_amba.csv
 run.out
+# Enrichment: the universe export, the pull's output + resume log, and generated SQL
+enrich_universe.json
+tinyfish_results*.json
+tinyfish_run_log.json
+*.generated.sql
+__pycache__/

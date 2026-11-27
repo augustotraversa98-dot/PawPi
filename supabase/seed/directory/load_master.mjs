@@ -36,6 +36,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import Papa from "papaparse";
 import postgres from "postgres";
+import { cleanWebsite } from "./backfill_website_url.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -196,14 +197,17 @@ async function main() {
       try {
         // Upsert the provider row on the external key. ON CONFLICT preserves the
         // owner and never re-flips claim_status (a claimed row must never revert).
+        // website_url is set on INSERT only; existing rows are filled by
+        // backfill_website_url.mjs, which re-checks claim_status.
         const [prov] = await sql`
           INSERT INTO providers (
             owner_user_profile_id, provider_type, name, slug, status,
-            source, external_source, external_id, claim_status
+            source, external_source, external_id, claim_status, website_url
           )
           VALUES (
             ${directoryProfileId}, ${providerType}, ${name}, ${slug}, 'published',
-            ${source}, ${externalSource}, ${externalId}, 'unclaimed'
+            ${source}, ${externalSource}, ${externalId}, 'unclaimed',
+            ${cleanWebsite(row.website)}
           )
           ON CONFLICT (external_source, external_id)
             WHERE external_source IS NOT NULL AND external_id IS NOT NULL
