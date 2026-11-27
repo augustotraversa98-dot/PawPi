@@ -35,21 +35,28 @@ import {
 } from "../hooks/useProviders";
 import { useProviderSelection } from "../store/providerSelection";
 import { BOOKABLE_CAPS } from "../lib/storefrontTabs";
+import shellCopy from "../i18n/shell";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { plural } from "../i18n/lib/format";
+import { providerTypeName } from "../i18n/lib/labels";
+import { serverErrorMessage } from "../i18n/lib/serverError";
 import CreateProviderForm from "./CreateProviderForm";
+import PanelLanguageSwitch from "./PanelLanguageSwitch";
 
 // Dashboard sections. Bookings (c1), Profile (c2a), Services + Locations (c2b),
 // Staff (c2c), Clinical (c3), Chats (2.5), Sales (2.69) are wired and navigate to
 // their routes. Any remaining disabled entries are clearly-marked "coming soon"
 // stubs and never dead-end.
 //
+// Names live in ../i18n/shell (nav.<key>, groups.<group>).
+//
 // `group` is a purely presentational bucket (Phase 1 nav grouping): the sidebar
 // renders items in array order, inserting a small header whenever the group
 // changes. `null` = the headerless top group. NAV_ITEMS is ordered to match the
-// grouped render (top → Schedule → Store → Care → Business); nothing is hidden.
+// grouped render (top → schedule → store → care → business); nothing is hidden.
 const NAV_ITEMS = [
   {
     key: "dashboard",
-    label: "Dashboard",
     Icon: LayoutDashboard,
     enabled: true,
     href: "/provider",
@@ -57,7 +64,6 @@ const NAV_ITEMS = [
   },
   {
     key: "chats",
-    label: "Chats",
     Icon: MessageSquare,
     enabled: true,
     href: "/provider/chats",
@@ -65,131 +71,115 @@ const NAV_ITEMS = [
   },
   {
     key: "bookings",
-    label: "Bookings",
     Icon: CalendarCheck,
     enabled: true,
     href: "/provider/bookings",
-    group: "Schedule",
+    group: "schedule",
   },
   {
     key: "calendar",
-    label: "Calendar",
     Icon: CalendarDays,
     enabled: true,
     href: "/provider/calendar",
-    group: "Schedule",
+    group: "schedule",
   },
   {
     key: "calendar-import",
-    label: "Calendar import",
     Icon: CalendarClock,
     enabled: true,
     href: "/provider/calendar-import",
-    group: "Schedule",
+    group: "schedule",
   },
   {
     key: "storefront",
-    label: "Storefront",
     Icon: Store,
     enabled: true,
     href: "/provider/storefront",
-    group: "Store",
+    group: "store",
   },
   {
     key: "services",
-    label: "Services",
     Icon: Tag,
     enabled: true,
     href: "/provider/services",
-    group: "Store",
+    group: "store",
   },
   {
     key: "shop",
-    label: "Products",
     Icon: ShoppingBag,
     enabled: true,
     href: "/provider/shop",
-    group: "Store",
+    group: "store",
   },
   {
     key: "locations",
-    label: "Locations",
     Icon: MapPin,
     enabled: true,
     href: "/provider/locations",
-    group: "Store",
+    group: "store",
   },
   {
     key: "clinical",
-    label: "Clinical",
     Icon: Stethoscope,
     enabled: true,
     href: "/provider/clinical",
-    group: "Care",
+    group: "care",
   },
   {
     key: "daycare",
-    label: "Daycare",
     Icon: Home,
     enabled: true,
     href: "/provider/daycare",
-    group: "Care",
+    group: "care",
   },
   {
     key: "training",
-    label: "Training",
     Icon: GraduationCap,
     enabled: true,
     href: "/provider/training",
-    group: "Care",
+    group: "care",
   },
   {
     key: "adoption",
-    label: "Adoption",
     Icon: PawPrint,
     enabled: true,
     href: "/provider/adoption",
-    group: "Care",
+    group: "care",
   },
   {
     key: "pharmacy",
-    label: "Rx Fulfillment",
     Icon: Pill,
     enabled: true,
     href: "/provider/pharmacy",
-    group: "Care",
+    group: "care",
   },
   {
     key: "insurance",
-    label: "Policies",
     Icon: Shield,
     enabled: true,
     href: "/provider/insurance",
-    group: "Care",
+    group: "care",
   },
   {
     key: "profile",
-    label: "Profile",
     Icon: Building2,
     enabled: true,
     href: "/provider/profile",
-    group: "Business",
+    group: "business",
   },
   {
     key: "staff",
-    label: "Staff",
     Icon: Users,
     enabled: true,
     href: "/provider/staff",
-    group: "Business",
+    group: "business",
   },
   {
     key: "sales",
-    label: "Sales",
     Icon: DollarSign,
     enabled: true,
     href: "/provider/sales",
-    group: "Business",
+    group: "business",
   },
 ];
 
@@ -250,6 +240,7 @@ function Spinner({ label }) {
 }
 
 function ProviderSwitcher({ providers, activeProviderId, onSelect }) {
+  const { t, lang } = useProviderCopy(shellCopy);
   if (providers.length <= 1) {
     const only = providers[0];
     return (
@@ -257,8 +248,11 @@ function ProviderSwitcher({ providers, activeProviderId, onSelect }) {
         <p className="truncate text-base font-bold text-[#3B241B]">
           {only?.name}
         </p>
-        <p className="truncate text-xs text-[#7A6254] capitalize">
-          {only?.provider_type}
+        {/* English shows the stored value capitalised; Spanish names are written as shown. */}
+        <p
+          className={`truncate text-xs text-[#7A6254] ${lang === "en" ? "capitalize" : ""}`}
+        >
+          {providerTypeName(only?.provider_type, lang)}
         </p>
       </div>
     );
@@ -266,11 +260,11 @@ function ProviderSwitcher({ providers, activeProviderId, onSelect }) {
   return (
     <div className="px-4 py-3">
       <label className="mb-1 block text-xs font-semibold text-[#7A6254]">
-        Provider
+        {t.switcherLabel}
       </label>
       <div className="relative">
         <select
-          aria-label="Select provider"
+          aria-label={t.switcherAria}
           value={String(activeProviderId)}
           onChange={(e) => onSelect(e.target.value)}
           className="w-full appearance-none rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-3 py-2 pr-8 text-sm font-semibold text-[#3B241B] outline-none focus:border-[#FF6F61]"
@@ -291,7 +285,8 @@ function ProviderSwitcher({ providers, activeProviderId, onSelect }) {
 // stays an inert div so it never dead-ends. Extracted so the grouped render
 // stays readable. The active-key highlight + "Soon" pill are unchanged.
 function NavItem({ item, active }) {
-  const { key, label, Icon, enabled, href } = item;
+  const { t } = useProviderCopy(shellCopy);
+  const { key, Icon, enabled, href } = item;
   const isActive = enabled && key === active;
   const className = `flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold ${
     isActive
@@ -305,11 +300,11 @@ function NavItem({ item, active }) {
     <>
       <span className="flex items-center gap-3">
         <Icon className="h-4 w-4" />
-        {label}
+        {t.nav[key]}
       </span>
       {!enabled && (
         <span className="rounded-full bg-[#FFF1E2] px-2 py-0.5 text-[10px] font-semibold text-[#B8A99D]">
-          Soon
+          {t.soon}
         </span>
       )}
     </>
@@ -335,13 +330,14 @@ function NavItem({ item, active }) {
 // sees it, so no data or even the link leaks. Carries the open-report count as a badge. It is a
 // cross-area route (/admin has its own page), reached via the app's single React Router.
 function AdminModerationNav() {
+  const { t, lang } = useProviderCopy(shellCopy);
   const { data } = useAdminModerationSummary();
   if (!data?.is_admin) return null;
   const open = Number(data.open_count) || 0;
   return (
     <div className="border-t border-[#FFF1E2] px-3 py-4">
       <p className="px-3 pb-1 text-[11px] font-bold uppercase tracking-wide text-[#B8A99D]">
-        Admin
+        {t.admin.heading}
       </p>
       <Link
         to="/admin/moderation"
@@ -349,11 +345,11 @@ function AdminModerationNav() {
       >
         <span className="flex items-center gap-3">
           <ShieldAlert className="h-4 w-4" />
-          Moderation
+          {t.admin.moderation}
         </span>
         {open > 0 && (
           <span
-            aria-label={`${open} open reports`}
+            aria-label={plural(t.admin.openReportsAria, open, lang)}
             className="rounded-full px-2 py-0.5 text-[11px] font-bold text-white"
             style={{ backgroundColor: COLORS.coral }}
           >
@@ -369,6 +365,7 @@ function AdminModerationNav() {
 // create-your-provider onboarding, so an admin who signs in (web callbackUrl=/provider) is NOT
 // forced through "pick a type of business" to reach the console. Non-admins never see it.
 function AdminModerationBanner() {
+  const { t, lang } = useProviderCopy(shellCopy);
   const { data } = useAdminModerationSummary();
   if (!data?.is_admin) return null;
   const open = Number(data.open_count) || 0;
@@ -386,17 +383,19 @@ function AdminModerationBanner() {
         </div>
         <div className="flex-1">
           <p className="font-semibold text-[#3B241B]">
-            You're an admin{open > 0 ? ` — ${open} open report${open === 1 ? "" : "s"}` : ""}
+            {open > 0
+              ? plural(t.admin.bannerTitleWithReports, open, lang)
+              : t.admin.bannerTitle}
           </p>
           <p className="text-sm text-[#7A6254]">
-            Open the Moderation console — you don't need to set up a business.
+            {t.admin.bannerBody}
           </p>
         </div>
         <span
           className="rounded-xl px-3 py-2 text-sm font-bold text-white"
           style={{ backgroundColor: COLORS.coral }}
         >
-          Open
+          {t.admin.open}
         </span>
       </Link>
     </div>
@@ -404,6 +403,7 @@ function AdminModerationBanner() {
 }
 
 function Sidebar({ active, providers, activeProviderId, onSelect, capabilities }) {
+  const { t } = useProviderCopy(shellCopy);
   // The left nav lists ONLY the sections this business offers: a capability-gated
   // section shows when its offering is selected on the Business Profile, structural
   // sections always show, and there is no "reveal everything" override. Filter first,
@@ -424,7 +424,11 @@ function Sidebar({ active, providers, activeProviderId, onSelect, capabilities }
         >
           <PawPrint className="h-5 w-5" style={{ color: COLORS.terracotta }} />
         </div>
-        <span className="text-lg font-bold text-[#3B241B]">PawPi Provider</span>
+        <span className="text-lg font-bold text-[#3B241B]">{t.brand}</span>
+      </div>
+
+      <div className="px-5 pb-4">
+        <PanelLanguageSwitch />
       </div>
 
       <div className="border-y border-[#FFF1E2]">
@@ -445,7 +449,7 @@ function Sidebar({ active, providers, activeProviderId, onSelect, capabilities }
             <div key={item.key}>
               {showHeader && (
                 <p className="px-3 pb-1 pt-4 text-[11px] font-bold uppercase tracking-wide text-[#B8A99D]">
-                  {item.group}
+                  {t.groups[item.group]}
                 </p>
               )}
               <NavItem item={item} active={active} />
@@ -466,11 +470,15 @@ function Sidebar({ active, providers, activeProviderId, onSelect, capabilities }
 // discovers their invites, since they don't appear in the active-only providers
 // list. Invites load quietly; the banner only appears once ≥1 is known.
 function NoProviderState() {
+  const { t, lang } = useProviderCopy(shellCopy);
   const { data: invites } = useMyProviderInvites();
   const count = invites?.length ?? 0;
 
   return (
     <div className="min-h-screen w-full" style={{ backgroundColor: COLORS.cream }}>
+      <div className="flex justify-end px-6 pt-4">
+        <PanelLanguageSwitch />
+      </div>
       {/* Admin? Offer the console prominently — never force an admin through business setup. */}
       <AdminModerationBanner />
       {count > 0 && (
@@ -487,17 +495,17 @@ function NoProviderState() {
             </div>
             <div className="flex-1">
               <p className="font-semibold text-[#3B241B]">
-                You have {count} pending invitation{count === 1 ? "" : "s"}
+                {plural(t.invitesBanner.title, count, lang)}
               </p>
               <p className="text-sm text-[#7A6254]">
-                Review and accept to join a provider's team.
+                {t.invitesBanner.body}
               </p>
             </div>
             <span
               className="rounded-xl px-3 py-2 text-sm font-bold text-white"
               style={{ backgroundColor: COLORS.coral }}
             >
-              View
+              {t.invitesBanner.view}
             </span>
           </Link>
         </div>
@@ -509,6 +517,7 @@ function NoProviderState() {
 
 // Inner shell — runs INSIDE the QueryClientProvider so it can read useProviders.
 function ProviderShellInner({ active, children }) {
+  const { t, lang } = useProviderCopy(shellCopy);
   const navigate = useNavigate();
   const { user, loading: authLoading } = useUser();
   const { selectedProviderId, setSelectedProviderId } = useProviderSelection();
@@ -537,21 +546,24 @@ function ProviderShellInner({ active, children }) {
   }, [providers, selectedProviderId]);
 
   if (authLoading || (user && providersLoading)) {
-    return <Spinner label="Loading your dashboard…" />;
+    return <Spinner label={t.loading} />;
   }
   if (!user) {
-    return <Spinner label="Redirecting to sign in…" />;
+    return <Spinner label={t.redirecting} />;
   }
   if (isError) {
     return (
       <FullScreen>
         <div className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-lg">
           <h1 className="mb-2 text-xl font-bold text-[#3B241B]">
-            Couldn't load your providers
+            {t.loadErrorTitle}
           </h1>
           <p className="text-sm text-[#7A6254]">
-            {error?.message || "Please try again in a moment."}
+            {serverErrorMessage(error, lang, t.loadErrorBody)}
           </p>
+          <div className="mt-4">
+            <PanelLanguageSwitch />
+          </div>
         </div>
       </FullScreen>
     );

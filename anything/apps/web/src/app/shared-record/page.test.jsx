@@ -8,7 +8,7 @@ vi.mock("@/components/brand/BrandLockup", () => ({ default: () => null }));
 import SharedRecordPage, { RECORD_LINK_STORAGE_KEY } from "./page";
 import { RECORD_LINK_COPY } from "@/lib/recordLink/copy";
 import { RECORD_COPY } from "@/app/provider/lib/recordCopy";
-import { isPrivateLinkPath } from "@/lib/home/meta";
+import { documentLang, isPrivateLinkPath } from "@/lib/home/meta";
 
 const TOKEN = "r".repeat(43);
 const t = RECORD_LINK_COPY.en;
@@ -60,6 +60,9 @@ describe("shared record page", () => {
   it("is marked as a private link page, so it is not indexed", () => {
     expect(isPrivateLinkPath("/shared-record")).toBe(true);
     expect(isPrivateLinkPath("/shared-records")).toBe(false);
+    // <html lang> follows the viewer, Spanish when nothing says otherwise.
+    expect(documentLang("/shared-record", "")).toBe("es-AR");
+    expect(documentLang("/shared-record", "?lang=en")).toBe("en");
   });
 
   it("takes the token out of the address bar and sends it only in a request body, with no cookie", async () => {

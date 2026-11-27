@@ -1,17 +1,17 @@
+import shared from "../i18n/shared";
+import { fill } from "../i18n/lib/format";
+
 // Opening-hours helpers for the locations screen. hours_json is a free-form
 // JSONB object server-side; the UI uses a simple per-weekday open/close editor.
 // We settle on the shape { mon: { open: "09:00", close: "17:00" }, ... } and keep
 // the round-trip (rows ⇄ hours_json) here so the screen and tests share it.
 
-export const WEEKDAYS = [
-  { key: "mon", label: "Mon" },
-  { key: "tue", label: "Tue" },
-  { key: "wed", label: "Wed" },
-  { key: "thu", label: "Thu" },
-  { key: "fri", label: "Fri" },
-  { key: "sat", label: "Sat" },
-  { key: "sun", label: "Sun" },
-];
+// `label` is the English name, for screens not yet translated; translated screens use weekdayName(key, lang).
+export const WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map(
+  (key) => ({ key, label: shared.en.weekdaysShort[key] }),
+);
+
+export const weekdayName = (key, lang = "en") => shared[lang].weekdaysShort[key];
 
 // Seed editor rows from a stored hours_json (missing days → empty open/close).
 export function hoursToRows(hours) {
@@ -41,15 +41,17 @@ export function rowsToHours(rows) {
 }
 
 // One-line summary for the list, e.g. "Mon 09:00–17:00 · Sat 10:00–14:00".
-export function hoursSummary(hours) {
+export function hoursSummary(hours, lang = "en") {
   if (!hours || typeof hours !== "object") return "";
   const parts = [];
   for (const day of WEEKDAYS) {
     const h = hours[day.key];
     if (!h) continue;
-    if (h.open && h.close) parts.push(`${day.label} ${h.open}–${h.close}`);
-    else if (h.open) parts.push(`${day.label} from ${h.open}`);
-    else if (h.close) parts.push(`${day.label} until ${h.close}`);
+    const name = weekdayName(day.key, lang);
+    const { from, until } = shared[lang].hours;
+    if (h.open && h.close) parts.push(`${name} ${h.open}–${h.close}`);
+    else if (h.open) parts.push(fill(from, { day: name, time: h.open }));
+    else if (h.close) parts.push(fill(until, { day: name, time: h.close }));
   }
   return parts.join(" · ");
 }

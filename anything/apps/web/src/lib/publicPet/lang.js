@@ -1,12 +1,31 @@
-// Which language a private-link pet page opens in. Whoever scans a tag never chose anything, so the browser's
-// preferred language decides (navigator.languages mirrors the Accept-Language header): any `es*` → Spanish,
-// any other language → English, none reported → Spanish (PawPi's primary language). `?lang=es|en`, set by the
-// in-page toggle, always wins so a reload keeps the visitor's choice.
+// Which language PawPi's pages for tag scanners, vets and businesses open in: the private-link pet pages
+// (/p/tag, /p/card), the vet invite page, the shared record page and the provider panel. One rule:
+//   1. `?lang=es|en` in the address,
+//   2. the choice this viewer made before with the ES / EN switch (remembered in this browser, see langStore.js),
+//   3. the browser's FIRST preferred language: any `en*` → English; anything else, or none → Spanish (es-AR),
+//      PawPi's primary language.
+// No account or business setting takes part. Leaf module: no React, no browser globals.
 
-export function pickVisitorLang({ search, languages } = {}) {
-  const chosen = new URLSearchParams(search || "").get("lang");
-  if (chosen === "es" || chosen === "en") return chosen;
-  const preferred = (languages || []).find(Boolean);
-  if (!preferred) return "es";
-  return /^es($|[-_])/i.test(preferred) ? "es" : "en";
+export const DEFAULT_VISITOR_LANG = "es";
+
+export const isVisitorLang = (value) => value === "es" || value === "en";
+
+export function langParam(search) {
+  const value = new URLSearchParams(search || "").get("lang");
+  return isVisitorLang(value) ? value : null;
 }
+
+export function pickVisitorLang({ search, remembered, languages } = {}) {
+  const asked = langParam(search);
+  if (asked) return asked;
+  if (isVisitorLang(remembered)) return remembered;
+  const preferred = (languages || []).find(Boolean);
+  return preferred && /^en($|[-_])/i.test(preferred) ? "en" : DEFAULT_VISITOR_LANG;
+}
+
+// The paths whose pages follow this rule. Case-insensitive because the router also matches /P/Tag/....
+export function isVisitorLangPath(pathname) {
+  return /^\/+(p|vet-invite|shared-record|provider)(\/|$)/i.test(String(pathname || ""));
+}
+
+export const htmlLang = (lang) => (lang === "en" ? "en" : "es-AR");

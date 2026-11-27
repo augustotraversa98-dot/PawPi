@@ -1,0 +1,9 @@
+{
+  "slice": "clinical index and pet record",
+  "concurrentEdits": true,
+  "files": [
+    "components/ProviderClinical.jsx",
+    "components/ProviderPetRecord.jsx",
+    "lib/recordCopy.js"
+  ]
+}

@@ -21,6 +21,19 @@ import {
 } from "../../../client-integrations/recharts";
 import { useProviderAnalytics } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
+import dashboardCopy from "../i18n/dashboard";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import {
+  fill,
+  formatDate,
+  formatMoney,
+  formatMonth,
+  formatNumber,
+  formatTime,
+  plural,
+} from "../i18n/lib/format";
+import { bookingStatusName, providerTypeName } from "../i18n/lib/labels";
+import { serverErrorMessage } from "../i18n/lib/serverError";
 import GettingStartedChecklist from "./GettingStartedChecklist";
 
 // Provider DASHBOARD HOME — the at-a-glance business overview (Phase 2 ticket 2.14). Reads the
@@ -29,20 +42,11 @@ import GettingStartedChecklist from "./GettingStartedChecklist";
 // bookings trends + the top-services bars. Every value is scoped to the active provider; this
 // screen NEVER reads another business's data. Empty data → empty states (no fake metrics).
 
-// Format integer cents in the provider's currency (e.g. "ARS 1,250.00"). The analytics summary
-// reports a single de-facto currency; the chart axis stays cents-free by labeling the card.
-function formatMoney(cents, currency) {
-  const v = (Number(cents) || 0) / 100;
-  return `${currency || "ARS"} ${v.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
-
-function formatWhen(date, time) {
+// The booking's wall-clock day and time, shown with no time-zone shift.
+function formatWhen(date, time, lang) {
   if (!date) return "—";
-  const t = time ? String(time).slice(0, 5) : "";
-  return t ? `${date} · ${t}` : date;
+  const day = formatDate(String(date).slice(0, 10), lang) || date;
+  return time ? `${day} · ${formatTime(String(time).slice(0, 5))}` : day;
 }
 
 function StatCard({ Icon, label, value, sub, accent }) {
@@ -83,6 +87,7 @@ function ChartCard({ title, children, empty, emptyText }) {
 }
 
 export default function ProviderDashboard({ providerId }) {
+  const { t, lang } = useProviderCopy(dashboardCopy);
   const navigate = useNavigate();
   const { data, isLoading, isError, error } = useProviderAnalytics(providerId);
 
@@ -111,7 +116,7 @@ export default function ProviderDashboard({ providerId }) {
       <div className="p-6">
         <div className="rounded-2xl border border-[#FFD9B3] bg-white p-8 text-center">
           <p className="text-sm text-[#7A6254]">
-            {error?.message || "Couldn't load your dashboard."}
+            {serverErrorMessage(error, lang, t.loadError)}
           </p>
         </div>
       </div>
@@ -119,6 +124,9 @@ export default function ProviderDashboard({ providerId }) {
   }
 
   const currency = data?.revenue?.currency ?? "ARS";
+  const monthLabel = (month) => formatMonth(month, lang);
+  // Spanish axes use es-AR separators; English keeps the chart's own numbers.
+  const numberLabel = (value) => (lang === "es" ? formatNumber(value, lang) : value);
   const avgRating = data?.rating?.avg_rating ?? 0;
   const reviewCount = data?.rating?.review_count ?? 0;
 
@@ -128,40 +136,45 @@ export default function ProviderDashboard({ providerId }) {
       <GettingStartedChecklist providerId={providerId} />
 
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-[#3B241B]">Dashboard</h1>
-        <p className="text-sm text-[#7A6254]">
-          Your business at a glance — only this provider's data.
-        </p>
+        <h1 className="text-2xl font-bold text-[#3B241B]">{t.title}</h1>
+        <p className="text-sm text-[#7A6254]">{t.subtitle}</p>
       </header>
 
       {/* Headline stats */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row">
         <StatCard
           Icon={DollarSign}
-          label="Revenue (paid)"
-          value={formatMoney(data?.revenue?.total_cents, currency)}
-          sub={`${data?.revenue?.paid_order_count ?? 0} paid orders`}
+          label={t.stats.revenue}
+          value={formatMoney(data?.revenue?.total_cents, currency, lang)}
+          sub={plural(t.stats.paidOrders, data?.revenue?.paid_order_count ?? 0, lang)}
           accent={COLORS.coral}
         />
         <StatCard
           Icon={CalendarCheck}
-          label="Bookings"
+          label={t.stats.bookings}
           value={data?.bookings?.total ?? 0}
-          sub={`${data?.bookings?.upcoming_count ?? 0} upcoming`}
+          sub={plural(t.stats.upcoming, data?.bookings?.upcoming_count ?? 0, lang)}
           accent={COLORS.terracotta}
         />
         <StatCard
           Icon={Home}
-          label="Occupancy"
+          label={t.stats.occupancy}
           value={data?.occupancy?.on_site ?? 0}
-          sub={`${data?.occupancy?.booked_ahead ?? 0} booked ahead`}
+          sub={plural(t.stats.bookedAhead, data?.occupancy?.booked_ahead ?? 0, lang)}
           accent="#5A8A74"
         />
         <StatCard
           Icon={Star}
-          label="Avg rating"
-          value={reviewCount > 0 ? Number(avgRating).toFixed(2) : "—"}
-          sub={`${reviewCount} review${reviewCount === 1 ? "" : "s"}`}
+          label={t.stats.rating}
+          value={
+            reviewCount > 0
+              ? formatNumber(avgRating, lang, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })
+              : "—"
+          }
+          sub={plural(t.stats.reviews, reviewCount, lang)}
           accent="#E0A800"
         />
       </div>
@@ -169,20 +182,25 @@ export default function ProviderDashboard({ providerId }) {
       {/* Trends */}
       <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard
-          title={`Revenue by month (${currency})`}
+          title={fill(t.charts.revenueByMonth, { currency })}
           empty={revenueSeries.length === 0}
-          emptyText="No paid orders yet."
+          emptyText={t.charts.noPaidOrders}
         >
           <div style={{ width: "100%", height: 220 }}>
             <ResponsiveContainer>
               <LineChart data={revenueSeries}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#FFE9D6" />
-                <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#7A6254" }} />
-                <YAxis tick={{ fontSize: 12, fill: "#7A6254" }} />
-                <Tooltip />
+                <XAxis
+                  dataKey="month"
+                  tickFormatter={monthLabel}
+                  tick={{ fontSize: 12, fill: "#7A6254" }}
+                />
+                <YAxis tickFormatter={numberLabel} tick={{ fontSize: 12, fill: "#7A6254" }} />
+                <Tooltip labelFormatter={monthLabel} formatter={numberLabel} />
                 <Line
                   type="monotone"
                   dataKey="revenue"
+                  name={t.charts.revenueSeries}
                   stroke={COLORS.coral}
                   strokeWidth={2}
                   dot={{ r: 3 }}
@@ -193,18 +211,27 @@ export default function ProviderDashboard({ providerId }) {
         </ChartCard>
 
         <ChartCard
-          title="Bookings by month"
+          title={t.charts.bookingsByMonth}
           empty={bookingsSeries.length === 0}
-          emptyText="No bookings yet."
+          emptyText={t.charts.noBookings}
         >
           <div style={{ width: "100%", height: 220 }}>
             <ResponsiveContainer>
               <BarChart data={bookingsSeries}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#FFE9D6" />
-                <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#7A6254" }} />
+                <XAxis
+                  dataKey="month"
+                  tickFormatter={monthLabel}
+                  tick={{ fontSize: 12, fill: "#7A6254" }}
+                />
                 <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "#7A6254" }} />
-                <Tooltip />
-                <Bar dataKey="booking_count" fill={COLORS.terracotta} radius={[4, 4, 0, 0]} />
+                <Tooltip labelFormatter={monthLabel} />
+                <Bar
+                  dataKey="booking_count"
+                  name={t.charts.bookingsSeries}
+                  fill={COLORS.terracotta}
+                  radius={[4, 4, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -214,9 +241,9 @@ export default function ProviderDashboard({ providerId }) {
       {/* Top services + upcoming */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard
-          title="Top services"
+          title={t.charts.topServices}
           empty={topServices.length === 0}
-          emptyText="No service bookings yet."
+          emptyText={t.charts.noServiceBookings}
         >
           <div style={{ width: "100%", height: 220 }}>
             <ResponsiveContainer>
@@ -234,7 +261,12 @@ export default function ProviderDashboard({ providerId }) {
                   tick={{ fontSize: 12, fill: "#7A6254" }}
                 />
                 <Tooltip />
-                <Bar dataKey="booking_count" fill={COLORS.coral} radius={[0, 4, 4, 0]} />
+                <Bar
+                  dataKey="booking_count"
+                  name={t.charts.bookingsSeries}
+                  fill={COLORS.coral}
+                  radius={[0, 4, 4, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -242,18 +274,18 @@ export default function ProviderDashboard({ providerId }) {
 
         <div className="rounded-2xl border border-[#FFD9B3] bg-white p-5">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-bold text-[#3B241B]">Upcoming bookings</h2>
+            <h2 className="text-base font-bold text-[#3B241B]">{t.upcomingList.title}</h2>
             <button
               type="button"
               onClick={() => navigate("/provider/bookings")}
               className="flex items-center gap-1 text-sm font-semibold text-[#B75D32] hover:underline"
             >
-              <TrendingUp className="h-4 w-4" /> Inbox
+              <TrendingUp className="h-4 w-4" /> {t.upcomingList.inbox}
             </button>
           </div>
           {upcoming.length === 0 ? (
             <div className="flex h-40 items-center justify-center text-sm text-[#B8A99D]">
-              No upcoming bookings.
+              {t.upcomingList.empty}
             </div>
           ) : (
             <ul className="divide-y divide-[#FFF1E2]">
@@ -261,7 +293,7 @@ export default function ProviderDashboard({ providerId }) {
                 <li key={b.id} className="flex items-center justify-between py-3">
                   <div>
                     <p className="font-semibold text-[#3B241B]">
-                      {b.pet_name || "Pet"}
+                      {b.pet_name || t.upcomingList.petFallback}
                       {b.owner_name ? (
                         <span className="font-normal text-[#7A6254]">
                           {" "}
@@ -270,12 +302,18 @@ export default function ProviderDashboard({ providerId }) {
                       ) : null}
                     </p>
                     <p className="text-xs text-[#7A6254]">
-                      {b.service_name || b.capability || "Booking"} ·{" "}
-                      {formatWhen(b.appointment_date, b.appointment_time)}
+                      {b.service_name ||
+                        providerTypeName(b.capability, lang) ||
+                        t.upcomingList.bookingFallback}{" "}
+                      · {formatWhen(b.appointment_date, b.appointment_time, lang)}
                     </p>
                   </div>
-                  <span className="rounded-full bg-[#FFF1E2] px-2.5 py-1 text-xs font-semibold capitalize text-[#B75D32]">
-                    {b.booking_status || "—"}
+                  <span
+                    className={`rounded-full bg-[#FFF1E2] px-2.5 py-1 text-xs font-semibold text-[#B75D32] ${
+                      lang === "en" ? "capitalize" : ""
+                    }`}
+                  >
+                    {bookingStatusName(b.booking_status, lang) || "—"}
                   </span>
                 </li>
               ))}

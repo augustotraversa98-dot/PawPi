@@ -40,6 +40,8 @@ import PublicHead from '@/components/brand/PublicHead';
 import { documentLang } from '@/lib/home/meta';
 // @ts-expect-error -- plain JS module, no type declarations
 import { NonceContext } from '@/lib/csp/NonceContext';
+// @ts-expect-error -- plain JS module, no type declarations
+import { useRootVisitorLang } from '@/lib/publicPet/useVisitorLang';
 import type { Route } from './+types/root';
 
 export const links = () => [];
@@ -418,6 +420,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const pathname = location?.pathname;
   const search = location?.search;
+  const visitorLang = useRootVisitorLang(pathname, search);
   const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -444,7 +447,7 @@ export function Layout({ children }: { children: ReactNode }) {
     }
   }, [pathname]);
   return (
-    <html lang={documentLang(pathname, search)}>
+    <html lang={documentLang(pathname, search, visitorLang)}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />

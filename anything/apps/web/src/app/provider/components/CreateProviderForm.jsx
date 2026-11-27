@@ -7,6 +7,10 @@ import { COLORS } from "../lib/colors";
 import { PROVIDER_TYPES } from "../lib/providerTypes";
 import { CAPABILITY_OPTIONS } from "../lib/capabilities";
 import { groupedCapabilityOptions } from "../lib/capabilityGroups";
+import createProviderCopy from "../i18n/createProvider";
+import { useProviderCopy } from "../i18n/lib/useProviderCopy";
+import { capabilityName, providerTypeOption, sectionName } from "../i18n/lib/labels";
+import { serverErrorMessage } from "../i18n/lib/serverError";
 import AdvancedSection from "./AdvancedSection";
 
 // Client-side validity mirror (lib/capabilities mirrors the server's ALLOWED_CAPABILITIES).
@@ -17,6 +21,7 @@ const VALID_CAPS = new Set(CAPABILITY_OPTIONS.map((c) => c.value));
 // new (draft) provider, the parent shell re-resolves it, and we land on the
 // dashboard. name + provider_type are client-validated; a server 400 surfaces.
 export default function CreateProviderForm() {
+  const { t, lang } = useProviderCopy(createProviderCopy);
   const {
     register,
     handleSubmit,
@@ -77,7 +82,7 @@ export default function CreateProviderForm() {
       },
       {
         onError: (err) => {
-          toast.error(err?.message || "Couldn't create your provider");
+          toast.error(serverErrorMessage(err, lang, t.failed));
         },
         // No success toast: the shell swaps straight to the dashboard, which is
         // confirmation enough.
@@ -99,44 +104,37 @@ export default function CreateProviderForm() {
             <Building2 className="h-7 w-7" style={{ color: COLORS.terracotta }} />
           </div>
           <h1 className="mb-1 text-2xl font-bold text-[#3B241B]">
-            Create your provider
+            {t.title}
           </h1>
-          <p className="text-sm text-[#7A6254]">
-            Set up your business profile to manage bookings and client care. You
-            can edit everything later and publish when you're ready.
-          </p>
+          <p className="text-sm text-[#7A6254]">{t.intro}</p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          <Field label="Business name" error={errors.name?.message} required>
+          {/* A rule's message is its key in the dictionary, so a shown error follows the language switch. */}
+          <Field label={t.name} error={t[errors.name?.message]} required>
             <input
               type="text"
-              placeholder="Happy Paws Veterinary"
+              placeholder={t.namePlaceholder}
               {...register("name", {
-                required: "Business name is required",
-                validate: (v) =>
-                  v.trim().length > 0 || "Business name is required",
+                required: "nameRequired",
+                validate: (v) => v.trim().length > 0 || "nameRequired",
               })}
               className="w-full rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-3 py-2.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
             />
           </Field>
 
-          <Field
-            label="Provider type"
-            error={errors.provider_type?.message}
-            required
-          >
+          <Field label={t.type} error={t[errors.provider_type?.message]} required>
             <select
-              aria-label="Provider type"
+              aria-label={t.type}
               {...register("provider_type", {
-                required: "Choose a provider type",
+                required: "typeRequired",
               })}
               className="w-full rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-3 py-2.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
             >
-              <option value="">Select a type…</option>
-              {PROVIDER_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
+              <option value="">{t.typePlaceholder}</option>
+              {PROVIDER_TYPES.map(({ value }) => (
+                <option key={value} value={value}>
+                  {providerTypeOption(value, lang)}
                 </option>
               ))}
             </select>
@@ -145,20 +143,17 @@ export default function CreateProviderForm() {
           {/* Capability multi-select (Phase 3) — what the business offers. Pre-selects the
               capability matching the chosen type; the owner can add more so a new provider
               isn't stuck with a single seeded capability. */}
-          <Field
-            label="What this business offers"
-            hint="You can change this later"
-          >
+          <Field label={t.offers} hint={t.offersHint}>
             {/* Grouped under clear parent sections (ticket 2.89) — labels + grouping only,
                 every underlying capability key unchanged. */}
             <div className="space-y-4">
               {groupedCapabilityOptions().map(({ section, options }) => (
                 <div key={section}>
                   <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-[#B8A99D]">
-                    {section}
+                    {sectionName(section, lang)}
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {options.map(({ value, label }) => {
+                    {options.map(({ value }) => {
                       const on = selectedCaps.has(value);
                       return (
                         <button
@@ -182,7 +177,7 @@ export default function CreateProviderForm() {
                           }
                         >
                           {on && <Check className="h-3.5 w-3.5" />}
-                          {label}
+                          {capabilityName(value, lang)}
                         </button>
                       );
                     })}
@@ -194,16 +189,16 @@ export default function CreateProviderForm() {
 
           {/* Optional profile + public-link fields (Phase 3): collapsed by default. */}
           <AdvancedSection>
-            <Field label="Bio" hint="Optional">
+            <Field label={t.bio} hint={t.optional}>
               <textarea
                 rows={3}
-                placeholder="Tell pet owners about your practice…"
+                placeholder={t.bioPlaceholder}
                 {...register("bio")}
                 className="w-full resize-y rounded-xl border-2 border-[#FFD9B3] bg-[#FFF7EF] px-3 py-2.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
               />
             </Field>
 
-            <Field label="Logo URL" hint="Optional">
+            <Field label={t.logoUrl} hint={t.optional}>
               <input
                 type="text"
                 placeholder="https://…"
@@ -214,12 +209,12 @@ export default function CreateProviderForm() {
 
             {/* Public business links (ticket 2.20) — optional. */}
             {[
-              { name: "website_url", label: "Website", ph: "https://…" },
-              { name: "instagram_url", label: "Instagram", ph: "https://instagram.com/…" },
-              { name: "facebook_url", label: "Facebook", ph: "https://facebook.com/…" },
-              { name: "google_maps_url", label: "Google Maps", ph: "https://maps.google.com/…" },
+              { name: "website_url", label: t.links.website, ph: "https://…" },
+              { name: "instagram_url", label: t.links.instagram, ph: "https://instagram.com/…" },
+              { name: "facebook_url", label: t.links.facebook, ph: "https://facebook.com/…" },
+              { name: "google_maps_url", label: t.links.googleMaps, ph: "https://maps.google.com/…" },
             ].map((f) => (
-              <Field key={f.name} label={f.label} hint="Optional">
+              <Field key={f.name} label={f.label} hint={t.optional}>
                 <input
                   type="text"
                   placeholder={f.ph}
@@ -237,7 +232,7 @@ export default function CreateProviderForm() {
             style={{ backgroundColor: COLORS.coral }}
           >
             {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            {isPending ? "Creating…" : "Create provider"}
+            {isPending ? t.submitting : t.submit}
           </button>
         </form>
       </div>

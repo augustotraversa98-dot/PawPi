@@ -177,8 +177,13 @@ jobs:
         if: steps.areas.outputs.run == 'true'
         run: bun install --frozen-lockfile
 
+      # NODE_OPTIONS raises the heap of the Vitest MAIN process (it holds the transforms and results of every file and
+      # hit Node's ~2 GB default near the end of the run). The test fork sets its own ceiling in
+      # vitest.integration.config.ts, which takes precedence there.
       - name: Run integration tests
         if: steps.areas.outputs.run == 'true'
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
         run: npm run test:integration
 
       - name: Skipped (no web or migration changes in this pull request)

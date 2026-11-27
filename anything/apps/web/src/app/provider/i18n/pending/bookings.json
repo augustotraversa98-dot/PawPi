@@ -1,0 +1,16 @@
+{
+  "slice": "bookings, calendar, availability, calendar import, chats, staff, sales and payments",
+  "files": [
+    "components/BookingsInbox.jsx",
+    "components/ProviderCalendar.jsx",
+    "components/ProviderAvailability.jsx",
+    "components/ProviderCalendarFeeds.jsx",
+    "components/ProviderChats.jsx",
+    "components/ProviderStaff.jsx",
+    "components/ProviderSales.jsx",
+    "components/PaymentAccountCard.jsx",
+    "payments/mercadopago/return/page.jsx",
+    "lib/bookingTime.js",
+    "lib/calendar.js"
+  ]
+}
