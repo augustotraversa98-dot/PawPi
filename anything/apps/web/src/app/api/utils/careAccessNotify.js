@@ -28,6 +28,17 @@ const COPY = {
         ? `${who} le dio a tu equipo acceso a la ficha de ${pet} hasta el ${until}.`
         : `${who} le dio a tu equipo acceso a la ficha de ${pet} hasta que lo revoque.`,
   },
+  // Sent with the type 'care_access_granted' when an owner changes what an existing access opens.
+  care_access_updated: {
+    en: ({ who, pet, until }) =>
+      until
+        ? `${who} changed your team's access to ${pet}'s records. It lasts until ${until}.`
+        : `${who} changed your team's access to ${pet}'s records. It lasts until revoked.`,
+    es: ({ who, pet, until }) =>
+      until
+        ? `${who} cambió el acceso de tu equipo a la ficha de ${pet}. Dura hasta el ${until}.`
+        : `${who} cambió el acceso de tu equipo a la ficha de ${pet}. Dura hasta que lo revoque.`,
+  },
   care_access_revoked: {
     en: ({ who, pet }) => `${who} ended your team's access to ${pet}'s records.`,
     es: ({ who, pet }) => `${who} revocó el acceso de tu equipo a la ficha de ${pet}.`,
@@ -56,9 +67,10 @@ export function careAccessBody(type, locale, { ownerName, petName, expiresAt = n
 /**
  * Notify the team of the grant's provider. Runs in the owner's request, after the grant row was written.
  * @param {{ type: "care_access_granted"|"care_access_revoked",
- *           grant: { pet_id: number, provider_id: number, expires_at?: Date|string|null }, actor: number }} args
+ *           grant: { pet_id: number, provider_id: number, expires_at?: Date|string|null }, actor: number,
+ *           changed?: boolean }} args  `changed`: an existing access was edited, and the sentence says so
  */
-export async function notifyCareAccess({ type, grant, actor }) {
+export async function notifyCareAccess({ type, grant, actor, changed = false }) {
   try {
     let team = [];
     await withSavepoint(async () => {
@@ -81,7 +93,7 @@ export async function notifyCareAccess({ type, grant, actor }) {
         actor,
         type,
         subjectRef: String(grant.pet_id),
-        body: careAccessBody(type, member.locale, {
+        body: careAccessBody(changed ? "care_access_updated" : type, member.locale, {
           ownerName: publicOwnerName(member),
           petName: member.pet_name,
           expiresAt: grant.expires_at,

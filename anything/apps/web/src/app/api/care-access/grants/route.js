@@ -10,7 +10,7 @@ import {
   RECORD_SECTIONS_SCOPE,
   SHARE_EXPIRY_INTERVALS,
 } from "@/app/api/utils/careAccess";
-import { isMissingSchema } from "@/app/api/utils/shareOffers";
+import { withdrawOpenOffer } from "@/app/api/utils/shareOffers";
 import {
   editAccessSupported,
   editAccessUnavailable,
@@ -177,25 +177,6 @@ async function approvePendingRequest({ userId, petId, providerId, scopes, sectio
   const grant = await applyEditSections(approved[0], editSections);
   await notifyCareAccess({ type: "care_access_granted", grant, actor: userId });
   return Response.json({ grant, approvedRequest: true });
-}
-
-// A repeated share changes no access row, so an unanswered invitation to this provider (0154) is withdrawn here, as
-// any other share withdraws it. Does nothing on a database without invitations.
-async function withdrawOpenOffer({ userId, petId, providerId }) {
-  try {
-    await withSavepoint(async () => {
-      await sql`
-        UPDATE care_share_offers
-        SET status = 'withdrawn', responded_at = NOW()
-        WHERE owner_user_id = ${userId}
-          AND pet_id = ${petId}
-          AND provider_id = ${providerId}
-          AND status = 'open'
-      `;
-    });
-  } catch (error) {
-    if (!isMissingSchema(error)) throw error;
-  }
 }
 
 // How long after a share by section the very same choice counts as that share sent again (a second tap, a retried
