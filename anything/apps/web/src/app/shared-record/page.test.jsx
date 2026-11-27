@@ -77,7 +77,8 @@ describe("shared record page", () => {
 
   it("names the pet in the tab title, so several open links can be told apart", async () => {
     await open();
-    expect(document.title).toBe(`Rex · ${t.documentTitle}`);
+    // the title is written by an effect, which can run just after the heading appears
+    await waitFor(() => expect(document.title).toBe(`Rex · ${t.documentTitle}`));
   });
 
   it("shows only the shared parts and says who added each note", async () => {
