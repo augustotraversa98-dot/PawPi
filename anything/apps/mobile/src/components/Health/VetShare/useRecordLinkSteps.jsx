@@ -9,6 +9,9 @@ import { LINK_EXPIRIES, SHARE_SECTIONS, expiryDate } from "@/utils/vetShare";
 import SecondaryButton from "./SecondaryButton";
 import { Choice, Heading, Note, bold, card, muted, picked, row, text } from "./parts";
 
+// Names one request to create a link, so that sending it again cannot create a second one.
+const newRequestKey = () => `link-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+
 function errorKey(error) {
   if (error?.code === LINKS_UNAVAILABLE) return "unavailable";
   if (error?.code === "link_limit") return "limit";
@@ -41,8 +44,11 @@ export default function useRecordLinkSteps({ pet }) {
   const [consent, setConsent] = useState(false);
   // State changes too late to stop a second tap in the same frame.
   const inFlight = useRef(false);
+  // The key of the last request, kept while the choice is the same: an answer that got lost is asked for again.
+  const request = useRef(null);
 
   const close = () => {
+    request.current = null;
     setStep(null);
     setSections([]);
     setExpiry(null);
@@ -103,8 +109,12 @@ export default function useRecordLinkSteps({ pet }) {
   const submit = () => {
     if (!complete || !consent || inFlight.current) return;
     inFlight.current = true;
+    const choice = JSON.stringify([pet.id, sections, expiry, allowNotes]);
+    if (request.current?.choice !== choice) request.current = { choice, key: newRequestKey() };
     create.mutate({
+      requestKey: request.current.key,
       petId: pet.id,
+      petName,
       sections,
       expiry,
       allowNotes,

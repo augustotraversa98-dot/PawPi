@@ -5,6 +5,8 @@ import { withRequestContext, withSavepoint } from "@/app/api/utils/requestContex
 import { enforceRateLimit } from "@/app/api/utils/rateLimit";
 import { resolveAppOrigin } from "@/app/api/utils/passwordResetToken";
 import { RECORD_SECTIONS } from "@/app/api/utils/careAccess";
+import { parseIdempotencyKey } from "@/app/api/utils/petCreateGuard";
+import { findLinkByRequestKey, rememberLinkRequestKey } from "@/app/api/utils/recordLinkRequest";
 import {
   RECORD_LINK_EXPIRIES,
   RECORD_LINK_OPEN_LIMIT,
@@ -98,7 +100,8 @@ function invalidChoice({ sections, expiry, allowNotes }) {
 }
 
 // POST /api/care-access/links { petId, sections, expiry, allowNotes } → 201 { link, url }. Every part of the choice is
-// required. The address is returned here and never again.
+// required. The address is returned here and never again. With an Idempotency-Key header, a repeat of a request that
+// already created a link creates nothing: 409 'link_already_created' { linkId }.
 //   409 'link_limit' (at most RECORD_LINK_OPEN_LIMIT links in use per owner) · 409 'share_links_unavailable' · 429
 async function POST(request) {
   try {
@@ -125,6 +128,10 @@ async function POST(request) {
       return Response.json({ error: refused }, { status: 400 });
     }
     const sections = RECORD_SECTIONS.filter((s) => body.sections.includes(s));
+    const requestKey = parseIdempotencyKey(request.headers.get("idempotency-key"));
+    if (requestKey.error) {
+      return Response.json({ error: requestKey.error, code: "idempotency_key_invalid" }, { status: 400 });
+    }
 
     const petRows = await sql`
       SELECT id FROM pets WHERE id = ${petId} AND owner_user_id = ${userId}
@@ -139,6 +146,10 @@ async function POST(request) {
       created = await withSavepoint(async () => {
         // One creation at a time per owner, so the limit holds under concurrent requests.
         await sql`SELECT pg_advisory_xact_lock(hashtext(${`care_record_link:${userId}`}))`;
+        if (requestKey.key) {
+          const earlier = await findLinkByRequestKey(userId, requestKey.key);
+          if (earlier !== null) return { earlier };
+        }
         const open = await sql`
           SELECT count(*)::int AS n FROM care_record_links
           WHERE owner_user_id = ${userId}
@@ -158,12 +169,23 @@ async function POST(request) {
           )
           RETURNING id, pet_id, sections, allow_notes, created_at, expires_at
         `;
+        if (requestKey.key) await rememberLinkRequestKey(userId, requestKey.key, rows[0].id);
         return rows[0];
       });
     } catch (error) {
       if (!isMissingSchema(error)) throw error;
       return answer(
         { error: "Sharing by link is not available yet", code: "share_links_unavailable" },
+        409,
+      );
+    }
+    if (created?.earlier !== undefined) {
+      return answer(
+        {
+          error: "This link was already created. Its address cannot be shown again.",
+          code: "link_already_created",
+          linkId: created.earlier,
+        },
         409,
       );
     }

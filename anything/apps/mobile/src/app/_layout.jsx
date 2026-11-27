@@ -9,7 +9,10 @@ import { startReminderNotificationSync } from "@/utils/reminderNotificationSync"
 import { startTelehealthReminderSync } from "@/utils/telehealthReminderSync";
 import { initNotifications } from "@/utils/notifications";
 import { registerPushTokenAsync } from "@/utils/registerPushToken";
-import { registerNotificationTapRouting } from "@/utils/notificationDeepLink";
+import {
+  registerNotificationTapRouting,
+  registerSharingNotificationRefresh,
+} from "@/utils/notificationDeepLink";
 import { recordAppOpenHour } from "@/utils/notificationPreferences";
 import { AuthModal } from "@/utils/auth/useAuthModal";
 import { wireQueryConnectivity } from "@/utils/connectivity";
@@ -78,6 +81,12 @@ export default function RootLayout() {
   useEffect(() => {
     if (!isAuthenticated) return undefined;
     return registerNotificationTapRouting();
+  }, [isAuthenticated]);
+
+  // A sharing notification that arrives while the app is open refreshes who can see what.
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+    return registerSharingNotificationRefresh(queryClient);
   }, [isAuthenticated]);
 
   // Apply the saved language override (ticket 2.29) — defaults to the phone's language.

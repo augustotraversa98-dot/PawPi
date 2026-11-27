@@ -176,9 +176,31 @@ async function withdrawOpenOffer({ userId, petId, providerId }) {
   }
 }
 
+// How long after a share by section the very same choice counts as that share sent again (a second tap, a retried
+// request) rather than as a new one.
+const SAME_SHARE_WINDOW = "2 minutes";
+
+// The active grant by section this exact choice created moments ago, or null. `interval` is null for no end date.
+async function sameRecentShare({ userId, petId, providerId, sections, interval }) {
+  const rows = await sql`
+    SELECT * FROM care_access_grants
+    WHERE owner_user_id = ${userId}
+      AND pet_id = ${petId}
+      AND provider_id = ${providerId}
+      AND status = 'active'
+      AND sections @> ${sections}::text[]
+      AND sections <@ ${sections}::text[]
+      AND expires_at IS NOT DISTINCT FROM granted_at + ${interval}::interval
+      AND granted_at > now() - ${SAME_SHARE_WINDOW}::interval
+    LIMIT 1
+  `;
+  return rows[0] ?? null;
+}
+
 // End the active grant for this pet and provider, if any, then approve the vet's pending request or
 // create a new grant, with exactly the chosen sections and expiry. Everything runs on the request
-// transaction: it all applies or none of it does.
+// transaction: it all applies or none of it does. The same choice sent again moments later answers with the grant it
+// already created: 200 { grant, deduped: true }.
 async function shareBySection({ userId, petId, providerId, sections, interval }) {
   const chosen = RECORD_SECTIONS.filter((s) => sections.includes(s));
   const choice = {
@@ -189,6 +211,11 @@ async function shareBySection({ userId, petId, providerId, sections, interval })
     sections: chosen,
     interval,
   };
+  const repeated = await sameRecentShare(choice);
+  if (repeated) {
+    await withdrawOpenOffer(choice);
+    return Response.json({ grant: repeated, deduped: true });
+  }
   await sql`
     UPDATE care_access_grants
     SET status = 'revoked', revoked_at = NOW(), updated_at = NOW()
@@ -252,7 +279,8 @@ async function shareBySection({ userId, petId, providerId, sections, interval })
 //     never widened by this shape.
 //   • { petId, providerId, sections, expiry } — a grant by section (docs/vet-sharing-design.md):
 //     exactly what the owner chose, nothing by default. An active grant for the same pet and
-//     provider ends and a new row replaces it (shareBySection).
+//     provider ends and a new row replaces it, unless this same choice created it moments ago
+//     (shareBySection).
 // A grant or request past its date is closed first, so it never blocks a new one.
 // While the vet's request for that pet is PENDING, either shape approves that row with exactly what
 // the owner chose, never what the request asked for beyond that: 200 { grant, approvedRequest: true }.
