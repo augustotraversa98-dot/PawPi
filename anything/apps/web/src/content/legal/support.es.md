@@ -76,4 +76,4 @@ escribí a **support@pawpi.info** con los detalles y lo revisamos.
 
 ---
 
-PawPi — Augusto Traversa, Matacos y Alborada S/N. Contacto: **support@pawpi.info**
+PawPi — Tanquetats 2022, NIF/CIF B10579803, Calle Torrente 18 26, 46014 Valencia, Spain. Contacto: **support@pawpi.info**

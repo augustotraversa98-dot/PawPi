@@ -104,19 +104,32 @@ describe('POST /api/threads/[id]/messages', () => {
     const CREATED = { id: 5, thread_id: 100, sender_user_id: 7, body: 'hi' };
     sql
       .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
+      .mockResolvedValueOnce([{ owner_user_id: 7, provider_id: 3, claim_status: 'claimed' }]) // thread
       .mockResolvedValueOnce([CREATED]) // insert
       .mockResolvedValueOnce([]); // bump last_message_at
     const res = await POST(postReq({ body: 'hi' }), PARAMS);
     expect(res.status).toBe(201);
     expect(await res.json()).toEqual({ message: CREATED });
     // sender forced to the resolved profile id (7), never client-supplied.
-    expect(sql.mock.calls[1].slice(1)).toContain(7);
+    expect(sql.mock.calls[2].slice(1)).toContain(7);
+  });
+
+  it('refuses a message to a listing nobody has claimed (409), before any insert', async () => {
+    auth.mockResolvedValue(SESSION);
+    sql
+      .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([{ owner_user_id: 7, provider_id: 8, claim_status: 'unclaimed' }]);
+    const res = await POST(postReq({ body: 'hi' }), PARAMS);
+    expect(res.status).toBe(409);
+    expect((await res.json()).code).toBe('provider_unclaimed');
+    expect(sql).toHaveBeenCalledTimes(2);
   });
 
   it('maps an RLS denial on insert to 403 (non-participant)', async () => {
     auth.mockResolvedValue(SESSION);
     sql
       .mockResolvedValueOnce([PROFILE_ROW]) // resolveUserId
+      .mockResolvedValueOnce([]) // a non-participant reads no thread row
       .mockRejectedValueOnce(new Error('new row violates row-level security policy'));
     const res = await POST(postReq({ body: 'hi' }), PARAMS);
     expect(res.status).toBe(403);
@@ -126,6 +139,7 @@ describe('POST /api/threads/[id]/messages', () => {
     auth.mockResolvedValue(SESSION);
     sql
       .mockResolvedValueOnce([PROFILE_ROW])
+      .mockResolvedValueOnce([{ owner_user_id: 7, provider_id: 3, claim_status: 'claimed' }])
       .mockResolvedValueOnce([{ id: 6, attachment_url: 'https://x/y.jpg' }])
       .mockResolvedValueOnce([]);
     const res = await POST(

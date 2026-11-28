@@ -187,7 +187,7 @@ export default function SiteFooter() {
             color: BRAND.muted,
           }}
         >
-          <p style={{ margin: 0, fontSize: 13 }}>© 2026 PawPi · Augusto Traversa</p>
+          <p style={{ margin: 0, fontSize: 13 }}>© 2026 PawPi · Tanquetats 2022</p>
           <p lang="en" style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>
             {APPLE_CREDIT}
           </p>

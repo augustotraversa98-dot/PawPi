@@ -1462,6 +1462,10 @@
     "couldntBook": "Couldn't book"
   },
   "providers": {
+    "unclaimed": {
+      "notice": "This business hasn't been claimed yet, so you can't book or message it on PawPi.",
+      "cantSend": "This business hasn't been claimed yet, so we can't send this to them."
+    },
     "searchPlaceholder": "Search by name",
     "sortSuggested": "Suggested",
     "sortTopRated": "Top rated",

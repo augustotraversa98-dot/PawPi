@@ -12,5 +12,5 @@ export const PRIVACY_POLICY_URL = process.env.NEXT_PUBLIC_PRIVACY_POLICY_URL || 
 // WHAT A BUMP DOES (verified 2026-10-16): it only changes the version stamped on NEW signups' consent
 // rows. Nothing in the app or API compares a user's stored version to these constants, so existing
 // users are NOT re-prompted. A re-consent-on-version-change backstop does not exist yet.
-export const TERMS_VERSION = process.env.NEXT_PUBLIC_TERMS_VERSION || "2026-11-25";
-export const PRIVACY_VERSION = process.env.NEXT_PUBLIC_PRIVACY_VERSION || "2026-11-25";
+export const TERMS_VERSION = process.env.NEXT_PUBLIC_TERMS_VERSION || "2026-11-27";
+export const PRIVACY_VERSION = process.env.NEXT_PUBLIC_PRIVACY_VERSION || "2026-11-27";

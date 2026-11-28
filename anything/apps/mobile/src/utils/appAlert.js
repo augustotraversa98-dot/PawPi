@@ -45,6 +45,7 @@ function isSpanishUi() {
 }
 
 const SERVER_MESSAGE_RULES = [
+  [/hasn't been claimed yet/i, "providers.unclaimed.cantSend", "This business hasn't been claimed yet, so we can't send this to them."],
   [/^(unauthorized|not authorized\b.*)$/i, "leftoverUi.serverErrors.unauthorized", "Please sign in again."],
   [/^forbidden$|access denied|not owned|not yours|do not own|not a participant|not allowed/i, "leftoverUi.serverErrors.forbidden", "You don't have permission to do that."],
   [/not found/i, "leftoverUi.serverErrors.notFound", "We couldn't find that."],

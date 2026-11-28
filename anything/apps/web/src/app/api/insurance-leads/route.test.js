@@ -6,9 +6,15 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST, GET } from "./route";
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
+import { providerIsUnclaimed } from "@/app/api/utils/providerClaim";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
+// The claim lookup answers "claimed" unless a test says otherwise.
+vi.mock("@/app/api/utils/providerClaim", async (importOriginal) => ({
+  ...(await importOriginal()),
+  providerIsUnclaimed: vi.fn(),
+}));
 
 const SESSION = { user: { id: 42 } };
 const PROFILE = [{ id: 7 }];
@@ -23,6 +29,16 @@ it("400 without provider_id", async () => {
   auth.mockResolvedValue(SESSION);
   sql.mockResolvedValueOnce(PROFILE);
   expect((await POST(post({}))).status).toBe(400);
+});
+
+it("409 provider_unclaimed for a listing nobody has claimed, with no lead written", async () => {
+  auth.mockResolvedValue(SESSION);
+  sql.mockResolvedValueOnce(PROFILE);
+  providerIsUnclaimed.mockResolvedValueOnce(true);
+  const res = await POST(post({ provider_id: 10 }));
+  expect(res.status).toBe(409);
+  expect((await res.json()).code).toBe("provider_unclaimed");
+  expect(sql).toHaveBeenCalledTimes(1); // the profile lookup only
 });
 
 it("403 when naming a pet the caller doesn't own", async () => {

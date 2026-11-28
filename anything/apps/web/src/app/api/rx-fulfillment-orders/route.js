@@ -6,6 +6,7 @@ import {
   ProviderAuthError,
 } from "@/app/api/utils/providerAuth";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { providerIsUnclaimed, unclaimedProviderResponse } from "@/app/api/utils/providerClaim";
 
 // /api/rx-fulfillment-orders — the OWNER side of Rx fulfillment (Wave 7 ticket 2.71).
 //   GET  ?petId= — the owner's fulfillment orders for a pet (RLS owner_select), newest first.
@@ -94,6 +95,10 @@ async function POST(request) {
         { error: "A delivery address is required for delivery" },
         { status: 400 },
       );
+    }
+
+    if (await providerIsUnclaimed(provider_id)) {
+      return unclaimedProviderResponse(request, "order");
     }
 
     // The dispenser must hold the `pharmacy` capability (clean 403 vs a later RLS error).

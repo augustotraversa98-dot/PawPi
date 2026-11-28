@@ -8,6 +8,7 @@ import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { requireProviderCapability } from "@/app/api/utils/providerAuth";
+import { providerIsUnclaimed } from "@/app/api/utils/providerClaim";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
@@ -16,6 +17,12 @@ vi.mock("@/app/api/utils/providerAuth", async (importOriginal) => {
   const actual = await importOriginal();
   return { ...actual, requireProviderCapability: vi.fn() };
 });
+
+// The claim lookup answers "claimed" unless a test says otherwise.
+vi.mock("@/app/api/utils/providerClaim", async (importOriginal) => ({
+  ...(await importOriginal()),
+  providerIsUnclaimed: vi.fn(),
+}));
 
 const SESSION = { user: { id: 42 }, expires: "9999999999" };
 const post = (body) =>
@@ -54,6 +61,15 @@ describe("POST /api/rx-fulfillment-orders", () => {
     auth.mockResolvedValue(SESSION);
     const res = await POST(post({ prescription_id: 3, provider_id: 100, method: "delivery" }));
     expect(res.status).toBe(400);
+  });
+
+  it("a listing nobody has claimed → 409 provider_unclaimed, nothing written", async () => {
+    auth.mockResolvedValue(SESSION);
+    providerIsUnclaimed.mockResolvedValueOnce(true);
+    const res = await POST(post(goodBody));
+    expect(res.status).toBe(409);
+    expect((await res.json()).code).toBe("provider_unclaimed");
+    expect(sql).not.toHaveBeenCalled();
   });
 
   it("dispenser lacks the pharmacy capability → 403", async () => {

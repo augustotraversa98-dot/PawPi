@@ -15,6 +15,7 @@ import {
   DEFAULT_TIME_ZONE,
 } from "@/app/api/utils/availability";
 import { recordBusinessEvent } from "@/lib/telemetry/business";
+import { isUnclaimedProvider, unclaimedProviderResponse } from "@/app/api/utils/providerClaim";
 
 /** Add `n` days to a 'YYYY-MM-DD' string, returning a 'YYYY-MM-DD' string. */
 function addDays(dateStr, n) {
@@ -125,7 +126,7 @@ async function POST(request, { params }) {
     // Provider must exist AND be published — cannot book a draft/unknown provider.
     // time_zone (0076) is read here for the PR-3 slot-enforcement composition below.
     const providerRows = await sql`
-      SELECT id, name, status, time_zone, auto_confirm_bookings FROM providers WHERE id = ${providerId}
+      SELECT id, name, status, time_zone, auto_confirm_bookings, claim_status FROM providers WHERE id = ${providerId}
     `;
     if (providerRows.length === 0 || providerRows[0].status !== "published") {
       return Response.json(
@@ -134,6 +135,9 @@ async function POST(request, { params }) {
       );
     }
     const provider = providerRows[0];
+    if (isUnclaimedProvider(provider)) {
+      return unclaimedProviderResponse(request, "booking");
+    }
 
     // CAPABILITY GATE (2.4). The provider must HOLD the requested capability. Only
     // checked for a NON-vet booking: a plain vet booking (the pre-2.4 default) is

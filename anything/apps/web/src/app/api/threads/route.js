@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { isUnclaimedProvider, unclaimedProviderResponse } from "@/app/api/utils/providerClaim";
 import {
   requireProviderRole,
   ProviderAuthError,
@@ -140,10 +141,13 @@ async function POST(request) {
     // The provider must exist AND be published — you start a chat from a published
     // provider profile (or a booking with it). A draft/unknown provider is a 404.
     const providerRows = await sql`
-      SELECT id, status FROM providers WHERE id = ${providerId}
+      SELECT id, status, claim_status FROM providers WHERE id = ${providerId}
     `;
     if (providerRows.length === 0 || providerRows[0].status !== "published") {
       return Response.json({ error: "Provider not found" }, { status: 404 });
+    }
+    if (isUnclaimedProvider(providerRows[0])) {
+      return unclaimedProviderResponse(request, "message");
     }
 
     // If a booking is named it must be the caller's OWN booking with THIS provider.

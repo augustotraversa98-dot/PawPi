@@ -8,6 +8,7 @@ import {
   PaymentsNotConfiguredError,
   ProviderPaymentAccountError,
 } from "@/app/api/utils/payments/config";
+import { isUnclaimedProvider, unclaimedProviderResponse } from "@/app/api/utils/providerClaim";
 
 // POST /api/pets/[id]/walk-package-checkout — the OWNER buys a prepaid WALK PACKAGE (Ticket B2).
 // Mirrors pets/[id]/shop-checkout: it REUSES the 2.3 money layer (an orders row + the SAME
@@ -59,11 +60,16 @@ async function POST(request, { params }) {
 
     // GATE 2 — the provider must hold the 'walker' capability.
     const capRows = await sql`
-      SELECT 1 FROM provider_capabilities
-      WHERE provider_id = ${provider_id} AND capability = 'walker'
+      SELECT p.claim_status
+      FROM provider_capabilities pc
+      LEFT JOIN providers p ON p.id = pc.provider_id
+      WHERE pc.provider_id = ${provider_id} AND pc.capability = 'walker'
     `;
     if (capRows.length === 0) {
       return Response.json({ error: "Provider does not offer walks" }, { status: 400 });
+    }
+    if (isUnclaimedProvider(capRows[0])) {
+      return unclaimedProviderResponse(request, "order");
     }
 
     // GATE 3 — the package must be ACTIVE + this provider's. Price is server-trusted. Degrade clean:

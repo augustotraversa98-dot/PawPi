@@ -1,6 +1,6 @@
-**Última actualización:** 26 de noviembre de 2026
+**Última actualización:** 27 de noviembre de 2026
 
-Esta Política de Privacidad explica cómo Augusto Traversa ("PawPi", "nosotros") recopila, usa y
+Esta Política de Privacidad explica cómo Tanquetats 2022 ("PawPi", "nosotros") recopila, usa y
 comparte información cuando usás la aplicación móvil PawPi y los servicios relacionados (el
 "Servicio"). PawPi es una app integral para personas con perros: feed social, perfiles de mascotas,
 seguimiento de salud, recordatorios, historia clínica, entrenamiento, comunidad, adopción y un
@@ -12,8 +12,9 @@ Si no estás de acuerdo con esta Política, por favor no uses el Servicio.
 
 El responsable de los datos es:
 
-- **Augusto Traversa**
-- Matacos y Alborada S/N
+- **Tanquetats 2022**
+- NIF/CIF: B10579803
+- Calle Torrente 18 26, 46014 Valencia, Spain
 - Contacto: **support@pawpi.info**
 
 ## 2. Información que recopilamos
@@ -435,6 +436,21 @@ También podés:
 - revocar el acceso de un cuidador o proveedor en cualquier momento;
 - eliminar tu cuenta en la app (Ajustes → Eliminar cuenta).
 
+### Derechos según la normativa de protección de datos de la UE y de España
+
+El responsable de los datos está establecido en España, por lo que a este tratamiento se le aplican el
+Reglamento General de Protección de Datos de la UE (RGPD) y la Ley Orgánica 3/2018, de Protección de
+Datos Personales y garantía de los derechos digitales (LOPDGDD), vivas donde vivas. Tenés derecho de
+acceso, rectificación, supresión, limitación del tratamiento, portabilidad de los datos y oposición.
+Para ejercerlos, escribinos a **support@pawpi.info**. También tenés derecho a presentar una
+reclamación ante la Agencia Española de Protección de Datos (AEPD):
+[www.aepd.es](https://www.aepd.es). Estos derechos se suman a los que tengas según la ley del lugar
+donde vivís, y no los limitan.
+
+Algunos de los proveedores indicados en la Sección 8 pueden procesar tu información fuera del Espacio
+Económico Europeo; cuando el RGPD lo exige, usamos salvaguardas adecuadas para esas transferencias
+(ver Sección 13).
+
 ## 11. Eliminar tu cuenta
 
 Podés eliminar tu cuenta de forma permanente desde **Ajustes → Eliminar cuenta**. Esto elimina
@@ -478,5 +494,5 @@ política que aceptaste.
 
 ## 16. Contacto
 
-Consultas sobre esta Política o tus datos: **support@pawpi.info**, Augusto Traversa,
-Matacos y Alborada S/N.
+Consultas sobre esta Política o tus datos: **support@pawpi.info**, Tanquetats 2022,
+Calle Torrente 18 26, 46014 Valencia, Spain.
