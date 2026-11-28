@@ -33,6 +33,8 @@ export default {
     hours: {
       from: "{day} from {time}",
       until: "{day} until {time}",
+      closed: "{day} closed",
+      allDay: "{day} 24 hours",
     },
     inputs: {
       invalidAmount: "Enter a valid amount (e.g. 12.50 or 1,250.00)",
@@ -70,6 +72,8 @@ export default {
     hours: {
       from: "{day} desde las {time}",
       until: "{day} hasta las {time}",
+      closed: "{day} cerrado",
+      allDay: "{day} 24 horas",
     },
     inputs: {
       invalidAmount: "Ingresá un importe válido (por ejemplo, 12,50 o 1.250,00)",

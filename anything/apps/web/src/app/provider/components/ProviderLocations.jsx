@@ -18,7 +18,8 @@ import {
   useDeleteLocation,
 } from "../hooks/useProviders";
 import { COLORS } from "../lib/colors";
-import { WEEKDAYS, hoursToRows, rowsToHours, hoursSummary, weekdayName } from "../lib/hours";
+import { hoursToRows, rowsToHours, hoursSummary } from "../lib/hours";
+import LocationHoursEditor from "./LocationHoursEditor";
 import locationsCopy from "../i18n/locations";
 import { useProviderCopy } from "../i18n/lib/useProviderCopy";
 import { fill } from "../i18n/lib/format";
@@ -171,8 +172,8 @@ export default function ProviderLocations({ providerId }) {
                     </p>
                   )}
                   {summary && (
-                    <p className="flex items-center gap-2">
-                      <Clock className="h-3.5 w-3.5" />
+                    <p className="flex items-start gap-2">
+                      <Clock className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
                       {summary}
                     </p>
                   )}
@@ -210,8 +211,8 @@ function parseCoord(raw, { min, max }) {
   return { value };
 }
 
-// Add / edit form in a lightweight modal. hours_json is edited via a per-weekday
-// open/close grid; lat/lng are plain numeric inputs (no map this ticket) and are
+// Add / edit form in a lightweight modal. hours_json is edited per weekday
+// (LocationHoursEditor); lat/lng are plain numeric inputs (no map this ticket) and are
 // validated client-side before any request. An empty hours editor never blocks.
 function LocationFormModal({ location, onClose, onSubmit, saving }) {
   const { t, lang } = useProviderCopy(locationsCopy);
@@ -248,12 +249,6 @@ function LocationFormModal({ location, onClose, onSubmit, saving }) {
     });
     setHourRows(hoursToRows(location?.hours_json));
   }, [location, reset]);
-
-  const setHour = (dayKey, field, value) =>
-    setHourRows((prev) => ({
-      ...prev,
-      [dayKey]: { ...prev[dayKey], [field]: value },
-    }));
 
   const submit = (values) => {
     const lat = parseCoord(values.lat, { min: -90, max: 90 });
@@ -383,30 +378,7 @@ function LocationFormModal({ location, onClose, onSubmit, saving }) {
                 {t.form.hours}
                 <span className="text-xs font-normal text-[#B8A99D]">{t.form.optional}</span>
               </p>
-              <div className="space-y-2">
-                {WEEKDAYS.map((day) => (
-                  <div key={day.key} className="flex items-center gap-3">
-                    <span className="w-10 text-sm font-semibold text-[#7A6254]">
-                      {weekdayName(day.key, lang)}
-                    </span>
-                    <input
-                      type="time"
-                      aria-label={fill(t.form.dayOpen, { day: weekdayName(day.key, lang) })}
-                      value={hourRows[day.key]?.open ?? ""}
-                      onChange={(e) => setHour(day.key, "open", e.target.value)}
-                      className="flex-1 rounded-lg border-2 border-[#FFD9B3] bg-[#FFF7EF] px-2 py-1.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
-                    />
-                    <span className="text-[#B8A99D]">–</span>
-                    <input
-                      type="time"
-                      aria-label={fill(t.form.dayClose, { day: weekdayName(day.key, lang) })}
-                      value={hourRows[day.key]?.close ?? ""}
-                      onChange={(e) => setHour(day.key, "close", e.target.value)}
-                      className="flex-1 rounded-lg border-2 border-[#FFD9B3] bg-[#FFF7EF] px-2 py-1.5 text-sm text-[#3B241B] outline-none focus:border-[#FF6F61]"
-                    />
-                  </div>
-                ))}
-              </div>
+              <LocationHoursEditor rows={hourRows} onChange={setHourRows} />
             </div>
           </AdvancedSection>
 

@@ -50,6 +50,14 @@ Report: [`night-run/2026-11-26/REPORT-testflight-feedback.md`](night-run/2026-11
 
 ---
 
+## 2026-11-27 — Directory opening hours in the app's format
+- `supabase/seed/directory/hours.mjs` converts Google's Spanish hours to English day keys and 24-hour times: a split day is two ranges, plus `"closed"` and `00:00`–`24:00` for open all day. A week with anything unreadable is stored empty and listed. The loader converts on every load, and keeps a listing's hours when Google gives none.
+- The web hours editor handles several ranges a day, closed and 24 hours; both open-now helpers accept `24:00`.
+- **Production, 2026-11-27:** 2,658 stored listings converted in place (`normalize_hours.mjs` logic, run as one SQL statement; stored result matched the converter's fingerprint). 0 unreadable. Claimed businesses unchanged. 291 Google and 678 OpenStreetMap listings have no hours.
+- Installed app builds read the new format; on the next build, 24-hour days also show "open" (until then they show no badge).
+
+---
+
 ## 2026-11-26 — Night run: finder flow, vet sharing by parts and by invite, build 36 from `103d79b6`, uploaded for TestFlight
 Report: [`night-run/2026-11-26/REPORT-build34-vet-sharing.md`](night-run/2026-11-26/REPORT-build34-vet-sharing.md).
 - **Merged:** finder flow (#804, #807); vet sharing by parts with an end date (#811, #814, #816, #817, #815, #810); vet invite by link (#818, #821, #822, #823, #820); keeping access changes consistent (#819); maintenance (#809, #808, #813, #824). #802 and #812 stay drafts until the new build is live.
