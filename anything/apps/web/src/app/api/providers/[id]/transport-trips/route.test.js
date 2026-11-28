@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST, GET } from "./route";
 import { auth } from "@/auth";
 import sql from "@/app/api/utils/sql";
-import { requireProviderCapability } from "@/app/api/utils/providerAuth";
+import { requireProviderCapability, requireProviderRole } from "@/app/api/utils/providerAuth";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/app/api/utils/sql", () => ({ default: vi.fn() }));
@@ -87,6 +87,7 @@ describe("POST transport-trips (owner books)", () => {
     expect(allText).toContain("INSERT INTO vet_appointments");
     expect(allText).toContain("'transport'");
     expect(allText).toContain("INSERT INTO transport_trips");
+    expect(requireProviderRole).not.toHaveBeenCalled(); // the caller is a customer, not staff
   });
 });
 
@@ -97,5 +98,6 @@ describe("GET transport-trips (provider inbox)", () => {
     const res = await GET(new Request("http://localhost/api/providers/100/transport-trips"), PARAMS);
     expect(res.status).toBe(200);
     expect((await res.json()).trips).toHaveLength(1);
+    expect(requireProviderRole).toHaveBeenCalledWith("100", 7, ["owner", "admin", "staff", "vet"]);
   });
 });
