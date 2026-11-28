@@ -11,6 +11,13 @@ Merged + CI-green ≠ device-verified. This list is the gap between the two.
 
 ---
 
+## Smart Entry (typed and voice entry): nothing to test yet
+
+Not built (2026-11-27, task text missing). The planned phone checklist is in section 3 of "Human steps" in
+[the run report](night-run/2026-11-27/REPORT-smart-entry.md).
+
+---
+
 ## 📦 EAS build 37 (v1.0.5) — built 2026-11-27, test this one
 
 | Item | Value |
