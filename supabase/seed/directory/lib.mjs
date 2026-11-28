@@ -1,4 +1,4 @@
-// Shared helpers for the directory seed scripts (backfill_website_url.mjs, load_enrichment.mjs).
+// Shared helpers for the directory seed scripts (load_master.mjs, backfill_website_url.mjs, load_enrichment.mjs).
 //
 // `postgres` and `papaparse` are resolved from anything/apps/web/node_modules (Node resolves a bare
 // import from the importing FILE's folder, which has no node_modules of its own).
@@ -16,7 +16,8 @@ import { fileURLToPath } from "node:url";
 
 export const SEED_DIR = dirname(fileURLToPath(import.meta.url));
 const WEB_DIR = join(SEED_DIR, "..", "..", "..", "anything", "apps", "web");
-const webRequire = createRequire(join(WEB_DIR, "package.json"));
+/** `require` as the web app resolves packages: these scripts have no node_modules of their own. */
+export const webRequire = createRequire(join(WEB_DIR, "package.json"));
 
 export const CSV_PATH =
   process.env.DIRECTORY_CSV_PATH || join(SEED_DIR, "pawpi_directory_master.csv");
