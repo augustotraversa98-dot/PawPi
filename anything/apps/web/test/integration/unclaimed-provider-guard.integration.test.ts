@@ -217,10 +217,7 @@ describe('stays, training, walks and trips', () => {
     expect(res.status).toBe(201);
   });
 
-  // The route asks the caller to be the business's staff, which no one is for a seeded listing; the staff row here
-  // only gets the request as far as the claim guard.
   it('pet transport trip', async () => {
-    await seedStaff(raw, { providerId: UNCLAIMED, userProfileId: OWNER.profileId, role: 'staff', status: 'active' });
     const res = await send(`/providers/${UNCLAIMED}/transport-trips`, {
       petId: OWNER.petId, scheduled_at: '2027-03-01T10:00:00.000Z', pickup_address: 'A', dropoff_address: 'B',
     });
