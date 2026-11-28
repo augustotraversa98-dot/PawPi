@@ -6,6 +6,7 @@ import {
   nextChargeAt,
   ALLOWED_PLANS,
 } from "@/app/api/utils/payments/subscriptionCadence";
+import { isUnclaimedProvider, unclaimedProviderResponse } from "@/app/api/utils/providerClaim";
 
 // /api/shop/subscriptions — the OWNER manages SHOP AUTO-REORDER plans. Phase 2 ticket 2.11
 // (docs/phase2-tickets/2.11-shop-ecommerce.md).
@@ -87,13 +88,18 @@ async function POST(request) {
     // The product must be ACTIVE + in a published shop (RLS lets the owner read it). We also
     // capture its provider so the recurring order bills the right shop.
     const prodRows = await sql`
-      SELECT id, provider_id, is_rx FROM shop_products
-      WHERE id = ${product_id} AND active = true
+      SELECT sp.id, sp.provider_id, sp.is_rx, p.claim_status
+      FROM shop_products sp
+      LEFT JOIN providers p ON p.id = sp.provider_id
+      WHERE sp.id = ${product_id} AND sp.active = true
     `;
     if (prodRows.length === 0) {
       return Response.json({ error: "Product not available" }, { status: 404 });
     }
     const product = prodRows[0];
+    if (isUnclaimedProvider(product)) {
+      return unclaimedProviderResponse(request, "order");
+    }
 
     // Auto-reorder is for STAPLES (food, etc.), not prescription products — an Rx item must be
     // bought through the one-off checkout where the Rx gate runs each time. Refuse here.

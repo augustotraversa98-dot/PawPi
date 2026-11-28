@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { providerIsUnclaimed, unclaimedProviderResponse } from "@/app/api/utils/providerClaim";
 
 // /api/insurance-leads — the OWNER's quote/interest requests (ticket 2.54).
 // POST: create a lead for an insurer (lead-gen; no payment). Only the owner's own pet fields +
@@ -24,6 +25,10 @@ async function POST(request) {
     const providerId = body.provider_id;
     if (!providerId) {
       return Response.json({ error: "provider_id is required" }, { status: 400 });
+    }
+
+    if (await providerIsUnclaimed(providerId)) {
+      return unclaimedProviderResponse(request, "request");
     }
 
     // If a pet is named it must be the caller's (no leaking another owner's pet into a lead).

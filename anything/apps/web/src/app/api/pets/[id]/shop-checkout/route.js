@@ -11,6 +11,7 @@ import {
   ProviderPaymentAccountError,
 } from "@/app/api/utils/payments/config";
 import { recordBusinessEvent } from "@/lib/telemetry/business";
+import { isUnclaimedProvider, unclaimedProviderResponse } from "@/app/api/utils/providerClaim";
 
 // POST /api/pets/[id]/shop-checkout — the OWNER turns a CART into a paid 'product' order.
 // Phase 2 ticket 2.11 (docs/phase2-tickets/2.11-shop-ecommerce.md).
@@ -105,14 +106,19 @@ async function POST(request, { params }) {
 
     // GATE 1 — the provider must hold the 'shop' capability (2.1).
     const capRows = await sql`
-      SELECT 1 FROM provider_capabilities
-      WHERE provider_id = ${provider_id} AND capability = 'shop'
+      SELECT p.claim_status
+      FROM provider_capabilities pc
+      LEFT JOIN providers p ON p.id = pc.provider_id
+      WHERE pc.provider_id = ${provider_id} AND pc.capability = 'shop'
     `;
     if (capRows.length === 0) {
       return Response.json(
         { error: "Provider does not offer a shop" },
         { status: 400 },
       );
+    }
+    if (isUnclaimedProvider(capRows[0])) {
+      return unclaimedProviderResponse(request, "order");
     }
 
     // Resolve + validate every cart line against the catalog. Build the priced lines.

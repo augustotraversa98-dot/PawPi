@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { safeNotify } from "@/app/api/utils/notify";
+import { isUnclaimedProvider, unclaimedProviderResponse } from "@/app/api/utils/providerClaim";
 
 // walk-requests — the shared "request a walk" model (ticket C1 direct + C2 broadcast).
 //   POST /api/walk-requests            — an OWNER creates a request. target_provider_id SET = DIRECT
@@ -50,6 +51,7 @@ export async function broadcastCandidateProviderIds(lat, lng, radiusKm) {
       FROM providers p
       JOIN provider_live_availability la ON la.provider_id = p.id
       WHERE p.status = 'published'
+        AND p.claim_status = 'claimed'
         AND la.accepting = true
         AND la.expires_at IS NOT NULL AND la.expires_at > now()
         AND la.lat IS NOT NULL AND la.lng IS NOT NULL
@@ -152,10 +154,13 @@ async function POST(request) {
     // For a DIRECT request the target must exist, be published, and actually be a WALKER.
     if (!isBroadcast) {
       const provRows = await sql`
-        SELECT id FROM providers WHERE id = ${targetProviderId} AND status = 'published'
+        SELECT id, claim_status FROM providers WHERE id = ${targetProviderId} AND status = 'published'
       `;
       if (provRows.length === 0) {
         return Response.json({ error: "Walker not found" }, { status: 404 });
+      }
+      if (isUnclaimedProvider(provRows[0])) {
+        return unclaimedProviderResponse(request, "request");
       }
       const capRows = await sql`
         SELECT provider_has_capability(${targetProviderId}, 'walker') AS has

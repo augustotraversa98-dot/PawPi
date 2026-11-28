@@ -90,3 +90,10 @@ describe("friendlyErrorMessage — Spanish UI", () => {
     expect(friendlyErrorMessage(new Error("Pet not found"), "appAlerts.x")).toBe("Pet not found");
   });
 });
+
+// A phone set to English with the app in Spanish gets the server's English sentence for an unclaimed listing.
+test("the unclaimed-listing refusal is shown in Spanish when the app is in Spanish", () => {
+  mockLang = "es-AR";
+  const message = "This business hasn't been claimed yet, so we can't send your message.";
+  expect(friendlyErrorMessage(new Error(message))).toBe("T(providers.unclaimed.cantSend)");
+});

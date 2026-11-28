@@ -17,6 +17,7 @@ import { auth } from '@/auth';
 import sql from '@/app/api/utils/sql';
 import { resolveUserId } from '@/app/api/utils/currentUser';
 import { createCheckout } from '@/app/api/utils/payments';
+import { providerIsUnclaimed } from '@/app/api/utils/providerClaim';
 import {
   PaymentsNotConfiguredError,
   ProviderPaymentAccountError,
@@ -29,6 +30,11 @@ vi.mock('@/app/api/utils/payments', () => ({ createCheckout: vi.fn() }));
 // Provider notification does its own DB work; mock it so it can't shift the sql call sequence the
 // pricing assertions rely on.
 vi.mock('@/app/api/utils/providerNotify', () => ({ notifyProviderTeam: vi.fn() }));
+// The claim lookup is mocked for the same reason; it answers "claimed" unless a test says otherwise.
+vi.mock('@/app/api/utils/providerClaim', async (importOriginal) => ({
+  ...(await importOriginal()),
+  providerIsUnclaimed: vi.fn(),
+}));
 
 const SESSION = { user: { id: 42 }, expires: '9999999999' };
 const jsonReq = (body) =>
@@ -59,6 +65,17 @@ describe('POST /api/payments/checkout — plumbing', () => {
     const res = await POST(jsonReq(DONATION));
     expect(res.status).toBe(401);
     expect(sql).not.toHaveBeenCalled();
+  });
+
+  it('a listing nobody has claimed → 409 provider_unclaimed, before any order or charge', async () => {
+    auth.mockResolvedValue(SESSION);
+    providerIsUnclaimed.mockResolvedValueOnce(true);
+    const res = await POST(jsonReq(DONATION));
+    expect(res.status).toBe(409);
+    expect((await res.json()).code).toBe('provider_unclaimed');
+    expect(providerIsUnclaimed).toHaveBeenCalledWith(DONATION.provider_id);
+    expect(sql).not.toHaveBeenCalled();
+    expect(createCheckout).not.toHaveBeenCalled();
   });
 
   it('invalid kind → 400', async () => {

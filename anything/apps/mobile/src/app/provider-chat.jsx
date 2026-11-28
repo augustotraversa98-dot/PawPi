@@ -24,6 +24,7 @@ import {
 } from "@/hooks/useProviders";
 import useUpload from "@/utils/useUpload";
 import { useTranslation } from "react-i18next";
+import { alertError } from "@/utils/appAlert";
 
 // Shared owner↔provider conversation view (Phase 2 ticket 2.5; generalized for business mode
 // v2). Reads one thread's messages (polled), sends text, and attaches an image via the SHARED
@@ -80,10 +81,16 @@ export default function ProviderChatScreen() {
     }
   }, [messages]);
 
+  // A refused message says why; the draft stays in the box.
+  const onSendFailed = (error) => alertError(error, "common.pleaseTryAgain");
+
   const onSendText = () => {
     const text = draft.trim();
     if (!text) return;
-    send({ body: text }, { onSuccess: () => setDraft("") });
+    send(
+      { body: text },
+      { onSuccess: () => setDraft(""), onError: onSendFailed },
+    );
   };
 
   const onAttachImage = async () => {
@@ -101,7 +108,7 @@ export default function ProviderChatScreen() {
       },
     });
     if (uploaded?.error || !uploaded?.url) return;
-    send({ attachment_url: uploaded.url });
+    send({ attachment_url: uploaded.url }, { onError: onSendFailed });
   };
 
   return (

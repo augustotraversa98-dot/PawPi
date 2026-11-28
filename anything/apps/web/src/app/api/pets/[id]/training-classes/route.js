@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { auth } from "@/auth";
 import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
+import { isUnclaimedProvider, unclaimedProviderResponse } from "@/app/api/utils/providerClaim";
 
 // POST /api/pets/[id]/training-classes — the OWNER JOINS a trainer's GROUP CLASS for their
 // pet. Phase 2 ticket 2.10 (docs/phase2-tickets/2.10-training.md).
@@ -50,7 +51,7 @@ async function POST(request, { params }) {
     // The class must be a real GROUP CLASS of a published provider that HOLDS 'trainer'.
     // (training_sessions RLS makes a published provider's sessions publicly readable.)
     const classRows = await sql`
-      SELECT s.id, s.provider_id, s.kind, s.capacity, s.status
+      SELECT s.id, s.provider_id, s.kind, s.capacity, s.status, p.claim_status
       FROM training_sessions s
       JOIN providers p ON p.id = s.provider_id
       JOIN provider_capabilities pc
@@ -63,6 +64,9 @@ async function POST(request, { params }) {
       return Response.json({ error: "Class not found" }, { status: 404 });
     }
     const cls = classRows[0];
+    if (isUnclaimedProvider(cls)) {
+      return unclaimedProviderResponse(request, "request");
+    }
     if (cls.status === "cancelled") {
       return Response.json({ error: "This class is cancelled" }, { status: 400 });
     }

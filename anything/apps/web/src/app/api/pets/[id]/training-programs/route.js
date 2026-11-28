@@ -4,6 +4,7 @@ import { resolveUserId } from "@/app/api/utils/currentUser";
 import { withRequestContext } from "@/app/api/utils/requestContext";
 import { invalidNumberResponse } from "@/app/api/utils/invalidNumber";
 import { readClientInteger } from "@/lib/decimal";
+import { isUnclaimedProvider, unclaimedProviderResponse } from "@/app/api/utils/providerClaim";
 
 // /api/pets/[id]/training-programs — the OWNER enrolls in a trainer PROGRAM / books a 1:1
 // course and reads their pet's enrollments (with per-session PROGRESS + VIDEO LESSONS).
@@ -141,10 +142,13 @@ async function POST(request, { params }) {
     // Provider must exist, be published, AND HOLD the 'trainer' capability (you can only
     // book a service a provider offers — the module/capability gate, 2.1).
     const providerRows = await sql`
-      SELECT id, status FROM providers WHERE id = ${provider_id}
+      SELECT id, status, claim_status FROM providers WHERE id = ${provider_id}
     `;
     if (providerRows.length === 0 || providerRows[0].status !== "published") {
       return Response.json({ error: "Provider not found" }, { status: 404 });
+    }
+    if (isUnclaimedProvider(providerRows[0])) {
+      return unclaimedProviderResponse(request, "request");
     }
     const capRows = await sql`
       SELECT 1 FROM provider_capabilities

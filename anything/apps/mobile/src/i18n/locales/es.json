@@ -1462,6 +1462,10 @@
     "couldntBook": "No se pudo reservar"
   },
   "providers": {
+    "unclaimed": {
+      "notice": "Este negocio todavía no fue reclamado, así que no podés reservar ni mandarle mensajes en PawPi.",
+      "cantSend": "Este negocio todavía no fue reclamado, así que no podemos enviarle esto."
+    },
     "searchPlaceholder": "Buscar por nombre",
     "sortSuggested": "Sugeridos",
     "sortTopRated": "Mejor valorados",
