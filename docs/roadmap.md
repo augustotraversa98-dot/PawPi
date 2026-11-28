@@ -18,6 +18,13 @@ commits. Keep this file in step with the master plan every time priorities chang
 
 ---
 
+## 2026-11-27 — Smart Entry (typed and voice entry), parts 1 and 2: not started
+Report: [`night-run/2026-11-27/REPORT-smart-entry.md`](night-run/2026-11-27/REPORT-smart-entry.md).
+- **Blocked:** the night-run brief arrived without the Part 1 and Part 2 task text. No code, SQL, flag or build.
+- **Before building:** Health → Today reads routines and vet appointments only; voice needs the speech module back in the native build, new permission text and a new EAS build; production is recorded as already having `ANTHROPIC_API_KEY`, so the feature flag must gate by itself.
+
+---
+
 ## 2026-11-27 — Directory: nothing can be sent to an unclaimed listing
 - **Shipped:** every route where a customer sends something to a business now refuses a listing whose `claim_status` is not `claimed` (409 `provider_unclaimed`, EN/ES): booking, message threads (new and existing), shop and walk-package checkout, payment checkout, auto-reorder, prescription fulfilment, daycare stay, training program and class, direct and broadcast walk request, pet transport, insurance quote, adoption application, record sharing. Vet record invitations already excluded them (`0154`).
 - **App:** an unclaimed storefront shows no Book, Message, Shop or walk packs, says why, and keeps "Claim it". Needs a new app build; installed builds get the server's sentence.
