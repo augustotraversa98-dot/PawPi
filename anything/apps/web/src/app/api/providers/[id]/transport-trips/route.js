@@ -17,8 +17,8 @@ import { isUnclaimedProvider, unclaimedProviderResponse } from "@/app/api/utils/
 //   detail in the SAME request. The trip is owner-scoped + status 'requested'. Fare is charged
 //   later via payments (2.3); chat (2.5) is booking-scoped. A trip IS a booking, so it surfaces
 //   in the existing provider Bookings inbox + the 2.24 Calendar automatically.
-// GET (provider STAFF inbox): gate the capability; list THIS provider's trips. transport_trips
-//   RLS scopes rows to active staff of the provider (a non-staff caller reads zero).
+// GET (provider STAFF inbox): gate the capability + active staff membership; list THIS provider's
+//   trips. transport_trips RLS also scopes the rows to active staff of the provider.
 //
 // DB is porsager's tagged-template `sql`.
 
@@ -37,8 +37,8 @@ async function POST(request, { params }) {
     }
 
     // MODULE gate — the provider must HOLD the 'transport' capability (2.1). 403 if not.
+    // No staff gate here: the caller is the customer. Ownership of the pet is checked below.
     await requireProviderCapability(providerId, "transport");
-    await requireProviderRole(providerId, userId, ALL_PROVIDER_ROLES);
 
     const body = (await request.json()) ?? {};
     const {
